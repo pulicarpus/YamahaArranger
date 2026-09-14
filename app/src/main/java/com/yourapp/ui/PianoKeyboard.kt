@@ -81,25 +81,32 @@ private fun noteForOffset(
     startNote: Int,
     totalWhiteKeys: Int
 ): Int {
+    val numOctaves = totalWhiteKeys / 7
     val whiteKeyWidth = canvasSize.width / totalWhiteKeys
+    val whiteKeyHeight = canvasSize.height
     val blackKeyWidth = whiteKeyWidth * 0.6f
-    val blackKeyHeight = canvasSize.height * 0.6f
+    val blackKeyHeight = whiteKeyHeight * 0.6f
 
-    val whiteIndex = (offset.x / whiteKeyWidth).toInt().coerceIn(0, totalWhiteKeys - 1)
-
+    // 1) Cek tuts HITAM dulu (paling atas) — iterate semua black key,
+    //    persis seperti rendering, biar konsisten.
     if (offset.y < blackKeyHeight) {
-        val nearbyBlackX = whiteIndex * whiteKeyWidth
-        val distToBoundary = offset.x - nearbyBlackX
-        if (kotlin.math.abs(distToBoundary) < blackKeyWidth / 2f) {
-            val octave = whiteIndex / 7
-            val whiteInOctave = whiteIndex % 7
-            val blackSemitoneMap = mapOf(0 to 1, 1 to 3, 3 to 6, 4 to 8, 5 to 10)
-            blackSemitoneMap[whiteInOctave]?.let { semitone ->
-                return startNote + octave * 12 + semitone
+        var whiteIndex = 0
+        for (octave in 0 until numOctaves) {
+            for (semitone in 0..11) {
+                if (semitone in WHITE_KEY_SEMITONES) {
+                    whiteIndex++
+                } else if (semitone in BLACK_KEY_SEMITONES) {
+                    val blackX = whiteIndex * whiteKeyWidth - blackKeyWidth / 2f
+                    if (offset.x in blackX..(blackX + blackKeyWidth)) {
+                        return startNote + octave * 12 + semitone
+                    }
+                }
             }
         }
     }
 
+    // 2) Fallback: tuts putih
+    val whiteIndex = (offset.x / whiteKeyWidth).toInt().coerceIn(0, totalWhiteKeys - 1)
     val octave = whiteIndex / 7
     val whiteInOctave = whiteIndex % 7
     return startNote + octave * 12 + WHITE_KEY_SEMITONES[whiteInOctave]
