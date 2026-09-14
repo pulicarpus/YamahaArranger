@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Background bulat -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,54m-40,0a40,40 0,1 1,80 0a40,40 0,1 1,-80 0"/>
+
+    <!-- Tombol piano hitam (3 buah) -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M38,45h6v20h-6z"/>
+    <path
+        android:fillColor="#000000"
+        android:pathData="M51,45h6v20h-6z"/>
+    <path
+        android:fillColor="#000000"
+        android:pathData="M64,45h6v20h-6z"/>
+
+    <!-- Garis bawah piano -->
+    <path
+        android:fillColor="#FF5722"
+        android:pathData="M30,68h48v6h-48z"/>
+</vector>
