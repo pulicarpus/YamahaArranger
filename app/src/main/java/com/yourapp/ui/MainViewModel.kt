@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yourapp.yamahaarranger.arranger.ArrangerBrain
 import com.yourapp.yamahaarranger.arranger.ArrangerSection
+import com.yourapp.yamahaarranger.audio.AudioEngineManager
 import com.yourapp.yamahaarranger.midi.MidiInputManager
 import com.yourapp.yamahaarranger.style.StyleRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -32,7 +33,8 @@ class MainViewModel @Inject constructor(
     private val arrangerBrain: ArrangerBrain,
     private val styleRepository: StyleRepository,
     private val contentResolver: ContentResolverProvider,
-    private val midiInputManager: MidiInputManager
+    private val midiInputManager: MidiInputManager,
+    private val audioEngine: AudioEngineManager
 ) : ViewModel() {
 
     private val _styleName = MutableStateFlow("No Style Loaded")
@@ -50,22 +52,24 @@ class MainViewModel @Inject constructor(
 
     init {
         arrangerBrain.attachScope(viewModelScope)
+
+        // ✅ START AUDIO ENGINE — tanpa ini tidak akan ada suara!
+        audioEngine.start()
+
         // External USB/Bluetooth MIDI keyboards feed the same chord
-        // detection + audio path as the on-screen keyboard — a hardware
-        // controller is just another note source to ArrangerBrain.
+        // detection + audio path as the on-screen keyboard.
         midiInputManager.onNoteOn = { note, velocity -> arrangerBrain.onKeyboardNoteOn(note, velocity / 127f) }
         midiInputManager.onNoteOff = { note -> arrangerBrain.onKeyboardNoteOff(note) }
     }
 
-    /** Exposed so MainActivity/MainScreen can show a device picker (Phase 2b
-     * TODO: a proper dialog — Phase 2 just connects the first device found,
-     * good enough to validate the USB/BLE MIDI path end-to-end). */
+    /** Exposed so MainActivity/MainScreen can show a device picker (Phase 2b). */
     fun connectFirstAvailableMidiDevice() {
         midiInputManager.listAvailableDevices().firstOrNull()?.let(midiInputManager::connect)
     }
 
     override fun onCleared() {
         midiInputManager.close()
+        audioEngine.stop()                    // ✅ Stop audio engine
         super.onCleared()
     }
 
