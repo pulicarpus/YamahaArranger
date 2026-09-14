@@ -10,6 +10,7 @@ import com.yourapp.midi.MidiInputManager
 import com.yourapp.yamahaarranger.style.StyleRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -26,7 +27,7 @@ data class MainUiState(
     val isPlaying: Boolean = false,
     val activeSection: String = "Main A",
     val detectedChordLabel: String = "",
-    val midiStatus: String = "No MIDI"          // ← BARU
+    val midiStatus: String = "No MIDI"
 )
 
 @HiltViewModel
@@ -39,7 +40,7 @@ class MainViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _styleName = MutableStateFlow("No Style Loaded")
-    private val _midiStatus = MutableStateFlow("No MIDI")   // ← BARU
+    private val _midiStatus = MutableStateFlow("No MIDI")
 
     val uiState: StateFlow<MainUiState> =
         combine(arrangerBrain.state, _styleName, _midiStatus) { arranger, styleName, midi ->
@@ -65,19 +66,29 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    /** Dipanggil dari MainActivity saat startup — auto-connect E343. */
+    /** Auto-connect dengan retry. USB MIDI butuh 1-3 detik untuk enumerate. */
     fun connectFirstAvailableMidiDevice() {
-        val ok = midiInputManager.connectFirstAvailableDevice()
-        _midiStatus.value = if (ok) {
-            midiInputManager.connectedDeviceName ?: "MIDI connected"
-        } else {
-            "No MIDI device"
+        viewModelScope.launch {
+            repeat(5) { attempt ->
+                val ok = midiInputManager.connectFirstAvailableDevice()
+                if (ok) {
+                    _midiStatus.value = midiInputManager.connectedDeviceName ?: "MIDI connected"
+                    Timber.i("MIDI connected attempt ${attempt + 1}: ${_midiStatus.value}")
+                    return@launch
+                }
+                Timber.w("MIDI attempt ${attempt + 1} failed, retrying…")
+                delay(1500L)
+            }
+            _midiStatus.value = "No MIDI device"
+            Timber.e("MIDI connect failed after 5 attempts")
         }
-        Timber.i("MIDI connect result: ${_midiStatus.value}")
     }
 
-    /** Scan ulang + connect (dipanggil manual dari tombol nanti). */
-    fun refreshMidiConnection() = connectFirstAvailableMidiDevice()
+    /** Panggil dari tombol "Connect MIDI" — scan ulang + connect. */
+    fun refreshMidiConnection() {
+        _midiStatus.value = "Connecting…"
+        connectFirstAvailableMidiDevice()
+    }
 
     override fun onCleared() {
         midiInputManager.close()
