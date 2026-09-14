@@ -1,8 +1,11 @@
 name: Build APK
 
 on:
-  push:
-    branches: [ main, "feature-**" ]
+  # ⛔ Auto-build saat push DINONAKTIFKAN (uncomment kalau mau aktif)
+  # push:
+  #   branches: [ main, "feature-**" ]
+
+  # ✅ Build manual dari tab Actions
   workflow_dispatch: {}
 
 jobs:
@@ -24,11 +27,6 @@ jobs:
         run: |
           sdkmanager --install "ndk;26.3.11579264" "cmake;3.22.1"
 
-      # This repo doesn't ship a committed gradle-wrapper.jar (binary files
-      # don't travel well through chat-generated zips) — Gradle is set up
-      # by the action below instead of using ./gradlew. If you generate a
-      # wrapper later (Android Studio: File > Sync, or `gradle wrapper`
-      # once you have Gradle once), you can switch this back to ./gradlew.
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -37,18 +35,26 @@ jobs:
       - name: Build debug APK
         run: gradle assembleDebug --stacktrace
 
+      # ✅ Upload APK sebagai artifact GitHub (backup)
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
           path: app/build/outputs/apk/debug/app-debug.apk
 
-      # Optional: mirrors the gereja_mobile setup of pushing the built APK
-      # to Telegram. Uncomment and add TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID
-      # as repo secrets if you want the same flow here.
-      # - name: Send APK to Telegram
-      #   uses: appleboy/telegram-action@master
-      #   with:
-      #     to: ${{ secrets.TELEGRAM_CHAT_ID }}
-      #     token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-      #     document: app/build/outputs/apk/debug/app-debug.apk
+      # ✅ Kirim APK ke Telegram
+      - name: Send APK to Telegram
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          document: app/build/outputs/apk/debug/app-debug.apk
+          message: |
+            🎹 YamahaArranger APK Built!
+            
+            📦 Build: #${{ github.run_number }}
+            🌿 Branch: ${{ github.ref_name }}
+            📝 Commit: ${{ github.sha }}
+            👤 By: ${{ github.actor }}
+            
+            ✅ APK siap di-install!
