@@ -42,7 +42,6 @@ jobs:
           name: app-debug
           path: app/build/outputs/apk/debug/app-debug.apk
 
-      # ✅ Kirim APK ke Telegram
       - name: Send APK to Telegram
         uses: appleboy/telegram-action@master
         with:
@@ -50,11 +49,12 @@ jobs:
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           document: app/build/outputs/apk/debug/app-debug.apk
           message: |
-            🎹 YamahaArranger APK Built!
+            🎹 *YamahaArranger APK Built!*
             
-            📦 Build: #${{ github.run_number }}
-            🌿 Branch: ${{ github.ref_name }}
-            📝 Commit: ${{ github.sha }}
-            👤 By: ${{ github.actor }}
+            ✅ Build sukses, Bos!
             
-            ✅ APK siap di-install!
+            📦 Build No: #${{ github.run_number }}
+            🌿 Branch: `${{ github.ref_name }}`
+            👤 Author: ${{ github.actor }}
+            
+            📲 APK siap di-install di atas! 👆
