@@ -24,10 +24,22 @@ import javax.inject.Inject
 data class MainUiState(
     val styleName: String = "No Style Loaded",
     val tempoBpm: Int = 120,
+    val transpose: Int = 0,
     val isPlaying: Boolean = false,
     val activeSection: String = "Main A",
     val detectedChordLabel: String = "",
-    val midiStatus: String = "No MIDI"
+    val midiStatus: String = "No MIDI device",
+    // Volume (0-127)
+    val styleVolume: Int = 100,
+    val voiceVolume: Int = 100,
+    val masterVolume: Int = 110,
+    // Registration
+    val activeBank: Int = 1,
+    val activeRegSlot: Int = 0,
+    // Voice info (stub — nanti diisi dari Voice Browser)
+    val voiceName: String = "GrandPiano",
+    val right2Name: String = "OFF",
+    val splitPoint: String = "C4"
 )
 
 @HiltViewModel
@@ -40,17 +52,36 @@ class MainViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _styleName = MutableStateFlow("No Style Loaded")
-    private val _midiStatus = MutableStateFlow("No MIDI")
+    private val _midiStatus = MutableStateFlow("No MIDI device")
+    private val _transpose = MutableStateFlow(0)
+    private val _styleVolume = MutableStateFlow(100)
+    private val _voiceVolume = MutableStateFlow(100)
+    private val _masterVolume = MutableStateFlow(110)
+    private val _activeBank = MutableStateFlow(1)
+    private val _activeRegSlot = MutableStateFlow(0)
 
     val uiState: StateFlow<MainUiState> =
-        combine(arrangerBrain.state, _styleName, _midiStatus) { arranger, styleName, midi ->
+        combine(
+            arrangerBrain.state,
+            _styleName,
+            _midiStatus,
+            combine(_transpose, _styleVolume) { t, sv -> t to sv },
+            combine(_voiceVolume, _masterVolume) { vv, mv -> vv to mv },
+            combine(_activeBank, _activeRegSlot) { b, r -> b to r }
+        ) { arranger, styleName, midi, (transpose, styleVol), (voiceVol, masterVol), (bank, regSlot) ->
             MainUiState(
                 styleName = styleName,
                 tempoBpm = arranger.tempoBpm,
+                transpose = transpose,
                 isPlaying = arranger.isPlaying,
                 activeSection = displayLabelFor(arranger.currentSection),
                 detectedChordLabel = arranger.currentChordLabel,
-                midiStatus = midi
+                midiStatus = midi,
+                styleVolume = styleVol,
+                voiceVolume = voiceVol,
+                masterVolume = masterVol,
+                activeBank = bank,
+                activeRegSlot = regSlot
             )
         }.stateIn(viewModelScope, SharingStarted.Eagerly, MainUiState())
 
@@ -66,7 +97,9 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    /** Auto-connect dengan retry. USB MIDI butuh 1-3 detik untuk enumerate. */
+    // ═══════════════════════════════════════════════
+    // MIDI
+    // ═══════════════════════════════════════════════
     fun connectFirstAvailableMidiDevice() {
         viewModelScope.launch {
             repeat(5) { attempt ->
@@ -80,11 +113,9 @@ class MainViewModel @Inject constructor(
                 delay(1500L)
             }
             _midiStatus.value = "No MIDI device"
-            Timber.e("MIDI connect failed after 5 attempts")
         }
     }
 
-    /** Panggil dari tombol "Connect MIDI" — scan ulang + connect. */
     fun refreshMidiConnection() {
         _midiStatus.value = "Connecting…"
         connectFirstAvailableMidiDevice()
@@ -96,12 +127,18 @@ class MainViewModel @Inject constructor(
         super.onCleared()
     }
 
+    // ═══════════════════════════════════════════════
+    // KEYBOARD (dari E343 atau virtual)
+    // ═══════════════════════════════════════════════
     fun onKeyboardNoteOn(midiNote: Int, velocity: Float) =
         arrangerBrain.onKeyboardNoteOn(midiNote, velocity)
 
     fun onKeyboardNoteOff(midiNote: Int) =
         arrangerBrain.onKeyboardNoteOff(midiNote)
 
+    // ═══════════════════════════════════════════════
+    // SECTION
+    // ═══════════════════════════════════════════════
     fun onSectionSelected(sectionLabel: String) {
         val section = SECTION_BUTTON_MAP[sectionLabel] ?: return
         if (section in MAIN_VARIATIONS) {
@@ -111,10 +148,77 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun onSyncStart() { /* Phase 2b */ }
+    // ═══════════════════════════════════════════════
+    // TRANSPORT
+    // ═══════════════════════════════════════════════
+    fun onSyncStart() { /* TODO Sprint B */ }
     fun onStartStop() = arrangerBrain.startStop()
-    fun onTapTempo() { /* Phase 2b */ }
+    fun onTapTempo() { /* TODO Sprint B */ }
 
+    // ═══════════════════════════════════════════════
+    // TEMPO
+    // ═══════════════════════════════════════════════
+    fun onTempoDown() {
+        val newTempo = (arrangerBrain.state.value.tempoBpm - 5).coerceIn(20, 280)
+        arrangerBrain.setTempo(newTempo)
+    }
+
+    fun onTempoUp() {
+        val newTempo = (arrangerBrain.state.value.tempoBpm + 5).coerceIn(20, 280)
+        arrangerBrain.setTempo(newTempo)
+    }
+
+    // ═══════════════════════════════════════════════
+    // TRANSPOSE
+    // ═══════════════════════════════════════════════
+    fun onTransposeDown() {
+        _transpose.value = (_transpose.value - 1).coerceIn(-12, 12)
+        // TODO Sprint B: arrangerBrain.setTranspose(_transpose.value)
+    }
+
+    fun onTransposeUp() {
+        _transpose.value = (_transpose.value + 1).coerceIn(-12, 12)
+        // TODO Sprint B: arrangerBrain.setTranspose(_transpose.value)
+    }
+
+    // ═══════════════════════════════════════════════
+    // VOLUME
+    // ═══════════════════════════════════════════════
+    fun onStyleVolumeChange(value: Int) {
+        _styleVolume.value = value
+        // TODO Sprint C: audioEngine.setChannelVolume(VOICE_STYLE, value)
+    }
+
+    fun onVoiceVolumeChange(value: Int) {
+        _voiceVolume.value = value
+        // TODO Sprint C: audioEngine.setChannelVolume(VOICE_RIGHT1, value)
+    }
+
+    fun onMasterVolumeChange(value: Int) {
+        _masterVolume.value = value
+        // TODO Sprint C: audioEngine.setMasterVolume(value)
+    }
+
+    // ═══════════════════════════════════════════════
+    // REGISTRATION
+    // ═══════════════════════════════════════════════
+    fun onBankChange(bank: Int) {
+        _activeBank.value = bank.coerceIn(1, 8)
+    }
+
+    fun onRegSlotTap(slot: Int) {
+        _activeRegSlot.value = slot
+        // TODO Sprint F: load registration dari Room DB
+    }
+
+    fun onRegSlotSave(slot: Int) {
+        // TODO Sprint F: save registration ke Room DB
+        Timber.i("Save registration bank=${_activeBank.value} slot=$slot")
+    }
+
+    // ═══════════════════════════════════════════════
+    // STYLE
+    // ═══════════════════════════════════════════════
     fun onStyleFilePicked(uri: Uri) {
         viewModelScope.launch {
             val bytes = withContext(Dispatchers.IO) { contentResolver.readBytes(uri) }
@@ -137,11 +241,21 @@ class MainViewModel @Inject constructor(
 
     companion object {
         private val SECTION_BUTTON_MAP = mapOf(
-            "Intro" to ArrangerSection.IntroA,
+            "Intro 1" to ArrangerSection.IntroA,
+            "Intro 2" to ArrangerSection.IntroB,
+            "Intro 3" to ArrangerSection.IntroC,
             "Main A" to ArrangerSection.MainA,
             "Main B" to ArrangerSection.MainB,
-            "Fill" to ArrangerSection.FillAA,
-            "Ending" to ArrangerSection.EndingA
+            "Main C" to ArrangerSection.MainC,
+            "Main D" to ArrangerSection.MainD,
+            "Fill A" to ArrangerSection.FillAA,
+            "Fill B" to ArrangerSection.FillBB,
+            "Fill C" to ArrangerSection.FillCC,
+            "Fill D" to ArrangerSection.FillDD,
+            "Break" to ArrangerSection.BreakDown,
+            "Ending 1" to ArrangerSection.EndingA,
+            "Ending 2" to ArrangerSection.EndingB,
+            "Ending 3" to ArrangerSection.EndingC
         )
         private val MAIN_VARIATIONS = setOf(
             ArrangerSection.MainA, ArrangerSection.MainB,
