@@ -29,13 +29,11 @@ class MidiInputManager @Inject constructor(
     var connectedDeviceName: String? = null
         private set
 
-    /** Scan semua MIDI device yang terhubung. */
     fun listAvailableDevices(): List<MidiDeviceInfo> {
         val mgr = midiManager ?: return emptyList()
         return mgr.devices.toList()
     }
 
-    /** Auto-connect ke device pertama yang punya input port (E343 = 1 port). */
     fun connectFirstAvailableDevice(): Boolean {
         val info = listAvailableDevices().firstOrNull { it.inputPortCount > 0 }
         if (info == null) {
@@ -46,9 +44,10 @@ class MidiInputManager @Inject constructor(
         return true
     }
 
+    // ⬇️⬇️ FUNGSI INI YANG HILANG DI FILE ANDA ⬇️⬇️
     fun connect(info: MidiDeviceInfo) {
         val mgr = midiManager ?: run {
-            Timber.e("MidiManager not available on this device")
+            Timber.e("MidiManager not available")
             return
         }
 
@@ -73,8 +72,7 @@ class MidiInputManager @Inject constructor(
             }
             inputPort = port
 
-            val receiver = MidiNoteReceiver()
-            port.connect(receiver)
+            port.connect(MidiNoteReceiver())
 
             connectedDeviceName = name
             Timber.i("✅ Connected to: $name")
