@@ -49,9 +49,9 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // ✅ AUTO-CONNECT MIDI setelah UI siap (kasih waktu USB ter-detect)
+        // Auto-connect MIDI setelah UI siap
         lifecycleScope.launch {
-            delay(800)
+            delay(1500L)
             Timber.i("Attempting MIDI auto-connect…")
             viewModel.connectFirstAvailableMidiDevice()
         }
