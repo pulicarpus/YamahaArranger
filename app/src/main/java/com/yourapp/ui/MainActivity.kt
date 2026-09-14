@@ -8,7 +8,11 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import timber.log.Timber
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -18,14 +22,9 @@ class MainActivity : ComponentActivity() {
     private val requestAudioPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (!granted) {
-            // Phase 1: just log; Phase 4 should show a proper rationale screen.
-        }
+        if (!granted) Timber.w("Audio permission denied")
     }
 
-    // "Import style dari storage" (spec section 7) via the Storage Access
-    // Framework — works with any provider (local files, SD card, cloud
-    // docs providers) without needing broad storage permissions.
     private val pickStyleFile = registerForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri -> uri?.let(viewModel::onStyleFilePicked) }
@@ -44,13 +43,17 @@ class MainActivity : ComponentActivity() {
                 MainScreen(
                     viewModel = viewModel,
                     onImportStyleClicked = {
-                        // .sty files have no standard MIME type, so accept
-                        // anything and let StyleRepository's SMF-header
-                        // check reject non-style files.
                         pickStyleFile.launch(arrayOf("*/*"))
                     }
                 )
             }
+        }
+
+        // ✅ AUTO-CONNECT MIDI setelah UI siap (kasih waktu USB ter-detect)
+        lifecycleScope.launch {
+            delay(800)
+            Timber.i("Attempting MIDI auto-connect…")
+            viewModel.connectFirstAvailableMidiDevice()
         }
     }
 }
