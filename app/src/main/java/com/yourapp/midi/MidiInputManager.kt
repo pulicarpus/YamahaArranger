@@ -3,8 +3,8 @@ package com.yourapp.midi
 import android.content.Context
 import android.media.midi.MidiDevice
 import android.media.midi.MidiDeviceInfo
-import android.media.midi.MidiInputPort
 import android.media.midi.MidiManager
+import android.media.midi.MidiOutputPort
 import android.media.midi.MidiReceiver
 import android.os.Handler
 import android.os.Looper
@@ -21,7 +21,7 @@ class MidiInputManager @Inject constructor(
         context.getSystemService(Context.MIDI_SERVICE) as? MidiManager
 
     private var openedDevice: MidiDevice? = null
-    private var inputPort: MidiInputPort? = null
+    private var outputPort: MidiOutputPort? = null
 
     var onNoteOn: ((midiNote: Int, velocity: Int) -> Unit)? = null
     var onNoteOff: ((midiNote: Int) -> Unit)? = null
@@ -35,9 +35,9 @@ class MidiInputManager @Inject constructor(
     }
 
     fun connectFirstAvailableDevice(): Boolean {
-        val info = listAvailableDevices().firstOrNull { it.inputPortCount > 0 }
+        val info = listAvailableDevices().firstOrNull { it.outputPortCount > 0 }
         if (info == null) {
-            Timber.w("No MIDI device with input port found")
+            Timber.w("No MIDI device with output port found")
             return false
         }
         connect(info)
@@ -59,14 +59,14 @@ class MidiInputManager @Inject constructor(
                 return@openDevice
             }
             openedDevice = device
-            val port = device.openInputPort(0)
+            val port = device.openOutputPort(0)
             if (port == null) {
-                Timber.e("Failed to open input port")
+                Timber.e("Failed to open output port")
                 device.close()
                 openedDevice = null
                 return@openDevice
             }
-            inputPort = port
+            outputPort = port
             port.connect(MidiNoteReceiver())
             connectedDeviceName = name
             Timber.i("Connected to: $name")
@@ -118,9 +118,9 @@ class MidiInputManager @Inject constructor(
     }
 
     fun close() {
-        try { inputPort?.close() } catch (e: Exception) { Timber.w(e, "close port") }
+        try { outputPort?.close() } catch (e: Exception) { Timber.w(e, "close port") }
         try { openedDevice?.close() } catch (e: Exception) { Timber.w(e, "close device") }
-        inputPort = null
+        outputPort = null
         openedDevice = null
         connectedDeviceName = null
     }
