@@ -59,16 +59,14 @@ class MainViewModel @Inject constructor(
     private val _masterVolume = MutableStateFlow(110)
     private val _activeBank = MutableStateFlow(1)
     private val _activeRegSlot = MutableStateFlow(0)
-
     val uiState: StateFlow<MainUiState> =
         combine(
             arrangerBrain.state,
-            _styleName,
-            _midiStatus,
+            combine(_styleName, _midiStatus) { s, m -> s to m },
             combine(_transpose, _styleVolume) { t, sv -> t to sv },
             combine(_voiceVolume, _masterVolume) { vv, mv -> vv to mv },
             combine(_activeBank, _activeRegSlot) { b, r -> b to r }
-        ) { arranger, styleName, midi, (transpose, styleVol), (voiceVol, masterVol), (bank, regSlot) ->
+        ) { arranger, (styleName, midi), (transpose, styleVol), (voiceVol, masterVol), (bank, regSlot) ->
             MainUiState(
                 styleName = styleName,
                 tempoBpm = arranger.tempoBpm,
@@ -84,18 +82,6 @@ class MainViewModel @Inject constructor(
                 activeRegSlot = regSlot
             )
         }.stateIn(viewModelScope, SharingStarted.Eagerly, MainUiState())
-
-    init {
-        arrangerBrain.attachScope(viewModelScope)
-        audioEngine.start()
-
-        midiInputManager.onNoteOn = { note, velocity ->
-            arrangerBrain.onKeyboardNoteOn(note, velocity / 127f)
-        }
-        midiInputManager.onNoteOff = { note ->
-            arrangerBrain.onKeyboardNoteOff(note)
-        }
-    }
 
     // ═══════════════════════════════════════════════
     // MIDI
@@ -252,7 +238,8 @@ class MainViewModel @Inject constructor(
             "Fill B" to ArrangerSection.FillBB,
             "Fill C" to ArrangerSection.FillCC,
             "Fill D" to ArrangerSection.FillDD,
-            "Break" to ArrangerSection.BreakDown,
+            // TODO Sprint B: tambah BreakDown ke enum ArrangerSection
+            // "Break" to ArrangerSection.BreakDown,
             "Ending 1" to ArrangerSection.EndingA,
             "Ending 2" to ArrangerSection.EndingB,
             "Ending 3" to ArrangerSection.EndingC
