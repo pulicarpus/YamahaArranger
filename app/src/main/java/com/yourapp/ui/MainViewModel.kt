@@ -25,7 +25,8 @@ data class MainUiState(
     val tempoBpm: Int = 120,
     val isPlaying: Boolean = false,
     val activeSection: String = "Main A",
-    val detectedChordLabel: String = ""
+    val detectedChordLabel: String = "",
+    val midiStatus: String = "No MIDI"          // ← BARU
 )
 
 @HiltViewModel
@@ -38,43 +39,57 @@ class MainViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _styleName = MutableStateFlow("No Style Loaded")
+    private val _midiStatus = MutableStateFlow("No MIDI")   // ← BARU
 
     val uiState: StateFlow<MainUiState> =
-        combine(arrangerBrain.state, _styleName) { arranger, styleName ->
+        combine(arrangerBrain.state, _styleName, _midiStatus) { arranger, styleName, midi ->
             MainUiState(
                 styleName = styleName,
                 tempoBpm = arranger.tempoBpm,
                 isPlaying = arranger.isPlaying,
                 activeSection = displayLabelFor(arranger.currentSection),
-                detectedChordLabel = arranger.currentChordLabel
+                detectedChordLabel = arranger.currentChordLabel,
+                midiStatus = midi
             )
         }.stateIn(viewModelScope, SharingStarted.Eagerly, MainUiState())
 
     init {
         arrangerBrain.attachScope(viewModelScope)
-
-        // ✅ START AUDIO ENGINE — tanpa ini tidak akan ada suara!
         audioEngine.start()
 
-        // External USB/Bluetooth MIDI keyboards feed the same chord
-        // detection + audio path as the on-screen keyboard.
-        midiInputManager.onNoteOn = { note, velocity -> arrangerBrain.onKeyboardNoteOn(note, velocity / 127f) }
-        midiInputManager.onNoteOff = { note -> arrangerBrain.onKeyboardNoteOff(note) }
+        midiInputManager.onNoteOn = { note, velocity ->
+            arrangerBrain.onKeyboardNoteOn(note, velocity / 127f)
+        }
+        midiInputManager.onNoteOff = { note ->
+            arrangerBrain.onKeyboardNoteOff(note)
+        }
     }
 
-    /** Exposed so MainActivity/MainScreen can show a device picker (Phase 2b). */
+    /** Dipanggil dari MainActivity saat startup — auto-connect E343. */
     fun connectFirstAvailableMidiDevice() {
-        midiInputManager.listAvailableDevices().firstOrNull()?.let(midiInputManager::connect)
+        val ok = midiInputManager.connectFirstAvailableDevice()
+        _midiStatus.value = if (ok) {
+            midiInputManager.connectedDeviceName ?: "MIDI connected"
+        } else {
+            "No MIDI device"
+        }
+        Timber.i("MIDI connect result: ${_midiStatus.value}")
     }
+
+    /** Scan ulang + connect (dipanggil manual dari tombol nanti). */
+    fun refreshMidiConnection() = connectFirstAvailableMidiDevice()
 
     override fun onCleared() {
         midiInputManager.close()
-        audioEngine.stop()                    // ✅ Stop audio engine
+        audioEngine.stop()
         super.onCleared()
     }
 
-    fun onKeyboardNoteOn(midiNote: Int, velocity: Float) = arrangerBrain.onKeyboardNoteOn(midiNote, velocity)
-    fun onKeyboardNoteOff(midiNote: Int) = arrangerBrain.onKeyboardNoteOff(midiNote)
+    fun onKeyboardNoteOn(midiNote: Int, velocity: Float) =
+        arrangerBrain.onKeyboardNoteOn(midiNote, velocity)
+
+    fun onKeyboardNoteOff(midiNote: Int) =
+        arrangerBrain.onKeyboardNoteOff(midiNote)
 
     fun onSectionSelected(sectionLabel: String) {
         val section = SECTION_BUTTON_MAP[sectionLabel] ?: return
@@ -85,15 +100,10 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun onSyncStart() { /* Phase 2b: arm on next chord instead of playing immediately */ }
-
+    fun onSyncStart() { /* Phase 2b */ }
     fun onStartStop() = arrangerBrain.startStop()
+    fun onTapTempo() { /* Phase 2b */ }
 
-    fun onTapTempo() { /* Phase 2b: average inter-tap interval -> tempoBpm */ }
-
-    /** Called from MainActivity's document-picker callback with the .sty
-     * file's Uri. Reading + parsing happens off the main thread since a
-     * style file can be a few hundred KB and parsing walks every event. */
     fun onStyleFilePicked(uri: Uri) {
         viewModelScope.launch {
             val bytes = withContext(Dispatchers.IO) { contentResolver.readBytes(uri) }
@@ -102,7 +112,9 @@ class MainViewModel @Inject constructor(
                 return@launch
             }
             val fileName = contentResolver.fileName(uri) ?: "style.sty"
-            val parsed = withContext(Dispatchers.Default) { styleRepository.loadStyle(fileName, bytes) }
+            val parsed = withContext(Dispatchers.Default) {
+                styleRepository.loadStyle(fileName, bytes)
+            }
             if (parsed == null) {
                 Timber.e("Could not parse style file: $fileName")
                 return@launch
@@ -125,8 +137,6 @@ class MainViewModel @Inject constructor(
             ArrangerSection.MainC, ArrangerSection.MainD
         )
 
-        /** Inverse of SECTION_BUTTON_MAP, for driving SectionButtonRow's
-         * highlight from ArrangerBrain's current enum state. */
         private fun displayLabelFor(section: ArrangerSection): String =
             SECTION_BUTTON_MAP.entries.firstOrNull { it.value == section }?.key ?: section.name
     }
