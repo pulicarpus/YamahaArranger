@@ -56,7 +56,8 @@ android {
 
     buildFeatures {
         compose = true
-        prefab = true                       // ✅ BARIS BARU — fix Oboe
+        prefab = true        
+        buildConfig = true// ✅ BARIS BARU — fix Oboe
     }
 
     composeOptions {
