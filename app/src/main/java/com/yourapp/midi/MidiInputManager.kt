@@ -1,4 +1,4 @@
-package com.yourapp.yamahaarranger.midi
+package com.yourapp.midi
 
 import android.content.Context
 import android.media.midi.MidiDevice
@@ -44,15 +44,12 @@ class MidiInputManager @Inject constructor(
         return true
     }
 
-    // ⬇️⬇️ FUNGSI INI YANG HILANG DI FILE ANDA ⬇️⬇️
     fun connect(info: MidiDeviceInfo) {
         val mgr = midiManager ?: run {
             Timber.e("MidiManager not available")
             return
         }
-
         close()
-
         val name = info.properties.getString(MidiDeviceInfo.PROPERTY_NAME) ?: "MIDI Device"
         Timber.i("Opening MIDI device: $name")
 
@@ -62,7 +59,6 @@ class MidiInputManager @Inject constructor(
                 return@openDevice
             }
             openedDevice = device
-
             val port = device.openInputPort(0)
             if (port == null) {
                 Timber.e("Failed to open input port")
@@ -71,11 +67,9 @@ class MidiInputManager @Inject constructor(
                 return@openDevice
             }
             inputPort = port
-
             port.connect(MidiNoteReceiver())
-
             connectedDeviceName = name
-            Timber.i("✅ Connected to: $name")
+            Timber.i("Connected to: $name")
         }, Handler(Looper.getMainLooper()))
     }
 
@@ -89,20 +83,15 @@ class MidiInputManager @Inject constructor(
         var i = offset
         val end = offset + count
         var runningStatus = -1
-
         while (i < end) {
             val byte = data[i].toInt() and 0xFF
-
             if (byte and 0x80 != 0) {
                 runningStatus = byte
                 i++
             }
-
             val status = runningStatus
             if (status < 0) { i++; continue }
-            val command = status and 0xF0
-
-            when (command) {
+            when (status and 0xF0) {
                 0x90 -> {
                     if (i + 1 >= end) break
                     val note = data[i].toInt() and 0x7F
