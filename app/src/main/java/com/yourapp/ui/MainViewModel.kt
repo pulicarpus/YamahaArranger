@@ -6,7 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.yourapp.yamahaarranger.arranger.ArrangerBrain
 import com.yourapp.yamahaarranger.arranger.ArrangerSection
 import com.yourapp.yamahaarranger.audio.AudioEngineManager
-import com.yourapp.midi.MidiInputManager                  ✅
+import com.yourapp.midi.MidiInputManager
 import com.yourapp.yamahaarranger.style.StyleRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
