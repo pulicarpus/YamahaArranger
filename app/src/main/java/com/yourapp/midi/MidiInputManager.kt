@@ -23,48 +23,35 @@ class MidiInputManager @Inject constructor(
     private var openedDevice: MidiDevice? = null
     private var inputPort: MidiInputPort? = null
 
-    /** Callback dari MainViewModel — set sebelum connect. */
     var onNoteOn: ((midiNote: Int, velocity: Int) -> Unit)? = null
     var onNoteOff: ((midiNote: Int) -> Unit)? = null
 
-    /** Device yang sedang terhubung (untuk info di UI). */
     var connectedDeviceName: String? = null
         private set
 
-    // ─────────────────────────────────────────────────────────────
-    // 1. SCAN DEVICES
-    // ─────────────────────────────────────────────────────────────
-
+    /** Scan semua MIDI device yang terhubung. */
     fun listAvailableDevices(): List<MidiDeviceInfo> {
         val mgr = midiManager ?: return emptyList()
-        val devices = mgr.devices.toList()
-        Timber.d("MIDI devices found: ${devices.size}")
-        devices.forEach { info ->
-            Timber.d("  → ${info.properties.getString(MidiDeviceInfo.PROPERTY_NAME)}")
-        }
-        return devices
+        return mgr.devices.toList()
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // 2. CONNECT (auto pilih device pertama yang punya input port)
-    // ─────────────────────────────────────────────────────────────
-
-    fun connectFirstAvailableDevice() {
+    /** Auto-connect ke device pertama yang punya input port (E343 = 1 port). */
+    fun connectFirstAvailableDevice(): Boolean {
         val info = listAvailableDevices().firstOrNull { it.inputPortCount > 0 }
         if (info == null) {
             Timber.w("No MIDI device with input port found")
-            return
+            return false
         }
         connect(info)
+        return true
     }
 
     fun connect(info: MidiDeviceInfo) {
         val mgr = midiManager ?: run {
-            Timber.e("MidiManager not available")
+            Timber.e("MidiManager not available on this device")
             return
         }
 
-        // Tutup koneksi lama kalau ada
         close()
 
         val name = info.properties.getString(MidiDeviceInfo.PROPERTY_NAME) ?: "MIDI Device"
@@ -77,7 +64,6 @@ class MidiInputManager @Inject constructor(
             }
             openedDevice = device
 
-            // Buka input port #0 (PSR-E343 hanya punya 1)
             val port = device.openInputPort(0)
             if (port == null) {
                 Timber.e("Failed to open input port")
@@ -87,105 +73,66 @@ class MidiInputManager @Inject constructor(
             }
             inputPort = port
 
-            // Sambungkan receiver — MIDI data masuk ke sini
             val receiver = MidiNoteReceiver()
             port.connect(receiver)
-            receiver.port = port
 
             connectedDeviceName = name
             Timber.i("✅ Connected to: $name")
         }, Handler(Looper.getMainLooper()))
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // 3. RECEIVER — parse MIDI message
-    // ─────────────────────────────────────────────────────────────
-
     private inner class MidiNoteReceiver : MidiReceiver() {
-        var port: MidiInputPort? = null
-
         override fun onSend(data: ByteArray, offset: Int, count: Int, timestamp: Long) {
             parseMessages(data, offset, count)
         }
     }
 
-    /**
-     * Parse MIDI bytes. Format standar:
-     *   Note On : 0x90 | channel, note, velocity   (velocity > 0)
-     *   Note Off: 0x80 | channel, note, velocity
-     *   Note On dengan velocity 0 = Note Off
-     *
-     * Bisa juga ada "running status" — status byte dihilangkan
-     * kalau sama dengan pesan sebelumnya. Kita handle keduanya.
-     */
     private fun parseMessages(data: ByteArray, offset: Int, count: Int) {
         var i = offset
         val end = offset + count
-        var runningStatus: Int = -1
+        var runningStatus = -1
 
         while (i < end) {
             val byte = data[i].toInt() and 0xFF
 
-            // Status byte?
             if (byte and 0x80 != 0) {
                 runningStatus = byte
                 i++
             }
-            // else: data byte — pakai runningStatus
 
             val status = runningStatus
+            if (status < 0) { i++; continue }
             val command = status and 0xF0
 
             when (command) {
-                0x90 -> { // Note On
+                0x90 -> {
                     if (i + 1 >= end) break
                     val note = data[i].toInt() and 0x7F
                     val velocity = data[i + 1].toInt() and 0x7F
                     i += 2
-
-                    if (velocity > 0) {
-                        onNoteOn?.invoke(note, velocity)
-                    } else {
-                        onNoteOff?.invoke(note)
-                    }
+                    if (velocity > 0) onNoteOn?.invoke(note, velocity)
+                    else onNoteOff?.invoke(note)
                 }
-                0x80 -> { // Note Off
+                0x80 -> {
                     if (i + 1 >= end) break
                     val note = data[i].toInt() and 0x7F
-                    i += 2  // skip note + velocity
+                    i += 2
                     onNoteOff?.invoke(note)
                 }
-                else -> {
-                    // Bukan note on/off — skip sesuai panjang message
-                    i += bytesForStatus(status)
-                }
+                else -> i += bytesForStatus(status)
             }
         }
     }
 
-    /** Berapa data byte setelah status byte, tergantung command. */
     private fun bytesForStatus(status: Int): Int = when (status and 0xF0) {
-        0x80, 0x90, 0xA0, 0xB0, 0xE0 -> 2  // Note Off/On, Aftertouch, CC, PitchBend
-        0xC0, 0xD0 -> 1                     // Program Change, Channel Pressure
-        0xF0 -> 0                           // SysEx — skip (kompleks, tidak kita butuhkan)
+        0x80, 0x90, 0xA0, 0xB0, 0xE0 -> 2
+        0xC0, 0xD0 -> 1
         else -> 0
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // 4. CLOSE
-    // ─────────────────────────────────────────────────────────────
-
     fun close() {
-        try {
-            inputPort?.close()
-        } catch (e: Exception) {
-            Timber.w(e, "Error closing input port")
-        }
-        try {
-            openedDevice?.close()
-        } catch (e: Exception) {
-            Timber.w(e, "Error closing device")
-        }
+        try { inputPort?.close() } catch (e: Exception) { Timber.w(e, "close port") }
+        try { openedDevice?.close() } catch (e: Exception) { Timber.w(e, "close device") }
         inputPort = null
         openedDevice = null
         connectedDeviceName = null
