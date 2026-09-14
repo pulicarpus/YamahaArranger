@@ -102,12 +102,12 @@ fun MainScreen(
         Spacer(Modifier.height(6.dp))
 
         // 6. SECTION — Baris 4: Break + Ending 1-3
-        SectionLabel("BREAK / ENDING")
-        SectionRow(
-            sections = listOf("Break", "Ending 1", "Ending 2", "Ending 3"),
-            activeSection = uiState.activeSection,
-            onSelect = viewModel::onSectionSelected
-        )
+SectionLabel("ENDING")
+SectionRow(
+    sections = listOf("Ending 1", "Ending 2", "Ending 3"),
+    activeSection = uiState.activeSection,
+    onSelect = viewModel::onSectionSelected
+)
 
         Spacer(Modifier.height(10.dp))
 
