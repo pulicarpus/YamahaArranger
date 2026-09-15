@@ -16,6 +16,10 @@ class AudioEngineManager @Inject constructor(
     fun start() {
         if (started) return
         DebugLog.add("🎵 AudioEngine.start()…")
+
+        bridge.nativeInitLogger()
+        DebugLog.add("📋 Native logger initialized")
+
         started = bridge.nativeStart()
         DebugLog.add(if (started) "✅ AudioEngine OK" else "❌ AudioEngine FAILED")
     }
@@ -75,7 +79,6 @@ class AudioEngineManager @Inject constructor(
         }
     }
 
-    /** Set instrument untuk channel. Bank 128 = drum. */
     fun setChannelProgram(channel: Int, program: Int, bank: Int = 0) {
         bridge.nativeSetChannelPreset(channel, bank, program)
         DebugLog.add("🎼 Ch$channel → prog=$program bank=$bank")
