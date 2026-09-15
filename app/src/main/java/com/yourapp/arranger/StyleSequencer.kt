@@ -22,23 +22,9 @@ class StyleSequencer(
     private var voiceMap: Map<Int, String> = emptyMap()
     private var lastAppliedSection: String = ""
 
-    // Mapping partNum (1-8) → target channel (0-index Yamaha standard)
-    private val targetChannelForPart = intArrayOf(
-        -1,  // 0 (unused)
-        8,   // 1 → Rhythm 1
-        9,   // 2 → Rhythm 2
-        10,  // 3 → Bass
-        11,  // 4 → Chord 1
-        12,  // 5 → Chord 2
-        13,  // 6 → Pad
-        14,  // 7 → Phrase 1
-        15   // 8 → Phrase 2
-    )
-
     fun setVoiceMap(vm: Map<Int, String>) {
         voiceMap = vm
         lastAppliedSection = ""
-        DebugLog.add("🎼 VoiceMap set: ${vm.size} entries")
     }
 
     fun play(section: StyleSectionModel, ppq: Int) {
@@ -46,7 +32,7 @@ class StyleSequencer(
         loopCount = 0
 
         if (lastAppliedSection != section.name) {
-            applyVoicesForSection(section)
+            applyAutoVoicesForSection(section)
             lastAppliedSection = section.name
         }
 
@@ -67,61 +53,43 @@ class StyleSequencer(
 
     fun queueNextSection(section: StyleSectionModel, ppq: Int) = play(section, ppq)
 
-    private fun applyVoicesForSection(section: StyleSectionModel) {
-        DebugLog.add("🎼 Apply voices for ${section.name}:")
+    /** Auto-detect part type dari note pattern, assign GM program. */
+    private fun applyAutoVoicesForSection(section: StyleSectionModel) {
+        DebugLog.add("🎼 Auto voice for ${section.name}:")
 
-        section.parts.forEachIndexed { idx, part ->
-            val partNum = idx + 1
-            val voiceName = voiceMap[partNum] ?: return@forEachIndexed
-            val targetCh = if (partNum in 1..8) targetChannelForPart[partNum] else return@forEachIndexed
+        // Group events by original channel
+        val channelEvents = mutableMapOf<Int, MutableList<StyleNoteEvent>>()
+        section.parts.forEach { part ->
+            part.events.filter { it.isNoteOn }.forEach { ev ->
+                channelEvents.getOrPut(ev.channel) { mutableListOf() }.add(ev)
+            }
+        }
 
-            val program = guessProgramFromVoiceName(voiceName)
-            if (program < 0) {
-                DebugLog.add("  · part$partNum ch$targetCh: $voiceName (unknown)")
-                return@forEachIndexed
+        channelEvents.forEach { (ch, events) ->
+            if (events.isEmpty()) return@forEach
+
+            val notes = events.map { it.note }
+            val avgNote = notes.average().toInt()
+            val minNote = notes.minOrNull() ?: 0
+            val maxNote = notes.maxOrNull() ?: 0
+            val noteSpan = maxNote - minNote
+
+            // Detect drum: banyak note di range drum dengan pola khas
+            val drumHits = notes.count { it in intArrayOf(35, 36, 38, 40, 42, 44, 46, 49, 51, 57, 59) }
+            val isDrumChannel = events.size > 20 && drumHits.toFloat() / events.size > 0.4f
+
+            val (program, bank, type) = when {
+                isDrumChannel -> Triple(0, 128, "DRUM")
+                avgNote < 46 -> Triple(33, 0, "BASS")
+                avgNote < 60 -> Triple(0, 0, "PIANO/CHORD")
+                avgNote < 68 -> Triple(24, 0, "GUITAR")
+                else -> Triple(56, 0, "MELODY")
             }
 
-            val bank = if (isDrumVoice(voiceName)) 128 else 0
-            audioEngine.setChannelProgram(targetCh, program, bank)
-            DebugLog.add("  · part$partNum → ch$targetCh: $voiceName → prog$program (bank$bank)")
+            // Keep original channel, apply program
+            audioEngine.setChannelProgram(ch, program, bank)
+            DebugLog.add("  · ch$ch ($type): avg=$avgNote span=$noteSpan range=$minNote-$maxNote n=${events.size} → prog$program bank$bank")
         }
-    }
-
-    private fun guessProgramFromVoiceName(name: String): Int {
-        val n = name.lowercase()
-
-        val trailingDigits = n.takeLastWhile { it.isDigit() }
-        if (trailingDigits.isNotEmpty()) {
-            val num = trailingDigits.toIntOrNull()
-            if (num != null && num in 0..127) return num
-        }
-
-        return when {
-            n.contains("piano") -> 0
-            n.contains("ep") -> 4
-            n.contains("organ") -> 16
-            n.contains("accordion") -> 21
-            n.contains("guitar") || n.contains("gtr") -> 24
-            n.contains("bass") -> 33
-            n.contains("violin") -> 40
-            n.contains("cello") -> 42
-            n.contains("strg") || n.contains("str") -> 48
-            n.contains("choir") -> 52
-            n.contains("trumpet") -> 56
-            n.contains("trombone") -> 57
-            n.contains("brass") -> 61
-            n.contains("sax") -> 65
-            n.contains("oboe") -> 68
-            n.contains("clarinet") -> 71
-            n.contains("flute") -> 73
-            n.contains("dr") || n.contains("kit") -> 0
-            else -> -1
-        }
-    }
-
-    private fun isDrumVoice(name: String): Boolean {
-        val n = name.lowercase()
-        return n.contains("dr") || n.contains("drum") || n.contains("kit")
     }
 
     private suspend fun playOnce(section: StyleSectionModel, ppq: Int) {
@@ -135,18 +103,15 @@ class StyleSequencer(
             val tick: Int,
             val event: StyleNoteEvent,
             val transpose: Boolean,
-            val targetChannel: Int
+            val channel: Int
         )
 
-        // Remap: source channel → target channel berdasarkan partNum
-        val merged = section.parts.flatMapIndexed { idx, part ->
-            val partNum = idx + 1
-            val targetCh = if (partNum in 1..8) targetChannelForPart[partNum] else 0
-            val isDrum = targetCh == 8 || targetCh == 9
-            val shouldTranspose = !isDrum
-
+        // Pakai channel ASLI dari file, tidak remap
+        val merged = section.parts.flatMap { part ->
             part.events.map { ev ->
-                ScheduledEvent(ev.tick, ev, shouldTranspose, targetCh)
+                val isDrum = ev.channel == 9
+                val shouldTranspose = !isDrum
+                ScheduledEvent(ev.tick, ev, shouldTranspose, ev.channel)
             }
         }.sortedBy { it.tick }
 
@@ -170,13 +135,13 @@ class StyleSequencer(
             }
 
             if (sched.event.isNoteOn) {
-                audioEngine.noteOnChannel(sched.targetChannel, note, sched.event.velocity / 127f)
+                audioEngine.noteOnChannel(sched.channel, note, sched.event.velocity / 127f)
                 noteOnCount++
                 if (loopCount <= 1 && noteOnCount <= 8) {
-                    DebugLog.add("  ♪ ch${sched.targetChannel} n=$note v=${sched.event.velocity}")
+                    DebugLog.add("  ♪ ch${sched.channel} n=$note v=${sched.event.velocity}")
                 }
             } else {
-                audioEngine.noteOffChannel(sched.targetChannel, note)
+                audioEngine.noteOffChannel(sched.channel, note)
             }
         }
         if (loopCount <= 1) DebugLog.add("✅ Loop1: $noteOnCount noteOn")
