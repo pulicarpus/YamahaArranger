@@ -57,31 +57,49 @@ class StyleSequencer(
 
     /**
      * Apply CASM voice per part.
-     * Pakai channel ASLI dari file (tidak remap).
+     * Ch9 = DRUM selalu (tidak di-overwrite).
+     * Apply ke SEMUA channel di part (kecuali ch9).
      */
     private fun applyVoicesFromCasm(section: StyleSectionModel) {
         if (voiceMap.isEmpty()) {
-            DebugLog.add("⚠ No voice map available, using SF2 defaults")
+            DebugLog.add("⚠ No voice map, using SF2 defaults")
             return
         }
 
         DebugLog.add("🎼 Apply CASM voices for ${section.name}:")
+
+        // Kumpulkan semua channel unik yang dipakai section ini
+        val allChannels = section.parts
+            .flatMap { it.events }
+            .map { it.channel }
+            .distinct()
+
+        // Ch9 selalu DRUM (bank 128, prog 0) — locked
+        if (allChannels.contains(9)) {
+            audioEngine.setChannelProgram(9, 0, 128)
+            DebugLog.add("  · ch9: DRUM (bank 128) — locked")
+        }
+
         section.parts.forEachIndexed { idx, part ->
             val partNum = idx + 1
             val voiceName = voiceMap[partNum] ?: return@forEachIndexed
-
-            // Ambil channel asli dari file
-            val ch = part.events.firstOrNull()?.channel ?: return@forEachIndexed
-
             val prog = guessProgramFromVoiceName(voiceName)
             if (prog < 0) {
-                DebugLog.add("  · part$partNum ch$ch: $voiceName (unknown)")
+                DebugLog.add("  · part$partNum: $voiceName (unknown)")
                 return@forEachIndexed
             }
-
             val bank = if (isDrumVoice(voiceName)) 128 else 0
-            audioEngine.setChannelProgram(ch, prog, bank)
-            DebugLog.add("  · part$partNum ch$ch: $voiceName → prog$prog (bank$bank)")
+
+            // Apply ke semua channel di part ini, kecuali ch9
+            val channels = part.events.map { it.channel }.distinct()
+            channels.forEach { ch ->
+                if (ch == 9) {
+                    // Skip — ch9 tetap drum
+                    return@forEach
+                }
+                audioEngine.setChannelProgram(ch, prog, bank)
+                DebugLog.add("  · part$partNum ch$ch: $voiceName → prog$prog (bank$bank)")
+            }
         }
     }
 
@@ -89,7 +107,7 @@ class StyleSequencer(
     private fun guessProgramFromVoiceName(name: String): Int {
         val n = name.lowercase()
 
-        // 1) Coba extract digit di akhir (misal "bass33" → 33)
+        // 1) Extract digit di akhir (misal "bass33" → 33)
         val trailingDigits = n.takeLastWhile { it.isDigit() }
         if (trailingDigits.isNotEmpty()) {
             val num = trailingDigits.toIntOrNull()
