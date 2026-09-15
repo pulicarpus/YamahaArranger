@@ -19,15 +19,18 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+import java.util.Date
+import java.util.Locale
+import java.util.concurrent.ConcurrentLinkedQueue
 import javax.inject.Inject
 
-/** Global log buffer — diakses dari UI & StyleSequencer. */
+/** Global log buffer untuk debug di UI. */
 object DebugLog {
-    private val _lines = java.util.concurrent.ConcurrentLinkedQueue<String>()
+    private val _lines = ConcurrentLinkedQueue<String>()
     private const val MAX_LINES = 30
 
     fun add(msg: String) {
-        val ts = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date())
+        val ts = java.text.SimpleDateFormat("HH:mm:ss", Locale.US).format(Date())
         _lines.add("[$ts] $msg")
         while (_lines.size > MAX_LINES) _lines.poll()
     }
@@ -44,14 +47,11 @@ data class MainUiState(
     val activeSection: String = "Main A",
     val detectedChordLabel: String = "",
     val midiStatus: String = "No MIDI device",
-    // Volume (0-127)
     val styleVolume: Int = 100,
     val voiceVolume: Int = 100,
     val masterVolume: Int = 110,
-    // Registration
     val activeBank: Int = 1,
     val activeRegSlot: Int = 0,
-    // Voice info (stub — nanti diisi dari Voice Browser)
     val voiceName: String = "GrandPiano",
     val right2Name: String = "OFF",
     val splitPoint: String = "C4"
@@ -74,6 +74,7 @@ class MainViewModel @Inject constructor(
     private val _masterVolume = MutableStateFlow(110)
     private val _activeBank = MutableStateFlow(1)
     private val _activeRegSlot = MutableStateFlow(0)
+
     val uiState: StateFlow<MainUiState> =
         combine(
             arrangerBrain.state,
@@ -98,19 +99,27 @@ class MainViewModel @Inject constructor(
             )
         }.stateIn(viewModelScope, SharingStarted.Eagerly, MainUiState())
 
-    // ═══════════════════════════════════════════════
-    // MIDI
-    // ═══════════════════════════════════════════════
+    init {
+        arrangerBrain.attachScope(viewModelScope)
+        audioEngine.start()
+
+        midiInputManager.onNoteOn = { note, velocity ->
+            arrangerBrain.onKeyboardNoteOn(note, velocity / 127f)
+        }
+        midiInputManager.onNoteOff = { note ->
+            arrangerBrain.onKeyboardNoteOff(note)
+        }
+    }
+
     fun connectFirstAvailableMidiDevice() {
         viewModelScope.launch {
             repeat(5) { attempt ->
                 val ok = midiInputManager.connectFirstAvailableDevice()
                 if (ok) {
                     _midiStatus.value = midiInputManager.connectedDeviceName ?: "MIDI connected"
-                    Timber.i("MIDI connected attempt ${attempt + 1}: ${_midiStatus.value}")
+                    DebugLog.add("✅ MIDI: ${_midiStatus.value}")
                     return@launch
                 }
-                Timber.w("MIDI attempt ${attempt + 1} failed, retrying…")
                 delay(1500L)
             }
             _midiStatus.value = "No MIDI device"
@@ -128,18 +137,12 @@ class MainViewModel @Inject constructor(
         super.onCleared()
     }
 
-    // ═══════════════════════════════════════════════
-    // KEYBOARD (dari E343 atau virtual)
-    // ═══════════════════════════════════════════════
     fun onKeyboardNoteOn(midiNote: Int, velocity: Float) =
         arrangerBrain.onKeyboardNoteOn(midiNote, velocity)
 
     fun onKeyboardNoteOff(midiNote: Int) =
         arrangerBrain.onKeyboardNoteOff(midiNote)
 
-    // ═══════════════════════════════════════════════
-    // SECTION
-    // ═══════════════════════════════════════════════
     fun onSectionSelected(sectionLabel: String) {
         val section = SECTION_BUTTON_MAP[sectionLabel] ?: return
         if (section in MAIN_VARIATIONS) {
@@ -149,14 +152,32 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    // ═══════════════════════════════════════════════
-    // TRANSPORT
-    // ═══════════════════════════════════════════════
-    fun onSyncStart() { /* TODO Sprint B */ }
+    fun onSyncStart() {}
     fun onStartStop() = arrangerBrain.startStop()
-    fun onTapTempo() { /* TODO Sprint B */ }
+    fun onTapTempo() {}
 
-        /** Test tone: play C-E-G arpeggio 3× — untuk diagnosa audio engine. */
+    fun onTempoDown() {
+        val newTempo = (arrangerBrain.state.value.tempoBpm - 5).coerceIn(20, 280)
+        arrangerBrain.setTempo(newTempo)
+    }
+
+    fun onTempoUp() {
+        val newTempo = (arrangerBrain.state.value.tempoBpm + 5).coerceIn(20, 280)
+        arrangerBrain.setTempo(newTempo)
+    }
+
+    fun onTransposeDown() { _transpose.value = (_transpose.value - 1).coerceIn(-12, 12) }
+    fun onTransposeUp() { _transpose.value = (_transpose.value + 1).coerceIn(-12, 12) }
+
+    fun onStyleVolumeChange(value: Int) { _styleVolume.value = value }
+    fun onVoiceVolumeChange(value: Int) { _voiceVolume.value = value }
+    fun onMasterVolumeChange(value: Int) { _masterVolume.value = value }
+
+    fun onBankChange(bank: Int) { _activeBank.value = bank.coerceIn(1, 8) }
+    fun onRegSlotTap(slot: Int) { _activeRegSlot.value = slot }
+    fun onRegSlotSave(slot: Int) { Timber.i("Save reg bank=${_activeBank.value} slot=$slot") }
+
+    /** TEST TONE — untuk diagnosa audio engine. */
     fun playTestTone() {
         viewModelScope.launch {
             DebugLog.add("🔊 TEST TONE: C-E-G × 3")
@@ -172,75 +193,12 @@ class MainViewModel @Inject constructor(
             DebugLog.add("🔊 TEST TONE: done")
         }
     }
-    // ═══════════════════════════════════════════════
-    // TEMPO
-    // ═══════════════════════════════════════════════
-    fun onTempoDown() {
-        val newTempo = (arrangerBrain.state.value.tempoBpm - 5).coerceIn(20, 280)
-        arrangerBrain.setTempo(newTempo)
-    }
 
-    fun onTempoUp() {
-        val newTempo = (arrangerBrain.state.value.tempoBpm + 5).coerceIn(20, 280)
-        arrangerBrain.setTempo(newTempo)
-    }
-
-    // ═══════════════════════════════════════════════
-    // TRANSPOSE
-    // ═══════════════════════════════════════════════
-    fun onTransposeDown() {
-        _transpose.value = (_transpose.value - 1).coerceIn(-12, 12)
-        // TODO Sprint B: arrangerBrain.setTranspose(_transpose.value)
-    }
-
-    fun onTransposeUp() {
-        _transpose.value = (_transpose.value + 1).coerceIn(-12, 12)
-        // TODO Sprint B: arrangerBrain.setTranspose(_transpose.value)
-    }
-
-    // ═══════════════════════════════════════════════
-    // VOLUME
-    // ═══════════════════════════════════════════════
-    fun onStyleVolumeChange(value: Int) {
-        _styleVolume.value = value
-        // TODO Sprint C: audioEngine.setChannelVolume(VOICE_STYLE, value)
-    }
-
-    fun onVoiceVolumeChange(value: Int) {
-        _voiceVolume.value = value
-        // TODO Sprint C: audioEngine.setChannelVolume(VOICE_RIGHT1, value)
-    }
-
-    fun onMasterVolumeChange(value: Int) {
-        _masterVolume.value = value
-        // TODO Sprint C: audioEngine.setMasterVolume(value)
-    }
-
-    // ═══════════════════════════════════════════════
-    // REGISTRATION
-    // ═══════════════════════════════════════════════
-    fun onBankChange(bank: Int) {
-        _activeBank.value = bank.coerceIn(1, 8)
-    }
-
-    fun onRegSlotTap(slot: Int) {
-        _activeRegSlot.value = slot
-        // TODO Sprint F: load registration dari Room DB
-    }
-
-    fun onRegSlotSave(slot: Int) {
-        // TODO Sprint F: save registration ke Room DB
-        Timber.i("Save registration bank=${_activeBank.value} slot=$slot")
-    }
-
-    // ═══════════════════════════════════════════════
-    // STYLE
-    // ═══════════════════════════════════════════════
     fun onStyleFilePicked(uri: Uri) {
         viewModelScope.launch {
             val bytes = withContext(Dispatchers.IO) { contentResolver.readBytes(uri) }
             if (bytes == null) {
-                Timber.e("Could not read style file at $uri")
+                DebugLog.add("❌ Cannot read file")
                 return@launch
             }
             val fileName = contentResolver.fileName(uri) ?: "style.sty"
@@ -248,11 +206,12 @@ class MainViewModel @Inject constructor(
                 styleRepository.loadStyle(fileName, bytes)
             }
             if (parsed == null) {
-                Timber.e("Could not parse style file: $fileName")
+                DebugLog.add("❌ Parse fail: $fileName")
                 return@launch
             }
             arrangerBrain.loadStyle(parsed)
             _styleName.value = fileName
+            DebugLog.add("✅ Loaded: $fileName")
         }
     }
 
@@ -269,8 +228,6 @@ class MainViewModel @Inject constructor(
             "Fill B" to ArrangerSection.FillBB,
             "Fill C" to ArrangerSection.FillCC,
             "Fill D" to ArrangerSection.FillDD,
-            // TODO Sprint B: tambah BreakDown ke enum ArrangerSection
-            // "Break" to ArrangerSection.BreakDown,
             "Ending 1" to ArrangerSection.EndingA,
             "Ending 2" to ArrangerSection.EndingB,
             "Ending 3" to ArrangerSection.EndingC
@@ -279,7 +236,6 @@ class MainViewModel @Inject constructor(
             ArrangerSection.MainA, ArrangerSection.MainB,
             ArrangerSection.MainC, ArrangerSection.MainD
         )
-
         private fun displayLabelFor(section: ArrangerSection): String =
             SECTION_BUTTON_MAP.entries.firstOrNull { it.value == section }?.key ?: section.name
     }
