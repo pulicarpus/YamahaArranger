@@ -1,13 +1,11 @@
-#include "audio_engine.h"
+#include "soundfont_player.h"
 #include <android/log.h>
-#include <cstring>
-#include <algorithm>
-#include <cmath>
+#include <mutex>
 #include <cstdarg>
 #include <cstdio>
 #include <jni.h>
 
-#define LOG_TAG "AudioEngine"
+#define LOG_TAG "FluidSynthPlayer"
 
 extern JavaVM* g_jvm;
 extern jclass g_debugLogClass;
@@ -42,176 +40,147 @@ static void uiLog(const char* fmt, ...) {
 #define LOGI(...) uiLog(__VA_ARGS__)
 #define LOGE(...) uiLog(__VA_ARGS__)
 
-bool AudioEngine::start() {
-    LOGI("AudioEngine.start() called");
+static std::mutex g_synthMutex;
 
-    oboe::AudioStreamBuilder builder;
-    builder.setDirection(oboe::Direction::Output)
-        ->setPerformanceMode(oboe::PerformanceMode::LowLatency)
-        ->setSharingMode(oboe::SharingMode::Exclusive)
-        ->setFormat(oboe::AudioFormat::Float)
-        ->setChannelCount(oboe::ChannelCount::Stereo)
-        ->setSampleRate(48000)
-        ->setDataCallback(this)
-        ->setUsage(oboe::Usage::Media)
-        ->setContentType(oboe::ContentType::Music);
-
-    oboe::Result result = builder.openStream(stream_);
-    if (result != oboe::Result::OK) {
-        LOGE("LowLatency failed, retry default");
-        builder.setPerformanceMode(oboe::PerformanceMode::None);
-        result = builder.openStream(stream_);
+SoundFontPlayer::SoundFontPlayer() {
+    LOGI("Creating FluidSynth settings...");
+    settings_ = new_fluid_settings();
+    if (!settings_) {
+        LOGE("Failed to create settings");
+        return;
     }
-    if (result != oboe::Result::OK) {
-        LOGE("Failed to open stream");
+
+    fluid_settings_setnum(settings_, "synth.sample-rate", 48000.0);
+    fluid_settings_setint(settings_, "synth.polyphony", 128);
+    fluid_settings_setnum(settings_, "synth.gain", 0.7);
+    fluid_settings_setint(settings_, "synth.reverb.active", 1);
+    fluid_settings_setint(settings_, "synth.chorus.active", 1);
+    fluid_settings_setstr(settings_, "audio.driver", "null");
+
+    LOGI("Creating FluidSynth synth...");
+    synth_ = new_fluid_synth(settings_);
+    if (!synth_) {
+        LOGE("Failed to create synth");
+        delete_fluid_settings(settings_);
+        settings_ = nullptr;
+    } else {
+        LOGI("FluidSynth synth created OK");
+    }
+}
+
+SoundFontPlayer::~SoundFontPlayer() {
+    unload();
+    if (synth_) {
+        delete_fluid_synth(synth_);
+        synth_ = nullptr;
+    }
+    if (settings_) {
+        delete_fluid_settings(settings_);
+        settings_ = nullptr;
+    }
+}
+
+bool SoundFontPlayer::load(const std::string& path) {
+    if (!synth_) {
+        LOGE("Cannot load SF2 - synth null");
+        return false;
+    }
+    std::lock_guard<std::mutex> lock(g_synthMutex);
+
+    LOGI("Loading SF2: %s", path.c_str());
+    sfId_ = fluid_synth_sfload(synth_, path.c_str(), 1);
+    if (sfId_ == FLUID_FAILED) {
+        LOGE("fluid_synth_sfload FAILED");
         return false;
     }
 
-    outputSampleRate_ = stream_->getSampleRate();
-    LOGI("Stream opened: sr=%d ch=%d", outputSampleRate_, stream_->getChannelCount());
+    LOGI("SF2 loaded, id=%d", sfId_);
 
-    stream_->setBufferSizeInFrames(stream_->getFramesPerBurst() * 8);
+    // ═══ Setup default channel instrument ═══
+    fluid_synth_bank_select(synth_, 9, 128);
+    fluid_synth_program_change(synth_, 9, 0);
 
-    result = stream_->requestStart();
-    if (result != oboe::Result::OK) {
-        LOGE("Failed to start stream");
-        return false;
+    for (int ch = 0; ch < 16; ++ch) {
+        if (ch == 9) continue;
+        fluid_synth_bank_select(synth_, ch, 0);
+        fluid_synth_program_change(synth_, ch, 0);
     }
 
-    LOGI("AudioEngine started OK, burst=%d", stream_->getFramesPerBurst());
+    // ═══ Volume balance via MIDI CC 7 (0-127) ═══
+    // Bass lebih keras, chord/pad lebih pelan
+    fluid_synth_cc(synth_, 0, 7, 127);    // Piano full
+    fluid_synth_cc(synth_, 1, 7, 127);
+    fluid_synth_cc(synth_, 2, 7, 115);    // Bass — loud
+    fluid_synth_cc(synth_, 3, 7, 76);     // Chord1 — softer
+    fluid_synth_cc(synth_, 4, 7, 76);     // Chord2 — softer
+    fluid_synth_cc(synth_, 5, 7, 64);     // Pad — soft
+    fluid_synth_cc(synth_, 6, 7, 102);    // Phrase1
+    fluid_synth_cc(synth_, 7, 7, 102);    // Phrase2
+    fluid_synth_cc(synth_, 8, 7, 115);    // Rhythm1
+    fluid_synth_cc(synth_, 9, 7, 127);    // Rhythm2 (drum) full
+    for (int ch = 10; ch < 16; ++ch) {
+        fluid_synth_cc(synth_, ch, 7, 89);
+    }
+
+    LOGI("Channels assigned + volumes set");
     return true;
 }
 
-void AudioEngine::stop() {
-    if (stream_) {
-        stream_->requestStop();
-        stream_->close();
-        stream_.reset();
+void SoundFontPlayer::unload() {
+    if (synth_ && sfId_ >= 0) {
+        std::lock_guard<std::mutex> lock(g_synthMutex);
+        fluid_synth_sfunload(synth_, sfId_, 1);
+        sfId_ = -1;
+        LOGI("SF2 unloaded");
     }
 }
 
-bool AudioEngine::loadSoundFont(const std::string& path) {
-    LOGI("loadSoundFont: %s", path.c_str());
-    bool ok = soundFont_.load(path);
-    LOGI("loadSoundFont result: %s", ok ? "OK" : "FAILED");
-    return ok;
-}
-
-void AudioEngine::unloadSoundFont() {
-    soundFont_.unload();
-}
-
-oboe::DataCallbackResult AudioEngine::onAudioReady(
-        oboe::AudioStream* stream, void* audioData, int32_t numFrames) {
-    (void)stream;
-
-    static int callbackCount = 0;
-    callbackCount++;
-    bool logNow = (callbackCount % 200 == 1);
-
-    auto* out = static_cast<float*>(audioData);
-    const int stereoFrames = numFrames * 2;
-    std::memset(out, 0, sizeof(float) * stereoFrames);
-
-    if (soundFont_.isLoaded()) {
-        soundFont_.render(out, numFrames);
-
-        // ═══ Anti-clipping + master gain (0.35) ═══
-        for (int i = 0; i < stereoFrames; ++i) {
-            float x = out[i] * 0.35f;
-            if (x > 0.9f) {
-                x = 0.9f + (x - 0.9f) * 0.1f;
-            } else if (x < -0.9f) {
-                x = -0.9f + (x + 0.9f) * 0.1f;
-            }
-            if (x > 1.0f) x = 1.0f;
-            if (x < -1.0f) x = -1.0f;
-            out[i] = x;
-        }
-
-        // ═══ DC blocker ═══
-        for (int f = 0; f < numFrames; ++f) {
-            const int iL = f * 2;
-            const int iR = iL + 1;
-
-            float inL = out[iL];
-            float outL = inL - dcLastInL_ + 0.995f * dcLastOutL_;
-            dcLastInL_ = inL;
-            dcLastOutL_ = outL;
-            out[iL] = outL;
-
-            float inR = out[iR];
-            float outR = inR - dcLastInR_ + 0.995f * dcLastOutR_;
-            dcLastInR_ = inR;
-            dcLastOutR_ = outR;
-            out[iR] = outR;
-        }
-
-        if (logNow) {
-            float peak = 0.0f;
-            for (int i = 0; i < stereoFrames; ++i) {
-                float v = std::fabs(out[i]);
-                if (v > peak) peak = v;
-            }
-            LOGI("onAudioReady #%d peak=%.5f", callbackCount, peak);
-        }
-
-        return oboe::DataCallbackResult::Continue;
+void SoundFontPlayer::render(float* out, int numFrames) {
+    if (!synth_) {
+        for (int i = 0; i < numFrames * 2; ++i) out[i] = 0.0f;
+        return;
     }
-
-    std::lock_guard<std::mutex> lock(voiceMutex_);
-    for (auto& v : voices_) {
-        if (v.isActive()) {
-            v.renderAdditive(out, numFrames, outputSampleRate_);
-        }
-    }
-    for (int i = 0; i < stereoFrames; ++i) {
-        out[i] = std::max(-1.0f, std::min(1.0f, out[i]));
-    }
-    return oboe::DataCallbackResult::Continue;
+    std::lock_guard<std::mutex> lock(g_synthMutex);
+    fluid_synth_write_float(synth_, numFrames, out, 0, 2, out, 1, 2);
 }
 
-void AudioEngine::sfNoteOnChannel(int channel, int midiNote, float velocity01) {
-    soundFont_.noteOn(channel, midiNote, velocity01);
+void SoundFontPlayer::noteOn(int channel, int key, float velocity) {
+    if (!synth_) return;
+    std::lock_guard<std::mutex> lock(g_synthMutex);
+    int vel = (int)(velocity * 127.0f);
+    if (vel < 1) vel = 1;
+    if (vel > 127) vel = 127;
+    fluid_synth_noteon(synth_, channel, key, vel);
 }
 
-void AudioEngine::sfNoteOffChannel(int channel, int midiNote) {
-    soundFont_.noteOff(channel, midiNote);
+void SoundFontPlayer::noteOff(int channel, int key) {
+    if (!synth_) return;
+    std::lock_guard<std::mutex> lock(g_synthMutex);
+    fluid_synth_noteoff(synth_, channel, key);
 }
 
-void AudioEngine::sfSetChannelPreset(int channel, int bank, int program) {
-    soundFont_.setChannelPreset(channel, bank, program);
-}
-
-void AudioEngine::noteOn(int midiNote, int rootNote, float velocity01,
-                          const float* sampleData, size_t sampleFrames, int sampleRateHz) {
-    std::lock_guard<std::mutex> lock(voiceMutex_);
-    for (auto& v : voices_) {
-        if (!v.isActive()) {
-            v.start(sampleData, sampleFrames, sampleRateHz, midiNote, rootNote, velocity01);
-            return;
-        }
-    }
-    for (auto& v : voices_) {
-        if (v.midiNote() == midiNote) {
-            v.start(sampleData, sampleFrames, sampleRateHz, midiNote, rootNote, velocity01);
-            return;
-        }
-    }
-    voices_[0].start(sampleData, sampleFrames, sampleRateHz, midiNote, rootNote, velocity01);
-}
-
-void AudioEngine::noteOff(int midiNote) {
-    std::lock_guard<std::mutex> lock(voiceMutex_);
-    for (auto& v : voices_) {
-        if (v.isActive() && v.midiNote() == midiNote) {
-            v.release();
-        }
+void SoundFontPlayer::allNotesOff() {
+    if (!synth_) return;
+    std::lock_guard<std::mutex> lock(g_synthMutex);
+    for (int ch = 0; ch < 16; ++ch) {
+        fluid_synth_all_notes_off(synth_, ch);
     }
 }
 
-void AudioEngine::allNotesOff() {
-    std::lock_guard<std::mutex> lock(voiceMutex_);
-    for (auto& v : voices_) v.release();
-    soundFont_.allNotesOff();
+void SoundFontPlayer::setChannelPreset(int channel, int bank, int program) {
+    if (!synth_) return;
+    std::lock_guard<std::mutex> lock(g_synthMutex);
+    fluid_synth_bank_select(synth_, channel, bank);
+    fluid_synth_program_change(synth_, channel, program);
+    LOGI("Ch %d to bank=%d prog=%d", channel, bank, program);
+}
+
+int SoundFontPlayer::presetCount() const {
+    if (!synth_ || sfId_ < 0) return 0;
+    fluid_sfont_t* sfont = fluid_synth_get_sfont_by_id(synth_, sfId_);
+    if (!sfont) return 0;
+    int count = 0;
+    fluid_sfont_iteration_start(sfont);
+    while (fluid_sfont_iteration_next(sfont)) count++;
+    return count;
 }
