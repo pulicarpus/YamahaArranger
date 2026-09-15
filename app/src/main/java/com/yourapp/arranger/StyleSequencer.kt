@@ -4,6 +4,7 @@ import com.yourapp.yamahaarranger.audio.AudioEngineManager
 import com.yourapp.yamahaarranger.chord.DetectedChord
 import com.yourapp.yamahaarranger.style.StyleNoteEvent
 import com.yourapp.yamahaarranger.style.StyleSectionModel
+import com.yourapp.yamahaarranger.ui.DebugLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -17,21 +18,18 @@ class StyleSequencer(
     private var playbackJob: Job? = null
     var tempoBpm: Int = 120
     var currentChord: DetectedChord? = null
+    private var loopCount = 0
 
     fun play(section: StyleSectionModel, ppq: Int) {
         stop()
+        loopCount = 0
+        val totalEvents = section.parts.sumOf { it.events.size }
+        DebugLog.add("▶ PLAY ${section.name}: parts=${section.parts.size}, events=$totalEvents, len=${section.lengthTicks} ticks, ppq=$ppq, bpm=$tempoBpm")
+        section.parts.forEach { part ->
+            DebugLog.add("  · Part '${part.name}': ${part.events.size} events")
+        }
+
         playbackJob = scope.launch {
-            // Debug log awal
-            val totalEvents = section.parts.sumOf { it.events.size }
-            Timber.i("▶ StyleSequencer.play: ${section.name} " +
-                    "parts=${section.parts.size} events=$totalEvents " +
-                    "lengthTicks=${section.lengthTicks} ppq=$ppq bpm=$tempoBpm")
-
-            // DEBUG: log tiap part + jumlah event
-            section.parts.forEach { part ->
-                Timber.d("  Part '${part.name}': ${part.events.size} events")
-            }
-
             while (true) {
                 playOnce(section, ppq)
             }
@@ -42,7 +40,7 @@ class StyleSequencer(
         playbackJob?.cancel()
         playbackJob = null
         audioEngine.allNotesOff()
-        Timber.i("⏹ StyleSequencer.stop")
+        DebugLog.add("⏹ STOP")
     }
 
     fun queueNextSection(section: StyleSectionModel, ppq: Int) {
@@ -50,8 +48,9 @@ class StyleSequencer(
     }
 
     private suspend fun playOnce(section: StyleSectionModel, ppq: Int) {
+        loopCount++
         if (section.lengthTicks <= 0) {
-            Timber.w("Section ${section.name} has zero length, skipping")
+            DebugLog.add("⚠ Section ${section.name} length=0, skip")
             delay(500)
             return
         }
@@ -64,23 +63,18 @@ class StyleSequencer(
             part.events.map { ScheduledEvent(it.tick, it, shouldTranspose) }
         }.sortedBy { it.tick }
 
-        // ═══════════════════════════════════════════════════
-        // DEBUG: kalau tidak ada events, main test tone
-        // ═══════════════════════════════════════════════════
         if (merged.isEmpty()) {
-            Timber.w("⚠ No note events in '${section.name}' — playing TEST TONE")
+            DebugLog.add("⚠ Loop $loopCount: NO EVENTS → test tone")
             playTestTone()
             return
         }
 
-        Timber.d("Looping ${merged.size} events (first tick=${merged.first().tick}, " +
-                "last tick=${merged.last().tick}, lengthTicks=${section.lengthTicks})")
-
-        // Hitung total loop duration
-        val loopDurationMs = ticksToMillis(section.lengthTicks, ppq, tempoBpm)
-        val startTime = System.currentTimeMillis()
+        if (loopCount <= 2) {
+            DebugLog.add("🔄 Loop $loopCount: ${merged.size} events, tick ${merged.first().tick}→${merged.last().tick}")
+        }
 
         var lastTick = 0
+        var noteOnCount = 0
         for (scheduled in merged) {
             val deltaTicks = scheduled.tick - lastTick
             if (deltaTicks > 0) {
@@ -97,32 +91,26 @@ class StyleSequencer(
 
             if (scheduled.event.isNoteOn) {
                 audioEngine.noteOn(note, scheduled.event.velocity / 127f)
-                Timber.v("  ♪ NoteOn  tick=${scheduled.tick} note=$note " +
-                        "vel=${scheduled.event.velocity}")
+                noteOnCount++
+                if (loopCount <= 2 && noteOnCount <= 5) {
+                    DebugLog.add("  ♪ On n=$note v=${scheduled.event.velocity}")
+                }
             } else {
                 audioEngine.noteOff(note)
-                Timber.v("  ♪ NoteOff tick=${scheduled.tick} note=$note")
             }
         }
 
-        // ═══════════════════════════════════════════════════
-        // DEBUG: pastikan total waktu sesuai (kalau drift > 100ms, warn)
-        // ═══════════════════════════════════════════════════
-        val elapsed = System.currentTimeMillis() - startTime
-        val drift = elapsed - loopDurationMs
-        if (drift > 100) {
-            Timber.w("Loop drift: expected ${loopDurationMs}ms, actual ${elapsed}ms (drift=${drift}ms)")
+        if (loopCount <= 2) {
+            DebugLog.add("✅ Loop $loopCount done: $noteOnCount noteOn sent")
         }
 
-        // Tunggu sisa bar
         val remaining = section.lengthTicks - lastTick
         if (remaining > 0) delay(ticksToMillis(remaining, ppq, tempoBpm))
     }
 
-    /** Test tone: C-E-G arpeggio, 4× per detik, untuk konfirmasi audio engine hidup. */
     private suspend fun playTestTone() {
-        val notes = intArrayOf(60, 64, 67) // C major
-        repeat(8) {
+        val notes = intArrayOf(60, 64, 67)
+        repeat(4) {
             for (note in notes) {
                 audioEngine.noteOn(note, 0.8f)
                 delay(120)
