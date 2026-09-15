@@ -1,5 +1,6 @@
 package com.yourapp.yamahaarranger.arranger
 
+import com.yourapp.yamahaarranger.ui.DebugLog
 import com.yourapp.yamahaarranger.audio.AudioEngineManager
 import com.yourapp.yamahaarranger.chord.ChordDetector
 import com.yourapp.yamahaarranger.chord.DetectedChord
