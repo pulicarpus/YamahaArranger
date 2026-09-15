@@ -52,7 +52,7 @@ SoundFontPlayer::SoundFontPlayer() {
 
     fluid_settings_setnum(settings_, "synth.sample-rate", 48000.0);
     fluid_settings_setint(settings_, "synth.polyphony", 128);
-    fluid_settings_setnum(settings_, "synth.gain", 0.7);
+    fluid_settings_setnum(settings_, "synth.gain", 1.0);
     fluid_settings_setint(settings_, "synth.reverb.active", 1);
     fluid_settings_setint(settings_, "synth.chorus.active", 1);
     fluid_settings_setstr(settings_, "audio.driver", "null");
@@ -107,16 +107,16 @@ bool SoundFontPlayer::load(const std::string& path) {
 
     fluid_synth_cc(synth_, 0, 7, 127);
     fluid_synth_cc(synth_, 1, 7, 127);
-    fluid_synth_cc(synth_, 2, 7, 115);
-    fluid_synth_cc(synth_, 3, 7, 76);
-    fluid_synth_cc(synth_, 4, 7, 76);
-    fluid_synth_cc(synth_, 5, 7, 64);
-    fluid_synth_cc(synth_, 6, 7, 102);
-    fluid_synth_cc(synth_, 7, 7, 102);
-    fluid_synth_cc(synth_, 8, 7, 115);
+    fluid_synth_cc(synth_, 2, 7, 127);
+    fluid_synth_cc(synth_, 3, 7, 100);
+    fluid_synth_cc(synth_, 4, 7, 100);
+    fluid_synth_cc(synth_, 5, 7, 95);
+    fluid_synth_cc(synth_, 6, 7, 115);
+    fluid_synth_cc(synth_, 7, 7, 115);
+    fluid_synth_cc(synth_, 8, 7, 127);
     fluid_synth_cc(synth_, 9, 7, 127);
     for (int ch = 10; ch < 16; ++ch) {
-        fluid_synth_cc(synth_, ch, 7, 89);
+        fluid_synth_cc(synth_, ch, 7, 110);
     }
 
     LOGI("Channels assigned + volumes set");
