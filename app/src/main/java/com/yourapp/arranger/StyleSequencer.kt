@@ -20,19 +20,32 @@ class StyleSequencer(
     var currentChord: DetectedChord? = null
     private var loopCount = 0
 
+    /** Map part name → channel. Rhythm/drum selalu ch 9. */
+    private fun channelForPart(partName: String): Int {
+        val n = partName.lowercase()
+        return when {
+            n.contains("rhythm") || n.contains("drum") -> 9
+            n.contains("bass") -> 2
+            n.contains("chord1") || (n.contains("chord") && !n.contains("2")) -> 3
+            n.contains("chord2") -> 4
+            n.contains("pad") -> 5
+            n.contains("phrase1") || (n.contains("phrase") && !n.contains("2")) -> 6
+            n.contains("phrase2") -> 7
+            else -> 0
+        }
+    }
+
     fun play(section: StyleSectionModel, ppq: Int) {
         stop()
         loopCount = 0
         val totalEvents = section.parts.sumOf { it.events.size }
-        DebugLog.add("▶ PLAY ${section.name}: parts=${section.parts.size}, events=$totalEvents, len=${section.lengthTicks} ticks, ppq=$ppq, bpm=$tempoBpm")
+        DebugLog.add("▶ PLAY ${section.name}: parts=${section.parts.size}, events=$totalEvents")
         section.parts.forEach { part ->
-            DebugLog.add("  · Part '${part.name}': ${part.events.size} events")
+            val ch = channelForPart(part.name)
+            DebugLog.add("  · ${part.name} → ch$ch (${part.events.size} ev)")
         }
-
         playbackJob = scope.launch {
-            while (true) {
-                playOnce(section, ppq)
-            }
+            while (true) playOnce(section, ppq)
         }
     }
 
@@ -43,14 +56,11 @@ class StyleSequencer(
         DebugLog.add("⏹ STOP")
     }
 
-    fun queueNextSection(section: StyleSectionModel, ppq: Int) {
-        play(section, ppq)
-    }
+    fun queueNextSection(section: StyleSectionModel, ppq: Int) = play(section, ppq)
 
     private suspend fun playOnce(section: StyleSectionModel, ppq: Int) {
         loopCount++
         if (section.lengthTicks <= 0) {
-            DebugLog.add("⚠ Section ${section.name} length=0, skip")
             delay(500)
             return
         }
@@ -59,80 +69,54 @@ class StyleSequencer(
             val tick: Int,
             val event: StyleNoteEvent,
             val transpose: Boolean,
-            val isDrum: Boolean
+            val channel: Int
         )
 
         val merged = section.parts.flatMap { part ->
-            val isDrum = part.name.contains("rhythm", ignoreCase = true) ||
-                          part.name.contains("drum", ignoreCase = true)
+            val ch = channelForPart(part.name)
+            val isDrum = ch == 9
             val shouldTranspose = !isDrum
-            part.events.map { ScheduledEvent(it.tick, it, shouldTranspose, isDrum) }
+            part.events.map { ScheduledEvent(it.tick, it, shouldTranspose, ch) }
         }.sortedBy { it.tick }
 
         if (merged.isEmpty()) {
-            DebugLog.add("⚠ Loop $loopCount: NO EVENTS → test tone")
-            playTestTone()
+            DebugLog.add("⚠ Loop $loopCount: NO EVENTS")
+            delay(500)
             return
-        }
-
-        if (loopCount <= 2) {
-            DebugLog.add("🔄 Loop $loopCount: ${merged.size} events, tick ${merged.first().tick}→${merged.last().tick}")
         }
 
         var lastTick = 0
         var noteOnCount = 0
-        for (scheduled in merged) {
-            val deltaTicks = scheduled.tick - lastTick
-            if (deltaTicks > 0) {
-                delay(ticksToMillis(deltaTicks, ppq, tempoBpm))
-            }
-            lastTick = scheduled.tick
+        for (sched in merged) {
+            val delta = sched.tick - lastTick
+            if (delta > 0) delay(ticksToMillis(delta, ppq, tempoBpm))
+            lastTick = sched.tick
 
-            val note = if (scheduled.transpose) {
-                currentChord?.let { NoteTransposer.transpose(scheduled.event.note, it) }
-                    ?: scheduled.event.note
+            val note = if (sched.transpose) {
+                currentChord?.let { NoteTransposer.transpose(sched.event.note, it) }
+                    ?: sched.event.note
             } else {
-                scheduled.event.note
+                sched.event.note
             }
 
-            // Detect part: rhythm/drum → channel 9, else channel 0
-            val channel = if (scheduled.isDrum) 9 else 0
-
-            if (scheduled.event.isNoteOn) {
-                audioEngine.noteOnChannel(channel, note, scheduled.event.velocity / 127f)
+            if (sched.event.isNoteOn) {
+                audioEngine.noteOnChannel(sched.channel, note, sched.event.velocity / 127f)
                 noteOnCount++
-                if (loopCount <= 2 && noteOnCount <= 5) {
-                    DebugLog.add("  ♪ On ch=$channel n=$note v=${scheduled.event.velocity}")
+                if (loopCount <= 1 && noteOnCount <= 6) {
+                    DebugLog.add("  ♪ ch${sched.channel} n=$note v=${sched.event.velocity}")
                 }
             } else {
-                audioEngine.noteOffChannel(channel, note)
+                audioEngine.noteOffChannel(sched.channel, note)
             }
         }
+        if (loopCount <= 1) DebugLog.add("✅ Loop1: $noteOnCount noteOn")
 
-        if (loopCount <= 2) {
-            DebugLog.add("✅ Loop $loopCount done: $noteOnCount noteOn sent")
-        }
-
-        val remaining = section.lengthTicks - lastTick
-        if (remaining > 0) delay(ticksToMillis(remaining, ppq, tempoBpm))
-    }
-
-    private suspend fun playTestTone() {
-        val notes = intArrayOf(60, 64, 67)
-        repeat(4) {
-            for (note in notes) {
-                audioEngine.noteOnChannel(0, note, 0.8f)
-                delay(120)
-                audioEngine.noteOffChannel(0, note)
-            }
-            delay(200)
-        }
+        val rem = section.lengthTicks - lastTick
+        if (rem > 0) delay(ticksToMillis(rem, ppq, tempoBpm))
     }
 
     private fun ticksToMillis(ticks: Int, ppq: Int, bpm: Int): Long {
         if (ppq <= 0 || bpm <= 0) return 0
-        val msPerBeat = 60_000.0 / bpm
-        val msPerTick = msPerBeat / ppq
-        return (ticks * msPerTick).toLong().coerceAtLeast(0)
+        return ((ticks * (60_000.0 / bpm)) / ppq).toLong().coerceAtLeast(0)
     }
 }
