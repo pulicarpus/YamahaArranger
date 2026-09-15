@@ -27,7 +27,6 @@ import java.util.Locale
 import java.util.concurrent.ConcurrentLinkedQueue
 import javax.inject.Inject
 
-/** Global log buffer untuk debug di UI. */
 object DebugLog {
     private val _lines = ConcurrentLinkedQueue<String>()
     private const val MAX_LINES = 30
@@ -42,7 +41,6 @@ object DebugLog {
     fun clear() = _lines.clear()
 }
 
-/** Slot voice per channel. */
 data class VoiceSlot(
     val channel: Int,
     val label: String,
@@ -52,7 +50,6 @@ data class VoiceSlot(
         GM_VOICES.firstOrNull { it.second == program }?.first ?: "prog$program"
 }
 
-/** Katalog voice GM + beberapa variasi. */
 val GM_VOICES: List<Pair<String, Int>> = listOf(
     "Piano" to 0,
     "Bright Piano" to 1,
@@ -170,6 +167,7 @@ class MainViewModel @Inject constructor(
                 voiceAssignments = voices
             )
         }.stateIn(viewModelScope, SharingStarted.Eagerly, MainUiState())
+
     init {
         arrangerBrain.attachScope(viewModelScope)
         audioEngine.start()
@@ -183,7 +181,6 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    // ═══════════ MIDI ═══════════
     fun connectFirstAvailableMidiDevice() {
         viewModelScope.launch {
             repeat(5) { attempt ->
@@ -210,14 +207,12 @@ class MainViewModel @Inject constructor(
         super.onCleared()
     }
 
-    // ═══════════ KEYBOARD ═══════════
     fun onKeyboardNoteOn(midiNote: Int, velocity: Float) =
         arrangerBrain.onKeyboardNoteOn(midiNote, velocity)
 
     fun onKeyboardNoteOff(midiNote: Int) =
         arrangerBrain.onKeyboardNoteOff(midiNote)
 
-    // ═══════════ SECTION ═══════════
     fun onSectionSelected(sectionLabel: String) {
         val section = SECTION_BUTTON_MAP[sectionLabel] ?: return
         if (section in MAIN_VARIATIONS) {
@@ -227,12 +222,10 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    // ═══════════ TRANSPORT ═══════════
-    fun onSyncStart() { /* TODO */ }
+    fun onSyncStart() { }
     fun onStartStop() = arrangerBrain.startStop()
-    fun onTapTempo() { /* TODO */ }
+    fun onTapTempo() { }
 
-    // ═══════════ TEMPO ═══════════
     fun onTempoDown() {
         val newTempo = (arrangerBrain.state.value.tempoBpm - 5).coerceIn(20, 280)
         arrangerBrain.setTempo(newTempo)
@@ -242,21 +235,17 @@ class MainViewModel @Inject constructor(
         arrangerBrain.setTempo(newTempo)
     }
 
-    // ═══════════ TRANSPOSE ═══════════
     fun onTransposeDown() { _transpose.value = (_transpose.value - 1).coerceIn(-12, 12) }
     fun onTransposeUp() { _transpose.value = (_transpose.value + 1).coerceIn(-12, 12) }
 
-    // ═══════════ VOLUME ═══════════
     fun onStyleVolumeChange(value: Int) { _styleVolume.value = value }
     fun onVoiceVolumeChange(value: Int) { _voiceVolume.value = value }
     fun onMasterVolumeChange(value: Int) { _masterVolume.value = value }
 
-    // ═══════════ REGISTRATION ═══════════
     fun onBankChange(bank: Int) { _activeBank.value = bank.coerceIn(1, 8) }
     fun onRegSlotTap(slot: Int) { _activeRegSlot.value = slot }
     fun onRegSlotSave(slot: Int) { Timber.i("Save reg bank=${_activeBank.value} slot=$slot") }
 
-    // ═══════════ VOICE ASSIGN ═══════════
     fun cycleVoice(channel: Int) {
         val current = _voiceAssignments.value
         val updated = current.map { slot ->
@@ -275,7 +264,6 @@ class MainViewModel @Inject constructor(
         _voiceAssignments.value = updated
     }
 
-    // ═══════════ TEST TONE ═══════════
     fun playTestTone() {
         viewModelScope.launch {
             DebugLog.add("🔊 TEST TONE: starting…")
@@ -288,7 +276,6 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    // ═══════════ STYLE PICKER ═══════════
     fun onStyleFilePicked(uri: Uri) {
         viewModelScope.launch {
             val bytes = withContext(Dispatchers.IO) { contentResolver.readBytes(uri) }
@@ -310,7 +297,6 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    // ═══════════ SOUNDFONT PICKER ═══════════
     fun onSoundFontFilePicked(uri: Uri) {
         viewModelScope.launch {
             DebugLog.add("📂 SF2 picker…")
@@ -332,7 +318,7 @@ class MainViewModel @Inject constructor(
                 DebugLog.add("❌ Copy SF2 failed")
                 return@launch
             }
-            DebugLog.add("📂 SF2 copied: ${destFile.length()/1024/1024} MB")
+            DebugLog.add("📂 SF2 copied: ${destFile.length() / 1024 / 1024} MB")
 
             val ok = withContext(Dispatchers.Default) {
                 audioEngine.loadSoundFont(destFile.absolutePath)
