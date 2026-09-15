@@ -12,6 +12,8 @@ class NativeAudioBridge @Inject constructor() {
         }
     }
 
+    external fun nativeInitLogger()
+
     external fun nativeStart(): Boolean
     external fun nativeStop()
     external fun nativeNoteOn(
