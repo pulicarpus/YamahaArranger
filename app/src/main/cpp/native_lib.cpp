@@ -12,14 +12,10 @@ std::unique_ptr<AudioEngine> g_engine;
 std::unique_ptr<StyleParser> g_lastParsedStyle;
 }
 
-// Global untuk logger — HARUS di luar anonymous namespace
 JavaVM* g_jvm = nullptr;
 jclass g_debugLogClass = nullptr;
 jmethodID g_debugLogAddMethod = nullptr;
 
-// ═════════════════════════════════════════════════════
-// LOGGER INIT
-// ═════════════════════════════════════════════════════
 extern "C" JNIEXPORT void JNICALL
 Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeInitLogger(
     JNIEnv* env, jobject) {
@@ -35,9 +31,6 @@ Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeInitLogger(
     __android_log_print(ANDROID_LOG_INFO, "NativeLib", "Logger initialized");
 }
 
-// ═════════════════════════════════════════════════════
-// AUDIO ENGINE
-// ═════════════════════════════════════════════════════
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeStart(JNIEnv*, jobject) {
     if (!g_engine) g_engine = std::make_unique<AudioEngine>();
@@ -71,9 +64,6 @@ Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeAllNotesOff(JNIEnv
     if (g_engine) g_engine->allNotesOff();
 }
 
-// ═════════════════════════════════════════════════════
-// SOUNDFONT
-// ═════════════════════════════════════════════════════
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeLoadSoundFont(
     JNIEnv* env, jobject, jstring path) {
@@ -126,9 +116,6 @@ Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetChannelPreset(
     if (g_engine) g_engine->sfSetChannelPreset(channel, bank, program);
 }
 
-// ═════════════════════════════════════════════════════
-// STYLE PARSER
-// ═════════════════════════════════════════════════════
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeParseStyle(
     JNIEnv* env, jobject, jbyteArray styBytes) {
@@ -229,9 +216,7 @@ Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeGetPartEvents(
     return result;
 }
 
-// // ═════════════════════════════════════════════════════
-// ★★★ FUNGSI BARU — CASM FINDER (v2: dump 256 bytes + chunk list) ★★★
-// ═════════════════════════════════════════════════════
+// ★★★ FUNGSI CASM FINDER v3 — dump 512 byte offset 100-500 ★★★
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeFindCasm(
     JNIEnv* env, jobject, jbyteArray styBytes) {
@@ -256,27 +241,27 @@ Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeFindCasm(
             size_t casmEnd = i + 8 + casmLen;
             if (casmEnd > buf.size()) casmEnd = buf.size();
 
-            // ─── Cari semua chunk 4-byte di dalam CASM ───
             result += "Chunks: ";
             for (size_t j = i + 8; j + 4 <= casmEnd; ++j) {
-                // Chunk = 4 huruf uppercase
                 if (buf[j] >= 'A' && buf[j] <= 'Z' &&
                     buf[j+1] >= 'A' && buf[j+1] <= 'Z' &&
                     buf[j+2] >= 'A' && buf[j+2] <= 'Z' &&
                     buf[j+3] >= 'A' && buf[j+3] <= 'Z') {
-                    char chunk[8];
+                    char chunk[24];
                     snprintf(chunk, sizeof(chunk), "%.4s@%zu ",
-                             reinterpret_cast<const char*>(&buf[j]), j);
+                             reinterpret_cast<const char*>(&buf[j]), j - i);
                     result += chunk;
                 }
             }
             result += "\n";
 
-            // ─── Dump 256 byte pertama (16 baris × 16 byte) ───
-            size_t dumpEnd = i + 256;
+            size_t dumpStart = i + 100;
+            size_t dumpEnd = i + 500;
+            if (dumpStart > casmEnd) dumpStart = casmEnd;
             if (dumpEnd > casmEnd) dumpEnd = casmEnd;
-            for (size_t j = i; j < dumpEnd; j += 16) {
-                char line[128];
+
+            for (size_t j = dumpStart; j < dumpEnd; j += 16) {
+                char line[160];
                 int pos = snprintf(line, sizeof(line), "%04zu: ", j - i);
                 for (size_t k = 0; k < 16 && j + k < dumpEnd; ++k) {
                     pos += snprintf(line + pos, sizeof(line) - pos, "%02X ", buf[j + k]);
