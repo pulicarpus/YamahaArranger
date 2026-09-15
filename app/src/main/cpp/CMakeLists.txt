@@ -8,6 +8,7 @@ add_library(yamaha_arranger_native SHARED
     audio_engine.cpp
     voice.cpp
     soundfont_player.cpp
+    tsf_impl.cpp
     style_parser.cpp
     smf_reader.cpp
 )
