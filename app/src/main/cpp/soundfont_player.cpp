@@ -96,6 +96,8 @@ bool SoundFontPlayer::load(const std::string& path) {
 
     LOGI("SF2 loaded, id=%d", sfId_);
 
+    // ═══ Setup default channel instrument ═══
+    // Ch 9 = drum (bank 128), melodic = bank 0 prog 0 (piano)
     fluid_synth_bank_select(synth_, 9, 128);
     fluid_synth_program_change(synth_, 9, 0);
 
@@ -105,7 +107,23 @@ bool SoundFontPlayer::load(const std::string& path) {
         fluid_synth_program_change(synth_, ch, 0);
     }
 
-    LOGI("Channels assigned OK");
+    // ═══ Volume balance per channel ═══
+    // Drum lebih keras, chord/pad lebih pelan
+    fluid_synth_set_channel_volume(synth_, 0, 1.0f);   // Piano default
+    fluid_synth_set_channel_volume(synth_, 1, 1.0f);
+    fluid_synth_set_channel_volume(synth_, 2, 0.9f);   // Bass — loud
+    fluid_synth_set_channel_volume(synth_, 3, 0.6f);   // Chord1 — softer
+    fluid_synth_set_channel_volume(synth_, 4, 0.6f);   // Chord2 — softer
+    fluid_synth_set_channel_volume(synth_, 5, 0.5f);   // Pad — soft
+    fluid_synth_set_channel_volume(synth_, 6, 0.8f);   // Phrase1
+    fluid_synth_set_channel_volume(synth_, 7, 0.8f);   // Phrase2
+    fluid_synth_set_channel_volume(synth_, 8, 0.9f);   // Rhythm1
+    fluid_synth_set_channel_volume(synth_, 9, 1.0f);   // Rhythm2 (drum)
+    for (int ch = 10; ch < 16; ++ch) {
+        fluid_synth_set_channel_volume(synth_, ch, 0.7f);
+    }
+
+    LOGI("Channels assigned + volumes set");
     return true;
 }
 
