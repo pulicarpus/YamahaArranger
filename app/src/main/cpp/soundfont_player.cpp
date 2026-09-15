@@ -13,8 +13,30 @@ bool SoundFontPlayer::load(const std::string& path) {
         LOGE("Failed to load SF2: %s", path.c_str());
         return false;
     }
+
+    // Setup output: stereo interleaved, 48kHz, gain 0dB
     tsf_set_output(font_, TSF_STEREO_INTERLEAVED, 48000, 0.0f);
-    LOGI("SF2 loaded OK: presets=%d", tsf_get_presetcount(font_));
+
+    // ═══════════════════════════════════════════════════════
+    // PENTING: Set preset untuk setiap channel MIDI
+    // Tanpa ini, channel tidak punya instrument → SILENT
+    // ═══════════════════════════════════════════════════════
+    int totalPresets = tsf_get_presetcount(font_);
+    LOGI("Total presets in SF2: %d", totalPresets);
+
+    // Channel 9 = Drum Kit (MIDI standard)
+    tsf_channel_set_presetnumber(font_, 9, 0, 1);
+
+    // Channel 0-8, 10-15 = default ke Grand Piano (preset 0, bank 0)
+    for (int ch = 0; ch < 16; ++ch) {
+        if (ch == 9) continue;
+        tsf_channel_set_presetnumber(font_, ch, 0, 0);
+    }
+
+    // Volume master
+    tsf_set_volume(font_, 1.0f);
+
+    LOGI("SF2 loaded OK: presets=%d, channels assigned", totalPresets);
     return true;
 }
 
@@ -44,7 +66,6 @@ void SoundFontPlayer::noteOff(int channel, int key) {
 
 void SoundFontPlayer::allNotesOff() {
     if (!font_) return;
-    // TinySoundFont tidak punya "all channels off" — loop 16 channel MIDI
     for (int ch = 0; ch < 16; ++ch) {
         tsf_channel_sounds_off_all(font_, ch);
     }
