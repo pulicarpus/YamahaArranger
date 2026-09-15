@@ -20,14 +20,11 @@ bool AudioEngine::start() {
         ->setContentType(oboe::ContentType::Music);
 
     oboe::Result result = builder.openStream(stream_);
-
-    // Fallback kalau LowLatency gagal
     if (result != oboe::Result::OK) {
-        LOGE("LowLatency failed (%s), retrying default...", oboe::convertToText(result));
+        LOGE("LowLatency failed (%s), retry default...", oboe::convertToText(result));
         builder.setPerformanceMode(oboe::PerformanceMode::None);
         result = builder.openStream(stream_);
     }
-
     if (result != oboe::Result::OK) {
         LOGE("Failed to open stream: %s", oboe::convertToText(result));
         return false;
@@ -68,25 +65,20 @@ oboe::DataCallbackResult AudioEngine::onAudioReady(
     const int stereoFrames = numFrames * 2;
     std::memset(out, 0, sizeof(float) * stereoFrames);
 
-    // Prioritas: kalau SF loaded, render SF
     if (soundFont_.isLoaded()) {
         soundFont_.render(out, numFrames);
-
-        // Soft limiter — 0.5 untuk hindari clipping
         for (int i = 0; i < stereoFrames; ++i) {
             out[i] = std::max(-1.0f, std::min(1.0f, out[i] * 0.5f));
         }
         return oboe::DataCallbackResult::Continue;
     }
 
-    // Fallback: sample-based voices (sine wave placeholder)
     std::lock_guard<std::mutex> lock(voiceMutex_);
     for (auto& v : voices_) {
         if (v.isActive()) {
             v.renderAdditive(out, numFrames, outputSampleRate_);
         }
     }
-
     for (int i = 0; i < stereoFrames; ++i) {
         out[i] = std::max(-1.0f, std::min(1.0f, out[i]));
     }
@@ -99,6 +91,10 @@ void AudioEngine::sfNoteOnChannel(int channel, int midiNote, float velocity01) {
 
 void AudioEngine::sfNoteOffChannel(int channel, int midiNote) {
     soundFont_.noteOff(channel, midiNote);
+}
+
+void AudioEngine::sfSetChannelPreset(int channel, int bank, int program) {
+    soundFont_.setChannelPreset(channel, bank, program);
 }
 
 void AudioEngine::noteOn(int midiNote, int rootNote, float velocity01,
