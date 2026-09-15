@@ -28,12 +28,6 @@ jobs:
         run: |
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;26.3.11579264" "cmake;3.22.1" > /dev/null
 
-      - name: Download TinySoundFont
-        run: |
-          curl -L -o app/src/main/cpp/tsf.h \
-            https://raw.githubusercontent.com/schellingb/TinySoundFont/master/tsf.h
-          echo "tsf.h: $(wc -l < app/src/main/cpp/tsf.h) lines"
-
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
