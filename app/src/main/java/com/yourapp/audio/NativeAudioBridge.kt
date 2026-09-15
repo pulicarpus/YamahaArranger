@@ -21,14 +21,12 @@ class NativeAudioBridge @Inject constructor() {
     external fun nativeNoteOff(midiNote: Int)
     external fun nativeAllNotesOff()
 
-    // SoundFont — channel 0 (backward compat)
     external fun nativeLoadSoundFont(path: String): Boolean
     external fun nativeIsSoundFontLoaded(): Boolean
     external fun nativeUnloadSoundFont()
     external fun nativeSfNoteOn(midiNote: Int, velocity: Float)
     external fun nativeSfNoteOff(midiNote: Int)
-
-    // SoundFont — channel spesifik (BARU)
     external fun nativeSfNoteOnChannel(channel: Int, midiNote: Int, velocity: Float)
     external fun nativeSfNoteOffChannel(channel: Int, midiNote: Int)
+    external fun nativeSetChannelPreset(channel: Int, bank: Int, program: Int)
 }
