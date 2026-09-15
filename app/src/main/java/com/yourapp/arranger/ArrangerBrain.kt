@@ -5,6 +5,8 @@ import com.yourapp.yamahaarranger.chord.ChordDetector
 import com.yourapp.yamahaarranger.chord.DetectedChord
 import com.yourapp.yamahaarranger.style.ParsedStyle
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,16 +29,6 @@ data class ArrangerState(
     val currentChordLabel: String = ""
 )
 
-/**
- * MODUL 5 from the spec: ties ChordDetector + StyleSequencer + section
- * management together. This is the piece that turns "a parsed style file"
- * and "chords the user is holding" into actual auto-accompaniment.
- *
- * Auto-fill behaviour: switching Main A<->B<->C<->D plays that target
- * variation's Fill (FillAA/BB/CC/DD) for one bar first, then falls
- * through to the Main itself — mirrors how real Yamaha arrangers behave
- * ("press Main B mid-song -> hear a fill, then Main B kicks in").
- */
 @Singleton
 class ArrangerBrain @Inject constructor(
     private val audioEngine: AudioEngineManager,
@@ -44,20 +36,45 @@ class ArrangerBrain @Inject constructor(
 ) {
     private lateinit var sequencer: StyleSequencer
     private var loadedStyle: ParsedStyle? = null
+    private var externalScope: CoroutineScope? = null
 
     private val _state = MutableStateFlow(ArrangerState())
     val state: StateFlow<ArrangerState> = _state.asStateFlow()
 
+    // ═════════════════════════════════════════════════════
+    // INIT — dipanggil dari MainViewModel
+    // ═════════════════════════════════════════════════════
     fun attachScope(scope: CoroutineScope) {
+        externalScope = scope
         sequencer = StyleSequencer(audioEngine, scope)
+        Timber.i("ArrangerBrain: scope attached, sequencer initialized")
     }
 
+    /** Safe check: buat sequencer kalau belum ada (fallback). */
+    private fun ensureSequencer() {
+        if (!::sequencer.isInitialized) {
+            Timber.w("Sequencer not initialized — creating fallback")
+            val scope = externalScope ?: CoroutineScope(
+                Dispatchers.Main + SupervisorJob()
+            )
+            sequencer = StyleSequencer(audioEngine, scope)
+        }
+    }
+
+    // ═════════════════════════════════════════════════════
+    // STYLE LOADING
+    // ═════════════════════════════════════════════════════
     fun loadStyle(style: ParsedStyle) {
         loadedStyle = style
+        ensureSequencer()
         sequencer.tempoBpm = style.defaultTempoBpm
         _state.update { it.copy(tempoBpm = style.defaultTempoBpm) }
+        Timber.i("Style loaded: ${style.name}, bpm=${style.defaultTempoBpm}")
     }
 
+    // ═════════════════════════════════════════════════════
+    // KEYBOARD EVENTS (dari E343 atau virtual keyboard)
+    // ═════════════════════════════════════════════════════
     fun onKeyboardNoteOn(midiNote: Int, velocity: Float) {
         audioEngine.noteOn(midiNote, velocity)
         chordDetector.noteOn(midiNote)?.let(::onChordChanged)
@@ -71,11 +88,16 @@ class ArrangerBrain @Inject constructor(
     }
 
     private fun onChordChanged(chord: DetectedChord) {
+        ensureSequencer()
         sequencer.currentChord = chord
         _state.update { it.copy(currentChordLabel = chord.label()) }
     }
 
+    // ═════════════════════════════════════════════════════
+    // TRANSPORT (Start / Stop)
+    // ═════════════════════════════════════════════════════
     fun startStop() {
+        ensureSequencer()
         val style = loadedStyle
         if (style == null) {
             Timber.w("startStop() called with no style loaded")
@@ -90,14 +112,16 @@ class ArrangerBrain @Inject constructor(
         }
     }
 
-    /** Called when the user taps a Main A-D button. If a different Main
-     * variation is already playing, queues that variation's Fill first. */
+    // ═════════════════════════════════════════════════════
+    // SECTION SELECTION
+    // ═════════════════════════════════════════════════════
     fun selectMainVariation(target: ArrangerSection) {
+        ensureSequencer()
         val wasPlaying = _state.value.isPlaying
         val previous = _state.value.currentSection
         _state.update { it.copy(currentSection = target) }
 
-        if (!wasPlaying) return // just remember the selection for next Start
+        if (!wasPlaying) return
 
         val fill = fillFor(target)
         if (previous != target && fill != null && sectionExists(fill)) {
@@ -108,17 +132,20 @@ class ArrangerBrain @Inject constructor(
     }
 
     fun selectSection(target: ArrangerSection) {
+        ensureSequencer()
         _state.update { it.copy(currentSection = target) }
         if (_state.value.isPlaying) playSection(target)
     }
 
     fun setTempo(bpm: Int) {
+        ensureSequencer()
         val clamped = bpm.coerceIn(20, 280)
         sequencer.tempoBpm = clamped
         _state.update { it.copy(tempoBpm = clamped) }
     }
 
     private fun playSection(section: ArrangerSection, thenPlay: ArrangerSection? = null) {
+        ensureSequencer()
         val style = loadedStyle ?: return
         val model = style.sections[section.styleName]
         if (model == null) {
@@ -126,10 +153,6 @@ class ArrangerBrain @Inject constructor(
             return
         }
         sequencer.play(model, style.ppq)
-        // TODO(Phase 2b): `thenPlay` (auto-fill-then-main) needs the
-        // sequencer to report "loop finished" so ArrangerBrain can chain
-        // to the next section instead of relying on the fill's own length —
-        // wire that once StyleSequencer exposes a completion callback/Flow.
         if (thenPlay != null) {
             Timber.d("TODO: chain to ${thenPlay.styleName} after this fill completes")
         }
