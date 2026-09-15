@@ -38,4 +38,10 @@ private:
     int outputSampleRate_ = 48000;
 
     SoundFontPlayer soundFont_;
+
+    // DC blocker state (high-pass filter sederhana untuk hindari buzz)
+    float dcLastInL_ = 0.0f;
+    float dcLastOutL_ = 0.0f;
+    float dcLastInR_ = 0.0f;
+    float dcLastOutR_ = 0.0f;
 };
