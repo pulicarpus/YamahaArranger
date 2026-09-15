@@ -21,13 +21,15 @@ class MainActivity : ComponentActivity() {
 
     private val requestAudioPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (!granted) Timber.w("Audio permission denied")
-    }
+    ) { granted -> if (!granted) Timber.w("Audio permission denied") }
 
     private val pickStyleFile = registerForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri -> uri?.let(viewModel::onStyleFilePicked) }
+
+    private val pickSoundFont = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri -> uri?.let(viewModel::onSoundFontFilePicked) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,17 +44,15 @@ class MainActivity : ComponentActivity() {
             YamahaArrangerTheme {
                 MainScreen(
                     viewModel = viewModel,
-                    onImportStyleClicked = {
-                        pickStyleFile.launch(arrayOf("*/*"))
-                    }
+                    onImportStyleClicked = { pickStyleFile.launch(arrayOf("*/*")) },
+                    onImportSoundFontClicked = { pickSoundFont.launch(arrayOf("*/*")) }
                 )
             }
         }
 
-        // Auto-connect MIDI setelah UI siap
         lifecycleScope.launch {
             delay(1500L)
-            Timber.i("Attempting MIDI auto-connect…")
+            Timber.i("MIDI auto-connect…")
             viewModel.connectFirstAvailableMidiDevice()
         }
     }
