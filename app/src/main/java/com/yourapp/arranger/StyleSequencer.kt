@@ -55,12 +55,18 @@ class StyleSequencer(
             return
         }
 
-        data class ScheduledEvent(val tick: Int, val event: StyleNoteEvent, val transpose: Boolean)
+        data class ScheduledEvent(
+            val tick: Int,
+            val event: StyleNoteEvent,
+            val transpose: Boolean,
+            val isDrum: Boolean
+        )
 
         val merged = section.parts.flatMap { part ->
-            val shouldTranspose = !part.name.contains("rhythm", ignoreCase = true) &&
-                                   !part.name.contains("drum", ignoreCase = true)
-            part.events.map { ScheduledEvent(it.tick, it, shouldTranspose) }
+            val isDrum = part.name.contains("rhythm", ignoreCase = true) ||
+                          part.name.contains("drum", ignoreCase = true)
+            val shouldTranspose = !isDrum
+            part.events.map { ScheduledEvent(it.tick, it, shouldTranspose, isDrum) }
         }.sortedBy { it.tick }
 
         if (merged.isEmpty()) {
@@ -89,14 +95,17 @@ class StyleSequencer(
                 scheduled.event.note
             }
 
+            // Detect part: rhythm/drum → channel 9, else channel 0
+            val channel = if (scheduled.isDrum) 9 else 0
+
             if (scheduled.event.isNoteOn) {
-                audioEngine.noteOn(note, scheduled.event.velocity / 127f)
+                audioEngine.noteOnChannel(channel, note, scheduled.event.velocity / 127f)
                 noteOnCount++
                 if (loopCount <= 2 && noteOnCount <= 5) {
-                    DebugLog.add("  ♪ On n=$note v=${scheduled.event.velocity}")
+                    DebugLog.add("  ♪ On ch=$channel n=$note v=${scheduled.event.velocity}")
                 }
             } else {
-                audioEngine.noteOff(note)
+                audioEngine.noteOffChannel(channel, note)
             }
         }
 
@@ -112,9 +121,9 @@ class StyleSequencer(
         val notes = intArrayOf(60, 64, 67)
         repeat(4) {
             for (note in notes) {
-                audioEngine.noteOn(note, 0.8f)
+                audioEngine.noteOnChannel(0, note, 0.8f)
                 delay(120)
-                audioEngine.noteOff(note)
+                audioEngine.noteOffChannel(0, note)
             }
             delay(200)
         }
