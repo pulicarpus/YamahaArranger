@@ -11,31 +11,52 @@ std::string toLower(std::string s) {
 
 StyleSection StyleParser::classifyMarkerText(const std::string& text) {
     std::string t = toLower(text);
-    // Yamaha style files commonly use marker names like "Intro 1",
-    // "Main A", "Fill In AA", "Ending 1" inside 0xFF 0x06 Marker events.
+
     if (t.find("intro") != std::string::npos) {
         if (t.find('1') != std::string::npos || t.find('a') != std::string::npos) return StyleSection::IntroA;
         if (t.find('2') != std::string::npos || t.find('b') != std::string::npos) return StyleSection::IntroB;
-        return StyleSection::IntroC;
+        if (t.find('3') != std::string::npos || t.find('c') != std::string::npos) return StyleSection::IntroC;
+        return StyleSection::IntroA;
     }
+
     if (t.find("main") != std::string::npos) {
-        if (t.find('a') != std::string::npos) return StyleSection::MainA;
-        if (t.find('b') != std::string::npos) return StyleSection::MainB;
-        if (t.find('c') != std::string::npos) return StyleSection::MainC;
-        if (t.find('d') != std::string::npos) return StyleSection::MainD;
+        size_t pos = t.find("main") + 4;
+        while (pos < t.size() && (t[pos] == ' ' || t[pos] == '_' || t[pos] == '-')) pos++;
+        if (pos < t.size()) {
+            char c = t[pos];
+            if (c == 'a') return StyleSection::MainA;
+            if (c == 'b') return StyleSection::MainB;
+            if (c == 'c') return StyleSection::MainC;
+            if (c == 'd') return StyleSection::MainD;
+        }
+        return StyleSection::MainA;
     }
+
     if (t.find("fill") != std::string::npos) {
+        size_t pos = t.find("fill") + 4;
+        while (pos < t.size() && (t[pos] == ' ' || t[pos] == '_' || t[pos] == '-')) pos++;
+        if (pos < t.size()) {
+            char c = t[pos];
+            if (c == 'a') return StyleSection::FillAA;
+            if (c == 'b') return StyleSection::FillBB;
+            if (c == 'c') return StyleSection::FillCC;
+            if (c == 'd') return StyleSection::FillDD;
+        }
         if (t.find("aa") != std::string::npos) return StyleSection::FillAA;
         if (t.find("bb") != std::string::npos) return StyleSection::FillBB;
         if (t.find("cc") != std::string::npos) return StyleSection::FillCC;
         if (t.find("dd") != std::string::npos) return StyleSection::FillDD;
     }
+
     if (t.find("break") != std::string::npos) return StyleSection::BreakDown;
+
     if (t.find("ending") != std::string::npos) {
         if (t.find('1') != std::string::npos || t.find('a') != std::string::npos) return StyleSection::EndingA;
         if (t.find('2') != std::string::npos || t.find('b') != std::string::npos) return StyleSection::EndingB;
-        return StyleSection::EndingC;
+        if (t.find('3') != std::string::npos || t.find('c') != std::string::npos) return StyleSection::EndingC;
+        return StyleSection::EndingA;
     }
+
     return StyleSection::Unknown;
 }
 
@@ -43,11 +64,7 @@ bool StyleParser::parse(const uint8_t* rawStyBytes, size_t size) {
     if (!smf_.parse(rawStyBytes, size)) return false;
     sections_.clear();
 
-    // Approach: scan every track for Marker(0x06)/Text(0x01) meta events
-    // naming a section; between two consecutive markers (or end-of-track)
-    // is that section's note data, per track = per style part.
     for (const auto& track : smf_.tracks()) {
-        // Find marker boundaries within this track.
         struct Boundary { uint32_t tick; StyleSection section; };
         std::vector<Boundary> boundaries;
         for (const auto& ev : track.events) {
@@ -57,7 +74,7 @@ bool StyleParser::parse(const uint8_t* rawStyBytes, size_t size) {
                 if (sec != StyleSection::Unknown) boundaries.push_back({ev.tick, sec});
             }
         }
-        if (boundaries.empty()) continue; // e.g. a pure tempo/meta track
+        if (boundaries.empty()) continue;
 
         for (size_t i = 0; i < boundaries.size(); ++i) {
             uint32_t startTick = boundaries[i].tick;
@@ -71,7 +88,7 @@ bool StyleParser::parse(const uint8_t* rawStyBytes, size_t size) {
             part.name = track.name.empty() ? "Part" : track.name;
             for (const auto& ev : track.events) {
                 if (ev.tick >= startTick && ev.tick < endTick &&
-                    ev.status >= 0x80 && ev.status < 0xF0) { // channel voice events only
+                    ev.status >= 0x80 && ev.status < 0xF0) {
                     MidiEvent relative = ev;
                     relative.tick -= startTick;
                     part.events.push_back(relative);
@@ -81,9 +98,6 @@ bool StyleParser::parse(const uint8_t* rawStyBytes, size_t size) {
         }
     }
 
-    // TODO(Phase 2b): if no markers were found at all (some .sty variants
-    // encode section layout only in the proprietary CASM chunk rather
-    // than plain SMF markers), fall back to parsing CASM directly.
     return !sections_.empty();
 }
 
