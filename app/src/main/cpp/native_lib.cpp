@@ -4,6 +4,8 @@
 #include <android/log.h>
 #include <cstdio>
 #include <cstring>
+#include <cctype>
+#include <algorithm>
 #include "audio_engine.h"
 #include "style_parser.h"
 
@@ -281,5 +283,87 @@ Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeFindCasm(
     }
 
     if (result.empty()) result = "CASM NOT FOUND";
+    return env->NewStringUTF(result.c_str());
+}
+// ═════════════════════════════════════════════════════
+// ★★★ VOICE MAP EXTRACTOR ★★★
+// ═════════════════════════════════════════════════════
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeExtractVoiceMap(
+    JNIEnv* env, jobject, jbyteArray styBytes) {
+    jsize len = env->GetArrayLength(styBytes);
+    std::vector<uint8_t> buf(len);
+    env->GetByteArrayRegion(styBytes, 0, len, reinterpret_cast<jbyte*>(buf.data()));
+
+    std::string result;
+
+    // Find CASM
+    size_t casmStart = 0;
+    uint32_t casmLen = 0;
+    for (size_t i = 0; i + 8 <= buf.size(); ++i) {
+        if (buf[i] == 'C' && buf[i+1] == 'A' && buf[i+2] == 'S' && buf[i+3] == 'M') {
+            casmStart = i;
+            casmLen = ((uint32_t)buf[i+4] << 24) |
+                      ((uint32_t)buf[i+5] << 16) |
+                      ((uint32_t)buf[i+6] << 8) |
+                      ((uint32_t)buf[i+7]);
+            break;
+        }
+    }
+    if (casmLen == 0) return env->NewStringUTF("");
+
+    size_t casmEnd = casmStart + 8 + casmLen;
+    if (casmEnd > buf.size()) casmEnd = buf.size();
+
+    // Scan for "Ctb2" markers
+    size_t i = casmStart;
+    while (i + 4 < casmEnd) {
+        if (buf[i] == 'C' && buf[i+1] == 't' && buf[i+2] == 'b' && buf[i+3] == '2') {
+            i += 4;
+
+            // Skip up to 8 bytes to find '/'
+            int skip = 0;
+            while (i < casmEnd && skip < 8 && buf[i] != '/') { i++; skip++; }
+            if (i >= casmEnd || buf[i] != '/') continue;
+            i++;
+
+            // Read part number (1 byte)
+            if (i >= casmEnd) continue;
+            int partNum = buf[i];
+            i++;
+
+            // Skip whitespace / nulls
+            while (i < casmEnd && (buf[i] == 0 || buf[i] == ' ')) i++;
+
+            // Read voice name (alphanumeric + dash + underscore)
+            size_t nameStart = i;
+            while (i < casmEnd &&
+                   (std::isalnum(buf[i]) || buf[i] == '-' || buf[i] == '_')) {
+                i++;
+            }
+
+            if (i > nameStart && partNum >= 1 && partNum <= 16) {
+                std::string voiceName(
+                    reinterpret_cast<const char*>(buf.data() + nameStart),
+                    i - nameStart);
+
+                // Skip if purely digits
+                bool allDigits = true;
+                for (char c : voiceName) {
+                    if (!std::isdigit(static_cast<unsigned char>(c))) {
+                        allDigits = false;
+                        break;
+                    }
+                }
+
+                if (!allDigits && voiceName.length() < 32) {
+                    result += std::to_string(partNum) + ":" + voiceName + ";";
+                }
+            }
+            continue;
+        }
+        i++;
+    }
+
     return env->NewStringUTF(result.c_str());
 }
