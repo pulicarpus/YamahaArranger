@@ -15,7 +15,23 @@ class StyleRepository @Inject constructor(
             return null
         }
 
-        // ═══ Extract voice map dari CASM ═══
+        // ═══ Dump SEMUA marker text asli ═══
+        try {
+            val markers = bridge.nativeDumpMarkers(rawBytes)
+            DebugLog.add("🔍 Markers in file:")
+            markers.split("]").forEach { m ->
+                val trimmed = m.trim()
+                if (trimmed.isNotEmpty()) DebugLog.add("  [${trimmed.replace("[", "")}]")
+            }
+        } catch (e: Exception) {
+            DebugLog.add("❌ Dump error: ${e.message}")
+        }
+
+        // ═══ Section names yang parser detect ═══
+        val detectedSections = bridge.nativeGetSectionNames()
+        DebugLog.add("📋 Detected sections: ${detectedSections.joinToString(", ")}")
+
+        // ═══ Voice map ═══
         val voiceMap = mutableMapOf<Int, String>()
         try {
             val raw = bridge.nativeExtractVoiceMap(rawBytes)
@@ -35,12 +51,10 @@ class StyleRepository @Inject constructor(
         } catch (e: Exception) {
             DebugLog.add("❌ Voice map error: ${e.message}")
         }
-
         DebugLog.add("🎼 Voice map: $voiceMap")
 
         val ppq = bridge.nativeGetPpq()
-        val sectionNames = bridge.nativeGetSectionNames()
-        val sections = sectionNames.associateWith { sectionName ->
+        val sections = detectedSections.associateWith { sectionName ->
             val partCount = bridge.nativeGetPartCount(sectionName)
             val parts = (0 until partCount).map { partIndex ->
                 val name = bridge.nativeGetPartName(sectionName, partIndex)
