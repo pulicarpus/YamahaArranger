@@ -10,23 +10,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-/**
- * Drives playback of one style section: walks its note events in tick
- * order, sleeping between them based on the current tempo, looping back to
- * tick 0 at `lengthTicks`, and re-transposing every note through
- * [NoteTransposer] against whatever chord is currently held.
- *
- * IMPORTANT (Phase 2 known limitation): this scheduler runs on a Kotlin
- * coroutine using `delay()`, which is NOT sample-accurate — timer jitter
- * from the OS scheduler means bar timing can drift a few ms, acceptable
- * for now but not the "real-time MIDI processing" bar the full spec asks
- * for. Phase 2b/3 should move bar-accurate scheduling into the native
- * audio callback (sample-clock-driven, like a real sequencer) instead of
- * a coroutine loop — flagged here rather than glossed over.
- *
- * Parts named "Rhythm" (drums) are played back un-transposed since drum
- * channels map hit type to note number, not pitch.
- */
 class StyleSequencer(
     private val audioEngine: AudioEngineManager,
     private val scope: CoroutineScope
@@ -38,6 +21,17 @@ class StyleSequencer(
     fun play(section: StyleSectionModel, ppq: Int) {
         stop()
         playbackJob = scope.launch {
+            // Debug log awal
+            val totalEvents = section.parts.sumOf { it.events.size }
+            Timber.i("▶ StyleSequencer.play: ${section.name} " +
+                    "parts=${section.parts.size} events=$totalEvents " +
+                    "lengthTicks=${section.lengthTicks} ppq=$ppq bpm=$tempoBpm")
+
+            // DEBUG: log tiap part + jumlah event
+            section.parts.forEach { part ->
+                Timber.d("  Part '${part.name}': ${part.events.size} events")
+            }
+
             while (true) {
                 playOnce(section, ppq)
             }
@@ -48,31 +42,43 @@ class StyleSequencer(
         playbackJob?.cancel()
         playbackJob = null
         audioEngine.allNotesOff()
+        Timber.i("⏹ StyleSequencer.stop")
     }
 
-    /** Swap the section that plays on the *next* loop boundary, called by
-     * ArrangerBrain when the user taps a new section button — avoids
-     * cutting off mid-bar, per the "quantize to bar" requirement. */
     fun queueNextSection(section: StyleSectionModel, ppq: Int) {
-        play(section, ppq) // Phase 2 simplification: restarts immediately.
-        // TODO(Phase 2b): don't cancel the running job; instead swap the
-        // section reference and let the current loop finish its bar first.
+        play(section, ppq)
     }
 
     private suspend fun playOnce(section: StyleSectionModel, ppq: Int) {
         if (section.lengthTicks <= 0) {
             Timber.w("Section ${section.name} has zero length, skipping")
+            delay(500)
             return
         }
 
-        // Merge all parts into one time-ordered event stream; Rhythm
-        // parts skip transposition, melodic parts go through NoteTransposer.
         data class ScheduledEvent(val tick: Int, val event: StyleNoteEvent, val transpose: Boolean)
+
         val merged = section.parts.flatMap { part ->
             val shouldTranspose = !part.name.contains("rhythm", ignoreCase = true) &&
                                    !part.name.contains("drum", ignoreCase = true)
             part.events.map { ScheduledEvent(it.tick, it, shouldTranspose) }
         }.sortedBy { it.tick }
+
+        // ═══════════════════════════════════════════════════
+        // DEBUG: kalau tidak ada events, main test tone
+        // ═══════════════════════════════════════════════════
+        if (merged.isEmpty()) {
+            Timber.w("⚠ No note events in '${section.name}' — playing TEST TONE")
+            playTestTone()
+            return
+        }
+
+        Timber.d("Looping ${merged.size} events (first tick=${merged.first().tick}, " +
+                "last tick=${merged.last().tick}, lengthTicks=${section.lengthTicks})")
+
+        // Hitung total loop duration
+        val loopDurationMs = ticksToMillis(section.lengthTicks, ppq, tempoBpm)
+        val startTime = System.currentTimeMillis()
 
         var lastTick = 0
         for (scheduled in merged) {
@@ -91,17 +97,43 @@ class StyleSequencer(
 
             if (scheduled.event.isNoteOn) {
                 audioEngine.noteOn(note, scheduled.event.velocity / 127f)
+                Timber.v("  ♪ NoteOn  tick=${scheduled.tick} note=$note " +
+                        "vel=${scheduled.event.velocity}")
             } else {
                 audioEngine.noteOff(note)
+                Timber.v("  ♪ NoteOff tick=${scheduled.tick} note=$note")
             }
         }
 
-        // Wait out any remaining silence to the end of the bar before looping.
+        // ═══════════════════════════════════════════════════
+        // DEBUG: pastikan total waktu sesuai (kalau drift > 100ms, warn)
+        // ═══════════════════════════════════════════════════
+        val elapsed = System.currentTimeMillis() - startTime
+        val drift = elapsed - loopDurationMs
+        if (drift > 100) {
+            Timber.w("Loop drift: expected ${loopDurationMs}ms, actual ${elapsed}ms (drift=${drift}ms)")
+        }
+
+        // Tunggu sisa bar
         val remaining = section.lengthTicks - lastTick
         if (remaining > 0) delay(ticksToMillis(remaining, ppq, tempoBpm))
     }
 
+    /** Test tone: C-E-G arpeggio, 4× per detik, untuk konfirmasi audio engine hidup. */
+    private suspend fun playTestTone() {
+        val notes = intArrayOf(60, 64, 67) // C major
+        repeat(8) {
+            for (note in notes) {
+                audioEngine.noteOn(note, 0.8f)
+                delay(120)
+                audioEngine.noteOff(note)
+            }
+            delay(200)
+        }
+    }
+
     private fun ticksToMillis(ticks: Int, ppq: Int, bpm: Int): Long {
+        if (ppq <= 0 || bpm <= 0) return 0
         val msPerBeat = 60_000.0 / bpm
         val msPerTick = msPerBeat / ppq
         return (ticks * msPerTick).toLong().coerceAtLeast(0)
