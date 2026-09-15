@@ -16,7 +16,10 @@ bool SoundFontPlayer::load(const std::string& path) {
 
     tsf_set_output(font_, TSF_STEREO_INTERLEAVED, 48000, 0.0f);
 
-    // Default GM mapping per channel
+    // Volume master SF2 — turun dari 1.0 ke 0.7 untuk hindari clipping
+    tsf_set_volume(font_, 0.7f);
+
+    // Channel 0-8, 10-15: melodic (piano di program 0)
     tsf_channel_set_bank_preset(font_, 0, 0, 0);    // Piano
     tsf_channel_set_bank_preset(font_, 1, 0, 0);    // Piano
     tsf_channel_set_bank_preset(font_, 2, 0, 33);   // Finger Bass
@@ -26,12 +29,19 @@ bool SoundFontPlayer::load(const std::string& path) {
     tsf_channel_set_bank_preset(font_, 6, 0, 56);   // Trumpet (phrase1)
     tsf_channel_set_bank_preset(font_, 7, 0, 65);   // Alto Sax (phrase2)
     tsf_channel_set_bank_preset(font_, 8, 0, 0);    // Piano
-    tsf_channel_set_bank_preset(font_, 9, 128, 0);  // Drum Kit (bank 128)
     for (int ch = 10; ch < 16; ++ch) {
         tsf_channel_set_bank_preset(font_, ch, 0, 0);
     }
 
-    tsf_set_volume(font_, 1.0f);
+    // Channel 9: Drum. Cek apakah SF2 punya drum bank 128.
+    // Kalau tidak ada, fallback ke melodic supaya tidak silent.
+    int drumOk = tsf_channel_set_bank_preset(font_, 9, 128, 0);
+    if (drumOk == 0) {
+        LOGI("SF2 has no drum bank 128, ch9 fallback to melodic");
+        tsf_channel_set_bank_preset(font_, 9, 0, 0);
+    } else {
+        LOGI("Drum bank 128 assigned to ch9");
+    }
 
     LOGI("SF2 loaded OK, presets=%d", tsf_get_presetcount(font_));
     return true;
