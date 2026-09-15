@@ -87,6 +87,19 @@ fun MainScreen(
         Spacer(Modifier.height(10.dp))
 
         TransportRow(uiState.isPlaying, viewModel::onSyncStart, viewModel::onStartStop, viewModel::onTapTempo)
+        Spacer(Modifier.height(8.dp))
+
+        // Tombol TEST TONE untuk diagnosa audio engine
+        Button(
+            onClick = { viewModel.playTestTone() },
+            modifier = Modifier.fillMaxWidth().height(46.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary
+            )
+        ) {
+            Text("🔊 TEST TONE (C-E-G)", fontWeight = FontWeight.Bold)
+        }
+
         Spacer(Modifier.height(12.dp))
 
         RegistrationRow(uiState.activeBank, uiState.activeRegSlot,
