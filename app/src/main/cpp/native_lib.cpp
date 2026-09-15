@@ -2,6 +2,8 @@
 #include <memory>
 #include <vector>
 #include <android/log.h>
+#include <cstdio>
+#include <cstring>
 #include "audio_engine.h"
 #include "style_parser.h"
 
@@ -225,4 +227,47 @@ Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeGetPartEvents(
     jintArray result = env->NewIntArray(static_cast<jsize>(flat.size()));
     env->SetIntArrayRegion(result, 0, static_cast<jsize>(flat.size()), flat.data());
     return result;
+}
+
+// ═════════════════════════════════════════════════════
+// ★★★ FUNGSI BARU — CASM FINDER ★★★
+// ═════════════════════════════════════════════════════
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeFindCasm(
+    JNIEnv* env, jobject, jbyteArray styBytes) {
+    jsize len = env->GetArrayLength(styBytes);
+    std::vector<uint8_t> buf(len);
+    env->GetByteArrayRegion(styBytes, 0, len, reinterpret_cast<jbyte*>(buf.data()));
+
+    std::string result;
+
+    for (size_t i = 0; i + 8 <= buf.size(); ++i) {
+        if (buf[i] == 'C' && buf[i+1] == 'A' && buf[i+2] == 'S' && buf[i+3] == 'M') {
+            uint32_t casmLen = ((uint32_t)buf[i+4] << 24) |
+                               ((uint32_t)buf[i+5] << 16) |
+                               ((uint32_t)buf[i+6] << 8) |
+                               ((uint32_t)buf[i+7]);
+
+            char header[160];
+            snprintf(header, sizeof(header),
+                     "CASM@offset=%zu, len=%u", i, casmLen);
+            result += header;
+            result += "\n";
+
+            size_t dumpEnd = i + 8 + 32;
+            if (dumpEnd > buf.size()) dumpEnd = buf.size();
+            char hex[8];
+            for (size_t j = i; j < dumpEnd; ++j) {
+                snprintf(hex, sizeof(hex), "%02X ", buf[j]);
+                result += hex;
+                if ((j - i) % 16 == 15) result += "\n";
+            }
+            result += "\n";
+            break;
+        }
+    }
+
+    if (result.empty()) result = "CASM NOT FOUND";
+
+    return env->NewStringUTF(result.c_str());
 }
