@@ -21,7 +21,7 @@ bool AudioEngine::start() {
 
     oboe::Result result = builder.openStream(stream_);
     if (result != oboe::Result::OK) {
-        LOGE("LowLatency failed, retry default...");
+        LOGE("LowLatency failed, retry default");
         builder.setPerformanceMode(oboe::PerformanceMode::None);
         result = builder.openStream(stream_);
     }
@@ -39,7 +39,7 @@ bool AudioEngine::start() {
         return false;
     }
 
-    LOGI("AudioEngine started: sr=%d burst=%d", outputSampleRate_, stream_->getFramesPerBurst());
+    LOGI("AudioEngine started: sr=%d", outputSampleRate_);
     return true;
 }
 
@@ -69,31 +69,6 @@ oboe::DataCallbackResult AudioEngine::onAudioReady(
     if (soundFont_.isLoaded()) {
         soundFont_.render(out, numFrames);
 
-        // 1. Master gain + soft-clip
-        for (int i = 0; i < stereoFrames; ++i) {
-            float x = out[i] * 0.4f;
-            if (x > 0.75f) {
-                x = 0.75f + (x - 0.75f) * 0.25f;
-            } else if (x < -0.75f) {
-                x = -0.75f + (x + 0.75f) * 0.25f;
-            }
-            if (x > 1.0f) x = 1.0f;
-            if (x < -1.0f) x = -1.0f;
-            out[i] = x;
-        }
-
-        // 2. Lowpass filter — buang harshness 8kHz+
-        const float lpAlpha = 0.65f;
-        for (int f = 0; f < numFrames; ++f) {
-            const int iL = f * 2;
-            const int iR = iL + 1;
-            lpStateL_ = lpStateL_ + lpAlpha * (out[iL] - lpStateL_);
-            lpStateR_ = lpStateR_ + lpAlpha * (out[iR] - lpStateR_);
-            out[iL] = lpStateL_;
-            out[iR] = lpStateR_;
-        }
-
-        // 3. DC blocker
         for (int f = 0; f < numFrames; ++f) {
             const int iL = f * 2;
             const int iR = iL + 1;
@@ -114,7 +89,6 @@ oboe::DataCallbackResult AudioEngine::onAudioReady(
         return oboe::DataCallbackResult::Continue;
     }
 
-    // Fallback: sample-based voices (sine wave placeholder)
     std::lock_guard<std::mutex> lock(voiceMutex_);
     for (auto& v : voices_) {
         if (v.isActive()) {
