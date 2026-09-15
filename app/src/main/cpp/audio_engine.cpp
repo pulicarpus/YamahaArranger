@@ -31,7 +31,8 @@ bool AudioEngine::start() {
     }
 
     outputSampleRate_ = stream_->getSampleRate();
-    stream_->setBufferSizeInFrames(stream_->getFramesPerBurst() * 4);
+    // Buffer 8x burst — lebih tahan saat banyak note serentak
+    stream_->setBufferSizeInFrames(stream_->getFramesPerBurst() * 8);
 
     result = stream_->requestStart();
     if (result != oboe::Result::OK) {
@@ -65,14 +66,42 @@ oboe::DataCallbackResult AudioEngine::onAudioReady(
     const int stereoFrames = numFrames * 2;
     std::memset(out, 0, sizeof(float) * stereoFrames);
 
+    // ─── SF2 path ───
     if (soundFont_.isLoaded()) {
         soundFont_.render(out, numFrames);
+
+        // Soft-clip + master gain (0.35 untuk hindari clipping saat banyak note)
         for (int i = 0; i < stereoFrames; ++i) {
-            out[i] = std::max(-1.0f, std::min(1.0f, out[i] * 0.5f));
+            float x = out[i] * 0.35f;
+            if (x > 0.7f)      x = 0.7f + (x - 0.7f) * 0.3f;
+            else if (x < -0.7f) x = -0.7f + (x + 0.7f) * 0.3f;
+            if (x > 1.0f) x = 1.0f;
+            if (x < -1.0f) x = -1.0f;
+            out[i] = x;
         }
+
+        // DC blocker — hindari buzz dari bass note ekstrem / speaker DC offset
+        for (int f = 0; f < numFrames; ++f) {
+            const int iL = f * 2;
+            const int iR = iL + 1;
+
+            float inL = out[iL];
+            float outL = inL - dcLastInL_ + 0.995f * dcLastOutL_;
+            dcLastInL_ = inL;
+            dcLastOutL_ = outL;
+            out[iL] = outL;
+
+            float inR = out[iR];
+            float outR = inR - dcLastInR_ + 0.995f * dcLastOutR_;
+            dcLastInR_ = inR;
+            dcLastOutR_ = outR;
+            out[iR] = outR;
+        }
+
         return oboe::DataCallbackResult::Continue;
     }
 
+    // ─── Fallback: sample-based voices (sine wave placeholder) ───
     std::lock_guard<std::mutex> lock(voiceMutex_);
     for (auto& v : voices_) {
         if (v.isActive()) {
