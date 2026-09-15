@@ -9,12 +9,13 @@ public:
     void unload();
     bool isLoaded() const { return font_ != nullptr; }
 
-    // Render stereo interleaved float output
     void render(float* out, int numFrames);
 
     void noteOn(int channel, int key, float velocity);
     void noteOff(int channel, int key);
     void allNotesOff();
+
+    void setChannelPreset(int channel, int bank, int program);
 
     int presetCount() const;
 
