@@ -21,22 +21,21 @@ bool AudioEngine::start() {
 
     oboe::Result result = builder.openStream(stream_);
     if (result != oboe::Result::OK) {
-        LOGE("LowLatency failed (%s), retry default...", oboe::convertToText(result));
+        LOGE("LowLatency failed, retry default...");
         builder.setPerformanceMode(oboe::PerformanceMode::None);
         result = builder.openStream(stream_);
     }
     if (result != oboe::Result::OK) {
-        LOGE("Failed to open stream: %s", oboe::convertToText(result));
+        LOGE("Failed to open stream");
         return false;
     }
 
     outputSampleRate_ = stream_->getSampleRate();
-    // Buffer 8x burst — lebih tahan saat banyak note serentak
     stream_->setBufferSizeInFrames(stream_->getFramesPerBurst() * 8);
 
     result = stream_->requestStart();
     if (result != oboe::Result::OK) {
-        LOGE("Failed to start stream: %s", oboe::convertToText(result));
+        LOGE("Failed to start stream");
         return false;
     }
 
@@ -61,26 +60,40 @@ void AudioEngine::unloadSoundFont() {
 }
 
 oboe::DataCallbackResult AudioEngine::onAudioReady(
-        oboe::AudioStream* /*stream*/, void* audioData, int32_t numFrames) {
+        oboe::AudioStream* stream, void* audioData, int32_t numFrames) {
+    (void)stream;
     auto* out = static_cast<float*>(audioData);
     const int stereoFrames = numFrames * 2;
     std::memset(out, 0, sizeof(float) * stereoFrames);
 
-    // ─── SF2 path ───
     if (soundFont_.isLoaded()) {
         soundFont_.render(out, numFrames);
 
-        // Soft-clip + master gain (0.35 untuk hindari clipping saat banyak note)
+        // 1. Master gain + soft-clip
         for (int i = 0; i < stereoFrames; ++i) {
-            float x = out[i] * 0.35f;
-            if (x > 0.7f)      x = 0.7f + (x - 0.7f) * 0.3f;
-            else if (x < -0.7f) x = -0.7f + (x + 0.7f) * 0.3f;
+            float x = out[i] * 0.4f;
+            if (x > 0.75f) {
+                x = 0.75f + (x - 0.75f) * 0.25f;
+            } else if (x < -0.75f) {
+                x = -0.75f + (x + 0.75f) * 0.25f;
+            }
             if (x > 1.0f) x = 1.0f;
             if (x < -1.0f) x = -1.0f;
             out[i] = x;
         }
 
-        // DC blocker — hindari buzz dari bass note ekstrem / speaker DC offset
+        // 2. Lowpass filter — buang harshness 8kHz+
+        const float lpAlpha = 0.65f;
+        for (int f = 0; f < numFrames; ++f) {
+            const int iL = f * 2;
+            const int iR = iL + 1;
+            lpStateL_ = lpStateL_ + lpAlpha * (out[iL] - lpStateL_);
+            lpStateR_ = lpStateR_ + lpAlpha * (out[iR] - lpStateR_);
+            out[iL] = lpStateL_;
+            out[iR] = lpStateR_;
+        }
+
+        // 3. DC blocker
         for (int f = 0; f < numFrames; ++f) {
             const int iL = f * 2;
             const int iR = iL + 1;
@@ -101,7 +114,7 @@ oboe::DataCallbackResult AudioEngine::onAudioReady(
         return oboe::DataCallbackResult::Continue;
     }
 
-    // ─── Fallback: sample-based voices (sine wave placeholder) ───
+    // Fallback: sample-based voices (sine wave placeholder)
     std::lock_guard<std::mutex> lock(voiceMutex_);
     for (auto& v : voices_) {
         if (v.isActive()) {
