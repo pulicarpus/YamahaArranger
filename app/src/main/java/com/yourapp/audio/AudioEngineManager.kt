@@ -52,6 +52,7 @@ class AudioEngineManager @Inject constructor(
         DebugLog.add("🎼 SF2 unloaded")
     }
 
+    /** Note on default channel 0 (piano). */
     fun noteOn(midiNote: Int, velocity01: Float) {
         if (soundFontLoaded) {
             bridge.nativeSfNoteOn(midiNote, velocity01)
@@ -69,6 +70,25 @@ class AudioEngineManager @Inject constructor(
             bridge.nativeSfNoteOff(midiNote)
         } else {
             bridge.nativeNoteOff(midiNote)
+        }
+    }
+
+    /** Kirim note ke channel spesifik (0-15). Ch 9 = drum. */
+    fun noteOnChannel(channel: Int, midiNote: Int, velocity01: Float) {
+        if (soundFontLoaded) {
+            bridge.nativeSfNoteOnChannel(channel, midiNote, velocity01)
+        } else {
+            // Fallback: pakai sample mono (channel diabaikan)
+            noteOn(midiNote, velocity01)
+        }
+    }
+
+    /** Note-off dari channel spesifik. */
+    fun noteOffChannel(channel: Int, midiNote: Int) {
+        if (soundFontLoaded) {
+            bridge.nativeSfNoteOffChannel(channel, midiNote)
+        } else {
+            noteOff(midiNote)
         }
     }
 
