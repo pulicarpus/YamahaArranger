@@ -43,7 +43,11 @@ void SoundFontPlayer::noteOff(int channel, int key) {
 }
 
 void SoundFontPlayer::allNotesOff() {
-    if (font_) tsf_channel_sounds_off_all(font_);
+    if (!font_) return;
+    // TinySoundFont tidak punya "all channels off" — loop 16 channel MIDI
+    for (int ch = 0; ch < 16; ++ch) {
+        tsf_channel_sounds_off_all(font_, ch);
+    }
 }
 
 int SoundFontPlayer::presetCount() const {
