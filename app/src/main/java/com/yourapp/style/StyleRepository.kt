@@ -15,16 +15,28 @@ class StyleRepository @Inject constructor(
             return null
         }
 
-        // ═══ CASM DEBUG ═══
+        // ═══ Extract voice map dari CASM ═══
+        val voiceMap = mutableMapOf<Int, String>()
         try {
-            val casmInfo = bridge.nativeFindCasm(rawBytes)
-            DebugLog.add("🔍 CASM INFO:")
-            casmInfo.split("\n").forEach { line ->
-                if (line.isNotBlank()) DebugLog.add("  $line")
+            val raw = bridge.nativeExtractVoiceMap(rawBytes)
+            if (raw.isNotEmpty()) {
+                raw.split(";").forEach { entry ->
+                    if (entry.isBlank()) return@forEach
+                    val parts = entry.split(":", limit = 2)
+                    if (parts.size == 2) {
+                        val partNum = parts[0].toIntOrNull()
+                        val voiceName = parts[1].trim()
+                        if (partNum != null && partNum in 1..16 && voiceName.isNotEmpty()) {
+                            voiceMap[partNum] = voiceName
+                        }
+                    }
+                }
             }
         } catch (e: Exception) {
-            DebugLog.add("❌ CASM error: ${e.message}")
+            DebugLog.add("❌ Voice map error: ${e.message}")
         }
+
+        DebugLog.add("🎼 Voice map: $voiceMap")
 
         val ppq = bridge.nativeGetPpq()
         val sectionNames = bridge.nativeGetSectionNames()
@@ -60,6 +72,6 @@ class StyleRepository @Inject constructor(
             return null
         }
 
-        return ParsedStyle(fileName, ppq, sections)
+        return ParsedStyle(fileName, ppq, sections, voiceMap)
     }
 }
