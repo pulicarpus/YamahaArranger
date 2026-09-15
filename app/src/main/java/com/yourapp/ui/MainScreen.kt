@@ -67,7 +67,7 @@ fun MainScreen(
         )
 
         Spacer(Modifier.height(8.dp))
-        MidiStatusBar(midiStatus = uiState.midiStatus, onConnect = viewModel::refreshMidiConnection)
+        MidiStatusBar(uiState.midiStatus, viewModel::refreshMidiConnection)
         Spacer(Modifier.height(8.dp))
 
         SectionLabel("INTRO")
@@ -89,15 +89,17 @@ fun MainScreen(
         TransportRow(uiState.isPlaying, viewModel::onSyncStart, viewModel::onStartStop, viewModel::onTapTempo)
         Spacer(Modifier.height(8.dp))
 
-        // Tombol TEST TONE untuk diagnosa audio engine
+        // ═══════════════════════════════════════════
+        // TEST TONE — untuk diagnosa audio engine
+        // ═══════════════════════════════════════════
         Button(
             onClick = { viewModel.playTestTone() },
-            modifier = Modifier.fillMaxWidth().height(46.dp),
+            modifier = Modifier.fillMaxWidth().height(50.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary
+                containerColor = MaterialTheme.colorScheme.secondary
             )
         ) {
-            Text("🔊 TEST TONE (C-E-G)", fontWeight = FontWeight.Bold)
+            Text("🔊 TEST TONE (C-E-G)", fontWeight = FontWeight.Bold, fontSize = 16.sp)
         }
 
         Spacer(Modifier.height(12.dp))
@@ -117,31 +119,21 @@ fun MainScreen(
     }
 }
 
-// ═════════════════════════════════════════════════════
-// DEBUG PANEL — Menampilkan log internal
-// ═════════════════════════════════════════════════════
 @Composable
 private fun DebugPanel() {
     var logs by remember { mutableStateOf(listOf<String>()) }
-
     LaunchedEffect(Unit) {
         while (true) {
             logs = DebugLog.getAll()
             delay(500)
         }
     }
-
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(8.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(10.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
+            Row(modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+                verticalAlignment = Alignment.CenterVertically) {
                 Text("DEBUG LOG", style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                 TextButton(onClick = { DebugLog.clear() }) {
@@ -149,25 +141,18 @@ private fun DebugPanel() {
                 }
             }
             Spacer(Modifier.height(4.dp))
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp)
-                    .background(MaterialTheme.colorScheme.background, RoundedCornerShape(4.dp))
-                    .border(1.dp, MaterialTheme.colorScheme.surface, RoundedCornerShape(4.dp))
-                    .padding(6.dp)
-            ) {
+            Box(modifier = Modifier.fillMaxWidth().height(180.dp)
+                .background(MaterialTheme.colorScheme.background, RoundedCornerShape(4.dp))
+                .border(1.dp, MaterialTheme.colorScheme.surface, RoundedCornerShape(4.dp))
+                .padding(6.dp)) {
                 if (logs.isEmpty()) {
-                    Text("(no log yet)",
-                        style = MaterialTheme.typography.labelSmall,
+                    Text("(no log yet)", style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
                 } else {
                     Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                         logs.forEach { line ->
-                            Text(line,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 10.sp,
+                            Text(line, style = MaterialTheme.typography.labelSmall,
+                                fontFamily = FontFamily.Monospace, fontSize = 10.sp,
                                 color = MaterialTheme.colorScheme.onSurface)
                         }
                     }
@@ -176,10 +161,6 @@ private fun DebugPanel() {
         }
     }
 }
-
-// ═════════════════════════════════════════════════════
-// Semua komponen lain SAMA seperti sebelumnya
-// ═════════════════════════════════════════════════════
 
 @Composable
 private fun LcdDisplay(
