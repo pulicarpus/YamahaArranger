@@ -18,6 +18,9 @@ JavaVM* g_jvm = nullptr;
 jclass g_debugLogClass = nullptr;
 jmethodID g_debugLogAddMethod = nullptr;
 
+// ═════════════════════════════════════════════════════
+// LOGGER INIT
+// ═════════════════════════════════════════════════════
 extern "C" JNIEXPORT void JNICALL
 Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeInitLogger(
     JNIEnv* env, jobject) {
@@ -33,6 +36,9 @@ Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeInitLogger(
     __android_log_print(ANDROID_LOG_INFO, "NativeLib", "Logger initialized");
 }
 
+// ═════════════════════════════════════════════════════
+// AUDIO ENGINE
+// ═════════════════════════════════════════════════════
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeStart(JNIEnv*, jobject) {
     if (!g_engine) g_engine = std::make_unique<AudioEngine>();
@@ -66,6 +72,9 @@ Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeAllNotesOff(JNIEnv
     if (g_engine) g_engine->allNotesOff();
 }
 
+// ═════════════════════════════════════════════════════
+// SOUNDFONT
+// ═════════════════════════════════════════════════════
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeLoadSoundFont(
     JNIEnv* env, jobject, jstring path) {
@@ -118,6 +127,9 @@ Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetChannelPreset(
     if (g_engine) g_engine->sfSetChannelPreset(channel, bank, program);
 }
 
+// ═════════════════════════════════════════════════════
+// STYLE PARSER
+// ═════════════════════════════════════════════════════
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeParseStyle(
     JNIEnv* env, jobject, jbyteArray styBytes) {
@@ -218,7 +230,9 @@ Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeGetPartEvents(
     return result;
 }
 
-// ★★★ FUNGSI CASM FINDER v3 — dump 512 byte offset 100-500 ★★★
+// ═════════════════════════════════════════════════════
+// CASM FINDER
+// ═════════════════════════════════════════════════════
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeFindCasm(
     JNIEnv* env, jobject, jbyteArray styBytes) {
@@ -256,28 +270,6 @@ Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeFindCasm(
                 }
             }
             result += "\n";
-
-            size_t dumpStart = i + 100;
-            size_t dumpEnd = i + 500;
-            if (dumpStart > casmEnd) dumpStart = casmEnd;
-            if (dumpEnd > casmEnd) dumpEnd = casmEnd;
-
-            for (size_t j = dumpStart; j < dumpEnd; j += 16) {
-                char line[160];
-                int pos = snprintf(line, sizeof(line), "%04zu: ", j - i);
-                for (size_t k = 0; k < 16 && j + k < dumpEnd; ++k) {
-                    pos += snprintf(line + pos, sizeof(line) - pos, "%02X ", buf[j + k]);
-                }
-                pos += snprintf(line + pos, sizeof(line) - pos, " | ");
-                for (size_t k = 0; k < 16 && j + k < dumpEnd; ++k) {
-                    uint8_t c = buf[j + k];
-                    line[pos++] = (c >= 32 && c < 127) ? (char)c : '.';
-                }
-                line[pos] = 0;
-                result += line;
-                result += "\n";
-            }
-
             break;
         }
     }
@@ -285,8 +277,9 @@ Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeFindCasm(
     if (result.empty()) result = "CASM NOT FOUND";
     return env->NewStringUTF(result.c_str());
 }
+
 // ═════════════════════════════════════════════════════
-// ★★★ VOICE MAP EXTRACTOR ★★★
+// VOICE MAP EXTRACTOR
 // ═════════════════════════════════════════════════════
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeExtractVoiceMap(
@@ -297,7 +290,6 @@ Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeExtractVoiceMap(
 
     std::string result;
 
-    // Find CASM
     size_t casmStart = 0;
     uint32_t casmLen = 0;
     for (size_t i = 0; i + 8 <= buf.size(); ++i) {
@@ -315,27 +307,22 @@ Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeExtractVoiceMap(
     size_t casmEnd = casmStart + 8 + casmLen;
     if (casmEnd > buf.size()) casmEnd = buf.size();
 
-    // Scan for "Ctb2" markers
     size_t i = casmStart;
     while (i + 4 < casmEnd) {
         if (buf[i] == 'C' && buf[i+1] == 't' && buf[i+2] == 'b' && buf[i+3] == '2') {
             i += 4;
 
-            // Skip up to 8 bytes to find '/'
             int skip = 0;
             while (i < casmEnd && skip < 8 && buf[i] != '/') { i++; skip++; }
             if (i >= casmEnd || buf[i] != '/') continue;
             i++;
 
-            // Read part number (1 byte)
             if (i >= casmEnd) continue;
             int partNum = buf[i];
             i++;
 
-            // Skip whitespace / nulls
             while (i < casmEnd && (buf[i] == 0 || buf[i] == ' ')) i++;
 
-            // Read voice name (alphanumeric + dash + underscore)
             size_t nameStart = i;
             while (i < casmEnd &&
                    (std::isalnum(buf[i]) || buf[i] == '-' || buf[i] == '_')) {
@@ -347,7 +334,6 @@ Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeExtractVoiceMap(
                     reinterpret_cast<const char*>(buf.data() + nameStart),
                     i - nameStart);
 
-                // Skip if purely digits
                 bool allDigits = true;
                 for (char c : voiceName) {
                     if (!std::isdigit(static_cast<unsigned char>(c))) {
@@ -363,6 +349,37 @@ Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeExtractVoiceMap(
             continue;
         }
         i++;
+    }
+
+    return env->NewStringUTF(result.c_str());
+}
+
+// ═════════════════════════════════════════════════════
+// ★★★ MARKER DUMPER — BARU ★★★
+// ═════════════════════════════════════════════════════
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeDumpMarkers(
+    JNIEnv* env, jobject, jbyteArray styBytes) {
+    jsize len = env->GetArrayLength(styBytes);
+    std::vector<uint8_t> buf(len);
+    env->GetByteArrayRegion(styBytes, 0, len, reinterpret_cast<jbyte*>(buf.data()));
+
+    std::string result;
+    for (size_t i = 0; i + 3 < buf.size(); ++i) {
+        if (buf[i] == 0xFF && (buf[i+1] == 0x06 || buf[i+1] == 0x01)) {
+            uint8_t vlen = buf[i+2];
+            if (vlen > 0 && i + 3 + vlen <= buf.size()) {
+                std::string text(
+                    reinterpret_cast<const char*>(buf.data() + i + 3), vlen);
+                bool ok = true;
+                for (char c : text) {
+                    if (c < 32 || c > 126) { ok = false; break; }
+                }
+                if (ok && text.size() > 2 && text.size() < 60) {
+                    result += "[" + text + "] ";
+                }
+            }
+        }
     }
 
     return env->NewStringUTF(result.c_str());
