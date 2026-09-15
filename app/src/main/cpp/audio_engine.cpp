@@ -34,7 +34,7 @@ bool AudioEngine::start() {
     }
 
     outputSampleRate_ = stream_->getSampleRate();
-    stream_->setBufferSizeInFrames(stream_->getFramesPerBurst() * 2);
+    stream_->setBufferSizeInFrames(stream_->getFramesPerBurst() * 4);
 
     result = stream_->requestStart();
     if (result != oboe::Result::OK) {
@@ -72,9 +72,9 @@ oboe::DataCallbackResult AudioEngine::onAudioReady(
     if (soundFont_.isLoaded()) {
         soundFont_.render(out, numFrames);
 
-        // Soft limiter
+        // Soft limiter — 0.5 untuk hindari clipping
         for (int i = 0; i < stereoFrames; ++i) {
-            out[i] = std::max(-1.0f, std::min(1.0f, out[i] * 0.9f));
+            out[i] = std::max(-1.0f, std::min(1.0f, out[i] * 0.5f));
         }
         return oboe::DataCallbackResult::Continue;
     }
@@ -93,12 +93,12 @@ oboe::DataCallbackResult AudioEngine::onAudioReady(
     return oboe::DataCallbackResult::Continue;
 }
 
-void AudioEngine::sfNoteOn(int midiNote, float velocity01) {
-    soundFont_.noteOn(0, midiNote, velocity01);
+void AudioEngine::sfNoteOnChannel(int channel, int midiNote, float velocity01) {
+    soundFont_.noteOn(channel, midiNote, velocity01);
 }
 
-void AudioEngine::sfNoteOff(int midiNote) {
-    soundFont_.noteOff(0, midiNote);
+void AudioEngine::sfNoteOffChannel(int channel, int midiNote) {
+    soundFont_.noteOff(channel, midiNote);
 }
 
 void AudioEngine::noteOn(int midiNote, int rootNote, float velocity01,
