@@ -1,13 +1,16 @@
 #pragma once
 
 #include <string>
-#include "tsf.h"
+#include <fluidsynth.h>
 
 class SoundFontPlayer {
 public:
+    SoundFontPlayer();
+    ~SoundFontPlayer();
+
     bool load(const std::string& path);
     void unload();
-    bool isLoaded() const { return font_ != nullptr; }
+    bool isLoaded() const { return synth_ != nullptr && sfId_ >= 0; }
 
     void render(float* out, int numFrames);
 
@@ -16,9 +19,10 @@ public:
     void allNotesOff();
 
     void setChannelPreset(int channel, int bank, int program);
-
     int presetCount() const;
 
 private:
-    tsf* font_ = nullptr;
+    fluid_settings_t* settings_ = nullptr;
+    fluid_synth_t* synth_ = nullptr;
+    int sfId_ = -1;
 };
