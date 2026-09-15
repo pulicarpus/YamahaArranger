@@ -92,9 +92,6 @@ fun MainScreen(
         TransportRow(uiState.isPlaying, viewModel::onSyncStart, viewModel::onStartStop, viewModel::onTapTempo)
         Spacer(Modifier.height(8.dp))
 
-        // ═══════════════════════════════════════════════════
-        // TEST TONE — untuk diagnosa audio engine
-        // ═══════════════════════════════════════════════════
         Button(
             onClick = { viewModel.playTestTone() },
             modifier = Modifier.fillMaxWidth().height(50.dp),
@@ -105,6 +102,12 @@ fun MainScreen(
             Text("🔊 TEST TONE (C-E-G)", fontWeight = FontWeight.Bold, fontSize = 16.sp)
         }
 
+        Spacer(Modifier.height(12.dp))
+
+        VoiceSelectPanel(
+            voices = uiState.voiceAssignments,
+            onCycle = viewModel::cycleVoice
+        )
         Spacer(Modifier.height(12.dp))
 
         RegistrationRow(
@@ -130,6 +133,51 @@ fun MainScreen(
         Spacer(Modifier.height(10.dp))
 
         BottomBar(uiState.voiceName, uiState.right2Name, uiState.splitPoint)
+    }
+}
+
+// ═════════════════════════════════════════════════════
+// VOICE SELECT PANEL
+// ═════════════════════════════════════════════════════
+@Composable
+private fun VoiceSelectPanel(
+    voices: List<VoiceSlot>,
+    onCycle: (Int) -> Unit
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(10.dp)) {
+            Text(
+                "VOICE ASSIGN (tap untuk ganti)",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+            Spacer(Modifier.height(6.dp))
+            voices.forEach { slot ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(38.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "${slot.label} (ch${slot.channel})",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        modifier = Modifier.weight(1f)
+                    )
+                    TextButton(onClick = { onCycle(slot.channel) }) {
+                        Text(
+                            "🎼 ${slot.displayName()}",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -202,7 +250,7 @@ private fun DebugPanel() {
 }
 
 // ═════════════════════════════════════════════════════
-// HEADER — Style + BPM ± + Transpose ± + Chord + SF2
+// HEADER
 // ═════════════════════════════════════════════════════
 @Composable
 private fun LcdDisplay(
@@ -236,16 +284,10 @@ private fun LcdDisplay(
                     fontWeight = FontWeight.SemiBold
                 )
                 Spacer(Modifier.height(2.dp))
-                TextButton(
-                    onClick = onImportStyleClicked,
-                    contentPadding = PaddingValues(0.dp)
-                ) {
+                TextButton(onClick = onImportStyleClicked, contentPadding = PaddingValues(0.dp)) {
                     Text("Import .sty…", style = MaterialTheme.typography.labelSmall)
                 }
-                TextButton(
-                    onClick = onImportSoundFontClicked,
-                    contentPadding = PaddingValues(0.dp)
-                ) {
+                TextButton(onClick = onImportSoundFontClicked, contentPadding = PaddingValues(0.dp)) {
                     Text("🎼 SF2: $soundFontName", style = MaterialTheme.typography.labelSmall)
                 }
             }
@@ -275,11 +317,7 @@ private fun LcdDisplay(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     SmallSquareButton("−", onTempoDown)
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            "$tempoBpm",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Text("$tempoBpm", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                         Text("BPM", style = MaterialTheme.typography.labelSmall)
                     }
                     SmallSquareButton("+", onTempoUp)
@@ -307,17 +345,12 @@ private fun SmallSquareButton(label: String, onClick: () -> Unit) {
             contentColor = MaterialTheme.colorScheme.primary
         )
     ) {
-        Text(
-            label,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 10.dp)
-        )
+        Text(label, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 10.dp))
     }
 }
 
 // ═════════════════════════════════════════════════════
-// MIDI Bar
+// MIDI BAR
 // ═════════════════════════════════════════════════════
 @Composable
 private fun MidiStatusBar(midiStatus: String, onConnect: () -> Unit) {
@@ -347,7 +380,7 @@ private fun MidiStatusBar(midiStatus: String, onConnect: () -> Unit) {
 }
 
 // ═════════════════════════════════════════════════════
-// Section Label & Row
+// SECTION LABEL + ROW
 // ═════════════════════════════════════════════════════
 @Composable
 private fun SectionLabel(text: String) {
@@ -385,7 +418,7 @@ private fun SectionRow(sections: List<String>, activeSection: String, onSelect: 
 }
 
 // ═════════════════════════════════════════════════════
-// Transport
+// TRANSPORT
 // ═════════════════════════════════════════════════════
 @Composable
 private fun TransportRow(
@@ -411,7 +444,7 @@ private fun TransportRow(
 }
 
 // ═════════════════════════════════════════════════════
-// Registration
+// REGISTRATION
 // ═════════════════════════════════════════════════════
 @Composable
 private fun RegistrationRow(
@@ -441,12 +474,8 @@ private fun RegistrationRow(
                     Text("BANK", style = MaterialTheme.typography.labelSmall)
                     Spacer(Modifier.padding(horizontal = 4.dp))
                     SmallSquareButton("−") { onBankChange(activeBank - 1) }
-                    Text(
-                        "$activeBank",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 8.dp)
-                    )
+                    Text("$activeBank", style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp))
                     SmallSquareButton("+") { onBankChange(activeBank + 1) }
                 }
             }
@@ -477,7 +506,7 @@ private fun RegistrationRow(
 }
 
 // ═════════════════════════════════════════════════════
-// Volume
+// VOLUME
 // ═════════════════════════════════════════════════════
 @Composable
 private fun VolumePanel(
@@ -531,7 +560,7 @@ private fun VolumeSlider(label: String, value: Int, onChange: (Int) -> Unit) {
 }
 
 // ═════════════════════════════════════════════════════
-// Bottom Bar
+// BOTTOM BAR
 // ═════════════════════════════════════════════════════
 @Composable
 private fun BottomBar(voiceName: String, right2Name: String, splitPoint: String) {
@@ -544,11 +573,8 @@ private fun BottomBar(voiceName: String, right2Name: String, splitPoint: String)
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(
-                "🎹 $voiceName",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
+            Text("🎹 $voiceName", style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary)
             Text("Right2: $right2Name", style = MaterialTheme.typography.labelMedium)
             Text("Split: $splitPoint", style = MaterialTheme.typography.labelMedium)
         }
