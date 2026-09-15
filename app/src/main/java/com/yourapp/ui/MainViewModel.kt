@@ -31,6 +31,7 @@ object DebugLog {
     private val _lines = ConcurrentLinkedQueue<String>()
     private const val MAX_LINES = 30
 
+    @JvmStatic
     fun add(msg: String) {
         val ts = SimpleDateFormat("HH:mm:ss", Locale.US).format(Date())
         _lines.add("[$ts] $msg")
