@@ -1,10 +1,44 @@
 #include "soundfont_player.h"
 #include <android/log.h>
 #include <mutex>
+#include <cstdarg>
+#include <cstdio>
+#include <jni.h>
 
 #define LOG_TAG "FluidSynthPlayer"
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+
+extern JavaVM* g_jvm;
+extern jclass g_debugLogClass;
+extern jmethodID g_debugLogAddMethod;
+
+static void uiLog(const char* fmt, ...) {
+    char buf[512];
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+
+    __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "%s", buf);
+
+    if (g_jvm && g_debugLogClass && g_debugLogAddMethod) {
+        JNIEnv* env = nullptr;
+        bool attached = false;
+        if (g_jvm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK) {
+            if (g_jvm->AttachCurrentThread(&env, nullptr) == JNI_OK) {
+                attached = true;
+            }
+        }
+        if (env) {
+            jstring jmsg = env->NewStringUTF(buf);
+            env->CallStaticVoidMethod(g_debugLogClass, g_debugLogAddMethod, jmsg);
+            env->DeleteLocalRef(jmsg);
+            if (attached) g_jvm->DetachCurrentThread();
+        }
+    }
+}
+
+#define LOGI(...) uiLog(__VA_ARGS__)
+#define LOGE(...) uiLog(__VA_ARGS__)
 
 static std::mutex g_synthMutex;
 
@@ -21,7 +55,6 @@ SoundFontPlayer::SoundFontPlayer() {
     fluid_settings_setnum(settings_, "synth.gain", 0.7);
     fluid_settings_setint(settings_, "synth.reverb.active", 1);
     fluid_settings_setint(settings_, "synth.chorus.active", 1);
-
     fluid_settings_setstr(settings_, "audio.driver", "null");
 
     LOGI("Creating FluidSynth synth...");
@@ -49,10 +82,9 @@ SoundFontPlayer::~SoundFontPlayer() {
 
 bool SoundFontPlayer::load(const std::string& path) {
     if (!synth_) {
-        LOGE("Cannot load SF2 — synth null");
+        LOGE("Cannot load SF2 - synth null");
         return false;
     }
-
     std::lock_guard<std::mutex> lock(g_synthMutex);
 
     LOGI("Loading SF2: %s", path.c_str());
