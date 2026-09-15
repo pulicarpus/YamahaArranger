@@ -42,6 +42,67 @@ object DebugLog {
     fun clear() = _lines.clear()
 }
 
+/** Slot voice per channel. */
+data class VoiceSlot(
+    val channel: Int,
+    val label: String,
+    val program: Int
+) {
+    fun displayName(): String =
+        GM_VOICES.firstOrNull { it.second == program }?.first ?: "prog$program"
+}
+
+/** Katalog voice GM + beberapa variasi. */
+val GM_VOICES: List<Pair<String, Int>> = listOf(
+    "Piano" to 0,
+    "Bright Piano" to 1,
+    "E.Piano" to 4,
+    "Harpsichord" to 6,
+    "Organ" to 16,
+    "Church Organ" to 19,
+    "Accordion" to 21,
+    "Nylon Guitar" to 24,
+    "Steel Guitar" to 25,
+    "Jazz Guitar" to 26,
+    "Clean Guitar" to 27,
+    "Overdrive Gt" to 29,
+    "Finger Bass" to 33,
+    "Pick Bass" to 34,
+    "Slap Bass" to 36,
+    "Synth Bass" to 38,
+    "Violin" to 40,
+    "Viola" to 41,
+    "Cello" to 42,
+    "Strings" to 48,
+    "Slow Strings" to 51,
+    "Choir" to 52,
+    "Trumpet" to 56,
+    "Trombone" to 57,
+    "Tuba" to 58,
+    "Brass" to 61,
+    "Soprano Sax" to 64,
+    "Alto Sax" to 65,
+    "Tenor Sax" to 66,
+    "Oboe" to 68,
+    "English Horn" to 69,
+    "Bassoon" to 70,
+    "Clarinet" to 71,
+    "Flute" to 73,
+    "Pan Flute" to 75,
+    "Synth Lead" to 80,
+    "Synth Pad" to 89,
+    "FX" to 96
+)
+
+fun defaultVoices(): List<VoiceSlot> = listOf(
+    VoiceSlot(2, "Bass", 33),
+    VoiceSlot(3, "Chord1", 0),
+    VoiceSlot(4, "Chord2", 24),
+    VoiceSlot(5, "Pad", 48),
+    VoiceSlot(6, "Phrase1", 56),
+    VoiceSlot(7, "Phrase2", 65)
+)
+
 data class MainUiState(
     val styleName: String = "No Style Loaded",
     val tempoBpm: Int = 120,
@@ -58,7 +119,8 @@ data class MainUiState(
     val activeRegSlot: Int = 0,
     val voiceName: String = "GrandPiano",
     val right2Name: String = "OFF",
-    val splitPoint: String = "C4"
+    val splitPoint: String = "C4",
+    val voiceAssignments: List<VoiceSlot> = defaultVoices()
 )
 
 @HiltViewModel
@@ -79,6 +141,7 @@ class MainViewModel @Inject constructor(
     private val _masterVolume = MutableStateFlow(110)
     private val _activeBank = MutableStateFlow(1)
     private val _activeRegSlot = MutableStateFlow(0)
+    private val _voiceAssignments = MutableStateFlow(defaultVoices())
 
     val uiState: StateFlow<MainUiState> =
         combine(
@@ -86,8 +149,10 @@ class MainViewModel @Inject constructor(
             combine(_styleName, _midiStatus) { s, m -> s to m },
             combine(_transpose, _soundFontName) { t, sf -> t to sf },
             combine(_voiceVolume, _masterVolume) { vv, mv -> vv to mv },
-            combine(_activeBank, _activeRegSlot) { b, r -> b to r }
-        ) { arranger, (styleName, midi), (transpose, sfName), (voiceVol, masterVol), (bank, regSlot) ->
+            combine(_activeBank, _activeRegSlot) { b, r -> b to r },
+            _voiceAssignments
+        ) { arranger, (styleName, midi), (transpose, sfName),
+            (voiceVol, masterVol), (bank, regSlot), voices ->
             MainUiState(
                 styleName = styleName,
                 tempoBpm = arranger.tempoBpm,
@@ -100,14 +165,15 @@ class MainViewModel @Inject constructor(
                 voiceVolume = voiceVol,
                 masterVolume = masterVol,
                 activeBank = bank,
-                activeRegSlot = regSlot
+                activeRegSlot = regSlot,
+                voiceAssignments = voices
             )
         }.stateIn(viewModelScope, SharingStarted.Eagerly, MainUiState())
 
     init {
         arrangerBrain.attachScope(viewModelScope)
         audioEngine.start()
-        DebugLog.add("🎵 ViewModel init — audio start called")
+        DebugLog.add("🎵 ViewModel init")
 
         midiInputManager.onNoteOn = { note, velocity ->
             arrangerBrain.onKeyboardNoteOn(note, velocity / 127f)
@@ -117,7 +183,7 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    // MIDI
+    // ═══════════ MIDI ═══════════
     fun connectFirstAvailableMidiDevice() {
         viewModelScope.launch {
             repeat(5) { attempt ->
@@ -144,13 +210,14 @@ class MainViewModel @Inject constructor(
         super.onCleared()
     }
 
-    // KEYBOARD
+    // ═══════════ KEYBOARD ═══════════
     fun onKeyboardNoteOn(midiNote: Int, velocity: Float) =
         arrangerBrain.onKeyboardNoteOn(midiNote, velocity)
+
     fun onKeyboardNoteOff(midiNote: Int) =
         arrangerBrain.onKeyboardNoteOff(midiNote)
 
-    // SECTION
+    // ═══════════ SECTION ═══════════
     fun onSectionSelected(sectionLabel: String) {
         val section = SECTION_BUTTON_MAP[sectionLabel] ?: return
         if (section in MAIN_VARIATIONS) {
@@ -160,12 +227,12 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    // TRANSPORT
-    fun onSyncStart() {}
+    // ═══════════ TRANSPORT ═══════════
+    fun onSyncStart() { /* TODO */ }
     fun onStartStop() = arrangerBrain.startStop()
-    fun onTapTempo() {}
+    fun onTapTempo() { /* TODO */ }
 
-    // TEMPO
+    // ═══════════ TEMPO ═══════════
     fun onTempoDown() {
         val newTempo = (arrangerBrain.state.value.tempoBpm - 5).coerceIn(20, 280)
         arrangerBrain.setTempo(newTempo)
@@ -175,21 +242,40 @@ class MainViewModel @Inject constructor(
         arrangerBrain.setTempo(newTempo)
     }
 
-    // TRANSPOSE
+    // ═══════════ TRANSPOSE ═══════════
     fun onTransposeDown() { _transpose.value = (_transpose.value - 1).coerceIn(-12, 12) }
     fun onTransposeUp() { _transpose.value = (_transpose.value + 1).coerceIn(-12, 12) }
 
-    // VOLUME
+    // ═══════════ VOLUME ═══════════
     fun onStyleVolumeChange(value: Int) { _styleVolume.value = value }
     fun onVoiceVolumeChange(value: Int) { _voiceVolume.value = value }
     fun onMasterVolumeChange(value: Int) { _masterVolume.value = value }
 
-    // REGISTRATION
+    // ═══════════ REGISTRATION ═══════════
     fun onBankChange(bank: Int) { _activeBank.value = bank.coerceIn(1, 8) }
     fun onRegSlotTap(slot: Int) { _activeRegSlot.value = slot }
     fun onRegSlotSave(slot: Int) { Timber.i("Save reg bank=${_activeBank.value} slot=$slot") }
 
-    // TEST TONE
+    // ═══════════ VOICE ASSIGN ═══════════
+    fun cycleVoice(channel: Int) {
+        val current = _voiceAssignments.value
+        val updated = current.map { slot ->
+            if (slot.channel == channel) {
+                val currIdx = GM_VOICES.indexOfFirst { it.second == slot.program }
+                val nextIdx = if (currIdx < 0) 0 else (currIdx + 1) % GM_VOICES.size
+                val newProg = GM_VOICES[nextIdx].second
+                val newName = GM_VOICES[nextIdx].first
+                audioEngine.setChannelProgram(channel, newProg, 0)
+                DebugLog.add("🎼 ${slot.label} ch$channel → $newName")
+                slot.copy(program = newProg)
+            } else {
+                slot
+            }
+        }
+        _voiceAssignments.value = updated
+    }
+
+    // ═══════════ TEST TONE ═══════════
     fun playTestTone() {
         viewModelScope.launch {
             DebugLog.add("🔊 TEST TONE: starting…")
@@ -202,7 +288,7 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    // STYLE PICKER
+    // ═══════════ STYLE PICKER ═══════════
     fun onStyleFilePicked(uri: Uri) {
         viewModelScope.launch {
             val bytes = withContext(Dispatchers.IO) { contentResolver.readBytes(uri) }
@@ -224,21 +310,18 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    // SOUNDFONT PICKER
+    // ═══════════ SOUNDFONT PICKER ═══════════
     fun onSoundFontFilePicked(uri: Uri) {
         viewModelScope.launch {
-            DebugLog.add("📂 SF2 picker: opening…")
+            DebugLog.add("📂 SF2 picker…")
             val fileName = contentResolver.fileName(uri) ?: "font.sf2"
 
-            // Copy ke filesDir supaya native fopen() bisa akses
             val destFile = File(contentResolver.getFilesDir(), "user.sf2")
             val copied = withContext(Dispatchers.IO) {
                 try {
                     val input = contentResolver.openInputStream(uri) ?: return@withContext false
                     val output = FileOutputStream(destFile)
-                    input.use { inp ->
-                        output.use { out -> inp.copyTo(out) }
-                    }
+                    input.use { inp -> output.use { out -> inp.copyTo(out) } }
                     true
                 } catch (e: Exception) {
                     Timber.e(e, "Copy SF2 failed")
@@ -249,9 +332,8 @@ class MainViewModel @Inject constructor(
                 DebugLog.add("❌ Copy SF2 failed")
                 return@launch
             }
-            DebugLog.add("📂 SF2 copied → ${destFile.name} (${destFile.length()/1024/1024} MB)")
+            DebugLog.add("📂 SF2 copied: ${destFile.length()/1024/1024} MB")
 
-            // Load native
             val ok = withContext(Dispatchers.Default) {
                 audioEngine.loadSoundFont(destFile.absolutePath)
             }
@@ -281,6 +363,7 @@ class MainViewModel @Inject constructor(
             ArrangerSection.MainA, ArrangerSection.MainB,
             ArrangerSection.MainC, ArrangerSection.MainD
         )
+
         private fun displayLabelFor(section: ArrangerSection): String =
             SECTION_BUTTON_MAP.entries.firstOrNull { it.value == section }?.key ?: section.name
     }
