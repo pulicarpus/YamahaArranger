@@ -1,5 +1,6 @@
 package com.yourapp.yamahaarranger.style
 
+import com.yourapp.yamahaarranger.ui.DebugLog
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -8,11 +9,21 @@ import javax.inject.Singleton
 class StyleRepository @Inject constructor(
     private val bridge: NativeStyleBridge
 ) {
-    /** Returns null if the file couldn't be parsed as an SMF-based .sty. */
     fun loadStyle(fileName: String, rawBytes: ByteArray): ParsedStyle? {
         if (!bridge.nativeParseStyle(rawBytes)) {
             Timber.w("Failed to parse style: $fileName")
             return null
+        }
+
+        // ═══ CASM DEBUG ═══
+        try {
+            val casmInfo = bridge.nativeFindCasm(rawBytes)
+            DebugLog.add("🔍 CASM INFO:")
+            casmInfo.split("\n").forEach { line ->
+                if (line.isNotBlank()) DebugLog.add("  $line")
+            }
+        } catch (e: Exception) {
+            DebugLog.add("❌ CASM error: ${e.message}")
         }
 
         val ppq = bridge.nativeGetPpq()
@@ -45,7 +56,7 @@ class StyleRepository @Inject constructor(
         }
 
         if (sections.isEmpty()) {
-            Timber.w("Style parsed but yielded no recognizable sections: $fileName")
+            Timber.w("Style parsed but yielded no sections: $fileName")
             return null
         }
 
