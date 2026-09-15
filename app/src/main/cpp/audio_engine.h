@@ -39,13 +39,8 @@ private:
 
     SoundFontPlayer soundFont_;
 
-    // DC blocker state
     float dcLastInL_ = 0.0f;
     float dcLastOutL_ = 0.0f;
     float dcLastInR_ = 0.0f;
     float dcLastOutR_ = 0.0f;
-
-    // Lowpass filter state
-    float lpStateL_ = 0.0f;
-    float lpStateR_ = 0.0f;
 };
