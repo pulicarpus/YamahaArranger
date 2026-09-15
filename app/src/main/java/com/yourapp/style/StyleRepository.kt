@@ -23,16 +23,17 @@ class StyleRepository @Inject constructor(
                 val name = bridge.nativeGetPartName(sectionName, partIndex)
                 val flat = bridge.nativeGetPartEvents(sectionName, partIndex)
                 val events = buildList {
-                    var i = 0
-                    while (i + 3 < flat.size) {
-                        val tick = flat[i]
-                        val status = flat[i + 1]
-                        val data1 = flat[i + 2]
-                        val data2 = flat[i + 3]
-                        val isNoteOn = (status and 0xF0) == 0x90 && data2 > 0
-                        add(StyleNoteEvent(tick, isNoteOn, data1, data2))
-                        i += 4
-                    }
+                                            var i = 0
+                        while (i + 3 < flat.size) {
+                            val tick = flat[i]
+                            val status = flat[i + 1]
+                            val data1 = flat[i + 2]
+                            val data2 = flat[i + 3]
+                            val isNoteOn = (status and 0xF0) == 0x90 && data2 > 0
+                            val midiChannel = status and 0x0F
+                            add(StyleNoteEvent(tick, isNoteOn, data1, data2, midiChannel))
+                            i += 4
+                        }
                 }
                 StylePartModel(name, events)
             }
