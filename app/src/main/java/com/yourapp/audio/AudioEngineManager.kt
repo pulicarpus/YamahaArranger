@@ -1,14 +1,10 @@
 package com.yourapp.yamahaarranger.audio
 
+import com.yourapp.yamahaarranger.ui.DebugLog
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Public entry point the rest of the app (ChordEngine, ArrangerBrain,
- * on-screen keyboard) talks to. Wraps NativeAudioBridge so nothing outside
- * this package needs to know JNI details.
- */
 @Singleton
 class AudioEngineManager @Inject constructor(
     private val bridge: NativeAudioBridge,
@@ -17,22 +13,48 @@ class AudioEngineManager @Inject constructor(
     private var started = false
 
     fun start() {
-        if (started) return
-        started = bridge.nativeStart()
-        if (!started) Timber.e("AudioEngine failed to start — check Oboe/device audio config")
+        if (started) {
+            DebugLog.add("🎵 AudioEngine already started")
+            return
+        }
+        DebugLog.add("🎵 AudioEngine.start() called…")
+        val ok = bridge.nativeStart()
+        started = ok
+        if (!ok) {
+            DebugLog.add("❌ AudioEngine FAILED to start — check RECORD_AUDIO permission or Oboe config")
+        } else {
+            DebugLog.add("✅ AudioEngine started OK")
+        }
     }
 
     fun stop() {
         if (!started) return
         bridge.nativeStop()
         started = false
+        DebugLog.add("🛑 AudioEngine stopped")
     }
 
-    /** velocity01 in [0, 1]. Voice/instrument selection is Phase 1's single
-     * GM piano patch; multi-timbral routing (Right1/Right2/Left splits) is
-     * Phase 2 (see arranger/VoiceLayer.kt TODO). */
+    /** Test tone helper — bypass sample provider, pakai sample bawaan. */
+    fun testTone(note: Int, velocity: Float) {
+        val sample = sampleProvider.sampleForNote(note)
+        if (sample == null) {
+            DebugLog.add("❌ sampleForNote($note) returned NULL")
+            return
+        }
+        DebugLog.add("🎵 testTone note=$note, sample.frames=${sample.frameCount}, " +
+                "sampleRate=${sample.sampleRateHz}, rootNote=${sample.rootNote}")
+        bridge.nativeNoteOn(
+            note, sample.rootNote, velocity,
+            sample.buffer, sample.frameCount, sample.sampleRateHz
+        )
+    }
+
     fun noteOn(midiNote: Int, velocity01: Float) {
-        val sample = sampleProvider.sampleForNote(midiNote) ?: return
+        val sample = sampleProvider.sampleForNote(midiNote)
+        if (sample == null) {
+            Timber.w("sampleForNote($midiNote) returned null")
+            return
+        }
         bridge.nativeNoteOn(
             midiNote, sample.rootNote, velocity01,
             sample.buffer, sample.frameCount, sample.sampleRateHz
