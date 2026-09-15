@@ -3,10 +3,44 @@
 #include <cstring>
 #include <algorithm>
 #include <cmath>
+#include <cstdarg>
+#include <cstdio>
+#include <jni.h>
 
 #define LOG_TAG "AudioEngine"
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+
+extern JavaVM* g_jvm;
+extern jclass g_debugLogClass;
+extern jmethodID g_debugLogAddMethod;
+
+static void uiLog(const char* fmt, ...) {
+    char buf[512];
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+
+    __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "%s", buf);
+
+    if (g_jvm && g_debugLogClass && g_debugLogAddMethod) {
+        JNIEnv* env = nullptr;
+        bool attached = false;
+        if (g_jvm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK) {
+            if (g_jvm->AttachCurrentThread(&env, nullptr) == JNI_OK) {
+                attached = true;
+            }
+        }
+        if (env) {
+            jstring jmsg = env->NewStringUTF(buf);
+            env->CallStaticVoidMethod(g_debugLogClass, g_debugLogAddMethod, jmsg);
+            env->DeleteLocalRef(jmsg);
+            if (attached) g_jvm->DetachCurrentThread();
+        }
+    }
+}
+
+#define LOGI(...) uiLog(__VA_ARGS__)
+#define LOGE(...) uiLog(__VA_ARGS__)
 
 bool AudioEngine::start() {
     LOGI("AudioEngine.start() called");
@@ -24,26 +58,23 @@ bool AudioEngine::start() {
 
     oboe::Result result = builder.openStream(stream_);
     if (result != oboe::Result::OK) {
-        LOGE("LowLatency failed (%s), retry default", oboe::convertToText(result));
+        LOGE("LowLatency failed, retry default");
         builder.setPerformanceMode(oboe::PerformanceMode::None);
         result = builder.openStream(stream_);
     }
     if (result != oboe::Result::OK) {
-        LOGE("Failed to open stream: %s", oboe::convertToText(result));
+        LOGE("Failed to open stream");
         return false;
     }
 
     outputSampleRate_ = stream_->getSampleRate();
-    LOGI("Stream opened: sr=%d ch=%d format=%d",
-         outputSampleRate_,
-         stream_->getChannelCount(),
-         (int)stream_->getFormat());
+    LOGI("Stream opened: sr=%d ch=%d", outputSampleRate_, stream_->getChannelCount());
 
     stream_->setBufferSizeInFrames(stream_->getFramesPerBurst() * 8);
 
     result = stream_->requestStart();
     if (result != oboe::Result::OK) {
-        LOGE("Failed to start stream: %s", oboe::convertToText(result));
+        LOGE("Failed to start stream");
         return false;
     }
 
@@ -60,7 +91,7 @@ void AudioEngine::stop() {
 }
 
 bool AudioEngine::loadSoundFont(const std::string& path) {
-    LOGI("loadSoundFont called: %s", path.c_str());
+    LOGI("loadSoundFont: %s", path.c_str());
     bool ok = soundFont_.load(path);
     LOGI("loadSoundFont result: %s", ok ? "OK" : "FAILED");
     return ok;
@@ -76,12 +107,7 @@ oboe::DataCallbackResult AudioEngine::onAudioReady(
 
     static int callbackCount = 0;
     callbackCount++;
-    bool logNow = (callbackCount % 100 == 1);
-
-    if (logNow) {
-        LOGI("onAudioReady #%d frames=%d sf2=%d",
-             callbackCount, numFrames, soundFont_.isLoaded() ? 1 : 0);
-    }
+    bool logNow = (callbackCount % 200 == 1);
 
     auto* out = static_cast<float*>(audioData);
     const int stereoFrames = numFrames * 2;
@@ -96,7 +122,7 @@ oboe::DataCallbackResult AudioEngine::onAudioReady(
                 float v = std::fabs(out[i]);
                 if (v > peak) peak = v;
             }
-            LOGI("SF2 render peak=%.5f", peak);
+            LOGI("onAudioReady #%d peak=%.5f", callbackCount, peak);
         }
 
         for (int f = 0; f < numFrames; ++f) {
