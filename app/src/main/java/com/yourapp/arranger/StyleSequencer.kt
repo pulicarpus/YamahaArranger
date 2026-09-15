@@ -56,7 +56,6 @@ class StyleSequencer(
             val channel: Int
         )
 
-        // Pakai channel ASLI dari event (dari status byte MIDI)
         val merged = section.parts.flatMap { part ->
             part.events.map { ev ->
                 val isDrum = ev.channel == 9
