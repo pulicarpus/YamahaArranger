@@ -1,10 +1,10 @@
 package com.yourapp.yamahaarranger.arranger
 
-import com.yourapp.yamahaarranger.ui.DebugLog
 import com.yourapp.yamahaarranger.audio.AudioEngineManager
 import com.yourapp.yamahaarranger.chord.ChordDetector
 import com.yourapp.yamahaarranger.chord.DetectedChord
 import com.yourapp.yamahaarranger.style.ParsedStyle
+import com.yourapp.yamahaarranger.ui.DebugLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -42,22 +42,24 @@ class ArrangerBrain @Inject constructor(
     private val _state = MutableStateFlow(ArrangerState())
     val state: StateFlow<ArrangerState> = _state.asStateFlow()
 
-    // ═════════════════════════════════════════════════════
-    // INIT — dipanggil dari MainViewModel
-    // ═════════════════════════════════════════════════════
+    private val mainVariations = setOf(
+        ArrangerSection.MainA, ArrangerSection.MainB,
+        ArrangerSection.MainC, ArrangerSection.MainD
+    )
+    private val fillVariations = setOf(
+        ArrangerSection.FillAA, ArrangerSection.FillBB,
+        ArrangerSection.FillCC, ArrangerSection.FillDD
+    )
+
     fun attachScope(scope: CoroutineScope) {
         externalScope = scope
         sequencer = StyleSequencer(audioEngine, scope)
-        Timber.i("ArrangerBrain: scope attached, sequencer initialized")
+        Timber.i("ArrangerBrain: scope attached")
     }
 
-    /** Safe check: buat sequencer kalau belum ada (fallback). */
     private fun ensureSequencer() {
         if (!::sequencer.isInitialized) {
-            Timber.w("Sequencer not initialized — creating fallback")
-            val scope = externalScope ?: CoroutineScope(
-                Dispatchers.Main + SupervisorJob()
-            )
+            val scope = externalScope ?: CoroutineScope(Dispatchers.Main + SupervisorJob())
             sequencer = StyleSequencer(audioEngine, scope)
         }
     }
@@ -69,12 +71,8 @@ class ArrangerBrain @Inject constructor(
         sequencer.setVoiceMap(style.voiceMap)
         _state.update { it.copy(tempoBpm = style.defaultTempoBpm) }
         Timber.i("Style loaded: ${style.fileName}, voices=${style.voiceMap.size}")
-        DebugLog.add("🎼 Style loaded with ${style.voiceMap.size} voices")
     }
 
-    // ═════════════════════════════════════════════════════
-    // KEYBOARD EVENTS (dari E343 atau virtual keyboard)
-    // ═════════════════════════════════════════════════════
     fun onKeyboardNoteOn(midiNote: Int, velocity: Float) {
         audioEngine.noteOn(midiNote, velocity)
         chordDetector.noteOn(midiNote)?.let(::onChordChanged)
@@ -93,14 +91,11 @@ class ArrangerBrain @Inject constructor(
         _state.update { it.copy(currentChordLabel = chord.label()) }
     }
 
-    // ═════════════════════════════════════════════════════
-    // TRANSPORT (Start / Stop)
-    // ═════════════════════════════════════════════════════
     fun startStop() {
         ensureSequencer()
         val style = loadedStyle
         if (style == null) {
-            Timber.w("startStop() called with no style loaded")
+            Timber.w("startStop with no style loaded")
             return
         }
         if (_state.value.isPlaying) {
@@ -112,9 +107,10 @@ class ArrangerBrain @Inject constructor(
         }
     }
 
-    // ═════════════════════════════════════════════════════
-    // SECTION SELECTION
-    // ═════════════════════════════════════════════════════
+    /**
+     * MAIN VARIATION — kalau sebelumnya main variation lain, putar fill dulu.
+     * Kalau sebelumnya FILL / INTRO / ENDING, langsung putar main.
+     */
     fun selectMainVariation(target: ArrangerSection) {
         ensureSequencer()
         val wasPlaying = _state.value.isPlaying
@@ -123,14 +119,20 @@ class ArrangerBrain @Inject constructor(
 
         if (!wasPlaying) return
 
+        val previousWasMain = previous in mainVariations
         val fill = fillFor(target)
-        if (previous != target && fill != null && sectionExists(fill)) {
+
+        if (previousWasMain && previous != target && fill != null && sectionExists(fill)) {
+            // Pindah dari main ke main lain → putar fill dulu
+            DebugLog.add("🎼 Main→Main: play fill $fill then $target")
             playSection(fill, thenPlay = target)
         } else {
+            // Dari fill/intro/ending, atau main yang sama → langsung main
             playSection(target)
         }
     }
 
+    /** FILL / INTRO / ENDING — langsung putar. */
     fun selectSection(target: ArrangerSection) {
         ensureSequencer()
         _state.update { it.copy(currentSection = target) }
@@ -154,7 +156,8 @@ class ArrangerBrain @Inject constructor(
         }
         sequencer.play(model, style.ppq)
         if (thenPlay != null) {
-            Timber.d("TODO: chain to ${thenPlay.styleName} after this fill completes")
+            // TODO: chain logic — perlu callback dari sequencer saat section selesai
+            Timber.d("TODO: chain to ${thenPlay.styleName} after this section completes")
         }
     }
 
