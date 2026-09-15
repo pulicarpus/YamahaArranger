@@ -5,15 +5,11 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import dagger.hilt.android.qualifiers.ApplicationContext
 import timber.log.Timber
+import java.io.File
+import java.io.InputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/**
- * Thin wrapper around ContentResolver so ViewModels don't need a raw
- * Context injected (keeps them off Android framework classes for testing)
- * — used by the "Import style from storage" flow (Storage Access
- * Framework document picker).
- */
 @Singleton
 class ContentResolverProvider @Inject constructor(
     @ApplicationContext private val context: Context
@@ -31,7 +27,12 @@ class ContentResolverProvider @Inject constructor(
             if (cursor.moveToFirst() && nameIndex >= 0) cursor.getString(nameIndex) else null
         }
     } catch (e: Exception) {
-        Timber.e(e, "Failed querying display name for $uri")
+        Timber.e(e, "Failed querying name for $uri")
         null
     }
+
+    fun openInputStream(uri: Uri): InputStream? =
+        context.contentResolver.openInputStream(uri)
+
+    fun getFilesDir(): File = context.filesDir
 }
