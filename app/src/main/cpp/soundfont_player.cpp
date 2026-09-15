@@ -14,29 +14,23 @@ bool SoundFontPlayer::load(const std::string& path) {
         return false;
     }
 
-    // Setup output: stereo interleaved, 48kHz, gain 0dB
     tsf_set_output(font_, TSF_STEREO_INTERLEAVED, 48000, 0.0f);
 
-    // ═══════════════════════════════════════════════════════
-    // PENTING: Set preset untuk setiap channel MIDI
-    // Tanpa ini, channel tidak punya instrument → SILENT
-    // ═══════════════════════════════════════════════════════
+    // Set channels: ch 9 = drum, lainnya = preset 0 (piano)
     int totalPresets = tsf_get_presetcount(font_);
-    LOGI("Total presets in SF2: %d", totalPresets);
+    LOGI("Total presets: %d", totalPresets);
 
-    // Channel 9 = Drum Kit (MIDI standard)
-    tsf_channel_set_presetnumber(font_, 9, 0, 1);
-
-    // Channel 0-8, 10-15 = default ke Grand Piano (preset 0, bank 0)
     for (int ch = 0; ch < 16; ++ch) {
-        if (ch == 9) continue;
-        tsf_channel_set_presetnumber(font_, ch, 0, 0);
+        if (ch == 9) {
+            // Drum kit: preset 0, bank 128 (drum bank GM)
+            tsf_channel_set_bank_preset(font_, 9, 128, 0);
+        } else {
+            tsf_channel_set_bank_preset(font_, ch, 0, 0);
+        }
     }
-
-    // Volume master
     tsf_set_volume(font_, 1.0f);
 
-    LOGI("SF2 loaded OK: presets=%d, channels assigned", totalPresets);
+    LOGI("SF2 loaded OK");
     return true;
 }
 
@@ -53,7 +47,8 @@ void SoundFontPlayer::render(float* out, int numFrames) {
         for (int i = 0; i < numFrames * 2; ++i) out[i] = 0.0f;
         return;
     }
-    tsf_render_float(font_, out, numFrames, 1);
+    // ⚠️ PENTING: untuk STEREO interleaved, samples = frames * 2
+    tsf_render_float(font_, out, numFrames * 2, 1);
 }
 
 void SoundFontPlayer::noteOn(int channel, int key, float velocity) {
