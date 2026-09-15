@@ -149,10 +149,11 @@ class MainViewModel @Inject constructor(
             combine(_styleName, _midiStatus) { s, m -> s to m },
             combine(_transpose, _soundFontName) { t, sf -> t to sf },
             combine(_voiceVolume, _masterVolume) { vv, mv -> vv to mv },
-            combine(_activeBank, _activeRegSlot) { b, r -> b to r },
-            _voiceAssignments
+            combine(_activeBank, _activeRegSlot, _voiceAssignments) { b, r, v ->
+                Triple(b, r, v)
+            }
         ) { arranger, (styleName, midi), (transpose, sfName),
-            (voiceVol, masterVol), (bank, regSlot), voices ->
+            (voiceVol, masterVol), (bank, regSlot, voices) ->
             MainUiState(
                 styleName = styleName,
                 tempoBpm = arranger.tempoBpm,
@@ -169,7 +170,6 @@ class MainViewModel @Inject constructor(
                 voiceAssignments = voices
             )
         }.stateIn(viewModelScope, SharingStarted.Eagerly, MainUiState())
-
     init {
         arrangerBrain.attachScope(viewModelScope)
         audioEngine.start()
