@@ -2,12 +2,15 @@
 #include <android/log.h>
 #include <cstring>
 #include <algorithm>
+#include <cmath>
 
 #define LOG_TAG "AudioEngine"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
 bool AudioEngine::start() {
+    LOGI("AudioEngine.start() called");
+
     oboe::AudioStreamBuilder builder;
     builder.setDirection(oboe::Direction::Output)
         ->setPerformanceMode(oboe::PerformanceMode::LowLatency)
@@ -21,25 +24,30 @@ bool AudioEngine::start() {
 
     oboe::Result result = builder.openStream(stream_);
     if (result != oboe::Result::OK) {
-        LOGE("LowLatency failed, retry default");
+        LOGE("LowLatency failed (%s), retry default", oboe::convertToText(result));
         builder.setPerformanceMode(oboe::PerformanceMode::None);
         result = builder.openStream(stream_);
     }
     if (result != oboe::Result::OK) {
-        LOGE("Failed to open stream");
+        LOGE("Failed to open stream: %s", oboe::convertToText(result));
         return false;
     }
 
     outputSampleRate_ = stream_->getSampleRate();
+    LOGI("Stream opened: sr=%d ch=%d format=%d",
+         outputSampleRate_,
+         stream_->getChannelCount(),
+         (int)stream_->getFormat());
+
     stream_->setBufferSizeInFrames(stream_->getFramesPerBurst() * 8);
 
     result = stream_->requestStart();
     if (result != oboe::Result::OK) {
-        LOGE("Failed to start stream");
+        LOGE("Failed to start stream: %s", oboe::convertToText(result));
         return false;
     }
 
-    LOGI("AudioEngine started: sr=%d", outputSampleRate_);
+    LOGI("AudioEngine started OK, burst=%d", stream_->getFramesPerBurst());
     return true;
 }
 
@@ -52,7 +60,10 @@ void AudioEngine::stop() {
 }
 
 bool AudioEngine::loadSoundFont(const std::string& path) {
-    return soundFont_.load(path);
+    LOGI("loadSoundFont called: %s", path.c_str());
+    bool ok = soundFont_.load(path);
+    LOGI("loadSoundFont result: %s", ok ? "OK" : "FAILED");
+    return ok;
 }
 
 void AudioEngine::unloadSoundFont() {
@@ -62,12 +73,31 @@ void AudioEngine::unloadSoundFont() {
 oboe::DataCallbackResult AudioEngine::onAudioReady(
         oboe::AudioStream* stream, void* audioData, int32_t numFrames) {
     (void)stream;
+
+    static int callbackCount = 0;
+    callbackCount++;
+    bool logNow = (callbackCount % 100 == 1);
+
+    if (logNow) {
+        LOGI("onAudioReady #%d frames=%d sf2=%d",
+             callbackCount, numFrames, soundFont_.isLoaded() ? 1 : 0);
+    }
+
     auto* out = static_cast<float*>(audioData);
     const int stereoFrames = numFrames * 2;
     std::memset(out, 0, sizeof(float) * stereoFrames);
 
     if (soundFont_.isLoaded()) {
         soundFont_.render(out, numFrames);
+
+        if (logNow) {
+            float peak = 0.0f;
+            for (int i = 0; i < stereoFrames; ++i) {
+                float v = std::fabs(out[i]);
+                if (v > peak) peak = v;
+            }
+            LOGI("SF2 render peak=%.5f", peak);
+        }
 
         for (int f = 0; f < numFrames; ++f) {
             const int iL = f * 2;
