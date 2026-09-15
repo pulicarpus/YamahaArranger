@@ -156,6 +156,22 @@ class MainViewModel @Inject constructor(
     fun onStartStop() = arrangerBrain.startStop()
     fun onTapTempo() { /* TODO Sprint B */ }
 
+        /** Test tone: play C-E-G arpeggio 3× — untuk diagnosa audio engine. */
+    fun playTestTone() {
+        viewModelScope.launch {
+            DebugLog.add("🔊 TEST TONE: C-E-G × 3")
+            val notes = intArrayOf(60, 64, 67)
+            repeat(3) {
+                for (note in notes) {
+                    audioEngine.noteOn(note, 0.8f)
+                    delay(300)
+                    audioEngine.noteOff(note)
+                }
+                delay(200)
+            }
+            DebugLog.add("🔊 TEST TONE: done")
+        }
+    }
     // ═══════════════════════════════════════════════
     // TEMPO
     // ═══════════════════════════════════════════════
