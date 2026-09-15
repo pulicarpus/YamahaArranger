@@ -101,8 +101,11 @@ class MainViewModel @Inject constructor(
 
     init {
         arrangerBrain.attachScope(viewModelScope)
+        
+        // Log start status
         audioEngine.start()
-
+        DebugLog.add("🎵 audioEngine.start() returned (check next log)")
+        
         midiInputManager.onNoteOn = { note, velocity ->
             arrangerBrain.onKeyboardNoteOn(note, velocity / 127f)
         }
