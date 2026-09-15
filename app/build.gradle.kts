@@ -38,6 +38,12 @@ android {
         }
     }
 
+    sourceSets {
+        getByName("main") {
+            jniLibs.srcDirs("src/main/jniLibs")
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -56,8 +62,8 @@ android {
 
     buildFeatures {
         compose = true
-        prefab = true        
-        buildConfig = true// ✅ BARIS BARU — fix Oboe
+        prefab = true
+        buildConfig = true
     }
 
     composeOptions {
