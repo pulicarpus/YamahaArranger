@@ -8,10 +8,12 @@
 namespace {
 std::unique_ptr<AudioEngine> g_engine;
 std::unique_ptr<StyleParser> g_lastParsedStyle;
+}
+
+// Global untuk logger — HARUS di luar anonymous namespace
 JavaVM* g_jvm = nullptr;
 jclass g_debugLogClass = nullptr;
 jmethodID g_debugLogAddMethod = nullptr;
-}
 
 // ═════════════════════════════════════════════════════
 // LOGGER INIT
