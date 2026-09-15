@@ -9,9 +9,7 @@ std::unique_ptr<AudioEngine> g_engine;
 std::unique_ptr<StyleParser> g_lastParsedStyle;
 }
 
-// ═════════════════════════════════════════════════════
-// AUDIO ENGINE
-// ═════════════════════════════════════════════════════
+// ═══════════ AUDIO ENGINE ═══════════
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeStart(JNIEnv*, jobject) {
     if (!g_engine) g_engine = std::make_unique<AudioEngine>();
@@ -45,15 +43,11 @@ Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeAllNotesOff(JNIEnv
     if (g_engine) g_engine->allNotesOff();
 }
 
-// ═════════════════════════════════════════════════════
-// SOUNDFONT
-// ═════════════════════════════════════════════════════
+// ═══════════ SOUNDFONT ═══════════
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeLoadSoundFont(
     JNIEnv* env, jobject, jstring path) {
-    if (!g_engine) {
-        g_engine = std::make_unique<AudioEngine>();
-    }
+    if (!g_engine) g_engine = std::make_unique<AudioEngine>();
     const char* cpath = env->GetStringUTFChars(path, nullptr);
     bool ok = g_engine->loadSoundFont(std::string(cpath));
     env->ReleaseStringUTFChars(path, cpath);
@@ -96,9 +90,13 @@ Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSfNoteOffChannel(
     if (g_engine) g_engine->sfNoteOffChannel(channel, midiNote);
 }
 
-// ═════════════════════════════════════════════════════
-// STYLE PARSER
-// ═════════════════════════════════════════════════════
+extern "C" JNIEXPORT void JNICALL
+Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetChannelPreset(
+    JNIEnv*, jobject, jint channel, jint bank, jint program) {
+    if (g_engine) g_engine->sfSetChannelPreset(channel, bank, program);
+}
+
+// ═══════════ STYLE PARSER ═══════════
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeParseStyle(
     JNIEnv* env, jobject, jbyteArray styBytes) {
