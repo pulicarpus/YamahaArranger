@@ -75,13 +75,25 @@ Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeUnloadSoundFont(
 extern "C" JNIEXPORT void JNICALL
 Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSfNoteOn(
     JNIEnv*, jobject, jint midiNote, jfloat velocity) {
-    if (g_engine) g_engine->sfNoteOn(midiNote, velocity);
+    if (g_engine) g_engine->sfNoteOnChannel(0, midiNote, velocity);
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSfNoteOff(
     JNIEnv*, jobject, jint midiNote) {
-    if (g_engine) g_engine->sfNoteOff(midiNote);
+    if (g_engine) g_engine->sfNoteOffChannel(0, midiNote);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSfNoteOnChannel(
+    JNIEnv*, jobject, jint channel, jint midiNote, jfloat velocity) {
+    if (g_engine) g_engine->sfNoteOnChannel(channel, midiNote, velocity);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSfNoteOffChannel(
+    JNIEnv*, jobject, jint channel, jint midiNote) {
+    if (g_engine) g_engine->sfNoteOffChannel(channel, midiNote);
 }
 
 // ═════════════════════════════════════════════════════
