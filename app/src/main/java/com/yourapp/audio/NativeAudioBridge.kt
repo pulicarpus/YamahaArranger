@@ -1,14 +1,11 @@
 package com.yourapp.yamahaarranger.audio
 
 import java.nio.ByteBuffer
+import javax.inject.Inject
+import javax.inject.Singleton
 
-/**
- * Thin JNI wrapper around AudioEngine (native/audio_engine.cpp).
- * Every call here must stay cheap — noteOn/noteOff are on the input
- * hot path (on-screen keyboard taps, MIDI-in events).
- */
-class NativeAudioBridge {
-
+@Singleton
+class NativeAudioBridge @Inject constructor() {
     companion object {
         init {
             System.loadLibrary("yamaha_arranger_native")
@@ -17,21 +14,17 @@ class NativeAudioBridge {
 
     external fun nativeStart(): Boolean
     external fun nativeStop()
-
-    /**
-     * @param sampleByteBuffer a *direct* FloatBuffer-backed ByteBuffer of the
-     *   mono sample data, kept alive by the caller (e.g. SoundFontManager)
-     *   for as long as notes might reference it.
-     */
     external fun nativeNoteOn(
-        midiNote: Int,
-        rootNote: Int,
-        velocity: Float,
-        sampleByteBuffer: ByteBuffer,
-        sampleFrames: Int,
-        sampleRateHz: Int
+        midiNote: Int, rootNote: Int, velocity: Float,
+        sampleBuffer: ByteBuffer, sampleFrames: Int, sampleRateHz: Int
     )
-
     external fun nativeNoteOff(midiNote: Int)
     external fun nativeAllNotesOff()
+
+    // SoundFont
+    external fun nativeLoadSoundFont(path: String): Boolean
+    external fun nativeIsSoundFontLoaded(): Boolean
+    external fun nativeUnloadSoundFont()
+    external fun nativeSfNoteOn(midiNote: Int, velocity: Float)
+    external fun nativeSfNoteOff(midiNote: Int)
 }
