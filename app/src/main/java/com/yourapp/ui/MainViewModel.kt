@@ -21,6 +21,21 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 import javax.inject.Inject
 
+/** Global log buffer — diakses dari UI & StyleSequencer. */
+object DebugLog {
+    private val _lines = java.util.concurrent.ConcurrentLinkedQueue<String>()
+    private const val MAX_LINES = 30
+
+    fun add(msg: String) {
+        val ts = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date())
+        _lines.add("[$ts] $msg")
+        while (_lines.size > MAX_LINES) _lines.poll()
+    }
+
+    fun getAll(): List<String> = _lines.toList()
+    fun clear() = _lines.clear()
+}
+
 data class MainUiState(
     val styleName: String = "No Style Loaded",
     val tempoBpm: Int = 120,
