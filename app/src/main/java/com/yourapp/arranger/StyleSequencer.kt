@@ -22,6 +22,19 @@ class StyleSequencer(
     private var voiceMap: Map<Int, String> = emptyMap()
     private var lastAppliedSection: String = ""
 
+    // Mapping partNum (1-8) → target channel (0-index Yamaha standard)
+    private val targetChannelForPart = intArrayOf(
+        -1,  // 0 (unused)
+        8,   // 1 → Rhythm 1
+        9,   // 2 → Rhythm 2
+        10,  // 3 → Bass
+        11,  // 4 → Chord 1
+        12,  // 5 → Chord 2
+        13,  // 6 → Pad
+        14,  // 7 → Phrase 1
+        15   // 8 → Phrase 2
+    )
+
     fun setVoiceMap(vm: Map<Int, String>) {
         voiceMap = vm
         lastAppliedSection = ""
@@ -32,7 +45,6 @@ class StyleSequencer(
         stop()
         loopCount = 0
 
-        // Apply voice per part (hanya kalau ganti section)
         if (lastAppliedSection != section.name) {
             applyVoicesForSection(section)
             lastAppliedSection = section.name
@@ -55,52 +67,45 @@ class StyleSequencer(
 
     fun queueNextSection(section: StyleSectionModel, ppq: Int) = play(section, ppq)
 
-    /**
-     * Apply voice per part: extract voice name dari CASM, map ke GM program,
-     * dan set ke channel yang dipakai part tersebut.
-     */
     private fun applyVoicesForSection(section: StyleSectionModel) {
         DebugLog.add("🎼 Apply voices for ${section.name}:")
 
         section.parts.forEachIndexed { idx, part ->
-            val partNum = idx + 1  // 1-based
+            val partNum = idx + 1
             val voiceName = voiceMap[partNum] ?: return@forEachIndexed
-            val channel = part.events.firstOrNull()?.channel ?: return@forEachIndexed
+            val targetCh = if (partNum in 1..8) targetChannelForPart[partNum] else return@forEachIndexed
 
             val program = guessProgramFromVoiceName(voiceName)
             if (program < 0) {
-                DebugLog.add("  · part$partNum ch$channel: $voiceName (unknown, skip)")
+                DebugLog.add("  · part$partNum ch$targetCh: $voiceName (unknown)")
                 return@forEachIndexed
             }
 
             val bank = if (isDrumVoice(voiceName)) 128 else 0
-            audioEngine.setChannelProgram(channel, program, bank)
-            DebugLog.add("  · part$partNum ch$channel: $voiceName → prog$program (bank$bank)")
+            audioEngine.setChannelProgram(targetCh, program, bank)
+            DebugLog.add("  · part$partNum → ch$targetCh: $voiceName → prog$program (bank$bank)")
         }
     }
 
-    /** Extract GM program dari nama voice CASM. */
     private fun guessProgramFromVoiceName(name: String): Int {
         val n = name.lowercase()
 
-        // 1) Coba extract digit di akhir (misal "bass33" → 33)
         val trailingDigits = n.takeLastWhile { it.isDigit() }
         if (trailingDigits.isNotEmpty()) {
             val num = trailingDigits.toIntOrNull()
             if (num != null && num in 0..127) return num
         }
 
-        // 2) Keyword-based fallback
         return when {
             n.contains("piano") -> 0
-            n.contains("e.piano") || n.contains("ep") -> 4
+            n.contains("ep") -> 4
             n.contains("organ") -> 16
             n.contains("accordion") -> 21
-            n.contains("guitar") -> 24
+            n.contains("guitar") || n.contains("gtr") -> 24
             n.contains("bass") -> 33
             n.contains("violin") -> 40
             n.contains("cello") -> 42
-            n.contains("str") -> 48     // strings
+            n.contains("strg") || n.contains("str") -> 48
             n.contains("choir") -> 52
             n.contains("trumpet") -> 56
             n.contains("trombone") -> 57
@@ -109,17 +114,14 @@ class StyleSequencer(
             n.contains("oboe") -> 68
             n.contains("clarinet") -> 71
             n.contains("flute") -> 73
-            n.contains("dr") || n.contains("kit") || n.contains("add") -> 0  // drum
+            n.contains("dr") || n.contains("kit") -> 0
             else -> -1
         }
     }
 
     private fun isDrumVoice(name: String): Boolean {
         val n = name.lowercase()
-        return n.contains("add-dr") ||
-               n.contains("drum") ||
-               n.contains("kit") ||
-               n.startsWith("dr")
+        return n.contains("dr") || n.contains("drum") || n.contains("kit")
     }
 
     private suspend fun playOnce(section: StyleSectionModel, ppq: Int) {
@@ -133,19 +135,22 @@ class StyleSequencer(
             val tick: Int,
             val event: StyleNoteEvent,
             val transpose: Boolean,
-            val channel: Int
+            val targetChannel: Int
         )
 
-        val merged = section.parts.flatMap { part ->
+        // Remap: source channel → target channel berdasarkan partNum
+        val merged = section.parts.flatMapIndexed { idx, part ->
+            val partNum = idx + 1
+            val targetCh = if (partNum in 1..8) targetChannelForPart[partNum] else 0
+            val isDrum = targetCh == 8 || targetCh == 9
+            val shouldTranspose = !isDrum
+
             part.events.map { ev ->
-                val isDrum = ev.channel == 9
-                val shouldTranspose = !isDrum
-                ScheduledEvent(ev.tick, ev, shouldTranspose, ev.channel)
+                ScheduledEvent(ev.tick, ev, shouldTranspose, targetCh)
             }
         }.sortedBy { it.tick }
 
         if (merged.isEmpty()) {
-            DebugLog.add("⚠ Loop $loopCount: NO EVENTS")
             delay(500)
             return
         }
@@ -165,13 +170,13 @@ class StyleSequencer(
             }
 
             if (sched.event.isNoteOn) {
-                audioEngine.noteOnChannel(sched.channel, note, sched.event.velocity / 127f)
+                audioEngine.noteOnChannel(sched.targetChannel, note, sched.event.velocity / 127f)
                 noteOnCount++
                 if (loopCount <= 1 && noteOnCount <= 8) {
-                    DebugLog.add("  ♪ ch${sched.channel} n=$note v=${sched.event.velocity}")
+                    DebugLog.add("  ♪ ch${sched.targetChannel} n=$note v=${sched.event.velocity}")
                 }
             } else {
-                audioEngine.noteOffChannel(sched.channel, note)
+                audioEngine.noteOffChannel(sched.targetChannel, note)
             }
         }
         if (loopCount <= 1) DebugLog.add("✅ Loop1: $noteOnCount noteOn")
