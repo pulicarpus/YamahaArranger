@@ -22,5 +22,7 @@ data class StyleSectionModel(
 data class ParsedStyle(
     val fileName: String,
     val ppq: Int,
-    val sections: Map<String, StyleSectionModel>
+    val sections: Map<String, StyleSectionModel>,
+    val voiceMap: Map<Int, String> = emptyMap(),
+    val defaultTempoBpm: Int = 120
 )
