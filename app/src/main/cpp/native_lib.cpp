@@ -229,8 +229,8 @@ Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeGetPartEvents(
     return result;
 }
 
-// ═════════════════════════════════════════════════════
-// ★★★ FUNGSI BARU — CASM FINDER ★★★
+// // ═════════════════════════════════════════════════════
+// ★★★ FUNGSI BARU — CASM FINDER (v2: dump 256 bytes + chunk list) ★★★
 // ═════════════════════════════════════════════════════
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeFindCasm(
@@ -248,26 +248,53 @@ Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeFindCasm(
                                ((uint32_t)buf[i+6] << 8) |
                                ((uint32_t)buf[i+7]);
 
-            char header[160];
-            snprintf(header, sizeof(header),
-                     "CASM@offset=%zu, len=%u", i, casmLen);
+            char header[128];
+            snprintf(header, sizeof(header), "CASM@%zu len=%u", i, casmLen);
             result += header;
             result += "\n";
 
-            size_t dumpEnd = i + 8 + 32;
-            if (dumpEnd > buf.size()) dumpEnd = buf.size();
-            char hex[8];
-            for (size_t j = i; j < dumpEnd; ++j) {
-                snprintf(hex, sizeof(hex), "%02X ", buf[j]);
-                result += hex;
-                if ((j - i) % 16 == 15) result += "\n";
+            size_t casmEnd = i + 8 + casmLen;
+            if (casmEnd > buf.size()) casmEnd = buf.size();
+
+            // ─── Cari semua chunk 4-byte di dalam CASM ───
+            result += "Chunks: ";
+            for (size_t j = i + 8; j + 4 <= casmEnd; ++j) {
+                // Chunk = 4 huruf uppercase
+                if (buf[j] >= 'A' && buf[j] <= 'Z' &&
+                    buf[j+1] >= 'A' && buf[j+1] <= 'Z' &&
+                    buf[j+2] >= 'A' && buf[j+2] <= 'Z' &&
+                    buf[j+3] >= 'A' && buf[j+3] <= 'Z') {
+                    char chunk[8];
+                    snprintf(chunk, sizeof(chunk), "%.4s@%zu ",
+                             reinterpret_cast<const char*>(&buf[j]), j);
+                    result += chunk;
+                }
             }
             result += "\n";
+
+            // ─── Dump 256 byte pertama (16 baris × 16 byte) ───
+            size_t dumpEnd = i + 256;
+            if (dumpEnd > casmEnd) dumpEnd = casmEnd;
+            for (size_t j = i; j < dumpEnd; j += 16) {
+                char line[128];
+                int pos = snprintf(line, sizeof(line), "%04zu: ", j - i);
+                for (size_t k = 0; k < 16 && j + k < dumpEnd; ++k) {
+                    pos += snprintf(line + pos, sizeof(line) - pos, "%02X ", buf[j + k]);
+                }
+                pos += snprintf(line + pos, sizeof(line) - pos, " | ");
+                for (size_t k = 0; k < 16 && j + k < dumpEnd; ++k) {
+                    uint8_t c = buf[j + k];
+                    line[pos++] = (c >= 32 && c < 127) ? (char)c : '.';
+                }
+                line[pos] = 0;
+                result += line;
+                result += "\n";
+            }
+
             break;
         }
     }
 
     if (result.empty()) result = "CASM NOT FOUND";
-
     return env->NewStringUTF(result.c_str());
 }
