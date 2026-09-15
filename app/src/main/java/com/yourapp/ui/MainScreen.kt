@@ -43,7 +43,8 @@ import kotlin.math.roundToInt
 @Composable
 fun MainScreen(
     viewModel: MainViewModel = hiltViewModel(),
-    onImportStyleClicked: () -> Unit = {}
+    onImportStyleClicked: () -> Unit = {},
+    onImportSoundFontClicked: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -59,7 +60,9 @@ fun MainScreen(
             tempoBpm = uiState.tempoBpm,
             transpose = uiState.transpose,
             chordLabel = uiState.detectedChordLabel,
+            soundFontName = uiState.soundFontName,
             onImportStyleClicked = onImportStyleClicked,
+            onImportSoundFontClicked = onImportSoundFontClicked,
             onTempoDown = viewModel::onTempoDown,
             onTempoUp = viewModel::onTempoUp,
             onTransposeDown = viewModel::onTransposeDown,
@@ -199,7 +202,7 @@ private fun DebugPanel() {
 }
 
 // ═════════════════════════════════════════════════════
-// HEADER — Style + BPM ± + Transpose ± + Chord
+// HEADER — Style + BPM ± + Transpose ± + Chord + SF2
 // ═════════════════════════════════════════════════════
 @Composable
 private fun LcdDisplay(
@@ -207,7 +210,9 @@ private fun LcdDisplay(
     tempoBpm: Int,
     transpose: Int,
     chordLabel: String,
+    soundFontName: String,
     onImportStyleClicked: () -> Unit,
+    onImportSoundFontClicked: () -> Unit,
     onTempoDown: () -> Unit,
     onTempoUp: () -> Unit,
     onTransposeDown: () -> Unit,
@@ -231,8 +236,17 @@ private fun LcdDisplay(
                     fontWeight = FontWeight.SemiBold
                 )
                 Spacer(Modifier.height(2.dp))
-                TextButton(onClick = onImportStyleClicked, contentPadding = PaddingValues(0.dp)) {
+                TextButton(
+                    onClick = onImportStyleClicked,
+                    contentPadding = PaddingValues(0.dp)
+                ) {
                     Text("Import .sty…", style = MaterialTheme.typography.labelSmall)
+                }
+                TextButton(
+                    onClick = onImportSoundFontClicked,
+                    contentPadding = PaddingValues(0.dp)
+                ) {
+                    Text("🎼 SF2: $soundFontName", style = MaterialTheme.typography.labelSmall)
                 }
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -530,8 +544,11 @@ private fun BottomBar(voiceName: String, right2Name: String, splitPoint: String)
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("🎹 $voiceName", style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary)
+            Text(
+                "🎹 $voiceName",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
             Text("Right2: $right2Name", style = MaterialTheme.typography.labelMedium)
             Text("Split: $splitPoint", style = MaterialTheme.typography.labelMedium)
         }
