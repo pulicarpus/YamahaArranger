@@ -19,6 +19,9 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+import java.io.File
+import java.io.FileOutputStream
+import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -30,7 +33,7 @@ object DebugLog {
     private const val MAX_LINES = 30
 
     fun add(msg: String) {
-        val ts = java.text.SimpleDateFormat("HH:mm:ss", Locale.US).format(Date())
+        val ts = SimpleDateFormat("HH:mm:ss", Locale.US).format(Date())
         _lines.add("[$ts] $msg")
         while (_lines.size > MAX_LINES) _lines.poll()
     }
@@ -47,6 +50,7 @@ data class MainUiState(
     val activeSection: String = "Main A",
     val detectedChordLabel: String = "",
     val midiStatus: String = "No MIDI device",
+    val soundFontName: String = "None",
     val styleVolume: Int = 100,
     val voiceVolume: Int = 100,
     val masterVolume: Int = 110,
@@ -69,6 +73,7 @@ class MainViewModel @Inject constructor(
     private val _styleName = MutableStateFlow("No Style Loaded")
     private val _midiStatus = MutableStateFlow("No MIDI device")
     private val _transpose = MutableStateFlow(0)
+    private val _soundFontName = MutableStateFlow("None")
     private val _styleVolume = MutableStateFlow(100)
     private val _voiceVolume = MutableStateFlow(100)
     private val _masterVolume = MutableStateFlow(110)
@@ -79,10 +84,10 @@ class MainViewModel @Inject constructor(
         combine(
             arrangerBrain.state,
             combine(_styleName, _midiStatus) { s, m -> s to m },
-            combine(_transpose, _styleVolume) { t, sv -> t to sv },
+            combine(_transpose, _soundFontName) { t, sf -> t to sf },
             combine(_voiceVolume, _masterVolume) { vv, mv -> vv to mv },
             combine(_activeBank, _activeRegSlot) { b, r -> b to r }
-        ) { arranger, (styleName, midi), (transpose, styleVol), (voiceVol, masterVol), (bank, regSlot) ->
+        ) { arranger, (styleName, midi), (transpose, sfName), (voiceVol, masterVol), (bank, regSlot) ->
             MainUiState(
                 styleName = styleName,
                 tempoBpm = arranger.tempoBpm,
@@ -91,7 +96,7 @@ class MainViewModel @Inject constructor(
                 activeSection = displayLabelFor(arranger.currentSection),
                 detectedChordLabel = arranger.currentChordLabel,
                 midiStatus = midi,
-                styleVolume = styleVol,
+                soundFontName = sfName,
                 voiceVolume = voiceVol,
                 masterVolume = masterVol,
                 activeBank = bank,
@@ -101,11 +106,9 @@ class MainViewModel @Inject constructor(
 
     init {
         arrangerBrain.attachScope(viewModelScope)
-        
-        // Log start status
         audioEngine.start()
-        DebugLog.add("🎵 audioEngine.start() returned (check next log)")
-        
+        DebugLog.add("🎵 ViewModel init — audio start called")
+
         midiInputManager.onNoteOn = { note, velocity ->
             arrangerBrain.onKeyboardNoteOn(note, velocity / 127f)
         }
@@ -114,6 +117,7 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    // MIDI
     fun connectFirstAvailableMidiDevice() {
         viewModelScope.launch {
             repeat(5) { attempt ->
@@ -140,12 +144,13 @@ class MainViewModel @Inject constructor(
         super.onCleared()
     }
 
+    // KEYBOARD
     fun onKeyboardNoteOn(midiNote: Int, velocity: Float) =
         arrangerBrain.onKeyboardNoteOn(midiNote, velocity)
-
     fun onKeyboardNoteOff(midiNote: Int) =
         arrangerBrain.onKeyboardNoteOff(midiNote)
 
+    // SECTION
     fun onSectionSelected(sectionLabel: String) {
         val section = SECTION_BUTTON_MAP[sectionLabel] ?: return
         if (section in MAIN_VARIATIONS) {
@@ -155,53 +160,54 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    // TRANSPORT
     fun onSyncStart() {}
     fun onStartStop() = arrangerBrain.startStop()
     fun onTapTempo() {}
 
+    // TEMPO
     fun onTempoDown() {
         val newTempo = (arrangerBrain.state.value.tempoBpm - 5).coerceIn(20, 280)
         arrangerBrain.setTempo(newTempo)
     }
-
     fun onTempoUp() {
         val newTempo = (arrangerBrain.state.value.tempoBpm + 5).coerceIn(20, 280)
         arrangerBrain.setTempo(newTempo)
     }
 
+    // TRANSPOSE
     fun onTransposeDown() { _transpose.value = (_transpose.value - 1).coerceIn(-12, 12) }
     fun onTransposeUp() { _transpose.value = (_transpose.value + 1).coerceIn(-12, 12) }
 
+    // VOLUME
     fun onStyleVolumeChange(value: Int) { _styleVolume.value = value }
     fun onVoiceVolumeChange(value: Int) { _voiceVolume.value = value }
     fun onMasterVolumeChange(value: Int) { _masterVolume.value = value }
 
+    // REGISTRATION
     fun onBankChange(bank: Int) { _activeBank.value = bank.coerceIn(1, 8) }
     fun onRegSlotTap(slot: Int) { _activeRegSlot.value = slot }
     fun onRegSlotSave(slot: Int) { Timber.i("Save reg bank=${_activeBank.value} slot=$slot") }
 
-    /** TEST TONE — untuk diagnosa audio engine. */
+    // TEST TONE
     fun playTestTone() {
         viewModelScope.launch {
-            DebugLog.add("🔊 TEST TONE: C-E-G × 3")
-            val notes = intArrayOf(60, 64, 67)
-            repeat(3) {
-                for (note in notes) {
-                    audioEngine.noteOn(note, 0.8f)
-                    delay(300)
-                    audioEngine.noteOff(note)
-                }
-                delay(200)
+            DebugLog.add("🔊 TEST TONE: starting…")
+            for (note in intArrayOf(60, 64, 67)) {
+                audioEngine.testTone(note, 0.9f)
+                delay(400)
+                audioEngine.noteOff(note)
             }
             DebugLog.add("🔊 TEST TONE: done")
         }
     }
 
+    // STYLE PICKER
     fun onStyleFilePicked(uri: Uri) {
         viewModelScope.launch {
             val bytes = withContext(Dispatchers.IO) { contentResolver.readBytes(uri) }
             if (bytes == null) {
-                DebugLog.add("❌ Cannot read file")
+                DebugLog.add("❌ Cannot read style")
                 return@launch
             }
             val fileName = contentResolver.fileName(uri) ?: "style.sty"
@@ -215,6 +221,42 @@ class MainViewModel @Inject constructor(
             arrangerBrain.loadStyle(parsed)
             _styleName.value = fileName
             DebugLog.add("✅ Loaded: $fileName")
+        }
+    }
+
+    // SOUNDFONT PICKER
+    fun onSoundFontFilePicked(uri: Uri) {
+        viewModelScope.launch {
+            DebugLog.add("📂 SF2 picker: opening…")
+            val fileName = contentResolver.fileName(uri) ?: "font.sf2"
+
+            // Copy ke filesDir supaya native fopen() bisa akses
+            val destFile = File(contentResolver.getFilesDir(), "user.sf2")
+            val copied = withContext(Dispatchers.IO) {
+                try {
+                    val input = contentResolver.openInputStream(uri) ?: return@withContext false
+                    val output = FileOutputStream(destFile)
+                    input.use { inp ->
+                        output.use { out -> inp.copyTo(out) }
+                    }
+                    true
+                } catch (e: Exception) {
+                    Timber.e(e, "Copy SF2 failed")
+                    false
+                }
+            }
+            if (!copied) {
+                DebugLog.add("❌ Copy SF2 failed")
+                return@launch
+            }
+            DebugLog.add("📂 SF2 copied → ${destFile.name} (${destFile.length()/1024/1024} MB)")
+
+            // Load native
+            val ok = withContext(Dispatchers.Default) {
+                audioEngine.loadSoundFont(destFile.absolutePath)
+            }
+            _soundFontName.value = if (ok) fileName else "Load failed"
+            DebugLog.add(if (ok) "✅ SF2: $fileName" else "❌ SF2 load failed")
         }
     }
 
