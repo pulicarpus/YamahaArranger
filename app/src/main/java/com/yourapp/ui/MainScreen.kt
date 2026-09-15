@@ -89,9 +89,9 @@ fun MainScreen(
         TransportRow(uiState.isPlaying, viewModel::onSyncStart, viewModel::onStartStop, viewModel::onTapTempo)
         Spacer(Modifier.height(8.dp))
 
-        // ═══════════════════════════════════════════
+        // ═══════════════════════════════════════════════════
         // TEST TONE — untuk diagnosa audio engine
-        // ═══════════════════════════════════════════
+        // ═══════════════════════════════════════════════════
         Button(
             onClick = { viewModel.playTestTone() },
             modifier = Modifier.fillMaxWidth().height(50.dp),
@@ -104,12 +104,23 @@ fun MainScreen(
 
         Spacer(Modifier.height(12.dp))
 
-        RegistrationRow(uiState.activeBank, uiState.activeRegSlot,
-            viewModel::onBankChange, viewModel::onRegSlotTap, viewModel::onRegSlotSave)
+        RegistrationRow(
+            activeBank = uiState.activeBank,
+            activeRegSlot = uiState.activeRegSlot,
+            onBankChange = viewModel::onBankChange,
+            onRegSlotTap = viewModel::onRegSlotTap,
+            onRegSlotSave = viewModel::onRegSlotSave
+        )
         Spacer(Modifier.height(12.dp))
 
-        VolumePanel(uiState.styleVolume, uiState.voiceVolume, uiState.masterVolume,
-            viewModel::onStyleVolumeChange, viewModel::onVoiceVolumeChange, viewModel::onMasterVolumeChange)
+        VolumePanel(
+            styleVolume = uiState.styleVolume,
+            voiceVolume = uiState.voiceVolume,
+            masterVolume = uiState.masterVolume,
+            onStyleChange = viewModel::onStyleVolumeChange,
+            onVoiceChange = viewModel::onVoiceVolumeChange,
+            onMasterChange = viewModel::onMasterVolumeChange
+        )
         Spacer(Modifier.height(12.dp))
 
         DebugPanel()
@@ -119,41 +130,66 @@ fun MainScreen(
     }
 }
 
+// ═════════════════════════════════════════════════════
+// DEBUG PANEL
+// ═════════════════════════════════════════════════════
 @Composable
 private fun DebugPanel() {
     var logs by remember { mutableStateOf(listOf<String>()) }
+
     LaunchedEffect(Unit) {
         while (true) {
             logs = DebugLog.getAll()
             delay(500)
         }
     }
-    Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(8.dp),
-        modifier = Modifier.fillMaxWidth()) {
+
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
         Column(modifier = Modifier.padding(10.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(),
+            Row(
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically) {
-                Text("DEBUG LOG", style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "DEBUG LOG",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
                 TextButton(onClick = { DebugLog.clear() }) {
                     Text("Clear", style = MaterialTheme.typography.labelSmall)
                 }
             }
             Spacer(Modifier.height(4.dp))
-            Box(modifier = Modifier.fillMaxWidth().height(180.dp)
-                .background(MaterialTheme.colorScheme.background, RoundedCornerShape(4.dp))
-                .border(1.dp, MaterialTheme.colorScheme.surface, RoundedCornerShape(4.dp))
-                .padding(6.dp)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp)
+                    .background(MaterialTheme.colorScheme.background, RoundedCornerShape(4.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.surface, RoundedCornerShape(4.dp))
+                    .padding(6.dp)
+            ) {
                 if (logs.isEmpty()) {
-                    Text("(no log yet)", style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
+                    Text(
+                        "(no log yet)",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                    )
                 } else {
                     Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                         logs.forEach { line ->
-                            Text(line, style = MaterialTheme.typography.labelSmall,
-                                fontFamily = FontFamily.Monospace, fontSize = 10.sp,
-                                color = MaterialTheme.colorScheme.onSurface)
+                            Text(
+                                line,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
                         }
                     }
                 }
@@ -162,55 +198,85 @@ private fun DebugPanel() {
     }
 }
 
+// ═════════════════════════════════════════════════════
+// HEADER — Style + BPM ± + Transpose ± + Chord
+// ═════════════════════════════════════════════════════
 @Composable
 private fun LcdDisplay(
-    styleName: String, tempoBpm: Int, transpose: Int, chordLabel: String,
+    styleName: String,
+    tempoBpm: Int,
+    transpose: Int,
+    chordLabel: String,
     onImportStyleClicked: () -> Unit,
-    onTempoDown: () -> Unit, onTempoUp: () -> Unit,
-    onTransposeDown: () -> Unit, onTransposeUp: () -> Unit
+    onTempoDown: () -> Unit,
+    onTempoUp: () -> Unit,
+    onTransposeDown: () -> Unit,
+    onTransposeUp: () -> Unit
 ) {
-    Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(10.dp),
-        modifier = Modifier.fillMaxWidth()) {
-        Row(modifier = Modifier.padding(12.dp),
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(10.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top) {
+            verticalAlignment = Alignment.Top
+        ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(styleName, style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                Text(
+                    styleName,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold
+                )
                 Spacer(Modifier.height(2.dp))
                 TextButton(onClick = onImportStyleClicked, contentPadding = PaddingValues(0.dp)) {
                     Text("Import .sty…", style = MaterialTheme.typography.labelSmall)
                 }
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("TRANSPOSE", style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                Text(
+                    "TRANSPOSE",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     SmallSquareButton("−", onTransposeDown)
-                    Text(if (transpose >= 0) "+$transpose" else "$transpose",
+                    Text(
+                        if (transpose >= 0) "+$transpose" else "$transpose",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 8.dp))
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
                     SmallSquareButton("+", onTransposeUp)
                 }
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text("TEMPO", style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                Text(
+                    "TEMPO",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     SmallSquareButton("−", onTempoDown)
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("$tempoBpm", style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold)
+                        Text(
+                            "$tempoBpm",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold
+                        )
                         Text("BPM", style = MaterialTheme.typography.labelSmall)
                     }
                     SmallSquareButton("+", onTempoUp)
                 }
                 Spacer(Modifier.height(4.dp))
-                Text(chordLabel.ifEmpty { "—" },
+                Text(
+                    chordLabel.ifEmpty { "—" },
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.secondary)
+                    color = MaterialTheme.colorScheme.secondary
+                )
             }
         }
     }
@@ -218,66 +284,106 @@ private fun LcdDisplay(
 
 @Composable
 private fun SmallSquareButton(label: String, onClick: () -> Unit) {
-    Button(onClick = onClick, modifier = Modifier.height(36.dp),
+    Button(
+        onClick = onClick,
+        modifier = Modifier.height(36.dp),
         contentPadding = PaddingValues(0.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.primary)) {
-        Text(label, fontSize = 18.sp, fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 10.dp))
+            contentColor = MaterialTheme.colorScheme.primary
+        )
+    ) {
+        Text(
+            label,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 10.dp)
+        )
     }
 }
 
+// ═════════════════════════════════════════════════════
+// MIDI Bar
+// ═════════════════════════════════════════════════════
 @Composable
 private fun MidiStatusBar(midiStatus: String, onConnect: () -> Unit) {
-    Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(8.dp),
-        modifier = Modifier.fillMaxWidth()) {
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically) {
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(if (midiStatus.startsWith("No")) "⚪" else "🟢", fontSize = 14.sp)
                 Text("  MIDI: $midiStatus", style = MaterialTheme.typography.bodySmall)
             }
-            Button(onClick = onConnect,
+            Button(
+                onClick = onConnect,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)) {
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+            ) {
                 Text("Connect", style = MaterialTheme.typography.labelSmall)
             }
         }
     }
 }
 
+// ═════════════════════════════════════════════════════
+// Section Label & Row
+// ═════════════════════════════════════════════════════
 @Composable
 private fun SectionLabel(text: String) {
-    Text(text, style = MaterialTheme.typography.labelSmall,
+    Text(
+        text,
+        style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-        modifier = Modifier.padding(start = 4.dp, bottom = 3.dp))
+        modifier = Modifier.padding(start = 4.dp, bottom = 3.dp)
+    )
 }
 
 @Composable
 private fun SectionRow(sections: List<String>, activeSection: String, onSelect: (String) -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
         sections.forEach { section ->
             val isActive = section == activeSection
-            Button(onClick = { onSelect(section) },
+            Button(
+                onClick = { onSelect(section) },
                 modifier = Modifier.weight(1f).height(42.dp),
                 contentPadding = PaddingValues(0.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = if (isActive) MaterialTheme.colorScheme.secondary
                     else MaterialTheme.colorScheme.surface,
                     contentColor = if (isActive) MaterialTheme.colorScheme.onSecondary
-                    else MaterialTheme.colorScheme.onSurface)) {
+                    else MaterialTheme.colorScheme.onSurface
+                )
+            ) {
                 Text(section, style = MaterialTheme.typography.labelMedium)
             }
         }
     }
 }
 
+// ═════════════════════════════════════════════════════
+// Transport
+// ═════════════════════════════════════════════════════
 @Composable
-private fun TransportRow(isPlaying: Boolean, onSyncStart: () -> Unit,
-                         onStartStop: () -> Unit, onTapTempo: () -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+private fun TransportRow(
+    isPlaying: Boolean,
+    onSyncStart: () -> Unit,
+    onStartStop: () -> Unit,
+    onTapTempo: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
         OutlinedButton(onClick = onSyncStart, modifier = Modifier.weight(1f).height(46.dp)) {
             Text("Sync Start", style = MaterialTheme.typography.labelMedium)
         }
@@ -290,41 +396,64 @@ private fun TransportRow(isPlaying: Boolean, onSyncStart: () -> Unit,
     }
 }
 
+// ═════════════════════════════════════════════════════
+// Registration
+// ═════════════════════════════════════════════════════
 @Composable
-private fun RegistrationRow(activeBank: Int, activeRegSlot: Int,
-                            onBankChange: (Int) -> Unit,
-                            onRegSlotTap: (Int) -> Unit,
-                            onRegSlotSave: (Int) -> Unit) {
-    Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(8.dp),
-        modifier = Modifier.fillMaxWidth()) {
+private fun RegistrationRow(
+    activeBank: Int,
+    activeRegSlot: Int,
+    onBankChange: (Int) -> Unit,
+    onRegSlotTap: (Int) -> Unit,
+    onRegSlotSave: (Int) -> Unit
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
         Column(modifier = Modifier.padding(10.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(),
+            Row(
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically) {
-                Text("REGISTRATION MEMORY", style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "REGISTRATION MEMORY",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("BANK", style = MaterialTheme.typography.labelSmall)
                     Spacer(Modifier.padding(horizontal = 4.dp))
                     SmallSquareButton("−") { onBankChange(activeBank - 1) }
-                    Text("$activeBank", style = MaterialTheme.typography.titleMedium,
+                    Text(
+                        "$activeBank",
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 8.dp))
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
                     SmallSquareButton("+") { onBankChange(activeBank + 1) }
                 }
             }
             Spacer(Modifier.height(6.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
                 (1..4).forEach { slot ->
                     val isActive = slot == activeRegSlot
-                    Button(onClick = { onRegSlotTap(slot) },
+                    Button(
+                        onClick = { onRegSlotTap(slot) },
                         modifier = Modifier.weight(1f).height(42.dp),
                         contentPadding = PaddingValues(0.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (isActive) MaterialTheme.colorScheme.secondary
                             else MaterialTheme.colorScheme.background,
                             contentColor = if (isActive) MaterialTheme.colorScheme.onSecondary
-                            else MaterialTheme.colorScheme.onSurface)) {
+                            else MaterialTheme.colorScheme.onSurface
+                        )
+                    ) {
                         Text("REG $slot", style = MaterialTheme.typography.labelSmall)
                     }
                 }
@@ -333,12 +462,23 @@ private fun RegistrationRow(activeBank: Int, activeRegSlot: Int,
     }
 }
 
+// ═════════════════════════════════════════════════════
+// Volume
+// ═════════════════════════════════════════════════════
 @Composable
-private fun VolumePanel(styleVolume: Int, voiceVolume: Int, masterVolume: Int,
-                        onStyleChange: (Int) -> Unit, onVoiceChange: (Int) -> Unit,
-                        onMasterChange: (Int) -> Unit) {
-    Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(8.dp),
-        modifier = Modifier.fillMaxWidth()) {
+private fun VolumePanel(
+    styleVolume: Int,
+    voiceVolume: Int,
+    masterVolume: Int,
+    onStyleChange: (Int) -> Unit,
+    onVoiceChange: (Int) -> Unit,
+    onMasterChange: (Int) -> Unit
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
         Column(modifier = Modifier.padding(10.dp)) {
             VolumeSlider("STYLE", styleVolume, onStyleChange)
             Spacer(Modifier.height(4.dp))
@@ -351,24 +491,45 @@ private fun VolumePanel(styleVolume: Int, voiceVolume: Int, masterVolume: Int,
 
 @Composable
 private fun VolumeSlider(label: String, value: Int, onChange: (Int) -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-        Text(label, style = MaterialTheme.typography.labelSmall,
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-            modifier = Modifier.padding(end = 8.dp))
-        Slider(value = value.toFloat(), onValueChange = { onChange(it.roundToInt()) },
-            valueRange = 0f..127f, modifier = Modifier.weight(1f))
-        Text("$value", style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.padding(end = 8.dp)
+        )
+        Slider(
+            value = value.toFloat(),
+            onValueChange = { onChange(it.roundToInt()) },
+            valueRange = 0f..127f,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            "$value",
+            style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(start = 8.dp).height(20.dp))
+            modifier = Modifier.padding(start = 8.dp).height(20.dp)
+        )
     }
 }
 
+// ═════════════════════════════════════════════════════
+// Bottom Bar
+// ═════════════════════════════════════════════════════
 @Composable
 private fun BottomBar(voiceName: String, right2Name: String, splitPoint: String) {
-    Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(8.dp),
-        modifier = Modifier.fillMaxWidth()) {
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween) {
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
             Text("🎹 $voiceName", style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary)
             Text("Right2: $right2Name", style = MaterialTheme.typography.labelMedium)
