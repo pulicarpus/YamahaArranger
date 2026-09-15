@@ -116,15 +116,20 @@ oboe::DataCallbackResult AudioEngine::onAudioReady(
     if (soundFont_.isLoaded()) {
         soundFont_.render(out, numFrames);
 
-        if (logNow) {
-            float peak = 0.0f;
-            for (int i = 0; i < stereoFrames; ++i) {
-                float v = std::fabs(out[i]);
-                if (v > peak) peak = v;
+        // ═══ Anti-clipping + master gain (0.35) ═══
+        for (int i = 0; i < stereoFrames; ++i) {
+            float x = out[i] * 0.35f;
+            if (x > 0.9f) {
+                x = 0.9f + (x - 0.9f) * 0.1f;
+            } else if (x < -0.9f) {
+                x = -0.9f + (x + 0.9f) * 0.1f;
             }
-            LOGI("onAudioReady #%d peak=%.5f", callbackCount, peak);
+            if (x > 1.0f) x = 1.0f;
+            if (x < -1.0f) x = -1.0f;
+            out[i] = x;
         }
 
+        // ═══ DC blocker ═══
         for (int f = 0; f < numFrames; ++f) {
             const int iL = f * 2;
             const int iR = iL + 1;
@@ -140,6 +145,15 @@ oboe::DataCallbackResult AudioEngine::onAudioReady(
             dcLastInR_ = inR;
             dcLastOutR_ = outR;
             out[iR] = outR;
+        }
+
+        if (logNow) {
+            float peak = 0.0f;
+            for (int i = 0; i < stereoFrames; ++i) {
+                float v = std::fabs(out[i]);
+                if (v > peak) peak = v;
+            }
+            LOGI("onAudioReady #%d peak=%.5f", callbackCount, peak);
         }
 
         return oboe::DataCallbackResult::Continue;
