@@ -117,11 +117,11 @@ oboe::DataCallbackResult AudioEngine::onAudioReady(
         soundFont_.render(out, numFrames);
 
         for (int i = 0; i < stereoFrames; ++i) {
-            float x = out[i] * 0.35f;
-            if (x > 0.9f) {
-                x = 0.9f + (x - 0.9f) * 0.1f;
-            } else if (x < -0.9f) {
-                x = -0.9f + (x + 0.9f) * 0.1f;
+            float x = out[i] * 0.7f;
+            if (x > 0.95f) {
+                x = 0.95f + (x - 0.95f) * 0.05f;
+            } else if (x < -0.95f) {
+                x = -0.95f + (x + 0.95f) * 0.05f;
             }
             if (x > 1.0f) x = 1.0f;
             if (x < -1.0f) x = -1.0f;
