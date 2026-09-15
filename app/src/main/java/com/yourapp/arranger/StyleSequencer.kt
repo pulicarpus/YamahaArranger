@@ -25,14 +25,16 @@ class StyleSequencer(
     fun setVoiceMap(vm: Map<Int, String>) {
         voiceMap = vm
         lastAppliedSection = ""
+        DebugLog.add("🎼 VoiceMap set: ${vm.size} entries")
     }
 
     fun play(section: StyleSectionModel, ppq: Int) {
         stop()
         loopCount = 0
 
+        // Apply CASM voice per part saat ganti section
         if (lastAppliedSection != section.name) {
-            applyAutoVoicesForSection(section)
+            applyVoicesFromCasm(section)
             lastAppliedSection = section.name
         }
 
@@ -53,43 +55,77 @@ class StyleSequencer(
 
     fun queueNextSection(section: StyleSectionModel, ppq: Int) = play(section, ppq)
 
-    /** Auto-detect part type dari note pattern, assign GM program. */
-    private fun applyAutoVoicesForSection(section: StyleSectionModel) {
-        DebugLog.add("🎼 Auto voice for ${section.name}:")
-
-        // Group events by original channel
-        val channelEvents = mutableMapOf<Int, MutableList<StyleNoteEvent>>()
-        section.parts.forEach { part ->
-            part.events.filter { it.isNoteOn }.forEach { ev ->
-                channelEvents.getOrPut(ev.channel) { mutableListOf() }.add(ev)
-            }
+    /**
+     * Apply CASM voice per part.
+     * Pakai channel ASLI dari file (tidak remap).
+     */
+    private fun applyVoicesFromCasm(section: StyleSectionModel) {
+        if (voiceMap.isEmpty()) {
+            DebugLog.add("⚠ No voice map available, using SF2 defaults")
+            return
         }
 
-        channelEvents.forEach { (ch, events) ->
-            if (events.isEmpty()) return@forEach
+        DebugLog.add("🎼 Apply CASM voices for ${section.name}:")
+        section.parts.forEachIndexed { idx, part ->
+            val partNum = idx + 1
+            val voiceName = voiceMap[partNum] ?: return@forEachIndexed
 
-            val notes = events.map { it.note }
-            val avgNote = notes.average().toInt()
-            val minNote = notes.minOrNull() ?: 0
-            val maxNote = notes.maxOrNull() ?: 0
-            val noteSpan = maxNote - minNote
+            // Ambil channel asli dari file
+            val ch = part.events.firstOrNull()?.channel ?: return@forEachIndexed
 
-            // Detect drum: banyak note di range drum dengan pola khas
-            val drumHits = notes.count { it in intArrayOf(35, 36, 38, 40, 42, 44, 46, 49, 51, 57, 59) }
-            val isDrumChannel = events.size > 20 && drumHits.toFloat() / events.size > 0.4f
-
-            val (program, bank, type) = when {
-                isDrumChannel -> Triple(0, 128, "DRUM")
-                avgNote < 46 -> Triple(33, 0, "BASS")
-                avgNote < 60 -> Triple(0, 0, "PIANO/CHORD")
-                avgNote < 68 -> Triple(24, 0, "GUITAR")
-                else -> Triple(56, 0, "MELODY")
+            val prog = guessProgramFromVoiceName(voiceName)
+            if (prog < 0) {
+                DebugLog.add("  · part$partNum ch$ch: $voiceName (unknown)")
+                return@forEachIndexed
             }
 
-            // Keep original channel, apply program
-            audioEngine.setChannelProgram(ch, program, bank)
-            DebugLog.add("  · ch$ch ($type): avg=$avgNote span=$noteSpan range=$minNote-$maxNote n=${events.size} → prog$program bank$bank")
+            val bank = if (isDrumVoice(voiceName)) 128 else 0
+            audioEngine.setChannelProgram(ch, prog, bank)
+            DebugLog.add("  · part$partNum ch$ch: $voiceName → prog$prog (bank$bank)")
         }
+    }
+
+    /** Extract GM program dari nama voice CASM. */
+    private fun guessProgramFromVoiceName(name: String): Int {
+        val n = name.lowercase()
+
+        // 1) Coba extract digit di akhir (misal "bass33" → 33)
+        val trailingDigits = n.takeLastWhile { it.isDigit() }
+        if (trailingDigits.isNotEmpty()) {
+            val num = trailingDigits.toIntOrNull()
+            if (num != null && num in 0..127) return num
+        }
+
+        // 2) Keyword-based fallback
+        return when {
+            n.contains("piano") -> 0
+            n.contains("e.piano") || n.contains("ep") -> 4
+            n.contains("organ") -> 16
+            n.contains("accordion") -> 21
+            n.contains("guitar") || n.contains("gtr") -> 24
+            n.contains("bass") -> 33
+            n.contains("violin") -> 40
+            n.contains("cello") -> 42
+            n.contains("strg") || n.contains("str") -> 48
+            n.contains("choir") -> 52
+            n.contains("trumpet") -> 56
+            n.contains("trombone") -> 57
+            n.contains("brass") -> 61
+            n.contains("sax") -> 65
+            n.contains("oboe") -> 68
+            n.contains("clarinet") -> 71
+            n.contains("flute") -> 73
+            n.contains("dr") || n.contains("kit") || n.contains("drum") -> 0
+            else -> -1
+        }
+    }
+
+    private fun isDrumVoice(name: String): Boolean {
+        val n = name.lowercase()
+        return n.contains("add-dr") ||
+               n.contains("drum") ||
+               n.contains("kit") ||
+               n.startsWith("dr")
     }
 
     private suspend fun playOnce(section: StyleSectionModel, ppq: Int) {
@@ -106,7 +142,7 @@ class StyleSequencer(
             val channel: Int
         )
 
-        // Pakai channel ASLI dari file, tidak remap
+        // Pakai channel ASLI dari file — TIDAK remap
         val merged = section.parts.flatMap { part ->
             part.events.map { ev ->
                 val isDrum = ev.channel == 9
@@ -116,6 +152,7 @@ class StyleSequencer(
         }.sortedBy { it.tick }
 
         if (merged.isEmpty()) {
+            DebugLog.add("⚠ Loop $loopCount: NO EVENTS")
             delay(500)
             return
         }
