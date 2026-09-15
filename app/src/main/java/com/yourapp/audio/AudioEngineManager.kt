@@ -11,17 +11,14 @@ class AudioEngineManager @Inject constructor(
     private val sampleProvider: SampleProvider
 ) {
     private var started = false
+    private var soundFontLoaded = false
 
     fun start() {
-        if (started) {
-            DebugLog.add("🎵 AudioEngine already started")
-            return
-        }
+        if (started) return
         DebugLog.add("🎵 AudioEngine.start() called…")
-        val ok = bridge.nativeStart()
-        started = ok
-        if (!ok) {
-            DebugLog.add("❌ AudioEngine FAILED to start — check RECORD_AUDIO permission or Oboe config")
+        started = bridge.nativeStart()
+        if (!started) {
+            DebugLog.add("❌ AudioEngine FAILED — check RECORD_AUDIO permission")
         } else {
             DebugLog.add("✅ AudioEngine started OK")
         }
@@ -34,33 +31,64 @@ class AudioEngineManager @Inject constructor(
         DebugLog.add("🛑 AudioEngine stopped")
     }
 
-    /** Test tone helper — bypass sample provider, pakai sample bawaan. */
+    /** Load SoundFont dari absolute path file di internal storage. */
+    fun loadSoundFont(filePath: String): Boolean {
+        DebugLog.add("🎼 Loading SF2: $filePath")
+        val ok = bridge.nativeLoadSoundFont(filePath)
+        soundFontLoaded = ok
+        if (ok) {
+            DebugLog.add("✅ SF2 loaded successfully")
+        } else {
+            DebugLog.add("❌ SF2 load failed")
+        }
+        return ok
+    }
+
+    fun isSoundFontLoaded(): Boolean = soundFontLoaded
+
+    fun unloadSoundFont() {
+        bridge.nativeUnloadSoundFont()
+        soundFontLoaded = false
+        DebugLog.add("🎼 SF2 unloaded")
+    }
+
+    fun noteOn(midiNote: Int, velocity01: Float) {
+        if (soundFontLoaded) {
+            bridge.nativeSfNoteOn(midiNote, velocity01)
+        } else {
+            val sample = sampleProvider.sampleForNote(midiNote) ?: return
+            bridge.nativeNoteOn(
+                midiNote, sample.rootNote, velocity01,
+                sample.buffer, sample.frameCount, sample.sampleRateHz
+            )
+        }
+    }
+
+    fun noteOff(midiNote: Int) {
+        if (soundFontLoaded) {
+            bridge.nativeSfNoteOff(midiNote)
+        } else {
+            bridge.nativeNoteOff(midiNote)
+        }
+    }
+
+    fun allNotesOff() = bridge.nativeAllNotesOff()
+
+    /** Test tone untuk diagnosa. */
     fun testTone(note: Int, velocity: Float) {
-        val sample = sampleProvider.sampleForNote(note)
-        if (sample == null) {
-            DebugLog.add("❌ sampleForNote($note) returned NULL")
+        if (soundFontLoaded) {
+            bridge.nativeSfNoteOn(note, velocity)
+            DebugLog.add("🎵 SF TestTone note=$note")
             return
         }
-        DebugLog.add("🎵 testTone note=$note, sample.frames=${sample.frameCount}, " +
-                "sampleRate=${sample.sampleRateHz}, rootNote=${sample.rootNote}")
+        val sample = sampleProvider.sampleForNote(note)
+        if (sample == null) {
+            DebugLog.add("❌ sampleForNote($note) NULL")
+            return
+        }
         bridge.nativeNoteOn(
             note, sample.rootNote, velocity,
             sample.buffer, sample.frameCount, sample.sampleRateHz
         )
     }
-
-    fun noteOn(midiNote: Int, velocity01: Float) {
-        val sample = sampleProvider.sampleForNote(midiNote)
-        if (sample == null) {
-            Timber.w("sampleForNote($midiNote) returned null")
-            return
-        }
-        bridge.nativeNoteOn(
-            midiNote, sample.rootNote, velocity01,
-            sample.buffer, sample.frameCount, sample.sampleRateHz
-        )
-    }
-
-    fun noteOff(midiNote: Int) = bridge.nativeNoteOff(midiNote)
-    fun allNotesOff() = bridge.nativeAllNotesOff()
 }
