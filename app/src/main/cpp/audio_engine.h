@@ -15,21 +15,19 @@ public:
     bool start();
     void stop();
 
-    // SoundFont controls
     bool loadSoundFont(const std::string& path);
     bool isSoundFontLoaded() const { return soundFont_.isLoaded(); }
     void unloadSoundFont();
     int soundFontPresetCount() const { return soundFont_.presetCount(); }
 
-    // Sample-based (fallback saat SF belum di-load)
     void noteOn(int midiNote, int rootNote, float velocity01,
                 const float* sampleData, size_t sampleFrames, int sampleRateHz);
     void noteOff(int midiNote);
     void allNotesOff();
 
-    // SoundFont-based (dipakai saat SF loaded)
-    void sfNoteOn(int midiNote, float velocity01);
-    void sfNoteOff(int midiNote);
+    // SoundFont — channel spesifik
+    void sfNoteOnChannel(int channel, int midiNote, float velocity01);
+    void sfNoteOffChannel(int channel, int midiNote);
 
     oboe::DataCallbackResult onAudioReady(oboe::AudioStream* stream,
                                            void* audioData, int32_t numFrames) override;
