@@ -61,17 +61,14 @@ class ArrangerBrain @Inject constructor(
         }
     }
 
-    // ═════════════════════════════════════════════════════
-    // STYLE LOADING
-    // ═════════════════════════════════════════════════════
     fun loadStyle(style: ParsedStyle) {
         loadedStyle = style
         ensureSequencer()
-        // TODO Sprint B: baca defaultTempoBpm dari ParsedStyle kalau field ada
-        val defaultBpm = 120
-        sequencer.tempoBpm = defaultBpm
-        _state.update { it.copy(tempoBpm = defaultBpm) }
-        Timber.i("Style loaded: ${style.fileName} (ppq=${style.ppq}, sections=${style.sections.size})")
+        sequencer.tempoBpm = style.defaultTempoBpm
+        sequencer.setVoiceMap(style.voiceMap)
+        _state.update { it.copy(tempoBpm = style.defaultTempoBpm) }
+        Timber.i("Style loaded: ${style.fileName}, voices=${style.voiceMap.size}")
+        DebugLog.add("🎼 Style loaded with ${style.voiceMap.size} voices")
     }
 
     // ═════════════════════════════════════════════════════
