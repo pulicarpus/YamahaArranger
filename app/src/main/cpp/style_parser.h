@@ -14,8 +14,6 @@ enum class StyleSection {
     Unknown
 };
 
-// Yamaha CASM playback policy. Values use the SFF/CASM numeric codes so the
-// Kotlin layer does not have to guess Yamaha's NTR/NTT/RTR semantics.
 struct CasmPolicy {
     bool valid = false;
     uint8_t sourceChannel = 0;
@@ -23,22 +21,28 @@ struct CasmPolicy {
     std::string voiceName;
     uint8_t sourceChordRoot = 0;
     uint8_t sourceChordType = 0;
-    uint8_t ntr = 3;          // Bypass by default
-    uint8_t ntt = 0;          // Bypass
+    uint8_t ntr = 3;
+    uint8_t ntt = 0;
     uint8_t highKey = 127;
     uint8_t noteLimitLow = 0;
     uint8_t noteLimitHigh = 127;
-    uint8_t rtr = 0;          // Stop
+    uint8_t rtr = 0;
     bool bassOn = false;
 };
 
 struct StylePart {
-    // One StylePart = one MIDI source channel. Yamaha CASM identifies the
-    // accompaniment part by channel, not by the SMF track name.
     uint8_t midiChannel = 0;
     std::string name;
-    std::vector<MidiEvent> events; // tick-relative to the section start
+    std::vector<MidiEvent> events;
     CasmPolicy casm;
+
+    // Initial MIDI setup captured from the style track. Yamaha styles often
+    // put bank select/program changes before the first musical note; these
+    // must survive the native -> Kotlin bridge or the accompaniment timbre
+    // silently falls back to a default instrument.
+    int program = -1;
+    int bankMsb = 0;
+    int bankLsb = 0;
 };
 
 struct StyleSectionData {
