@@ -363,10 +363,11 @@ private fun SxSectionGroup(title: String, labels: List<String>, active: String, 
 
 @Composable
 private fun SxAction(label: String, active: Boolean, onClick: () -> Unit, compact: Boolean) {
+    val actionHeight = if (compact) 30.dp else 35.dp
     Surface(
         color = if (active) Color(0xFF155B3C) else Color(0xFF20262C),
         shape = RoundedCornerShape(3.dp),
-        modifier = Modifier.fillMaxWidth().weight(1f).clickable(onClick = onClick).border(1.dp, if (active) SxGreen else Color(0xFF39414A), RoundedCornerShape(3.dp))
+        modifier = Modifier.fillMaxWidth().height(actionHeight).clickable(onClick = onClick).border(1.dp, if (active) SxGreen else Color(0xFF39414A), RoundedCornerShape(3.dp))
     ) {
         Box(contentAlignment = Alignment.Center) {
             Text(label, color = Color.White, fontSize = if (compact) 7.sp else 8.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
