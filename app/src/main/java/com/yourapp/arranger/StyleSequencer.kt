@@ -221,7 +221,7 @@ class StyleSequencer(
                     NoteTransposer.transpose(
                         patternNote = sched.event.note,
                         chord = it,
-                        isBassPart = isBass
+                        isBassPart = sched.channel
                     )
                 } ?: sched.event.note
             } else {
