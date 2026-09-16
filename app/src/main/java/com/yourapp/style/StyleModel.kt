@@ -8,9 +8,25 @@ data class StyleNoteEvent(
     val channel: Int = 0
 )
 
+data class CasmPolicyModel(
+    val sourceChannel: Int,
+    val destinationChannel: Int,
+    val voiceName: String,
+    val sourceChordRoot: Int,
+    val sourceChordType: Int,
+    val ntr: Int,
+    val ntt: Int,
+    val highKey: Int,
+    val noteLimitLow: Int,
+    val noteLimitHigh: Int,
+    val rtr: Int,
+    val bassOn: Boolean
+)
+
 data class StylePartModel(
     val name: String,
-    val events: List<StyleNoteEvent>
+    val events: List<StyleNoteEvent>,
+    val casm: CasmPolicyModel? = null
 )
 
 data class StyleSectionModel(
