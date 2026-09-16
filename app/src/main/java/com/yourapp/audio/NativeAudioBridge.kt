@@ -13,18 +13,18 @@ class NativeAudioBridge @Inject constructor() {
     }
 
     external fun nativeInitLogger()
-
     external fun nativeStart(): Boolean
     external fun nativeStop()
-    external fun nativeNoteOn(
-        midiNote: Int, rootNote: Int, velocity: Float,
-        sampleBuffer: ByteBuffer, sampleFrames: Int, sampleRateHz: Int
-    )
+    external fun nativeNoteOn(midiNote: Int, rootNote: Int, velocity: Float, sampleBuffer: ByteBuffer, sampleFrames: Int, sampleRateHz: Int)
     external fun nativeNoteOff(midiNote: Int)
     external fun nativeAllNotesOff()
 
     external fun nativeLoadSoundFont(path: String): Boolean
+    external fun nativeLoadMelodySoundFont(path: String): Boolean
+    external fun nativeLoadDrumSoundFont(path: String): Boolean
     external fun nativeIsSoundFontLoaded(): Boolean
+    external fun nativeIsMelodySoundFontLoaded(): Boolean
+    external fun nativeIsDrumSoundFontLoaded(): Boolean
     external fun nativeUnloadSoundFont()
     external fun nativeSfNoteOn(midiNote: Int, velocity: Float)
     external fun nativeSfNoteOff(midiNote: Int)
