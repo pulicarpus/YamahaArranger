@@ -36,10 +36,6 @@ struct StylePart {
     std::vector<MidiEvent> events;
     CasmPolicy casm;
 
-    // Initial MIDI setup captured from the style track. Yamaha styles often
-    // put bank select/program changes before the first musical note; these
-    // must survive the native -> Kotlin bridge or the accompaniment timbre
-    // silently falls back to a default instrument.
     int program = -1;
     int bankMsb = 0;
     int bankLsb = 0;
