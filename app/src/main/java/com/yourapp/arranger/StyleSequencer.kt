@@ -77,10 +77,11 @@ class StyleSequencer(
                 DebugLog.add("⚠ src${c.sourceChannel}→dst$destination: unsupported '${c.voiceName}'")
                 return@forEach
             }
-            val bank = if (isDrumVoice(c.voiceName)) 128 else 0
+            val drum = destination == 9 || isDrumVoice(c.voiceName)
+            val bank = if (drum) 128 else 0
             audioEngine.setChannelProgram(destination, prog, bank)
             midiInputManager.sendProgramChange(destination, prog, bank)
-            DebugLog.add("🎼 src${c.sourceChannel}→dst$destination: ${c.voiceName} → GM $prog NTR=${c.ntr} NTT=${c.ntt} HK=${c.highKey} LIM=${c.noteLimitLow}..${c.noteLimitHigh} RTR=${c.rtr}")
+            DebugLog.add("🎼 src${c.sourceChannel}→dst$destination: ${c.voiceName} → GM $prog bank=$bank NTR=${c.ntr} NTT=${c.ntt} HK=${c.highKey} LIM=${c.noteLimitLow}..${c.noteLimitHigh} RTR=${c.rtr}")
         }
     }
 
@@ -144,7 +145,10 @@ class StyleSequencer(
             val destinationChannel = policy?.destinationChannel ?: sourceChannel
             if (destinationChannel in lockedChannels) continue
 
-            val transformed = if (policy != null && !isDrumVoice(policy.voiceName)) {
+            // MIDI channel 10 (zero-based channel 9) is always percussion.
+            // Never feed drum notes through melodic CASM transposition.
+            val isDrumPart = destinationChannel == 9 || (policy != null && isDrumVoice(policy.voiceName))
+            val transformed = if (policy != null && !isDrumPart) {
                 currentChord?.let { CasmNoteTransformer.transform(s.event.note, it, policy) }
                     ?: s.event.note.coerceIn(0, 127)
             } else {
