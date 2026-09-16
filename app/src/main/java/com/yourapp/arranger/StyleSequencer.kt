@@ -219,23 +219,15 @@ class StyleSequencer(
             val delta = sched.tick - lastTick
             if (delta > 0) delay(ticksToMillis(delta, ppq, tempoBpm))
             lastTick = sched.tick
-
-            // ═══ Transpose dengan chord quality awareness ═══
-            // Bass part (ch10, ch11) → snap ke root + range protection.
-            // Melodic part → snap ke chord quality intervals.
-            val isBassPart = sched.channel == 10 || sched.channel == 11
-
-            val note = if (sched.transpose) {
-                currentChord?.let {
-                    NoteTransposer.transpose(
-                        patternNote = sched.event.note,
-                        chord = it,
-                        isBassPart = isBassPart
-                    )
-                } ?: sched.event.note
-            } else {
-                sched.event.note
-            }
+val note = if (sched.transpose) {
+    currentChord?.let {
+        NoteTransposer.transpose(
+            patternNote = sched.event.note,
+            chord = it,
+            channel = sched.channel
+        )
+    } ?: sched.event.note
+} else sched.event.note
 
             if (sched.event.isNoteOn) {
                 audioEngine.noteOnChannel(sched.channel, note, sched.event.velocity / 127f)
