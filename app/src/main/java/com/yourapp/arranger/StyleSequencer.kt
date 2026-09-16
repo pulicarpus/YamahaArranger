@@ -32,7 +32,6 @@ class StyleSequencer(
         stop()
         loopCount = 0
 
-        // Apply CASM voice per part saat ganti section
         if (lastAppliedSection != section.name) {
             applyVoicesFromCasm(section)
             lastAppliedSection = section.name
@@ -55,11 +54,6 @@ class StyleSequencer(
 
     fun queueNextSection(section: StyleSectionModel, ppq: Int) = play(section, ppq)
 
-    /**
-     * Apply CASM voice per part.
-     * Ch9 = DRUM selalu (tidak di-overwrite).
-     * Apply ke SEMUA channel di part (kecuali ch9).
-     */
     private fun applyVoicesFromCasm(section: StyleSectionModel) {
         if (voiceMap.isEmpty()) {
             DebugLog.add("⚠ No voice map, using SF2 defaults")
@@ -68,13 +62,11 @@ class StyleSequencer(
 
         DebugLog.add("🎼 Apply CASM voices for ${section.name}:")
 
-        // Kumpulkan semua channel unik yang dipakai section ini
         val allChannels = section.parts
             .flatMap { it.events }
             .map { it.channel }
             .distinct()
 
-        // Ch9 selalu DRUM (bank 128, prog 0) — locked
         if (allChannels.contains(9)) {
             audioEngine.setChannelProgram(9, 0, 128)
             DebugLog.add("  · ch9: DRUM (bank 128) — locked")
@@ -90,22 +82,23 @@ class StyleSequencer(
             }
             val bank = if (isDrumVoice(voiceName)) 128 else 0
 
-            // Apply ke semua channel di part ini, kecuali ch9
             val channels = part.events.map { it.channel }.distinct()
             channels.forEach { ch ->
-                if (ch == 9) {
-                    // Skip — ch9 tetap drum
-                    return@forEach
-                }
+                if (ch == 9) return@forEach
                 audioEngine.setChannelProgram(ch, prog, bank)
                 DebugLog.add("  · part$partNum ch$ch: $voiceName → prog$prog (bank$bank)")
             }
         }
     }
 
-    /** Extract GM program dari nama voice CASM. */
+    /** Extract GM program dari nama voice CASM — expanded keyword matcher. */
     private fun guessProgramFromVoiceName(name: String): Int {
+        // Normalize: lowercase, hapus titik/dash/underscore/spasi
         val n = name.lowercase()
+            .replace(".", "")
+            .replace("_", "")
+            .replace("-", "")
+            .replace(" ", "")
 
         // 1) Extract digit di akhir (misal "bass33" → 33)
         val trailingDigits = n.takeLastWhile { it.isDigit() }
@@ -114,26 +107,78 @@ class StyleSequencer(
             if (num != null && num in 0..127) return num
         }
 
-        // 2) Keyword-based fallback
+        // 2) Keyword matcher (expanded)
         return when {
-            n.contains("piano") -> 0
-            n.contains("e.piano") || n.contains("ep") -> 4
-            n.contains("organ") -> 16
-            n.contains("accordion") -> 21
-            n.contains("guitar") || n.contains("gtr") -> 24
-            n.contains("bass") -> 33
-            n.contains("violin") -> 40
+            // Piano
+            n.contains("piano") || n.startsWith("pno") -> 0
+            // E.Piano
+            n.contains("epiano") || n.startsWith("ep") -> 4
+            // Organ
+            n.contains("organ") || n.contains("org") -> 16
+            // Accordion
+            n.contains("accordion") || n.contains("accrd") -> 21
+
+            // Guitar (spesifik dulu)
+            n.contains("distgtr") || n.contains("disgtr") ||
+                n.contains("distortion") -> 30
+            n.contains("odgtr") || n.contains("overdrive") -> 29
+            n.contains("egt") || n.contains("egtr") ||
+                n.contains("electricgt") -> 27
+            n.contains("mutedgtr") -> 28
+            n.contains("jazzgtr") -> 26
+            n.contains("steelgtr") || n.contains("steelgt") -> 25
+            n.contains("nylongtr") || n.contains("nylongt") -> 24
+            n.contains("gtr") || n.contains("guitar") -> 24
+
+            // Bass
+            n.contains("bass") || n.startsWith("bs") -> 33
+            n.contains("slapbass") -> 36
+            n.contains("synthbass") -> 38
+
+            // Strings / Violin
+            n.contains("violin") || n.contains("vln") -> 40
+            n.contains("viola") -> 41
             n.contains("cello") -> 42
-            n.contains("strg") || n.contains("str") -> 48
-            n.contains("choir") -> 52
-            n.contains("trumpet") -> 56
-            n.contains("trombone") -> 57
+            n.contains("strings") || n.contains("strg") ||
+                n.contains("str") || n.contains("strgs") -> 48
+
+            // Choir
+            n.contains("choir") || n.contains("voice") || n.contains("vocal") -> 52
+
+            // Brass
+            n.contains("trumpet") || n.startsWith("tpt") -> 56
+            n.contains("trombone") || n.startsWith("tbn") -> 57
+            n.contains("tuba") -> 58
+            n.contains("frenchhorn") || n.contains("frhorn") -> 60
             n.contains("brass") -> 61
+
+            // Sax & Woodwind
+            n.contains("soprano") -> 64
+            n.contains("altosax") || n.contains("asax") -> 65
+            n.contains("tenorsax") || n.contains("tsax") -> 66
+            n.contains("barisax") || n.contains("bsax") -> 67
             n.contains("sax") -> 65
+
             n.contains("oboe") -> 68
-            n.contains("clarinet") -> 71
-            n.contains("flute") -> 73
-            n.contains("dr") || n.contains("kit") || n.contains("drum") -> 0
+            n.contains("englishhorn") -> 69
+            n.contains("bassoon") -> 70
+            n.contains("clarinet") || n.startsWith("clr") -> 71
+            n.contains("flute") || n.startsWith("flt") -> 73
+            n.contains("piccolo") -> 72
+
+            // Synth / Pad
+            n.contains("pad") || n.contains("synthpad") -> 89
+            n.contains("synthlead") -> 80
+            n.contains("synth") -> 80
+
+            // Drum
+            n.contains("drum") || n.contains("kit") ||
+                n.contains("adddr") || n.contains("maindr") ||
+                n.startsWith("dr") || n.contains("perc") -> 0
+
+            // FX
+            n.contains("fx") || n.contains("effect") -> 96
+
             else -> -1
         }
     }
@@ -160,7 +205,6 @@ class StyleSequencer(
             val channel: Int
         )
 
-        // Pakai channel ASLI dari file — TIDAK remap
         val merged = section.parts.flatMap { part ->
             part.events.map { ev ->
                 val isDrum = ev.channel == 9
