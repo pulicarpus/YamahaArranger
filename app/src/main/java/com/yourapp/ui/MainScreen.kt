@@ -24,6 +24,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -115,7 +116,6 @@ fun MainScreen(
 
         Spacer(Modifier.height(12.dp))
 
-        // ═══ CHANNEL VOICE ASSIGN ═══
         ChannelVoicePanel(
             voices = uiState.voiceAssignments,
             onTapVoice = { slot -> showVoicePicker = slot },
@@ -148,7 +148,6 @@ fun MainScreen(
         BottomBar(uiState.voiceName, uiState.right2Name, uiState.splitPoint)
     }
 
-    // ═══ VOICE PICKER DIALOG ═══
     if (showVoicePicker != null) {
         val slot = showVoicePicker!!
         VoicePickerDialog(
@@ -190,7 +189,6 @@ private fun ChannelVoicePanel(
                         .height(40.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Channel label
                     Text(
                         text = slot.label,
                         style = MaterialTheme.typography.labelMedium,
@@ -198,7 +196,6 @@ private fun ChannelVoicePanel(
                         modifier = Modifier.weight(1f)
                     )
 
-                    // Lock toggle
                     Text(
                         text = if (slot.locked) "🔒" else "🔓",
                         fontSize = 16.sp,
@@ -207,7 +204,6 @@ private fun ChannelVoicePanel(
                             .padding(horizontal = 6.dp)
                     )
 
-                    // Voice name button
                     TextButton(
                         onClick = { onTapVoice(slot) },
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
@@ -255,7 +251,6 @@ private fun VoicePickerDialog(
                     .fillMaxWidth()
                     .heightIn(max = 450.dp)
             ) {
-                // Drum option special
                 if (slot.channel == 9 || slot.isDrum()) {
                     TextButton(
                         onClick = { onSelect(0, 128) },
@@ -270,53 +265,31 @@ private fun VoicePickerDialog(
                     Spacer(Modifier.height(6.dp))
                 }
 
-                // Search box
-                OutlinedButton(
-                    onClick = { /* no-op — search is text input */ },
-                    modifier = Modifier.fillMaxWidth().height(0.dp)
-                ) { }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            MaterialTheme.colorScheme.background,
-                            RoundedCornerShape(6.dp)
+                OutlinedTextField(
+                    value = search,
+                    onValueChange = { search = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = {
+                        Text(
+                            "🔍 Search voice…",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                         )
-                        .padding(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "🔍 ",
-                        fontSize = 14.sp
-                    )
-                    androidx.compose.material3.BasicTextField(
-                        value = search,
-                        onValueChange = { search = it },
-                        modifier = Modifier.weight(1f),
-                        textStyle = MaterialTheme.typography.bodySmall,
-                        singleLine = true,
-                        decorationBox = { innerTextField ->
-                            if (search.isEmpty()) {
-                                Text(
-                                    "Search voice…",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                                )
-                            }
-                            innerTextField()
-                        }
-                    )
-                }
+                    },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodySmall
+                )
 
                 Spacer(Modifier.height(8.dp))
 
-                // Voice list
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(max = 350.dp)
                 ) {
-                    items(filteredVoices) { (name, program) ->
+                    items(filteredVoices) { item ->
+                        val name = item.first
+                        val program = item.second
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -353,7 +326,7 @@ private fun VoicePickerDialog(
 }
 
 // ═════════════════════════════════════════════════════
-// HEADER (LcdDisplay)
+// HEADER
 // ═════════════════════════════════════════════════════
 @Composable
 private fun LcdDisplay(
