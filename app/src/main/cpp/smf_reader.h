@@ -10,6 +10,13 @@
 struct MidiEvent {
     uint32_t tick;        // absolute tick, resolved against `ppq`
     uint8_t status;       // 0x80 note-off, 0x90 note-on, 0xB0 CC, etc.
+    // FIX: sebelumnya field ini tidak ada, jadi style_parser.cpp tidak
+    // bisa mengelompokkan event per channel MIDI (cuma bisa per track) —
+    // padahal identitas instrumen part (Bass/Chord/Pad/dst) di style
+    // Yamaha ditentukan oleh CHANNEL, bukan track. 0-15 (0-based, sesuai
+    // 4 bit rendah status byte) supaya konsisten dengan cara StyleSequencer
+    // Anda sekarang mengecek drum (`ev.channel == 9`).
+    uint8_t channel = 0;  // 0-15 untuk channel-voice events (status < 0xF0)
     uint8_t data1;
     uint8_t data2;
     std::vector<uint8_t> metaOrSysexData; // populated for 0xFF / 0xF0 events
