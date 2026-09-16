@@ -155,6 +155,19 @@ class ArrangerBrain @Inject constructor(
         _state.update { it.copy(tempoBpm = clamped) }
     }
 
+    /**
+     * FIX (Unresolved reference: updateLockedChannels): MainViewModel's
+     * toggleChannelLock() sudah memanggil ini, tapi implementasinya belum
+     * pernah ditulis di ArrangerBrain — UI lock-nya jadi setengah jalan
+     * (state ke-toggle di ViewModel, tapi CASM tetap menimpa voice channel
+     * yang di-lock karena StyleSequencer tidak pernah tahu channel mana
+     * yang harus dilewati).
+     */
+    fun updateLockedChannels(lockedChannels: Set<Int>) {
+        ensureSequencer()
+        sequencer.setLockedChannels(lockedChannels)
+    }
+
     private fun playSection(section: ArrangerSection, thenPlay: ArrangerSection? = null) {
         ensureSequencer()
         val style = loadedStyle ?: return
