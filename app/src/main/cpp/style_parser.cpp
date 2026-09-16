@@ -9,6 +9,7 @@ std::string toLower(std::string s) {
 }
 }
 
+// (Tidak diubah — ini sudah benar dari fix sebelumnya)
 StyleSection StyleParser::classifyMarkerText(const std::string& text) {
     std::string t = toLower(text);
 
@@ -84,17 +85,27 @@ bool StyleParser::parse(const uint8_t* rawStyBytes, size_t size) {
             secData.section = boundaries[i].section;
             secData.lengthTicks = std::max(secData.lengthTicks, endTick - startTick);
 
-            StylePart part;
-            part.name = track.name.empty() ? "Part" : track.name;
+            // FIX: sebelumnya semua event di rentang [startTick,endTick)
+            // langsung digabung jadi SATU StylePart, tidak peduli channel-
+            // nya beda-beda. Sekarang di-bucket dulu per channel MIDI —
+            // baru masing-masing channel jadi StylePart sendiri.
+            std::map<uint8_t, std::vector<MidiEvent>> byChannel;
             for (const auto& ev : track.events) {
                 if (ev.tick >= startTick && ev.tick < endTick &&
                     ev.status >= 0x80 && ev.status < 0xF0) {
                     MidiEvent relative = ev;
                     relative.tick -= startTick;
-                    part.events.push_back(relative);
+                    byChannel[ev.channel].push_back(relative);
                 }
             }
-            secData.parts.push_back(std::move(part));
+
+            for (auto& [channel, events] : byChannel) {
+                StylePart part;
+                part.midiChannel = channel;
+                part.name = track.name.empty() ? ("Ch" + std::to_string(channel)) : track.name;
+                part.events = std::move(events);
+                secData.parts.push_back(std::move(part));
+            }
         }
     }
 
