@@ -77,6 +77,13 @@ bool SmfReader::parse(const uint8_t* data, size_t size) {
             MidiEvent ev{};
             ev.tick = absTick;
             ev.status = statusByte;
+            // FIX: simpan channel (0-15) dari 4 bit rendah status byte,
+            // untuk channel-voice events saja (status < 0xF0). Tanpa ini
+            // style_parser.cpp tidak bisa mengelompokkan event per channel
+            // -> beberapa instrumen numpuk jadi satu "part".
+            if (statusByte < 0xF0) {
+                ev.channel = statusByte & 0x0F;
+            }
 
             if (statusByte == 0xFF) { // Meta event
                 if (p >= trackEnd) break;
