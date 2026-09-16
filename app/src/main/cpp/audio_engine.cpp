@@ -58,23 +58,40 @@ bool AudioEngine::start() {
 
     oboe::Result result = builder.openStream(stream_);
     if (result != oboe::Result::OK) {
-        LOGE("LowLatency failed, retry default");
-        builder.setPerformanceMode(oboe::PerformanceMode::None);
+        LOGE("LowLatency/Exclusive failed (%s), retrying Shared/None", oboe::convertToText(result));
+        // Exclusive endpoints are not available on every Android output device,
+        // especially Bluetooth and devices already using the primary mixer.
+        // The previous code only changed performance mode, leaving Exclusive
+        // requested on the retry. Explicitly fall back to the normal shared mixer.
+        stream_.reset();
+        builder.setPerformanceMode(oboe::PerformanceMode::None)
+               ->setSharingMode(oboe::SharingMode::Shared);
         result = builder.openStream(stream_);
     }
-    if (result != oboe::Result::OK) {
-        LOGE("Failed to open stream");
+    if (result != oboe::Result::OK || !stream_) {
+        LOGE("Failed to open audio stream: %s", oboe::convertToText(result));
+        stream_.reset();
         return false;
     }
 
     outputSampleRate_ = stream_->getSampleRate();
-    LOGI("Stream opened: sr=%d ch=%d", outputSampleRate_, stream_->getChannelCount());
+    LOGI("Stream opened: sr=%d ch=%d sharing=%d perf=%d api=%d",
+         outputSampleRate_,
+         stream_->getChannelCount(),
+         static_cast<int>(stream_->getSharingMode()),
+         static_cast<int>(stream_->getPerformanceMode()),
+         static_cast<int>(stream_->getAudioApi()));
 
-    stream_->setBufferSizeInFrames(stream_->getFramesPerBurst() * 8);
+    auto bufferResult = stream_->setBufferSizeInFrames(stream_->getFramesPerBurst() * 8);
+    if (bufferResult != oboe::Result::OK) {
+        LOGI("Buffer size adjustment skipped: %s", oboe::convertToText(bufferResult));
+    }
 
     result = stream_->requestStart();
     if (result != oboe::Result::OK) {
-        LOGE("Failed to start stream");
+        LOGE("Failed to start stream: %s", oboe::convertToText(result));
+        stream_->close();
+        stream_.reset();
         return false;
     }
 
