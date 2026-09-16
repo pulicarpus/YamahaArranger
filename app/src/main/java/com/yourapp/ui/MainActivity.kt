@@ -42,11 +42,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             YamahaArrangerTheme {
-                MainScreen(
-                    viewModel = viewModel,
-                    onImportStyleClicked = { pickStyleFile.launch(arrayOf("*/*")) },
-                    onImportSoundFontClicked = { pickSoundFont.launch(arrayOf("*/*")) }
-                )
+                SxMainScreen(viewModel = viewModel)
             }
         }
 
