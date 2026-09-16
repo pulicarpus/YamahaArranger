@@ -213,13 +213,20 @@ class StyleSequencer(
             if (delta > 0) delay(ticksToMillis(delta, ppq, tempoBpm))
             lastTick = sched.tick
 
+            // Detect apakah channel ini bass (ch 10-11) atau chord (ch 11-13)
+            val isBass = sched.channel == 10 || sched.channel == 11
+
             val note = if (sched.transpose) {
-                currentChord?.let { NoteTransposer.transpose(sched.event.note, it) }
-                    ?: sched.event.note
+                currentChord?.let {
+                    NoteTransposer.transpose(
+                        patternNote = sched.event.note,
+                        chord = it,
+                        isBassPart = isBass
+                    )
+                } ?: sched.event.note
             } else {
                 sched.event.note
             }
-
             if (sched.event.isNoteOn) {
                 // Internal SF2 audio
                 audioEngine.noteOnChannel(sched.channel, note, sched.event.velocity / 127f)
