@@ -42,63 +42,30 @@ object DebugLog {
     fun clear() = _lines.clear()
 }
 
-data class VoiceSlot(
-    val channel: Int,
-    val label: String,
-    val program: Int
-) {
+data class VoiceSlot(val channel: Int, val label: String, val program: Int) {
     fun displayName(): String =
         GM_VOICES.firstOrNull { it.second == program }?.first ?: "prog$program"
 }
 
 val GM_VOICES: List<Pair<String, Int>> = listOf(
-    "Piano" to 0,
-    "Bright Piano" to 1,
-    "E.Piano" to 4,
-    "Harpsichord" to 6,
-    "Organ" to 16,
-    "Church Organ" to 19,
-    "Accordion" to 21,
-    "Nylon Guitar" to 24,
-    "Steel Guitar" to 25,
-    "Jazz Guitar" to 26,
-    "Clean Guitar" to 27,
-    "Overdrive Gt" to 29,
-    "Finger Bass" to 33,
-    "Pick Bass" to 34,
-    "Slap Bass" to 36,
-    "Synth Bass" to 38,
-    "Violin" to 40,
-    "Viola" to 41,
-    "Cello" to 42,
-    "Strings" to 48,
-    "Slow Strings" to 51,
-    "Choir" to 52,
-    "Trumpet" to 56,
-    "Trombone" to 57,
-    "Tuba" to 58,
-    "Brass" to 61,
-    "Soprano Sax" to 64,
-    "Alto Sax" to 65,
-    "Tenor Sax" to 66,
-    "Oboe" to 68,
-    "English Horn" to 69,
-    "Bassoon" to 70,
-    "Clarinet" to 71,
-    "Flute" to 73,
-    "Pan Flute" to 75,
-    "Synth Lead" to 80,
-    "Synth Pad" to 89,
-    "FX" to 96
+    "Piano" to 0, "Bright Piano" to 1, "E.Piano" to 4, "Harpsichord" to 6,
+    "Organ" to 16, "Church Organ" to 19, "Accordion" to 21,
+    "Nylon Guitar" to 24, "Steel Guitar" to 25, "Jazz Guitar" to 26,
+    "Clean Guitar" to 27, "Overdrive Gt" to 29, "Distortion Gt" to 30,
+    "Finger Bass" to 33, "Pick Bass" to 34, "Slap Bass" to 36, "Synth Bass" to 38,
+    "Violin" to 40, "Viola" to 41, "Cello" to 42,
+    "Strings" to 48, "Slow Strings" to 51, "Choir" to 52,
+    "Trumpet" to 56, "Trombone" to 57, "Tuba" to 58, "Brass" to 61,
+    "Soprano Sax" to 64, "Alto Sax" to 65, "Tenor Sax" to 66,
+    "Oboe" to 68, "English Horn" to 69, "Bassoon" to 70,
+    "Clarinet" to 71, "Flute" to 73, "Pan Flute" to 75,
+    "Synth Lead" to 80, "Synth Pad" to 89, "FX" to 96
 )
 
 fun defaultVoices(): List<VoiceSlot> = listOf(
-    VoiceSlot(2, "Bass", 33),
-    VoiceSlot(3, "Chord1", 0),
-    VoiceSlot(4, "Chord2", 24),
-    VoiceSlot(5, "Pad", 48),
-    VoiceSlot(6, "Phrase1", 56),
-    VoiceSlot(7, "Phrase2", 65)
+    VoiceSlot(2, "Bass", 33), VoiceSlot(3, "Chord1", 0),
+    VoiceSlot(4, "Chord2", 24), VoiceSlot(5, "Pad", 48),
+    VoiceSlot(6, "Phrase1", 56), VoiceSlot(7, "Phrase2", 65)
 )
 
 data class MainUiState(
@@ -109,6 +76,7 @@ data class MainUiState(
     val activeSection: String = "Main A",
     val detectedChordLabel: String = "",
     val midiStatus: String = "No MIDI device",
+    val midiOutEnabled: Boolean = false,        // ← BARU
     val soundFontName: String = "None",
     val styleVolume: Int = 100,
     val voiceVolume: Int = 100,
@@ -132,6 +100,7 @@ class MainViewModel @Inject constructor(
 
     private val _styleName = MutableStateFlow("No Style Loaded")
     private val _midiStatus = MutableStateFlow("No MIDI device")
+    private val _midiOutEnabled = MutableStateFlow(false)   // ← BARU
     private val _transpose = MutableStateFlow(0)
     private val _soundFontName = MutableStateFlow("None")
     private val _styleVolume = MutableStateFlow(100)
@@ -160,6 +129,7 @@ class MainViewModel @Inject constructor(
                 activeSection = displayLabelFor(arranger.currentSection),
                 detectedChordLabel = arranger.currentChordLabel,
                 midiStatus = midi,
+                midiOutEnabled = _midiOutEnabled.value,
                 soundFontName = sfName,
                 voiceVolume = voiceVol,
                 masterVolume = masterVol,
@@ -182,6 +152,7 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    // MIDI
     fun connectFirstAvailableMidiDevice() {
         viewModelScope.launch {
             repeat(5) { attempt ->
@@ -202,18 +173,28 @@ class MainViewModel @Inject constructor(
         connectFirstAvailableMidiDevice()
     }
 
+    /** Toggle MIDI OUT on/off — kalau ON, style dikirim ke E343. */
+    fun toggleMidiOut() {
+        val newVal = !_midiOutEnabled.value
+        _midiOutEnabled.value = newVal
+        midiInputManager.midiOutEnabled = newVal
+        DebugLog.add(if (newVal) "📤 MIDI OUT: ON" else "📤 MIDI OUT: OFF")
+    }
+
     override fun onCleared() {
         midiInputManager.close()
         audioEngine.stop()
         super.onCleared()
     }
 
+    // KEYBOARD
     fun onKeyboardNoteOn(midiNote: Int, velocity: Float) =
         arrangerBrain.onKeyboardNoteOn(midiNote, velocity)
 
     fun onKeyboardNoteOff(midiNote: Int) =
         arrangerBrain.onKeyboardNoteOff(midiNote)
 
+    // SECTION
     fun onSectionSelected(sectionLabel: String) {
         val section = SECTION_BUTTON_MAP[sectionLabel] ?: return
         if (section in MAIN_VARIATIONS) {
@@ -223,10 +204,12 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    // TRANSPORT
     fun onSyncStart() { }
     fun onStartStop() = arrangerBrain.startStop()
     fun onTapTempo() { }
 
+    // TEMPO
     fun onTempoDown() {
         val newTempo = (arrangerBrain.state.value.tempoBpm - 5).coerceIn(20, 280)
         arrangerBrain.setTempo(newTempo)
@@ -236,17 +219,21 @@ class MainViewModel @Inject constructor(
         arrangerBrain.setTempo(newTempo)
     }
 
+    // TRANSPOSE
     fun onTransposeDown() { _transpose.value = (_transpose.value - 1).coerceIn(-12, 12) }
     fun onTransposeUp() { _transpose.value = (_transpose.value + 1).coerceIn(-12, 12) }
 
+    // VOLUME
     fun onStyleVolumeChange(value: Int) { _styleVolume.value = value }
     fun onVoiceVolumeChange(value: Int) { _voiceVolume.value = value }
     fun onMasterVolumeChange(value: Int) { _masterVolume.value = value }
 
+    // REGISTRATION
     fun onBankChange(bank: Int) { _activeBank.value = bank.coerceIn(1, 8) }
     fun onRegSlotTap(slot: Int) { _activeRegSlot.value = slot }
     fun onRegSlotSave(slot: Int) { Timber.i("Save reg bank=${_activeBank.value} slot=$slot") }
 
+    // VOICE ASSIGN
     fun cycleVoice(channel: Int) {
         val current = _voiceAssignments.value
         val updated = current.map { slot ->
@@ -256,27 +243,27 @@ class MainViewModel @Inject constructor(
                 val newProg = GM_VOICES[nextIdx].second
                 val newName = GM_VOICES[nextIdx].first
                 audioEngine.setChannelProgram(channel, newProg, 0)
+                midiInputManager.sendProgramChange(channel, newProg, 0)
                 DebugLog.add("🎼 ${slot.label} ch$channel → $newName")
                 slot.copy(program = newProg)
-            } else {
-                slot
-            }
+            } else slot
         }
         _voiceAssignments.value = updated
     }
 
+    // TEST TONE
     fun playTestTone() {
         viewModelScope.launch {
-            DebugLog.add("🔊 TEST TONE: starting…")
+            DebugLog.add("🔊 TEST TONE")
             for (note in intArrayOf(60, 64, 67)) {
                 audioEngine.testTone(note, 0.9f)
                 delay(400)
                 audioEngine.noteOff(note)
             }
-            DebugLog.add("🔊 TEST TONE: done")
         }
     }
 
+    // STYLE PICKER
     fun onStyleFilePicked(uri: Uri) {
         viewModelScope.launch {
             val bytes = withContext(Dispatchers.IO) { contentResolver.readBytes(uri) }
@@ -298,6 +285,7 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    // SOUNDFONT PICKER
     fun onSoundFontFilePicked(uri: Uri) {
         viewModelScope.launch {
             DebugLog.add("📂 SF2 picker…")
