@@ -324,8 +324,10 @@ Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeExtractVoiceMap(
             while (i < casmEnd && (buf[i] == 0 || buf[i] == ' ')) i++;
 
             size_t nameStart = i;
+            // FIX: izinkan '.' '+' '@' di voice name
             while (i < casmEnd &&
-                   (std::isalnum(buf[i]) || buf[i] == '-' || buf[i] == '_')) {
+                   (std::isalnum(buf[i]) || buf[i] == '-' || buf[i] == '_' ||
+                    buf[i] == '.' || buf[i] == '+' || buf[i] == '@')) {
                 i++;
             }
 
@@ -355,7 +357,7 @@ Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeExtractVoiceMap(
 }
 
 // ═════════════════════════════════════════════════════
-// ★★★ MARKER DUMPER — BARU ★★★
+// MARKER DUMPER
 // ═════════════════════════════════════════════════════
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeDumpMarkers(
