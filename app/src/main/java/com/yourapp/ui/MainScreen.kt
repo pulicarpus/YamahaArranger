@@ -2,6 +2,7 @@ package com.yourapp.yamahaarranger.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,10 +12,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -47,6 +52,7 @@ fun MainScreen(
     onImportSoundFontClicked: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showVoicePicker by remember { mutableStateOf<VoiceSlot?>(null) }
 
     Column(
         modifier = Modifier
@@ -70,7 +76,12 @@ fun MainScreen(
         )
 
         Spacer(Modifier.height(8.dp))
-        MidiStatusBar(             midiStatus = uiState.midiStatus,             midiOutEnabled = uiState.midiOutEnabled,             onConnect = viewModel::refreshMidiConnection,             onToggleMidiOut = viewModel::toggleMidiOut         )
+        MidiStatusBar(
+            midiStatus = uiState.midiStatus,
+            midiOutEnabled = uiState.midiOutEnabled,
+            onConnect = viewModel::refreshMidiConnection,
+            onToggleMidiOut = viewModel::toggleMidiOut
+        )
         Spacer(Modifier.height(8.dp))
 
         SectionLabel("INTRO")
@@ -94,19 +105,21 @@ fun MainScreen(
 
         Button(
             onClick = { viewModel.playTestTone() },
-            modifier = Modifier.fillMaxWidth().height(50.dp),
+            modifier = Modifier.fillMaxWidth().height(44.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.secondary
             )
         ) {
-            Text("🔊 TEST TONE (C-E-G)", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text("🔊 TEST TONE (C-E-G)", fontWeight = FontWeight.Bold, fontSize = 14.sp)
         }
 
         Spacer(Modifier.height(12.dp))
 
-        VoiceSelectPanel(
+        // ═══ CHANNEL VOICE ASSIGN ═══
+        ChannelVoicePanel(
             voices = uiState.voiceAssignments,
-            onCycle = viewModel::cycleVoice
+            onTapVoice = { slot -> showVoicePicker = slot },
+            onToggleLock = viewModel::toggleChannelLock
         )
         Spacer(Modifier.height(12.dp))
 
@@ -134,15 +147,29 @@ fun MainScreen(
 
         BottomBar(uiState.voiceName, uiState.right2Name, uiState.splitPoint)
     }
+
+    // ═══ VOICE PICKER DIALOG ═══
+    if (showVoicePicker != null) {
+        val slot = showVoicePicker!!
+        VoicePickerDialog(
+            slot = slot,
+            onDismiss = { showVoicePicker = null },
+            onSelect = { program, bank ->
+                viewModel.setChannelVoice(slot.channel, program, bank)
+                showVoicePicker = null
+            }
+        )
+    }
 }
 
 // ═════════════════════════════════════════════════════
-// VOICE SELECT PANEL
+// CHANNEL VOICE PANEL
 // ═════════════════════════════════════════════════════
 @Composable
-private fun VoiceSelectPanel(
+private fun ChannelVoicePanel(
     voices: List<VoiceSlot>,
-    onCycle: (Int) -> Unit
+    onTapVoice: (VoiceSlot) -> Unit,
+    onToggleLock: (Int) -> Unit
 ) {
     Surface(
         color = MaterialTheme.colorScheme.surface,
@@ -151,23 +178,40 @@ private fun VoiceSelectPanel(
     ) {
         Column(modifier = Modifier.padding(10.dp)) {
             Text(
-                "VOICE ASSIGN (tap untuk ganti)",
+                "CHANNEL VOICES (tap untuk pilih)",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
             Spacer(Modifier.height(6.dp))
             voices.forEach { slot ->
                 Row(
-                    modifier = Modifier.fillMaxWidth().height(38.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(40.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // Channel label
                     Text(
-                        "${slot.label} (ch${slot.channel})",
+                        text = slot.label,
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                         modifier = Modifier.weight(1f)
                     )
-                    TextButton(onClick = { onCycle(slot.channel) }) {
+
+                    // Lock toggle
+                    Text(
+                        text = if (slot.locked) "🔒" else "🔓",
+                        fontSize = 16.sp,
+                        modifier = Modifier
+                            .clickable { onToggleLock(slot.channel) }
+                            .padding(horizontal = 6.dp)
+                    )
+
+                    // Voice name button
+                    TextButton(
+                        onClick = { onTapVoice(slot) },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                    ) {
                         Text(
                             "🎼 ${slot.displayName()}",
                             style = MaterialTheme.typography.labelMedium,
@@ -182,75 +226,134 @@ private fun VoiceSelectPanel(
 }
 
 // ═════════════════════════════════════════════════════
-// DEBUG PANEL
+// VOICE PICKER DIALOG
 // ═════════════════════════════════════════════════════
 @Composable
-private fun DebugPanel() {
-    var logs by remember { mutableStateOf(listOf<String>()) }
+private fun VoicePickerDialog(
+    slot: VoiceSlot,
+    onDismiss: () -> Unit,
+    onSelect: (program: Int, bank: Int) -> Unit
+) {
+    var search by remember { mutableStateOf("") }
 
-    LaunchedEffect(Unit) {
-        while (true) {
-            logs = DebugLog.getAll()
-            delay(500)
-        }
+    val filteredVoices = remember(search) {
+        if (search.isBlank()) GM_VOICES
+        else GM_VOICES.filter { it.first.contains(search, ignoreCase = true) }
     }
 
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(8.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(10.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "DEBUG LOG",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
-                TextButton(onClick = { DebugLog.clear() }) {
-                    Text("Clear", style = MaterialTheme.typography.labelSmall)
-                }
-            }
-            Spacer(Modifier.height(4.dp))
-            Box(
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                "Ch ${slot.channel} — Pilih Voice",
+                style = MaterialTheme.typography.titleMedium
+            )
+        },
+        text = {
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(180.dp)
-                    .background(MaterialTheme.colorScheme.background, RoundedCornerShape(4.dp))
-                    .border(1.dp, MaterialTheme.colorScheme.surface, RoundedCornerShape(4.dp))
-                    .padding(6.dp)
+                    .heightIn(max = 450.dp)
             ) {
-                if (logs.isEmpty()) {
+                // Drum option special
+                if (slot.channel == 9 || slot.isDrum()) {
+                    TextButton(
+                        onClick = { onSelect(0, 128) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            "🥁 DRUM KIT (bank 128)",
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(Modifier.height(6.dp))
+                }
+
+                // Search box
+                OutlinedButton(
+                    onClick = { /* no-op — search is text input */ },
+                    modifier = Modifier.fillMaxWidth().height(0.dp)
+                ) { }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            MaterialTheme.colorScheme.background,
+                            RoundedCornerShape(6.dp)
+                        )
+                        .padding(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
-                        "(no log yet)",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                        "🔍 ",
+                        fontSize = 14.sp
                     )
-                } else {
-                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                        logs.forEach { line ->
+                    androidx.compose.material3.BasicTextField(
+                        value = search,
+                        onValueChange = { search = it },
+                        modifier = Modifier.weight(1f),
+                        textStyle = MaterialTheme.typography.bodySmall,
+                        singleLine = true,
+                        decorationBox = { innerTextField ->
+                            if (search.isEmpty()) {
+                                Text(
+                                    "Search voice…",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                                )
+                            }
+                            innerTextField()
+                        }
+                    )
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                // Voice list
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 350.dp)
+                ) {
+                    items(filteredVoices) { (name, program) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onSelect(program, 0) }
+                                .padding(horizontal = 4.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Text(
-                                line,
+                                text = "$program",
                                 style = MaterialTheme.typography.labelSmall,
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 10.sp,
-                                color = MaterialTheme.colorScheme.onSurface
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                modifier = Modifier.padding(end = 12.dp)
+                            )
+                            Text(
+                                text = name,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (program == slot.program && slot.bank == 0)
+                                    MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurface,
+                                fontWeight = if (program == slot.program && slot.bank == 0)
+                                    FontWeight.Bold else FontWeight.Normal
                             )
                         }
                     }
                 }
             }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Tutup")
+            }
         }
-    }
+    )
 }
 
 // ═════════════════════════════════════════════════════
-// HEADER
+// HEADER (LcdDisplay)
 // ═════════════════════════════════════════════════════
 @Composable
 private fun LcdDisplay(
@@ -292,28 +395,20 @@ private fun LcdDisplay(
                 }
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    "TRANSPOSE",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                )
+                Text("TRANSPOSE", style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     SmallSquareButton("−", onTransposeDown)
-                    Text(
-                        if (transpose >= 0) "+$transpose" else "$transpose",
+                    Text(if (transpose >= 0) "+$transpose" else "$transpose",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 8.dp)
-                    )
+                        modifier = Modifier.padding(horizontal = 8.dp))
                     SmallSquareButton("+", onTransposeUp)
                 }
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    "TEMPO",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                )
+                Text("TEMPO", style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     SmallSquareButton("−", onTempoDown)
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -323,12 +418,10 @@ private fun LcdDisplay(
                     SmallSquareButton("+", onTempoUp)
                 }
                 Spacer(Modifier.height(4.dp))
-                Text(
-                    chordLabel.ifEmpty { "—" },
+                Text(chordLabel.ifEmpty { "—" },
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.secondary
-                )
+                    color = MaterialTheme.colorScheme.secondary)
             }
         }
     }
@@ -350,7 +443,7 @@ private fun SmallSquareButton(label: String, onClick: () -> Unit) {
 }
 
 // ═════════════════════════════════════════════════════
-// MIDI BAR
+// MIDI Status Bar
 // ═════════════════════════════════════════════════════
 @Composable
 private fun MidiStatusBar(
@@ -371,42 +464,25 @@ private fun MidiStatusBar(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(if (midiStatus.startsWith("No")) "⚪" else "🟢", fontSize = 14.sp)
-                Text(
-                    "  MIDI: $midiStatus",
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.weight(1f, fill = false)
-                )
+                Text("  MIDI: $midiStatus", style = MaterialTheme.typography.bodySmall)
             }
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Toggle MIDI OUT
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Button(
                     onClick = onToggleMidiOut,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (midiOutEnabled)
-                            MaterialTheme.colorScheme.primary
+                        containerColor = if (midiOutEnabled) MaterialTheme.colorScheme.primary
                         else MaterialTheme.colorScheme.surface,
-                        contentColor = if (midiOutEnabled)
-                            MaterialTheme.colorScheme.onPrimary
+                        contentColor = if (midiOutEnabled) MaterialTheme.colorScheme.onPrimary
                         else MaterialTheme.colorScheme.onSurface
                     ),
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
                 ) {
-                    Text(
-                        if (midiOutEnabled) "📤 OUT: ON" else "📤 OUT",
-                        style = MaterialTheme.typography.labelSmall
-                    )
+                    Text(if (midiOutEnabled) "📤 OUT: ON" else "📤 OUT",
+                        style = MaterialTheme.typography.labelSmall)
                 }
-
-                // Connect
                 Button(
                     onClick = onConnect,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondary
-                    ),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
                 ) {
                     Text("Connect", style = MaterialTheme.typography.labelSmall)
@@ -417,24 +493,18 @@ private fun MidiStatusBar(
 }
 
 // ═════════════════════════════════════════════════════
-// SECTION LABEL + ROW
+// Section Label & Row
 // ═════════════════════════════════════════════════════
 @Composable
 private fun SectionLabel(text: String) {
-    Text(
-        text,
-        style = MaterialTheme.typography.labelSmall,
+    Text(text, style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-        modifier = Modifier.padding(start = 4.dp, bottom = 3.dp)
-    )
+        modifier = Modifier.padding(start = 4.dp, bottom = 3.dp))
 }
 
 @Composable
 private fun SectionRow(sections: List<String>, activeSection: String, onSelect: (String) -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         sections.forEach { section ->
             val isActive = section == activeSection
             Button(
@@ -455,7 +525,7 @@ private fun SectionRow(sections: List<String>, activeSection: String, onSelect: 
 }
 
 // ═════════════════════════════════════════════════════
-// TRANSPORT
+// Transport
 // ═════════════════════════════════════════════════════
 @Composable
 private fun TransportRow(
@@ -464,10 +534,7 @@ private fun TransportRow(
     onStartStop: () -> Unit,
     onTapTempo: () -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         OutlinedButton(onClick = onSyncStart, modifier = Modifier.weight(1f).height(46.dp)) {
             Text("Sync Start", style = MaterialTheme.typography.labelMedium)
         }
@@ -481,7 +548,7 @@ private fun TransportRow(
 }
 
 // ═════════════════════════════════════════════════════
-// REGISTRATION
+// Registration
 // ═════════════════════════════════════════════════════
 @Composable
 private fun RegistrationRow(
@@ -491,22 +558,14 @@ private fun RegistrationRow(
     onRegSlotTap: (Int) -> Unit,
     onRegSlotSave: (Int) -> Unit
 ) {
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(8.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(10.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
+            Row(modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "REGISTRATION MEMORY",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                )
+                verticalAlignment = Alignment.CenterVertically) {
+                Text("REGISTRATION MEMORY", style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("BANK", style = MaterialTheme.typography.labelSmall)
                     Spacer(Modifier.padding(horizontal = 4.dp))
@@ -517,10 +576,7 @@ private fun RegistrationRow(
                 }
             }
             Spacer(Modifier.height(6.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 (1..4).forEach { slot ->
                     val isActive = slot == activeRegSlot
                     Button(
@@ -543,7 +599,7 @@ private fun RegistrationRow(
 }
 
 // ═════════════════════════════════════════════════════
-// VOLUME
+// Volume
 // ═════════════════════════════════════════════════════
 @Composable
 private fun VolumePanel(
@@ -554,11 +610,8 @@ private fun VolumePanel(
     onVoiceChange: (Int) -> Unit,
     onMasterChange: (Int) -> Unit
 ) {
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(8.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(10.dp)) {
             VolumeSlider("STYLE", styleVolume, onStyleChange)
             Spacer(Modifier.height(4.dp))
@@ -571,45 +624,75 @@ private fun VolumePanel(
 
 @Composable
 private fun VolumeSlider(label: String, value: Int, onChange: (Int) -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelSmall,
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Text(label, style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-            modifier = Modifier.padding(end = 8.dp)
-        )
-        Slider(
-            value = value.toFloat(),
-            onValueChange = { onChange(it.roundToInt()) },
-            valueRange = 0f..127f,
-            modifier = Modifier.weight(1f)
-        )
-        Text(
-            "$value",
-            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.padding(end = 8.dp))
+        Slider(value = value.toFloat(), onValueChange = { onChange(it.roundToInt()) },
+            valueRange = 0f..127f, modifier = Modifier.weight(1f))
+        Text("$value", style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(start = 8.dp).height(20.dp)
-        )
+            modifier = Modifier.padding(start = 8.dp).height(20.dp))
     }
 }
 
 // ═════════════════════════════════════════════════════
-// BOTTOM BAR
+// Debug Panel
+// ═════════════════════════════════════════════════════
+@Composable
+private fun DebugPanel() {
+    var logs by remember { mutableStateOf(listOf<String>()) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            logs = DebugLog.getAll()
+            delay(500)
+        }
+    }
+
+    Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(10.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically) {
+                Text("DEBUG LOG", style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                TextButton(onClick = { DebugLog.clear() }) {
+                    Text("Clear", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            Box(modifier = Modifier.fillMaxWidth().height(180.dp)
+                .background(MaterialTheme.colorScheme.background, RoundedCornerShape(4.dp))
+                .border(1.dp, MaterialTheme.colorScheme.surface, RoundedCornerShape(4.dp))
+                .padding(6.dp)) {
+                if (logs.isEmpty()) {
+                    Text("(no log yet)", style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
+                } else {
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                        logs.forEach { line ->
+                            Text(line, style = MaterialTheme.typography.labelSmall,
+                                fontFamily = FontFamily.Monospace, fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.onSurface)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ═════════════════════════════════════════════════════
+// Bottom Bar
 // ═════════════════════════════════════════════════════
 @Composable
 private fun BottomBar(voiceName: String, right2Name: String, splitPoint: String) {
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(8.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
+    Surface(color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween) {
             Text("🎹 $voiceName", style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary)
             Text("Right2: $right2Name", style = MaterialTheme.typography.labelMedium)
