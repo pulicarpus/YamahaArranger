@@ -202,6 +202,7 @@ class StyleSequencer(
         }.sortedBy { it.tick }
 
         if (merged.isEmpty()) {
+            DebugLog.add("⚠ Loop $loopCount: NO EVENTS")
             delay(500)
             return
         }
@@ -213,26 +214,22 @@ class StyleSequencer(
             if (delta > 0) delay(ticksToMillis(delta, ppq, tempoBpm))
             lastTick = sched.tick
 
-            // Detect apakah channel ini bass (ch 10-11) atau chord (ch 11-13)
-            val isBass = sched.channel == 10 || sched.channel == 11
-
+            // Transpose dengan channel-aware logic
             val note = if (sched.transpose) {
                 currentChord?.let {
                     NoteTransposer.transpose(
                         patternNote = sched.event.note,
                         chord = it,
-                        isBassPart = sched.channel
+                        channel = sched.channel
                     )
                 } ?: sched.event.note
             } else {
                 sched.event.note
             }
-            if (sched.event.isNoteOn) {
-                // Internal SF2 audio
-                audioEngine.noteOnChannel(sched.channel, note, sched.event.velocity / 127f)
-                // MIDI OUT ke E343 (jika enabled)
-                midiInputManager.sendNoteOn(sched.channel, note, sched.event.velocity)
 
+            if (sched.event.isNoteOn) {
+                audioEngine.noteOnChannel(sched.channel, note, sched.event.velocity / 127f)
+                midiInputManager.sendNoteOn(sched.channel, note, sched.event.velocity)
                 noteOnCount++
                 if (loopCount <= 1 && noteOnCount <= 8) {
                     DebugLog.add("  ♪ ch${sched.channel} n=$note v=${sched.event.velocity}")
