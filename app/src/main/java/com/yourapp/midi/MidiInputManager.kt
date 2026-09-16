@@ -3,6 +3,7 @@ package com.yourapp.midi
 import android.content.Context
 import android.media.midi.MidiDevice
 import android.media.midi.MidiDeviceInfo
+import android.media.midi.MidiInputPort
 import android.media.midi.MidiManager
 import android.media.midi.MidiOutputPort
 import android.media.midi.MidiReceiver
@@ -22,7 +23,8 @@ class MidiInputManager @Inject constructor(
         context.getSystemService(Context.MIDI_SERVICE) as? MidiManager
 
     private var openedDevice: MidiDevice? = null
-    private var outputPort: MidiOutputPort? = null
+    private var outputPort: MidiOutputPort? = null   // TERIMA dari device
+    private var inputPort: MidiInputPort? = null     // KIRIM ke device
 
     var onNoteOn: ((midiNote: Int, velocity: Int) -> Unit)? = null
     var onNoteOff: ((midiNote: Int) -> Unit)? = null
@@ -30,8 +32,8 @@ class MidiInputManager @Inject constructor(
     var connectedDeviceName: String? = null
         private set
 
-    private var noteOnCount = 0
-    private var byteCount = 0
+    /** Toggle MIDI OUT — kalau ON, style notes dikirim ke E343. */
+    var midiOutEnabled = false
 
     fun listAvailableDevices(): List<MidiDeviceInfo> {
         val mgr = midiManager ?: return emptyList()
@@ -39,13 +41,7 @@ class MidiInputManager @Inject constructor(
     }
 
     fun connectFirstAvailableDevice(): Boolean {
-        val devices = listAvailableDevices()
-        DebugLog.add("🔍 Found ${devices.size} MIDI device(s)")
-        devices.forEach { info ->
-            val name = info.properties.getString(MidiDeviceInfo.PROPERTY_NAME) ?: "?"
-            DebugLog.add("  · $name: in=${info.inputPortCount} out=${info.outputPortCount}")
-        }
-        val info = devices.firstOrNull { it.outputPortCount > 0 }
+        val info = listAvailableDevices().firstOrNull { it.outputPortCount > 0 }
         if (info == null) {
             DebugLog.add("❌ No MIDI device with OUTPUT port")
             return false
@@ -55,10 +51,7 @@ class MidiInputManager @Inject constructor(
     }
 
     fun connect(info: MidiDeviceInfo) {
-        val mgr = midiManager ?: run {
-            DebugLog.add("❌ MidiManager null")
-            return
-        }
+        val mgr = midiManager ?: return
         close()
 
         val name = info.properties.getString(MidiDeviceInfo.PROPERTY_NAME) ?: "MIDI Device"
@@ -71,34 +64,32 @@ class MidiInputManager @Inject constructor(
             }
             openedDevice = device
 
-            val port = device.openOutputPort(0)
-            if (port == null) {
-                DebugLog.add("❌ openOutputPort(0) null")
-                device.close()
-                openedDevice = null
-                return@openDevice
+            // 1) RECEIVE — dari device (chord detection)
+            val recvPort = device.openOutputPort(0)
+            if (recvPort != null) {
+                outputPort = recvPort
+                recvPort.connect(MidiNoteReceiver())
+                DebugLog.add("✅ MIDI IN ready")
+            } else {
+                DebugLog.add("⚠ MIDI IN port failed")
             }
-            outputPort = port
 
-            // Connect receiver - MIDI data dari device masuk ke sini
-            val receiver = MidiNoteReceiver()
-            port.connect(receiver)
+            // 2) SEND — ke device (style playback)
+            val sendPort = device.openInputPort(0)
+            if (sendPort != null) {
+                inputPort = sendPort
+                DebugLog.add("✅ MIDI OUT ready")
+            } else {
+                DebugLog.add("⚠ MIDI OUT port failed")
+            }
 
             connectedDeviceName = name
-            byteCount = 0
-            noteOnCount = 0
-            DebugLog.add("✅ Connected: $name (waiting for MIDI data...)")
-            DebugLog.add("   Note: tekan tuts E343 sekarang")
+            DebugLog.add("✅ Connected: $name")
         }, Handler(Looper.getMainLooper()))
     }
 
     private inner class MidiNoteReceiver : MidiReceiver() {
         override fun onSend(data: ByteArray, offset: Int, count: Int, timestamp: Long) {
-            byteCount += count
-            // Log pertama kali terima data
-            if (byteCount == count) {
-                DebugLog.add("📨 First MIDI bytes received! count=$count")
-            }
             parseMessages(data, offset, count)
         }
     }
@@ -118,31 +109,18 @@ class MidiInputManager @Inject constructor(
             if (status < 0) { i++; continue }
 
             when (status and 0xF0) {
-                0x90 -> {  // Note On
+                0x90 -> {
                     if (i + 1 >= end) break
                     val note = data[i].toInt() and 0x7F
                     val velocity = data[i + 1].toInt() and 0x7F
                     i += 2
-                    if (velocity > 0) {
-                        noteOnCount++
-                        if (noteOnCount <= 8) {
-                            DebugLog.add("🎹 NoteOn n=$note v=$velocity (#$noteOnCount)")
-                        }
-                        onNoteOn?.invoke(note, velocity)
-                    } else {
-                        if (noteOnCount <= 8) {
-                            DebugLog.add("🎹 NoteOff(0vel) n=$note")
-                        }
-                        onNoteOff?.invoke(note)
-                    }
+                    if (velocity > 0) onNoteOn?.invoke(note, velocity)
+                    else onNoteOff?.invoke(note)
                 }
-                0x80 -> {  // Note Off
+                0x80 -> {
                     if (i + 1 >= end) break
                     val note = data[i].toInt() and 0x7F
                     i += 2
-                    if (noteOnCount <= 8) {
-                        DebugLog.add("🎹 NoteOff n=$note")
-                    }
                     onNoteOff?.invoke(note)
                 }
                 else -> i += bytesForStatus(status)
@@ -156,10 +134,65 @@ class MidiInputManager @Inject constructor(
         else -> 0
     }
 
+    // ═════════════════════════════════════════════════════
+    // MIDI OUT
+    // ═════════════════════════════════════════════════════
+    fun sendNoteOn(channel: Int, note: Int, velocity: Int) {
+        if (!midiOutEnabled) return
+        val port = inputPort ?: return
+        val ch = channel.coerceIn(0, 15)
+        val n = note.coerceIn(0, 127)
+        val v = velocity.coerceIn(1, 127)
+        val msg = byteArrayOf((0x90 or ch).toByte(), n.toByte(), v.toByte())
+        try {
+            port.send(msg, 0, 3)
+        } catch (e: Exception) {
+            Timber.w(e, "sendNoteOn failed")
+        }
+    }
+
+    fun sendNoteOff(channel: Int, note: Int) {
+        if (!midiOutEnabled) return
+        val port = inputPort ?: return
+        val ch = channel.coerceIn(0, 15)
+        val n = note.coerceIn(0, 127)
+        val msg = byteArrayOf((0x80 or ch).toByte(), n.toByte(), 0.toByte())
+        try {
+            port.send(msg, 0, 3)
+        } catch (e: Exception) {
+            Timber.w(e, "sendNoteOff failed")
+        }
+    }
+
+    fun sendProgramChange(channel: Int, program: Int, bank: Int = 0) {
+        val port = inputPort ?: return
+        val ch = channel.coerceIn(0, 15)
+        try {
+            // Bank Select MSB (CC 0)
+            port.send(byteArrayOf((0xB0 or ch).toByte(), 0.toByte(), bank.toByte()), 0, 3)
+            // Program Change
+            port.send(byteArrayOf((0xC0 or ch).toByte(), program.toByte()), 0, 2)
+        } catch (e: Exception) {
+            Timber.w(e, "sendProgramChange failed")
+        }
+    }
+
+    fun allNotesOff() {
+        val port = inputPort ?: return
+        for (ch in 0 until 16) {
+            try {
+                // CC 123 = All Notes Off
+                port.send(byteArrayOf((0xB0 or ch).toByte(), 123.toByte(), 0.toByte()), 0, 3)
+            } catch (_: Exception) {}
+        }
+    }
+
     fun close() {
-        try { outputPort?.close() } catch (e: Exception) { Timber.w(e, "close port") }
+        try { outputPort?.close() } catch (e: Exception) { Timber.w(e, "close outputPort") }
+        try { inputPort?.close() } catch (e: Exception) { Timber.w(e, "close inputPort") }
         try { openedDevice?.close() } catch (e: Exception) { Timber.w(e, "close device") }
         outputPort = null
+        inputPort = null
         openedDevice = null
         connectedDeviceName = null
     }
