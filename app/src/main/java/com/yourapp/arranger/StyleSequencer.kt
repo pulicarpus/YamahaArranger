@@ -22,6 +22,16 @@ class StyleSequencer(
     private var voiceMap: Map<Int, String> = emptyMap()
     private var lastAppliedSection: String = ""
 
+    // FIX (menyertai ArrangerBrain.updateLockedChannels yang tadinya
+    // Unresolved reference): channel yang di-lock user lewat UI TIDAK
+    // boleh ditimpa oleh applyVoicesFromCasm() saat ganti section.
+    private var lockedChannels: Set<Int> = emptySet()
+
+    fun setLockedChannels(channels: Set<Int>) {
+        lockedChannels = channels
+        DebugLog.add("🔒 Locked channels updated: $channels")
+    }
+
     // BUGFIX (note-off mismatch / "sumbang"): key = "channel:originalNote",
     // value = the note actually sent to noteOnChannel(). currentChord can
     // change (user re-fingers a chord) *between* a note-on and its matching
@@ -111,6 +121,12 @@ class StyleSequencer(
 
             // Ambil channel asli dari file
             val ch = part.events.firstOrNull()?.channel ?: return@forEachIndexed
+
+            // FIX: channel yang di-lock user tidak boleh ditimpa CASM.
+            if (ch in lockedChannels) {
+                DebugLog.add("  · part$partNum ch$ch: SKIP (locked by user)")
+                return@forEachIndexed
+            }
 
             val prog = guessProgramFromVoiceName(voiceName)
             if (prog < 0) {
