@@ -2,6 +2,7 @@ package com.yourapp.yamahaarranger.arranger
 
 import com.yourapp.yamahaarranger.audio.AudioEngineManager
 import com.yourapp.yamahaarranger.chord.DetectedChord
+import com.yourapp.yamahaarranger.style.CasmPolicyModel
 import com.yourapp.yamahaarranger.style.StyleNoteEvent
 import com.yourapp.yamahaarranger.style.StyleSectionModel
 import com.yourapp.yamahaarranger.ui.DebugLog
@@ -15,65 +16,112 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val sc
     var tempoBpm: Int = 120
     var currentChord: DetectedChord? = null
     private var loopCount = 0
-    private var voiceMap: Map<Int,String> = emptyMap()
+    private var voiceMap: Map<Int, String> = emptyMap()
     private var lastAppliedSection = ""
     private var lockedChannels: Set<Int> = emptySet()
-    private val activeTransposedNotes = mutableMapOf<String,Int>()
+    private val activeTransposedNotes = mutableMapOf<String, Int>()
 
-    fun setLockedChannels(channels:Set<Int>){ lockedChannels=channels; DebugLog.add("🔒 Locked channels updated: $channels") }
-    fun setVoiceMap(vm:Map<Int,String>){ voiceMap=vm; lastAppliedSection=""; DebugLog.add("🎼 VoiceMap set: ${vm.size} entries") }
-    fun play(section:StyleSectionModel,ppq:Int,loopLimit:Int=-1,onComplete:(()->Unit)?=null){
-        stop(); loopCount=0
-        if(lastAppliedSection!=section.name){ applyVoicesFromCasm(section); lastAppliedSection=section.name }
-        DebugLog.add("▶ PLAY ${section.name}: parts=${section.parts.size}, events=${section.parts.sumOf{it.events.size}}, loopLimit=$loopLimit")
-        playbackJob=scope.launch{ var loops=0; while(loopLimit<0||loops<loopLimit){playOnce(section,ppq);loops++}; onComplete?.invoke() }
-    }
-    fun stop(){playbackJob?.cancel();playbackJob=null;audioEngine.allNotesOff();activeTransposedNotes.clear();DebugLog.add("⏹ STOP")}
-    fun queueNextSection(section:StyleSectionModel,ppq:Int)=play(section,ppq)
+    fun setLockedChannels(channels: Set<Int>) { lockedChannels = channels; DebugLog.add("🔒 Locked channels updated: $channels") }
+    fun setVoiceMap(vm: Map<Int, String>) { voiceMap = vm; lastAppliedSection = ""; DebugLog.add("🎼 Legacy VoiceMap received: ${vm.size}; CASM policy takes precedence") }
 
-    private fun applyVoicesFromCasm(section:StyleSectionModel){
-        if(voiceMap.isEmpty()){DebugLog.add("⚠ No voice map available, using SF2 defaults");return}
-        section.parts.forEach{part->
-            val ch=part.events.firstOrNull()?.channel?:return@forEach
-            // CASM extractor uses the 1-based MIDI channel/part id. Do not use
-            // the current parts-list index: sections can omit channels.
-            val voiceName=voiceMap[ch+1]?:return@forEach
-            if(ch in lockedChannels)return@forEach
-            val prog=guessProgramFromVoiceName(voiceName)
-            if(prog<0){DebugLog.add("⚠ ch$ch: unsupported CASM voice '$voiceName'");return@forEach}
-            audioEngine.setChannelProgram(ch,prog,if(isDrumVoice(voiceName))128 else 0)
-            DebugLog.add("🎼 ch$ch: $voiceName → GM $prog")
+    fun play(section: StyleSectionModel, ppq: Int, loopLimit: Int = -1, onComplete: (() -> Unit)? = null) {
+        stop(); loopCount = 0
+        if (lastAppliedSection != section.name) { applyVoicesFromCasm(section); lastAppliedSection = section.name }
+        DebugLog.add("▶ PLAY ${section.name}: parts=${section.parts.size}, events=${section.parts.sumOf { it.events.size }}, loopLimit=$loopLimit")
+        playbackJob = scope.launch {
+            var loops = 0
+            while (loopLimit < 0 || loops < loopLimit) { playOnce(section, ppq); loops++ }
+            onComplete?.invoke()
         }
     }
-    private fun guessProgramFromVoiceName(name:String):Int{
-        val n=name.lowercase()
-        // Yamaha internal voice IDs are not GM program numbers, so never use
-        // trailing digits as a GM program. This is intentionally conservative.
-        return when{
-            n.contains("piano")->0;n.contains("e.piano")||n.contains("ep")->4;n.contains("organ")->16
-            n.contains("accordion")->21;n.contains("guitar")||n.contains("gtr")->24;n.contains("bass")->33
-            n.contains("violin")->40;n.contains("cello")->42;n.contains("strg")||n.contains("str")->48
-            n.contains("choir")->52;n.contains("trumpet")->56;n.contains("trombone")->57;n.contains("brass")->61
-            n.contains("sax")->65;n.contains("oboe")->68;n.contains("clarinet")->71;n.contains("flute")->73
-            n.contains("dr")||n.contains("kit")||n.contains("drum")->0;else->-1
+
+    fun stop() {
+        playbackJob?.cancel(); playbackJob = null
+        audioEngine.allNotesOff(); activeTransposedNotes.clear(); DebugLog.add("⏹ STOP")
+    }
+
+    fun queueNextSection(section: StyleSectionModel, ppq: Int) = play(section, ppq)
+
+    private fun applyVoicesFromCasm(section: StyleSectionModel) {
+        section.parts.forEach { part ->
+            val c = part.casm ?: return@forEach
+            val destination = c.destinationChannel
+            if (destination in lockedChannels) return@forEach
+            val prog = guessProgramFromVoiceName(c.voiceName)
+            if (prog < 0) { DebugLog.add("⚠ src${c.sourceChannel}→dst$destination: unsupported '${c.voiceName}'"); return@forEach }
+            audioEngine.setChannelProgram(destination, prog, if (isDrumVoice(c.voiceName)) 128 else 0)
+            DebugLog.add("🎼 src${c.sourceChannel}→dst$destination: ${c.voiceName} → GM $prog")
         }
     }
-    private fun isDrumVoice(name:String)=name.lowercase().let{it.contains("add-dr")||it.contains("drum")||it.contains("kit")||it.startsWith("dr")}
-    private suspend fun playOnce(section:StyleSectionModel,ppq:Int){
-        loopCount++;if(section.lengthTicks<=0){delay(500);return}
-        data class S(val tick:Int,val event:StyleNoteEvent,val transpose:Boolean,val channel:Int)
-        val merged=section.parts.flatMap{p->p.events.map{e->S(e.tick,e,e.channel!=9,e.channel)}}.sortedBy{it.tick}
-        if(merged.isEmpty()){delay(500);return}
-        var lastTick=0
-        for(s in merged){
-            val delta=s.tick-lastTick;if(delta>0)delay(ticksToMillis(delta,ppq,tempoBpm));lastTick=s.tick
-            val key="${s.channel}:${s.event.note}"
-            if(s.event.isNoteOn){
-                val note=if(s.transpose)currentChord?.let{NoteTransposer.transpose(s.event.note,it)}?:s.event.note else s.event.note
-                activeTransposedNotes[key]=note;audioEngine.noteOnChannel(s.channel,note,s.event.velocity/127f)
-            }else{audioEngine.noteOffChannel(s.channel,activeTransposedNotes.remove(key)?:s.event.note)}
+
+    private fun guessProgramFromVoiceName(name: String): Int {
+        val n = name.lowercase()
+        return when {
+            n.contains("piano") -> 0
+            n.contains("e.piano") || n.contains("ep") -> 4
+            n.contains("organ") -> 16
+            n.contains("accordion") -> 21
+            n.contains("guitar") || n.contains("gtr") -> 24
+            n.contains("bass") -> 33
+            n.contains("violin") -> 40
+            n.contains("cello") -> 42
+            n.contains("strg") || n.contains("str") -> 48
+            n.contains("choir") -> 52
+            n.contains("trumpet") -> 56
+            n.contains("trombone") -> 57
+            n.contains("brass") -> 61
+            n.contains("sax") -> 65
+            n.contains("oboe") -> 68
+            n.contains("clarinet") -> 71
+            n.contains("flute") -> 73
+            n.contains("dr") || n.contains("kit") || n.contains("drum") -> 0
+            else -> -1
         }
-        val rem=section.lengthTicks-lastTick;if(rem>0)delay(ticksToMillis(rem,ppq,tempoBpm))
     }
-    private fun ticksToMillis(ticks:Int,ppq:Int,bpm:Int):Long=if(ppq<=0||bpm<=0)0 else ((ticks*(60000.0/bpm))/ppq).toLong().coerceAtLeast(0)
+
+    private fun isDrumVoice(name: String) = name.lowercase().let { it.contains("add-dr") || it.contains("drum") || it.contains("kit") || it.startsWith("dr") }
+
+    private suspend fun playOnce(section: StyleSectionModel, ppq: Int) {
+        loopCount++
+        if (section.lengthTicks <= 0) { delay(500); return }
+        data class Scheduled(val tick: Int, val event: StyleNoteEvent, val policy: CasmPolicyModel?)
+        val merged = section.parts.flatMap { part -> part.events.map { e -> Scheduled(e.tick, e, part.casm) } }.sortedBy { it.tick }
+        if (merged.isEmpty()) { delay(500); return }
+
+        var lastTick = 0
+        for (s in merged) {
+            val delta = s.tick - lastTick
+            if (delta > 0) delay(ticksToMillis(delta, ppq, tempoBpm))
+            lastTick = s.tick
+
+            val policy = s.policy
+            val sourceChannel = s.event.channel
+            val destinationChannel = policy?.destinationChannel ?: sourceChannel
+            if (destinationChannel in lockedChannels) continue
+
+            val transpose = policy?.let { !isDrumVoice(it.voiceName) } ?: (sourceChannel != 9)
+            val transformed = if (transpose) currentChord?.let { NoteTransposer.transpose(s.event.note, it) } ?: s.event.note else s.event.note
+            val note = applyCasmLimits(transformed, policy) ?: continue
+            val key = "${sourceChannel}:${destinationChannel}:${s.event.note}"
+
+            if (s.event.isNoteOn) {
+                activeTransposedNotes[key] = note
+                audioEngine.noteOnChannel(destinationChannel, note, s.event.velocity / 127f)
+            } else {
+                audioEngine.noteOffChannel(destinationChannel, activeTransposedNotes.remove(key) ?: note)
+            }
+        }
+
+        val rem = section.lengthTicks - lastTick
+        if (rem > 0) delay(ticksToMillis(rem, ppq, tempoBpm))
+    }
+
+    private fun applyCasmLimits(note: Int, policy: CasmPolicyModel?): Int? {
+        if (policy == null) return note.coerceIn(0, 127)
+        if (note !in policy.noteLimitLow..policy.noteLimitHigh) return null
+        return note.coerceIn(0, 127)
+    }
+
+    private fun ticksToMillis(ticks: Int, ppq: Int, bpm: Int): Long =
+        if (ppq <= 0 || bpm <= 0) 0 else ((ticks * (60000.0 / bpm)) / ppq).toLong().coerceAtLeast(0)
 }
