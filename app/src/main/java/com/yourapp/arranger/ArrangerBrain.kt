@@ -3,7 +3,7 @@ package com.yourapp.yamahaarranger.arranger
 import com.yourapp.yamahaarranger.audio.AudioEngineManager
 import com.yourapp.yamahaarranger.chord.ChordDetector
 import com.yourapp.yamahaarranger.chord.DetectedChord
-import com.yourapp.yamahaarranger.midi.MidiInputManager
+import com.yourapp.midi.MidiInputManager
 import com.yourapp.yamahaarranger.style.ParsedStyle
 import com.yourapp.yamahaarranger.ui.DebugLog
 import kotlinx.coroutines.CoroutineScope
