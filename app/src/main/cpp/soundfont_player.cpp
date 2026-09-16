@@ -96,6 +96,9 @@ bool SoundFontPlayer::load(const std::string& path) {
 
     LOGI("SF2 loaded, id=%d", sfId_);
 
+    // GM percussion is MIDI channel 10, zero-based channel 9. Explicitly
+    // select the standard percussion bank so drum notes do not fall back to
+    // the melodic program 0 on a SoundFont whose channel defaults are reset.
     fluid_synth_bank_select(synth_, 9, 128);
     fluid_synth_program_change(synth_, 9, 0);
 
@@ -119,7 +122,7 @@ bool SoundFontPlayer::load(const std::string& path) {
         fluid_synth_cc(synth_, ch, 7, 110);
     }
 
-    LOGI("Channels assigned + volumes set");
+    LOGI("Channels assigned + volumes set; percussion ch9 bank=128");
     return true;
 }
 
@@ -167,6 +170,7 @@ void SoundFontPlayer::allNotesOff() {
 void SoundFontPlayer::setChannelPreset(int channel, int bank, int program) {
     if (!synth_) return;
     std::lock_guard<std::mutex> lock(g_synthMutex);
+    if (channel == 9) bank = 128;
     fluid_synth_bank_select(synth_, channel, bank);
     fluid_synth_program_change(synth_, channel, program);
     LOGI("Ch %d to bank=%d prog=%d", channel, bank, program);
