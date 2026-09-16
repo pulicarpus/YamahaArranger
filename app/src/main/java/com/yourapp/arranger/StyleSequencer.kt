@@ -2,6 +2,7 @@ package com.yourapp.yamahaarranger.arranger
 
 import com.yourapp.yamahaarranger.audio.AudioEngineManager
 import com.yourapp.yamahaarranger.chord.DetectedChord
+import com.yourapp.midi.MidiInputManager
 import com.yourapp.yamahaarranger.style.StyleNoteEvent
 import com.yourapp.yamahaarranger.style.StyleSectionModel
 import com.yourapp.yamahaarranger.ui.DebugLog
@@ -12,6 +13,7 @@ import kotlinx.coroutines.launch
 
 class StyleSequencer(
     private val audioEngine: AudioEngineManager,
+    private val midiInputManager: MidiInputManager,
     private val scope: CoroutineScope
 ) {
     private var playbackJob: Job? = null
@@ -49,6 +51,7 @@ class StyleSequencer(
         playbackJob?.cancel()
         playbackJob = null
         audioEngine.allNotesOff()
+        midiInputManager.allNotesOff()
         DebugLog.add("⏹ STOP")
     }
 
@@ -69,6 +72,7 @@ class StyleSequencer(
 
         if (allChannels.contains(9)) {
             audioEngine.setChannelProgram(9, 0, 128)
+            midiInputManager.sendProgramChange(9, 0, 128)
             DebugLog.add("  · ch9: DRUM (bank 128) — locked")
         }
 
@@ -86,39 +90,31 @@ class StyleSequencer(
             channels.forEach { ch ->
                 if (ch == 9) return@forEach
                 audioEngine.setChannelProgram(ch, prog, bank)
+                midiInputManager.sendProgramChange(ch, prog, bank)
                 DebugLog.add("  · part$partNum ch$ch: $voiceName → prog$prog (bank$bank)")
             }
         }
     }
 
-    /** Extract GM program dari nama voice CASM — expanded keyword matcher. */
     private fun guessProgramFromVoiceName(name: String): Int {
-        // Normalize: lowercase, hapus titik/dash/underscore/spasi
         val n = name.lowercase()
             .replace(".", "")
             .replace("_", "")
             .replace("-", "")
             .replace(" ", "")
 
-        // 1) Extract digit di akhir (misal "bass33" → 33)
         val trailingDigits = n.takeLastWhile { it.isDigit() }
         if (trailingDigits.isNotEmpty()) {
             val num = trailingDigits.toIntOrNull()
             if (num != null && num in 0..127) return num
         }
 
-        // 2) Keyword matcher (expanded)
         return when {
-            // Piano
             n.contains("piano") || n.startsWith("pno") -> 0
-            // E.Piano
             n.contains("epiano") || n.startsWith("ep") -> 4
-            // Organ
             n.contains("organ") || n.contains("org") -> 16
-            // Accordion
             n.contains("accordion") || n.contains("accrd") -> 21
 
-            // Guitar (spesifik dulu)
             n.contains("distgtr") || n.contains("disgtr") ||
                 n.contains("distortion") -> 30
             n.contains("odgtr") || n.contains("overdrive") -> 29
@@ -130,29 +126,24 @@ class StyleSequencer(
             n.contains("nylongtr") || n.contains("nylongt") -> 24
             n.contains("gtr") || n.contains("guitar") -> 24
 
-            // Bass
             n.contains("bass") || n.startsWith("bs") -> 33
             n.contains("slapbass") -> 36
             n.contains("synthbass") -> 38
 
-            // Strings / Violin
             n.contains("violin") || n.contains("vln") -> 40
             n.contains("viola") -> 41
             n.contains("cello") -> 42
             n.contains("strings") || n.contains("strg") ||
                 n.contains("str") || n.contains("strgs") -> 48
 
-            // Choir
             n.contains("choir") || n.contains("voice") || n.contains("vocal") -> 52
 
-            // Brass
             n.contains("trumpet") || n.startsWith("tpt") -> 56
             n.contains("trombone") || n.startsWith("tbn") -> 57
             n.contains("tuba") -> 58
             n.contains("frenchhorn") || n.contains("frhorn") -> 60
             n.contains("brass") -> 61
 
-            // Sax & Woodwind
             n.contains("soprano") -> 64
             n.contains("altosax") || n.contains("asax") -> 65
             n.contains("tenorsax") || n.contains("tsax") -> 66
@@ -166,17 +157,14 @@ class StyleSequencer(
             n.contains("flute") || n.startsWith("flt") -> 73
             n.contains("piccolo") -> 72
 
-            // Synth / Pad
             n.contains("pad") || n.contains("synthpad") -> 89
             n.contains("synthlead") -> 80
             n.contains("synth") -> 80
 
-            // Drum
             n.contains("drum") || n.contains("kit") ||
                 n.contains("adddr") || n.contains("maindr") ||
                 n.startsWith("dr") || n.contains("perc") -> 0
 
-            // FX
             n.contains("fx") || n.contains("effect") -> 96
 
             else -> -1
@@ -214,7 +202,6 @@ class StyleSequencer(
         }.sortedBy { it.tick }
 
         if (merged.isEmpty()) {
-            DebugLog.add("⚠ Loop $loopCount: NO EVENTS")
             delay(500)
             return
         }
@@ -234,13 +221,18 @@ class StyleSequencer(
             }
 
             if (sched.event.isNoteOn) {
+                // Internal SF2 audio
                 audioEngine.noteOnChannel(sched.channel, note, sched.event.velocity / 127f)
+                // MIDI OUT ke E343 (jika enabled)
+                midiInputManager.sendNoteOn(sched.channel, note, sched.event.velocity)
+
                 noteOnCount++
                 if (loopCount <= 1 && noteOnCount <= 8) {
                     DebugLog.add("  ♪ ch${sched.channel} n=$note v=${sched.event.velocity}")
                 }
             } else {
                 audioEngine.noteOffChannel(sched.channel, note)
+                midiInputManager.sendNoteOff(sched.channel, note)
             }
         }
         if (loopCount <= 1) DebugLog.add("✅ Loop1: $noteOnCount noteOn")
