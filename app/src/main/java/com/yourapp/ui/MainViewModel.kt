@@ -42,31 +42,88 @@ object DebugLog {
     fun clear() = _lines.clear()
 }
 
-data class VoiceSlot(val channel: Int, val label: String, val program: Int) {
-    fun displayName(): String =
-        GM_VOICES.firstOrNull { it.second == program }?.first ?: "prog$program"
+// ═════════════════════════════════════════════════════════
+// CHANNEL VOICE SLOT — 16 channel
+// ═════════════════════════════════════════════════════════
+data class VoiceSlot(
+    val channel: Int,
+    val label: String,
+    val program: Int,
+    val bank: Int = 0,
+    val locked: Boolean = false
+) {
+    fun displayName(): String {
+        if (bank == 128) return "DRUM KIT"
+        return GM_VOICES.firstOrNull { it.second == program }?.first ?: "prog$program"
+    }
+
+    fun isDrum(): Boolean = bank == 128
 }
 
 val GM_VOICES: List<Pair<String, Int>> = listOf(
-    "Piano" to 0, "Bright Piano" to 1, "E.Piano" to 4, "Harpsichord" to 6,
-    "Organ" to 16, "Church Organ" to 19, "Accordion" to 21,
+    "Piano" to 0, "Bright Piano" to 1, "E.Grand Piano" to 2, "Honky Tonk" to 3,
+    "E.Piano 1" to 4, "E.Piano 2" to 5, "Harpsichord" to 6, "Clavi" to 7,
+    "Celesta" to 8, "Glockenspiel" to 9, "Music Box" to 10, "Vibraphone" to 11,
+    "Marimba" to 12, "Xylophone" to 13, "Tubular Bells" to 14, "Dulcimer" to 15,
+    "Drawbar Organ" to 16, "Perc Organ" to 17, "Rock Organ" to 18, "Church Organ" to 19,
+    "Reed Organ" to 20, "Accordion" to 21, "Harmonica" to 22, "Tango Accordion" to 23,
     "Nylon Guitar" to 24, "Steel Guitar" to 25, "Jazz Guitar" to 26,
-    "Clean Guitar" to 27, "Overdrive Gt" to 29, "Distortion Gt" to 30,
-    "Finger Bass" to 33, "Pick Bass" to 34, "Slap Bass" to 36, "Synth Bass" to 38,
-    "Violin" to 40, "Viola" to 41, "Cello" to 42,
-    "Strings" to 48, "Slow Strings" to 51, "Choir" to 52,
-    "Trumpet" to 56, "Trombone" to 57, "Tuba" to 58, "Brass" to 61,
-    "Soprano Sax" to 64, "Alto Sax" to 65, "Tenor Sax" to 66,
-    "Oboe" to 68, "English Horn" to 69, "Bassoon" to 70,
-    "Clarinet" to 71, "Flute" to 73, "Pan Flute" to 75,
-    "Synth Lead" to 80, "Synth Pad" to 89, "FX" to 96
+    "Clean Guitar" to 27, "Muted Guitar" to 28, "Overdrive Gt" to 29,
+    "Distortion Gt" to 30, "Guitar Harmonics" to 31,
+    "Acoustic Bass" to 32, "Finger Bass" to 33, "Pick Bass" to 34,
+    "Fretless Bass" to 35, "Slap Bass 1" to 36, "Slap Bass 2" to 37,
+    "Synth Bass 1" to 38, "Synth Bass 2" to 39,
+    "Violin" to 40, "Viola" to 41, "Cello" to 42, "Contrabass" to 43,
+    "Tremolo Strings" to 44, "Pizzicato Strings" to 45,
+    "Orchestral Harp" to 46, "Timpani" to 47,
+    "Strings Ensemble 1" to 48, "Strings Ensemble 2" to 49,
+    "Synth Strings 1" to 50, "Synth Strings 2" to 51,
+    "Choir Aahs" to 52, "Voice Oohs" to 53, "Synth Voice" to 54, "Orchestra Hit" to 55,
+    "Trumpet" to 56, "Trombone" to 57, "Tuba" to 58, "Muted Trumpet" to 59,
+    "French Horn" to 60, "Brass Section" to 61,
+    "Synth Brass 1" to 62, "Synth Brass 2" to 63,
+    "Soprano Sax" to 64, "Alto Sax" to 65, "Tenor Sax" to 66, "Baritone Sax" to 67,
+    "Oboe" to 68, "English Horn" to 69, "Bassoon" to 70, "Clarinet" to 71,
+    "Piccolo" to 72, "Flute" to 73, "Recorder" to 74, "Pan Flute" to 75,
+    "Blown Bottle" to 76, "Shakuhachi" to 77, "Whistle" to 78, "Ocarina" to 79,
+    "Synth Lead (Square)" to 80, "Synth Lead (Saw)" to 81,
+    "Synth Lead (Calliope)" to 82, "Synth Lead (Chiff)" to 83,
+    "Synth Lead (Charang)" to 84, "Synth Lead (Voice)" to 85,
+    "Synth Lead (Fifths)" to 86, "Synth Lead (Bass+Lead)" to 87,
+    "Synth Pad (New Age)" to 88, "Synth Pad (Warm)" to 89,
+    "Synth Pad (Polysynth)" to 90, "Synth Pad (Choir)" to 91,
+    "Synth Pad (Bowed)" to 92, "Synth Pad (Metallic)" to 93,
+    "Synth Pad (Halo)" to 94, "Synth Pad (Sweep)" to 95,
+    "FX (Rain)" to 96, "FX (Soundtrack)" to 97,
+    "FX (Crystal)" to 98, "FX (Atmosphere)" to 99,
+    "FX (Brightness)" to 100, "FX (Goblins)" to 101,
+    "FX (Echoes)" to 102, "FX (Sci-Fi)" to 103,
+    "Sitar" to 104, "Banjo" to 105, "Shamisen" to 106, "Koto" to 107,
+    "Kalimba" to 108, "Bagpipe" to 109, "Fiddle" to 110, "Shanai" to 111,
+    "Tinkle Bell" to 112, "Agogo" to 113, "Steel Drums" to 114,
+    "Woodblock" to 115, "Taiko Drum" to 116, "Melodic Tom" to 117,
+    "Synth Drum" to 118, "Reverse Cymbal" to 119,
+    "Guitar Fret Noise" to 120, "Breath Noise" to 121,
+    "Seashore" to 122, "Bird Tweet" to 123, "Telephone Ring" to 124,
+    "Helicopter" to 125, "Applause" to 126, "Gunshot" to 127
 )
 
-fun defaultVoices(): List<VoiceSlot> = listOf(
-    VoiceSlot(2, "Bass", 33), VoiceSlot(3, "Chord1", 0),
-    VoiceSlot(4, "Chord2", 24), VoiceSlot(5, "Pad", 48),
-    VoiceSlot(6, "Phrase1", 56), VoiceSlot(7, "Phrase2", 65)
-)
+/**
+ * Default 16-channel voice map.
+ * Ch 0-8, 10-15 = piano (melodic), Ch 9 = drum.
+ */
+fun defaultVoices(): List<VoiceSlot> = (0..15).map { ch ->
+    when (ch) {
+        9 -> VoiceSlot(9, "Ch9 (Drum)", 0, 128)
+        10 -> VoiceSlot(10, "Ch10 (Bass)", 33)
+        11 -> VoiceSlot(11, "Ch11 (Chord1)", 0)
+        12 -> VoiceSlot(12, "Ch12 (Chord2)", 24)
+        13 -> VoiceSlot(13, "Ch13 (Pad)", 48)
+        14 -> VoiceSlot(14, "Ch14 (Phrase1)", 56)
+        15 -> VoiceSlot(15, "Ch15 (Phrase2)", 65)
+        else -> VoiceSlot(ch, "Ch$ch", 0)
+    }
+}
 
 data class MainUiState(
     val styleName: String = "No Style Loaded",
@@ -76,7 +133,7 @@ data class MainUiState(
     val activeSection: String = "Main A",
     val detectedChordLabel: String = "",
     val midiStatus: String = "No MIDI device",
-    val midiOutEnabled: Boolean = false,        // ← BARU
+    val midiOutEnabled: Boolean = false,
     val soundFontName: String = "None",
     val styleVolume: Int = 100,
     val voiceVolume: Int = 100,
@@ -100,7 +157,7 @@ class MainViewModel @Inject constructor(
 
     private val _styleName = MutableStateFlow("No Style Loaded")
     private val _midiStatus = MutableStateFlow("No MIDI device")
-    private val _midiOutEnabled = MutableStateFlow(false)   // ← BARU
+    private val _midiOutEnabled = MutableStateFlow(false)
     private val _transpose = MutableStateFlow(0)
     private val _soundFontName = MutableStateFlow("None")
     private val _styleVolume = MutableStateFlow(100)
@@ -173,7 +230,6 @@ class MainViewModel @Inject constructor(
         connectFirstAvailableMidiDevice()
     }
 
-    /** Toggle MIDI OUT on/off — kalau ON, style dikirim ke E343. */
     fun toggleMidiOut() {
         val newVal = !_midiOutEnabled.value
         _midiOutEnabled.value = newVal
@@ -233,22 +289,37 @@ class MainViewModel @Inject constructor(
     fun onRegSlotTap(slot: Int) { _activeRegSlot.value = slot }
     fun onRegSlotSave(slot: Int) { Timber.i("Save reg bank=${_activeBank.value} slot=$slot") }
 
-    // VOICE ASSIGN
-    fun cycleVoice(channel: Int) {
-        val current = _voiceAssignments.value
-        val updated = current.map { slot ->
+    // ═════════════════════════════════════════════════════
+    // CHANNEL VOICE CONTROL
+    // ═════════════════════════════════════════════════════
+
+    /** Set channel voice dari user pick. */
+    fun setChannelVoice(channel: Int, program: Int, bank: Int) {
+        val updated = _voiceAssignments.value.map { slot ->
             if (slot.channel == channel) {
-                val currIdx = GM_VOICES.indexOfFirst { it.second == slot.program }
-                val nextIdx = if (currIdx < 0) 0 else (currIdx + 1) % GM_VOICES.size
-                val newProg = GM_VOICES[nextIdx].second
-                val newName = GM_VOICES[nextIdx].first
-                audioEngine.setChannelProgram(channel, newProg, 0)
-                midiInputManager.sendProgramChange(channel, newProg, 0)
-                DebugLog.add("🎼 ${slot.label} ch$channel → $newName")
-                slot.copy(program = newProg)
+                audioEngine.setChannelProgram(channel, program, bank)
+                midiInputManager.sendProgramChange(channel, program, bank)
+                DebugLog.add("🎼 Ch$channel → prog$program (bank$bank)")
+                slot.copy(program = program, bank = bank)
             } else slot
         }
         _voiceAssignments.value = updated
+    }
+
+    /** Toggle lock — kalau locked, CASM tidak boleh overwrite. */
+    fun toggleChannelLock(channel: Int) {
+        val updated = _voiceAssignments.value.map { slot ->
+            if (slot.channel == channel) {
+                val newLock = !slot.locked
+                DebugLog.add(if (newLock) "🔒 Ch$channel locked" else "🔓 Ch$channel unlocked")
+                slot.copy(locked = newLock)
+            } else slot
+        }
+        _voiceAssignments.value = updated
+        // Sync ke StyleSequencer via ArrangerBrain
+        arrangerBrain.updateLockedChannels(
+            updated.filter { it.locked }.map { it.channel }.toSet()
+        )
     }
 
     // TEST TONE
