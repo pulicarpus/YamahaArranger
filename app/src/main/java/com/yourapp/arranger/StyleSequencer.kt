@@ -23,11 +23,18 @@ class StyleSequencer(
 
     private var voiceMap: Map<Int, String> = emptyMap()
     private var lastAppliedSection: String = ""
+    private var lockedChannels: Set<Int> = emptySet()
 
     fun setVoiceMap(vm: Map<Int, String>) {
         voiceMap = vm
         lastAppliedSection = ""
         DebugLog.add("🎼 VoiceMap set: ${vm.size} entries")
+    }
+
+    /** Set locked channels — di-skip dari CASM override. */
+    fun setLockedChannels(channels: Set<Int>) {
+        lockedChannels = channels
+        DebugLog.add("🔒 Locked channels: $channels")
     }
 
     fun play(section: StyleSectionModel, ppq: Int) {
@@ -57,9 +64,6 @@ class StyleSequencer(
 
     fun queueNextSection(section: StyleSectionModel, ppq: Int) = play(section, ppq)
 
-    // ═════════════════════════════════════════════════════════
-    // VOICE ASSIGNMENT
-    // ═════════════════════════════════════════════════════════
     private fun applyVoicesFromCasm(section: StyleSectionModel) {
         if (voiceMap.isEmpty()) {
             DebugLog.add("⚠ No voice map, using SF2 defaults")
@@ -73,10 +77,10 @@ class StyleSequencer(
             .map { it.channel }
             .distinct()
 
-        if (allChannels.contains(9)) {
+        if (allChannels.contains(9) && 9 !in lockedChannels) {
             audioEngine.setChannelProgram(9, 0, 128)
             midiInputManager.sendProgramChange(9, 0, 128)
-            DebugLog.add("  · ch9: DRUM (bank 128) — locked")
+            DebugLog.add("  · ch9: DRUM (bank 128) — locked default")
         }
 
         section.parts.forEachIndexed { idx, part ->
@@ -92,6 +96,11 @@ class StyleSequencer(
             val channels = part.events.map { it.channel }.distinct()
             channels.forEach { ch ->
                 if (ch == 9) return@forEach
+                // Skip kalau user sudah lock channel ini manual
+                if (ch in lockedChannels) {
+                    DebugLog.add("  · part$partNum ch$ch: SKIP (user locked)")
+                    return@forEach
+                }
                 audioEngine.setChannelProgram(ch, prog, bank)
                 midiInputManager.sendProgramChange(ch, prog, bank)
                 DebugLog.add("  · part$partNum ch$ch: $voiceName → prog$prog (bank$bank)")
@@ -118,11 +127,9 @@ class StyleSequencer(
             n.contains("organ") || n.contains("org") -> 16
             n.contains("accordion") || n.contains("accrd") -> 21
 
-            n.contains("distgtr") || n.contains("disgtr") ||
-                n.contains("distortion") -> 30
+            n.contains("distgtr") || n.contains("disgtr") || n.contains("distortion") -> 30
             n.contains("odgtr") || n.contains("overdrive") -> 29
-            n.contains("egt") || n.contains("egtr") ||
-                n.contains("electricgt") -> 27
+            n.contains("egt") || n.contains("egtr") || n.contains("electricgt") -> 27
             n.contains("mutedgtr") -> 28
             n.contains("jazzgtr") -> 26
             n.contains("steelgtr") || n.contains("steelgt") -> 25
@@ -176,15 +183,10 @@ class StyleSequencer(
 
     private fun isDrumVoice(name: String): Boolean {
         val n = name.lowercase()
-        return n.contains("add-dr") ||
-               n.contains("drum") ||
-               n.contains("kit") ||
-               n.startsWith("dr")
+        return n.contains("add-dr") || n.contains("drum") ||
+               n.contains("kit") || n.startsWith("dr")
     }
 
-    // ═════════════════════════════════════════════════════════
-    // PLAYBACK LOOP
-    // ═════════════════════════════════════════════════════════
     private suspend fun playOnce(section: StyleSectionModel, ppq: Int) {
         loopCount++
         if (section.lengthTicks <= 0) {
@@ -219,15 +221,18 @@ class StyleSequencer(
             val delta = sched.tick - lastTick
             if (delta > 0) delay(ticksToMillis(delta, ppq, tempoBpm))
             lastTick = sched.tick
-val note = if (sched.transpose) {
-    currentChord?.let {
-        NoteTransposer.transpose(
-            patternNote = sched.event.note,
-            chord = it,
-            channel = sched.channel
-        )
-    } ?: sched.event.note
-} else sched.event.note
+
+            val note = if (sched.transpose) {
+                currentChord?.let {
+                    NoteTransposer.transpose(
+                        patternNote = sched.event.note,
+                        chord = it,
+                        channel = sched.channel
+                    )
+                } ?: sched.event.note
+            } else {
+                sched.event.note
+            }
 
             if (sched.event.isNoteOn) {
                 audioEngine.noteOnChannel(sched.channel, note, sched.event.velocity / 127f)
