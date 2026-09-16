@@ -11,6 +11,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+/** CASM-aware style playback: section policy -> NTR/NTT -> limits -> audio channel. */
 class StyleSequencer(private val audioEngine: AudioEngineManager, private val scope: CoroutineScope) {
     private var playbackJob: Job? = null
     var tempoBpm: Int = 120
