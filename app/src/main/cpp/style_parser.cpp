@@ -7,9 +7,12 @@ std::string toLower(std::string s) {
     std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::tolower(c); });
     return s;
 }
+
+bool isAsciiNameChar(uint8_t c) {
+    return std::isalnum(c) || c == '-' || c == '_' || c == '.' || c == '+' || c == '@';
+}
 }
 
-// (Tidak diubah — ini sudah benar dari fix sebelumnya)
 StyleSection StyleParser::classifyMarkerText(const std::string& text) {
     std::string t = toLower(text);
 
@@ -61,6 +64,72 @@ StyleSection StyleParser::classifyMarkerText(const std::string& text) {
     return StyleSection::Unknown;
 }
 
+std::string StyleParser::trimAscii(const std::string& text) {
+    size_t a = 0;
+    while (a < text.size() && std::isspace(static_cast<unsigned char>(text[a]))) ++a;
+    size_t b = text.size();
+    while (b > a && std::isspace(static_cast<unsigned char>(text[b - 1]))) --b;
+    return text.substr(a, b - a);
+}
+
+void StyleParser::parseCasm(const uint8_t* data, size_t size) {
+    // Keep this parser deliberately conservative. The current project already
+    // has a working Ctb2 voice-name probe; this promotes that information into
+    // the native StylePart instead of pretending arbitrary bytes are NTR/NTT.
+    // Unknown CASM fields remain at their documented safe defaults until the
+    // exact Ctab layout is decoded against real Yamaha styles.
+    size_t casmStart = 0;
+    uint32_t casmLen = 0;
+    for (size_t i = 0; i + 8 <= size; ++i) {
+        if (data[i] == 'C' && data[i + 1] == 'A' && data[i + 2] == 'S' && data[i + 3] == 'M') {
+            casmStart = i;
+            casmLen = (uint32_t(data[i + 4]) << 24) | (uint32_t(data[i + 5]) << 16) |
+                      (uint32_t(data[i + 6]) << 8) | uint32_t(data[i + 7]);
+            break;
+        }
+    }
+    if (casmLen == 0 || casmStart + 8 >= size) return;
+
+    size_t casmEnd = std::min(size, casmStart + size_t(8) + casmLen);
+    for (size_t i = casmStart + 8; i + 4 < casmEnd; ) {
+        if (data[i] != 'C' || data[i + 1] != 't' || data[i + 2] != 'b' || data[i + 3] != '2') {
+            ++i;
+            continue;
+        }
+        i += 4;
+
+        // Existing extractor's framing is retained: locate '/' within the
+        // small Ctb2 header, then read the 1-based part number.
+        size_t slash = i;
+        for (int n = 0; n < 8 && slash < casmEnd && data[slash] != '/'; ++n, ++slash) {}
+        if (slash >= casmEnd || data[slash] != '/') continue;
+        i = slash + 1;
+        if (i >= casmEnd) break;
+
+        const int partNum = data[i++];
+        while (i < casmEnd && (data[i] == 0 || data[i] == ' ')) ++i;
+        const size_t nameStart = i;
+        while (i < casmEnd && isAsciiNameChar(data[i])) ++i;
+        if (partNum < 1 || partNum > 16 || i <= nameStart) continue;
+
+        const std::string voiceName(reinterpret_cast<const char*>(data + nameStart), i - nameStart);
+        if (voiceName.empty() || voiceName.size() >= 32) continue;
+
+        for (auto& [section, sectionData] : sections_) {
+            for (auto& part : sectionData.parts) {
+                // CASM's 1-based part identifier is kept as the stable lookup
+                // key for now. We do not reorder the SMF channel itself.
+                if (static_cast<int>(part.midiChannel) + 1 == partNum) {
+                    part.casm.valid = true;
+                    part.casm.sourceChannel = part.midiChannel;
+                    part.casm.destinationChannel = part.midiChannel;
+                    part.casm.voiceName = voiceName;
+                }
+            }
+        }
+    }
+}
+
 bool StyleParser::parse(const uint8_t* rawStyBytes, size_t size) {
     if (!smf_.parse(rawStyBytes, size)) return false;
     sections_.clear();
@@ -85,10 +154,6 @@ bool StyleParser::parse(const uint8_t* rawStyBytes, size_t size) {
             secData.section = boundaries[i].section;
             secData.lengthTicks = std::max(secData.lengthTicks, endTick - startTick);
 
-            // FIX: sebelumnya semua event di rentang [startTick,endTick)
-            // langsung digabung jadi SATU StylePart, tidak peduli channel-
-            // nya beda-beda. Sekarang di-bucket dulu per channel MIDI —
-            // baru masing-masing channel jadi StylePart sendiri.
             std::map<uint8_t, std::vector<MidiEvent>> byChannel;
             for (const auto& ev : track.events) {
                 if (ev.tick >= startTick && ev.tick < endTick &&
@@ -104,11 +169,24 @@ bool StyleParser::parse(const uint8_t* rawStyBytes, size_t size) {
                 part.midiChannel = channel;
                 part.name = track.name.empty() ? ("Ch" + std::to_string(channel)) : track.name;
                 part.events = std::move(events);
+
+                // Capture the latest bank/program setup encountered before the
+                // first musical note in this section. These values are kept in
+                // the part metadata so Kotlin can configure FluidSynth before
+                // scheduling notes. CC0/CC32 are bank select MSB/LSB.
+                for (const auto& ev : part.events) {
+                    const uint8_t hi = ev.status & 0xF0;
+                    if (hi == 0xB0 && ev.data1 == 0) part.bankMsb = ev.data2;
+                    else if (hi == 0xB0 && ev.data1 == 32) part.bankLsb = ev.data2;
+                    else if (hi == 0xC0) part.program = ev.data1;
+                    else if (hi == 0x90 && ev.data2 > 0) break;
+                }
                 secData.parts.push_back(std::move(part));
             }
         }
     }
 
+    parseCasm(rawStyBytes, size);
     return !sections_.empty();
 }
 
