@@ -70,7 +70,7 @@ fun MainScreen(
         )
 
         Spacer(Modifier.height(8.dp))
-        MidiStatusBar(uiState.midiStatus, viewModel::refreshMidiConnection)
+        MidiStatusBar(             midiStatus = uiState.midiStatus,             midiOutEnabled = uiState.midiOutEnabled,             onConnect = viewModel::refreshMidiConnection,             onToggleMidiOut = viewModel::toggleMidiOut         )
         Spacer(Modifier.height(8.dp))
 
         SectionLabel("INTRO")
