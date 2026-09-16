@@ -137,6 +137,11 @@ class ArrangerBrain @Inject constructor(
         _state.update { it.copy(tempoBpm = clamped) }
     }
 
+        /** Sync locked channels dari UI ke StyleSequencer. */
+    fun updateLockedChannels(locked: Set<Int>) {
+        ensureSequencer()
+        sequencer.setLockedChannels(locked)
+    }
     private fun playSection(section: ArrangerSection, thenPlay: ArrangerSection? = null) {
         ensureSequencer()
         val style = loadedStyle ?: return
