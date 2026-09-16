@@ -26,9 +26,7 @@ static void uiLog(const char* fmt, ...) {
         JNIEnv* env = nullptr;
         bool attached = false;
         if (g_jvm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK) {
-            if (g_jvm->AttachCurrentThread(&env, nullptr) == JNI_OK) {
-                attached = true;
-            }
+            if (g_jvm->AttachCurrentThread(&env, nullptr) == JNI_OK) attached = true;
         }
         if (env) {
             jstring jmsg = env->NewStringUTF(buf);
@@ -59,10 +57,6 @@ bool AudioEngine::start() {
     oboe::Result result = builder.openStream(stream_);
     if (result != oboe::Result::OK) {
         LOGE("LowLatency/Exclusive failed (%s), retrying Shared/None", oboe::convertToText(result));
-        // Exclusive endpoints are not available on every Android output device,
-        // especially Bluetooth and devices already using the primary mixer.
-        // The previous code only changed performance mode, leaving Exclusive
-        // requested on the retry. Explicitly fall back to the normal shared mixer.
         stream_.reset();
         builder.setPerformanceMode(oboe::PerformanceMode::None)
                ->setSharingMode(oboe::SharingMode::Shared);
@@ -76,17 +70,13 @@ bool AudioEngine::start() {
 
     outputSampleRate_ = stream_->getSampleRate();
     LOGI("Stream opened: sr=%d ch=%d sharing=%d perf=%d api=%d",
-         outputSampleRate_,
-         stream_->getChannelCount(),
+         outputSampleRate_, stream_->getChannelCount(),
          static_cast<int>(stream_->getSharingMode()),
          static_cast<int>(stream_->getPerformanceMode()),
          static_cast<int>(stream_->getAudioApi()));
 
     auto bufferResult = stream_->setBufferSizeInFrames(stream_->getFramesPerBurst() * 8);
     if (bufferResult != oboe::Result::OK) {
-        // setBufferSizeInFrames() returns ResultWithValue<int32_t>, so its
-        // human-readable error must be taken from .error(), not passed as a
-        // ResultWithValue to convertToText().
         LOGI("Buffer size adjustment skipped: %s", bufferResult.error());
     }
 
@@ -111,9 +101,20 @@ void AudioEngine::stop() {
 }
 
 bool AudioEngine::loadSoundFont(const std::string& path) {
-    LOGI("loadSoundFont: %s", path.c_str());
-    bool ok = soundFont_.load(path);
-    LOGI("loadSoundFont result: %s", ok ? "OK" : "FAILED");
+    return loadMelodySoundFont(path);
+}
+
+bool AudioEngine::loadMelodySoundFont(const std::string& path) {
+    LOGI("loadMelodySoundFont: %s", path.c_str());
+    bool ok = soundFont_.loadMelody(path);
+    LOGI("loadMelodySoundFont result: %s", ok ? "OK" : "FAILED");
+    return ok;
+}
+
+bool AudioEngine::loadDrumSoundFont(const std::string& path) {
+    LOGI("loadDrumSoundFont: %s", path.c_str());
+    bool ok = soundFont_.loadDrum(path);
+    LOGI("loadDrumSoundFont result: %s", ok ? "OK" : "FAILED");
     return ok;
 }
 
@@ -138,26 +139,20 @@ oboe::DataCallbackResult AudioEngine::onAudioReady(
 
         for (int i = 0; i < stereoFrames; ++i) {
             float x = out[i] * 0.7f;
-            if (x > 0.95f) {
-                x = 0.95f + (x - 0.95f) * 0.05f;
-            } else if (x < -0.95f) {
-                x = -0.95f + (x + 0.95f) * 0.05f;
-            }
-            if (x > 1.0f) x = 1.0f;
-            if (x < -1.0f) x = -1.0f;
+            if (x > 0.95f) x = 0.95f + (x - 0.95f) * 0.05f;
+            else if (x < -0.95f) x = -0.95f + (x + 0.95f) * 0.05f;
+            x = std::max(-1.0f, std::min(1.0f, x));
             out[i] = x;
         }
 
         for (int f = 0; f < numFrames; ++f) {
             const int iL = f * 2;
             const int iR = iL + 1;
-
             float inL = out[iL];
             float outL = inL - dcLastInL_ + 0.995f * dcLastOutL_;
             dcLastInL_ = inL;
             dcLastOutL_ = outL;
             out[iL] = outL;
-
             float inR = out[iR];
             float outR = inR - dcLastInR_ + 0.995f * dcLastOutR_;
             dcLastInR_ = inR;
@@ -167,25 +162,15 @@ oboe::DataCallbackResult AudioEngine::onAudioReady(
 
         if (logNow) {
             float peak = 0.0f;
-            for (int i = 0; i < stereoFrames; ++i) {
-                float v = std::fabs(out[i]);
-                if (v > peak) peak = v;
-            }
+            for (int i = 0; i < stereoFrames; ++i) peak = std::max(peak, std::fabs(out[i]));
             LOGI("onAudioReady #%d peak=%.5f", callbackCount, peak);
         }
-
         return oboe::DataCallbackResult::Continue;
     }
 
     std::lock_guard<std::mutex> lock(voiceMutex_);
-    for (auto& v : voices_) {
-        if (v.isActive()) {
-            v.renderAdditive(out, numFrames, outputSampleRate_);
-        }
-    }
-    for (int i = 0; i < stereoFrames; ++i) {
-        out[i] = std::max(-1.0f, std::min(1.0f, out[i]));
-    }
+    for (auto& v : voices_) if (v.isActive()) v.renderAdditive(out, numFrames, outputSampleRate_);
+    for (int i = 0; i < stereoFrames; ++i) out[i] = std::max(-1.0f, std::min(1.0f, out[i]));
     return oboe::DataCallbackResult::Continue;
 }
 
@@ -221,11 +206,7 @@ void AudioEngine::noteOn(int midiNote, int rootNote, float velocity01,
 
 void AudioEngine::noteOff(int midiNote) {
     std::lock_guard<std::mutex> lock(voiceMutex_);
-    for (auto& v : voices_) {
-        if (v.isActive() && v.midiNote() == midiNote) {
-            v.release();
-        }
-    }
+    for (auto& v : voices_) if (v.isActive() && v.midiNote() == midiNote) v.release();
 }
 
 void AudioEngine::allNotesOff() {
