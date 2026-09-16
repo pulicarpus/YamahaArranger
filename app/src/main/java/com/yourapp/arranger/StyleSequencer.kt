@@ -57,6 +57,9 @@ class StyleSequencer(
 
     fun queueNextSection(section: StyleSectionModel, ppq: Int) = play(section, ppq)
 
+    // ═════════════════════════════════════════════════════════
+    // VOICE ASSIGNMENT
+    // ═════════════════════════════════════════════════════════
     private fun applyVoicesFromCasm(section: StyleSectionModel) {
         if (voiceMap.isEmpty()) {
             DebugLog.add("⚠ No voice map, using SF2 defaults")
@@ -179,6 +182,9 @@ class StyleSequencer(
                n.startsWith("dr")
     }
 
+    // ═════════════════════════════════════════════════════════
+    // PLAYBACK LOOP
+    // ═════════════════════════════════════════════════════════
     private suspend fun playOnce(section: StyleSectionModel, ppq: Int) {
         loopCount++
         if (section.lengthTicks <= 0) {
@@ -214,13 +220,17 @@ class StyleSequencer(
             if (delta > 0) delay(ticksToMillis(delta, ppq, tempoBpm))
             lastTick = sched.tick
 
-            // Transpose dengan channel-aware logic
+            // ═══ Transpose dengan chord quality awareness ═══
+            // Bass part (ch10, ch11) → snap ke root + range protection.
+            // Melodic part → snap ke chord quality intervals.
+            val isBassPart = sched.channel == 10 || sched.channel == 11
+
             val note = if (sched.transpose) {
                 currentChord?.let {
                     NoteTransposer.transpose(
                         patternNote = sched.event.note,
                         chord = it,
-                        channel = sched.channel
+                        isBassPart = isBassPart
                     )
                 } ?: sched.event.note
             } else {
