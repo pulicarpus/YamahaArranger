@@ -1,52 +1,38 @@
 package com.yourapp.yamahaarranger.arranger
 
-import com.yourapp.yamahaarranger.chord.ChordQuality
 import com.yourapp.yamahaarranger.chord.DetectedChord
 
 /**
- * Transposes a style part's notes (written against the style's own
- * reference chord, almost always C major/C major7) to match the chord the
- * user is currently playing.
+ * Simple root transposition — TAHAP 1.
  *
- * This is a deliberate simplification of Yamaha's real NTT (Note
- * Transposition Table) / NTR (Note Transposition Rule) system, which uses
- * per-note rules from the proprietary CASM chunk (root-fixed vs
- * root-transposed per part, guide-tone handling, etc.) — see
- * StyleParser's TODO. What's implemented here instead:
+ * Semua note pattern di-transpose sejauh selisih root chord user
+ * dengan root chord "asli" style (default C = 60).
  *
- *   1. Shift by (targetRoot - sourceRoot) semitones.
- *   2. If the target chord quality differs from major (e.g. minor, 7th),
- *      re-map the shifted note onto the nearest scale tone of the target
- *      chord quality's interval set, so a Bass/Chord part still outlines
- *      the right chord instead of just a transposed C-major line.
- *
- * This covers the common Main-style case (bass + chord comping following
- * major/minor/7th changes) reasonably well; extended chords (9/11/13) and
- * rhythm/drum parts should bypass this entirely (see ArrangerBrain, which
- * only transposes Bass/Chord/Pad/Phrase parts, not Rhythm).
+ * Chord type (major/minor/7th) BELUM di-handle di sini —
+ * 3rd/5th masih asli dari pattern.
  */
 object NoteTransposer {
 
-    private const val SOURCE_ROOT_PITCH_CLASS = 0 // styles are authored in C
+    /** Root note default pattern — biasanya C (60) di style Yamaha. */
+    private const val STYLE_ROOT = 60
 
-    fun transpose(midiNote: Int, targetChord: DetectedChord): Int {
-        val semitoneShift = ((targetChord.rootNote - SOURCE_ROOT_PITCH_CLASS) + 12) % 12
-        val shifted = midiNote + semitoneShift
+    /**
+     * Transpose 1 note pattern sesuai chord user.
+     * @param patternNote Note asli dari pattern style
+     * @param chord Chord yang dideteksi dari user
+     * @return Note yang sudah di-transpose
+     */
+    fun transpose(patternNote: Int, chord: DetectedChord): Int {
+        // Hitung selisih dari root style ke root chord user
+        val rootDelta = chord.rootNote - STYLE_ROOT
 
-        val templateIntervals = targetChord.quality.intervalsFromRoot.map { it % 12 }.toSet()
-        val shiftedPitchClass = ((shifted % 12) + 12) % 12
-        val relativeToRoot = ((shiftedPitchClass - targetChord.rootNote) + 12) % 12
+        // Transpose note pattern
+        var result = patternNote + rootDelta
 
-        if (relativeToRoot in templateIntervals) return shifted
+        // Clamp ke range MIDI 0-127
+        while (result < 0) result += 12
+        while (result > 127) result -= 12
 
-        // Snap to the nearest interval in the chord template so parts that
-        // outline thirds/sevenths follow the chord quality (e.g. a major
-        // third bends to a minor third when the user plays a minor chord).
-        val nearest = templateIntervals.minByOrNull { interval ->
-            val diff = (interval - relativeToRoot + 12) % 12
-            minOf(diff, 12 - diff)
-        } ?: relativeToRoot
-        val correction = nearest - relativeToRoot
-        return shifted + correction
+        return result
     }
 }
