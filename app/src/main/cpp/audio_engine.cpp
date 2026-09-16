@@ -84,7 +84,10 @@ bool AudioEngine::start() {
 
     auto bufferResult = stream_->setBufferSizeInFrames(stream_->getFramesPerBurst() * 8);
     if (bufferResult != oboe::Result::OK) {
-        LOGI("Buffer size adjustment skipped: %s", oboe::convertToText(bufferResult));
+        // setBufferSizeInFrames() returns ResultWithValue<int32_t>, so its
+        // human-readable error must be taken from .error(), not passed as a
+        // ResultWithValue to convertToText().
+        LOGI("Buffer size adjustment skipped: %s", bufferResult.error());
     }
 
     result = stream_->requestStart();
