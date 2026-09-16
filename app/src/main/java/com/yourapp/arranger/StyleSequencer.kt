@@ -21,23 +21,41 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val sc
     private var lockedChannels: Set<Int> = emptySet()
     private val activeTransposedNotes = mutableMapOf<String, Int>()
 
-    fun setLockedChannels(channels: Set<Int>) { lockedChannels = channels; DebugLog.add("🔒 Locked channels updated: $channels") }
-    fun setVoiceMap(vm: Map<Int, String>) { voiceMap = vm; lastAppliedSection = ""; DebugLog.add("🎼 Legacy VoiceMap received: ${vm.size}; CASM policy takes precedence") }
+    fun setLockedChannels(channels: Set<Int>) {
+        lockedChannels = channels
+        DebugLog.add("🔒 Locked channels updated: $channels")
+    }
+
+    fun setVoiceMap(vm: Map<Int, String>) {
+        voiceMap = vm
+        lastAppliedSection = ""
+        DebugLog.add("🎼 Legacy VoiceMap received: ${vm.size}; CASM policy takes precedence")
+    }
 
     fun play(section: StyleSectionModel, ppq: Int, loopLimit: Int = -1, onComplete: (() -> Unit)? = null) {
-        stop(); loopCount = 0
-        if (lastAppliedSection != section.name) { applyVoicesFromCasm(section); lastAppliedSection = section.name }
+        stop()
+        loopCount = 0
+        if (lastAppliedSection != section.name) {
+            applyVoicesFromCasm(section)
+            lastAppliedSection = section.name
+        }
         DebugLog.add("▶ PLAY ${section.name}: parts=${section.parts.size}, events=${section.parts.sumOf { it.events.size }}, loopLimit=$loopLimit")
         playbackJob = scope.launch {
             var loops = 0
-            while (loopLimit < 0 || loops < loopLimit) { playOnce(section, ppq); loops++ }
+            while (loopLimit < 0 || loops < loopLimit) {
+                playOnce(section, ppq)
+                loops++
+            }
             onComplete?.invoke()
         }
     }
 
     fun stop() {
-        playbackJob?.cancel(); playbackJob = null
-        audioEngine.allNotesOff(); activeTransposedNotes.clear(); DebugLog.add("⏹ STOP")
+        playbackJob?.cancel()
+        playbackJob = null
+        audioEngine.allNotesOff()
+        activeTransposedNotes.clear()
+        DebugLog.add("⏹ STOP")
     }
 
     fun queueNextSection(section: StyleSectionModel, ppq: Int) = play(section, ppq)
@@ -48,9 +66,12 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val sc
             val destination = c.destinationChannel
             if (destination in lockedChannels) return@forEach
             val prog = guessProgramFromVoiceName(c.voiceName)
-            if (prog < 0) { DebugLog.add("⚠ src${c.sourceChannel}→dst$destination: unsupported '${c.voiceName}'"); return@forEach }
+            if (prog < 0) {
+                DebugLog.add("⚠ src${c.sourceChannel}→dst$destination: unsupported '${c.voiceName}'")
+                return@forEach
+            }
             audioEngine.setChannelProgram(destination, prog, if (isDrumVoice(c.voiceName)) 128 else 0)
-            DebugLog.add("🎼 src${c.sourceChannel}→dst$destination: ${c.voiceName} → GM $prog")
+            DebugLog.add("🎼 src${c.sourceChannel}→dst$destination: ${c.voiceName} → GM $prog NTR=${c.ntr} NTT=${c.ntt} HK=${c.highKey} LIM=${c.noteLimitLow}..${c.noteLimitHigh} RTR=${c.rtr}")
         }
     }
 
@@ -79,14 +100,26 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val sc
         }
     }
 
-    private fun isDrumVoice(name: String) = name.lowercase().let { it.contains("add-dr") || it.contains("drum") || it.contains("kit") || it.startsWith("dr") }
+    private fun isDrumVoice(name: String) = name.lowercase().let {
+        it.contains("add-dr") || it.contains("drum") || it.contains("kit") || it.startsWith("dr")
+    }
 
     private suspend fun playOnce(section: StyleSectionModel, ppq: Int) {
         loopCount++
-        if (section.lengthTicks <= 0) { delay(500); return }
+        if (section.lengthTicks <= 0) {
+            delay(500)
+            return
+        }
+
         data class Scheduled(val tick: Int, val event: StyleNoteEvent, val policy: CasmPolicyModel?)
-        val merged = section.parts.flatMap { part -> part.events.map { e -> Scheduled(e.tick, e, part.casm) } }.sortedBy { it.tick }
-        if (merged.isEmpty()) { delay(500); return }
+        val merged = section.parts
+            .flatMap { part -> part.events.map { e -> Scheduled(e.tick, e, part.casm) } }
+            .sortedWith(compareBy<Scheduled> { it.tick }.thenBy { it.event.isNoteOn.not() })
+
+        if (merged.isEmpty()) {
+            delay(500)
+            return
+        }
 
         var lastTick = 0
         for (s in merged) {
@@ -99,9 +132,14 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val sc
             val destinationChannel = policy?.destinationChannel ?: sourceChannel
             if (destinationChannel in lockedChannels) continue
 
-            val transpose = policy?.let { !isDrumVoice(it.voiceName) } ?: (sourceChannel != 9)
-            val transformed = if (transpose) currentChord?.let { NoteTransposer.transpose(s.event.note, it) } ?: s.event.note else s.event.note
-            val note = applyCasmLimits(transformed, policy) ?: continue
+            val transformed = if (policy != null && !isDrumVoice(policy.voiceName)) {
+                currentChord?.let { CasmNoteTransformer.transform(s.event.note, it, policy) }
+                    ?: s.event.note.coerceIn(0, 127)
+            } else {
+                s.event.note.coerceIn(0, 127)
+            }
+
+            val note = transformed ?: continue
             val key = "${sourceChannel}:${destinationChannel}:${s.event.note}"
 
             if (s.event.isNoteOn) {
@@ -114,12 +152,6 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val sc
 
         val rem = section.lengthTicks - lastTick
         if (rem > 0) delay(ticksToMillis(rem, ppq, tempoBpm))
-    }
-
-    private fun applyCasmLimits(note: Int, policy: CasmPolicyModel?): Int? {
-        if (policy == null) return note.coerceIn(0, 127)
-        if (note !in policy.noteLimitLow..policy.noteLimitHigh) return null
-        return note.coerceIn(0, 127)
     }
 
     private fun ticksToMillis(ticks: Int, ppq: Int, bpm: Int): Long =
