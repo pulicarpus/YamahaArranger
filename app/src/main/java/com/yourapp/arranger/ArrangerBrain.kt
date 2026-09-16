@@ -3,6 +3,7 @@ package com.yourapp.yamahaarranger.arranger
 import com.yourapp.yamahaarranger.audio.AudioEngineManager
 import com.yourapp.yamahaarranger.chord.ChordDetector
 import com.yourapp.yamahaarranger.chord.DetectedChord
+import com.yourapp.yamahaarranger.midi.MidiInputManager
 import com.yourapp.yamahaarranger.style.ParsedStyle
 import com.yourapp.yamahaarranger.ui.DebugLog
 import kotlinx.coroutines.CoroutineScope
@@ -33,7 +34,8 @@ data class ArrangerState(
 @Singleton
 class ArrangerBrain @Inject constructor(
     private val audioEngine: AudioEngineManager,
-    private val chordDetector: ChordDetector
+    private val chordDetector: ChordDetector,
+    private val midiInputManager: MidiInputManager
 ) {
     private lateinit var sequencer: StyleSequencer
     private var loadedStyle: ParsedStyle? = null
@@ -61,14 +63,14 @@ class ArrangerBrain @Inject constructor(
         if (::sequencer.isInitialized) {
             sequencer.stop()
         }
-        sequencer = StyleSequencer(audioEngine, scope)
+        sequencer = StyleSequencer(audioEngine, midiInputManager, scope)
         Timber.i("ArrangerBrain: scope attached")
     }
 
     private fun ensureSequencer() {
         if (!::sequencer.isInitialized) {
             val scope = externalScope ?: CoroutineScope(Dispatchers.Main + SupervisorJob())
-            sequencer = StyleSequencer(audioEngine, scope)
+            sequencer = StyleSequencer(audioEngine, midiInputManager, scope)
         }
     }
 
