@@ -2,6 +2,7 @@ package com.yourapp.yamahaarranger.arranger
 
 import com.yourapp.yamahaarranger.audio.AudioEngineManager
 import com.yourapp.yamahaarranger.chord.DetectedChord
+import com.yourapp.yamahaarranger.midi.MidiInputManager
 import com.yourapp.yamahaarranger.style.CasmPolicyModel
 import com.yourapp.yamahaarranger.style.StyleNoteEvent
 import com.yourapp.yamahaarranger.style.StyleSectionModel
@@ -11,8 +12,12 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** CASM-aware style playback: section policy -> NTR/NTT -> limits -> audio channel. */
-class StyleSequencer(private val audioEngine: AudioEngineManager, private val scope: CoroutineScope) {
+/** CASM-aware style playback: section policy -> NTR/NTT -> limits -> audio + optional MIDI OUT. */
+class StyleSequencer(
+    private val audioEngine: AudioEngineManager,
+    private val midiInputManager: MidiInputManager,
+    private val scope: CoroutineScope
+) {
     private var playbackJob: Job? = null
     var tempoBpm: Int = 120
     var currentChord: DetectedChord? = null
@@ -55,6 +60,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val sc
         playbackJob?.cancel()
         playbackJob = null
         audioEngine.allNotesOff()
+        // If MIDI OUT is enabled, release notes on the external keyboard too.
+        midiInputManager.allNotesOff()
         activeTransposedNotes.clear()
         DebugLog.add("⏹ STOP")
     }
@@ -71,7 +78,10 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val sc
                 DebugLog.add("⚠ src${c.sourceChannel}→dst$destination: unsupported '${c.voiceName}'")
                 return@forEach
             }
-            audioEngine.setChannelProgram(destination, prog, if (isDrumVoice(c.voiceName)) 128 else 0)
+            val bank = if (isDrumVoice(c.voiceName)) 128 else 0
+            audioEngine.setChannelProgram(destination, prog, bank)
+            // Mirror the CASM voice assignment to the E343 when MIDI OUT is ON.
+            midiInputManager.sendProgramChange(destination, prog, bank)
             DebugLog.add("🎼 src${c.sourceChannel}→dst$destination: ${c.voiceName} → GM $prog NTR=${c.ntr} NTT=${c.ntt} HK=${c.highKey} LIM=${c.noteLimitLow}..${c.noteLimitHigh} RTR=${c.rtr}")
         }
     }
@@ -148,9 +158,16 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val sc
 
             if (s.event.isNoteOn) {
                 activeTransposedNotes[key] = note
-                audioEngine.noteOnChannel(destinationChannel, note, s.event.velocity / 127f)
+                val velocity = s.event.velocity.coerceIn(1, 127)
+                audioEngine.noteOnChannel(destinationChannel, note, velocity / 127f)
+                // The E343 is a MIDI tone generator on the other end of the
+                // USB connection. MIDI carries note/control data, not audio,
+                // so explicitly mirror style notes when OUT is enabled.
+                midiInputManager.sendNoteOn(destinationChannel, note, velocity)
             } else {
-                audioEngine.noteOffChannel(destinationChannel, activeTransposedNotes.remove(key) ?: note)
+                val releaseNote = activeTransposedNotes.remove(key) ?: note
+                audioEngine.noteOffChannel(destinationChannel, releaseNote)
+                midiInputManager.sendNoteOff(destinationChannel, releaseNote)
             }
         }
 
