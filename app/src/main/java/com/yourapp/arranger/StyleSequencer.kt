@@ -77,6 +77,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val sc
 
     private fun guessProgramFromVoiceName(name: String): Int {
         val n = name.lowercase()
+        val numeric = Regex("(?:^|\\D)(\\d{1,3})\\s*$").find(n)?.groupValues?.getOrNull(1)?.toIntOrNull()
+        if (numeric != null && numeric in 0..127) return numeric
         return when {
             n.contains("piano") -> 0
             n.contains("e.piano") || n.contains("ep") -> 4
@@ -96,6 +98,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val sc
             n.contains("clarinet") -> 71
             n.contains("flute") -> 73
             n.contains("dr") || n.contains("kit") || n.contains("drum") -> 0
+            n.contains("pad") -> 89
             else -> -1
         }
     }
