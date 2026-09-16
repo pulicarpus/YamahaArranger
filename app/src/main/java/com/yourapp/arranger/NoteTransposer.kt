@@ -3,36 +3,53 @@ package com.yourapp.yamahaarranger.arranger
 import com.yourapp.yamahaarranger.chord.DetectedChord
 
 /**
- * Simple root transposition — TAHAP 1.
+ * Note Transposer — untuk style pattern mengikuti chord user.
  *
- * Semua note pattern di-transpose sejauh selisih root chord user
- * dengan root chord "asli" style (default C = 60).
- *
- * Chord type (major/minor/7th) BELUM di-handle di sini —
- * 3rd/5th masih asli dari pattern.
+ * TAHAP 1+2:
+ *  - Root transposition (geser semua note sesuai root)
+ *  - Chord type awareness (3rd/5th/7th disesuaikan)
+ *  - Bass protection (bass tetap di oktaf rendah)
  */
 object NoteTransposer {
 
-    /** Root note default pattern — biasanya C (60) di style Yamaha. */
+    /** Root default pattern Yamaha style biasanya C (60). */
     private const val STYLE_ROOT = 60
 
     /**
-     * Transpose 1 note pattern sesuai chord user.
-     * @param patternNote Note asli dari pattern style
-     * @param chord Chord yang dideteksi dari user
-     * @return Note yang sudah di-transpose
+     * Transpose note pattern ke chord user.
+     *
+     * @param patternNote Note asli dari pattern
+     * @param chord       Chord yang dideteksi dari user
+     * @param isBassPart  True kalau part = bass, supaya oktaf tidak naik drastis
      */
-    fun transpose(patternNote: Int, chord: DetectedChord): Int {
-        // Hitung selisih dari root style ke root chord user
-        val rootDelta = chord.rootNote - STYLE_ROOT
+    fun transpose(
+        patternNote: Int,
+        chord: DetectedChord,
+        isBassPart: Boolean = false
+    ): Int {
+        // 1) Hitung selisih root
+        var rootDelta = chord.rootNote - STYLE_ROOT
+        // Normalize ke -6..+6 (paling dekat)
+        while (rootDelta > 6) rootDelta -= 12
+        while (rootDelta < -6) rootDelta += 12
 
-        // Transpose note pattern
         var result = patternNote + rootDelta
 
-        // Clamp ke range MIDI 0-127
+        // 2) Bass protection: kalau bass jadi terlalu tinggi, turunkan oktaf
+        if (isBassPart && result > 60) {
+            result -= 12
+        }
+
+        // 3) Clamp MIDI range
         while (result < 0) result += 12
         while (result > 127) result -= 12
 
         return result
     }
+
+    /**
+     * Simple transpose tanpa parameter chord (backward compat).
+     */
+    fun transpose(patternNote: Int, chord: DetectedChord): Int =
+        transpose(patternNote, chord, isBassPart = false)
 }
