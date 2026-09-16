@@ -102,7 +102,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val sc
             val destinationChannel = policy?.destinationChannel ?: sourceChannel
             if (destinationChannel in lockedChannels) continue
 
-            val transpose = policy == null || sourceChannel != 9
+            val transpose = policy?.let { !isDrumVoice(it.voiceName) } ?: (sourceChannel != 9)
             val transformed = if (transpose) {
                 currentChord?.let { NoteTransposer.transpose(s.event.note, it) } ?: s.event.note
             } else s.event.note
