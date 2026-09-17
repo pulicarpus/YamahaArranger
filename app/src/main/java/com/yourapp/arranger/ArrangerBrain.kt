@@ -2,6 +2,7 @@ package com.yourapp.yamahaarranger.arranger
 
 import com.yourapp.yamahaarranger.audio.AudioEngineManager
 import com.yourapp.yamahaarranger.chord.ChordDetector
+import com.yourapp.yamahaarranger.chord.ChordQuality
 import com.yourapp.yamahaarranger.chord.DetectedChord
 import com.yourapp.midi.MidiInputManager
 import com.yourapp.yamahaarranger.style.ParsedStyle
@@ -40,7 +41,10 @@ class ArrangerBrain @Inject constructor(
     private lateinit var sequencer: StyleSequencer
     private var loadedStyle: ParsedStyle? = null
     private var externalScope: CoroutineScope? = null
-    private val splitNote = 60
+
+    // PSR-E343 default split point is F#2 (MIDI 54). Keys at or below it are
+    // the ACMP/chord area; keys above it are the right-hand performance area.
+    private var splitNote = 54
 
     private val _state = MutableStateFlow(ArrangerState())
     val state: StateFlow<ArrangerState> = _state.asStateFlow()
@@ -78,22 +82,36 @@ class ArrangerBrain @Inject constructor(
     }
 
     fun onKeyboardNoteOn(midiNote: Int, velocity: Float) {
-        if (midiNote >= splitNote) audioEngine.noteOn(midiNote, velocity)
+        if (midiNote > splitNote) {
+            audioEngine.noteOn(midiNote, velocity)
+            return
+        }
+        // ACMP area: do not send these chord-control notes directly to the
+        // keyboard sound engine; they only determine the accompaniment chord.
         chordDetector.noteOn(midiNote)?.let(::onChordChanged)
     }
 
     fun onKeyboardNoteOff(midiNote: Int) {
-        if (midiNote >= splitNote) audioEngine.noteOff(midiNote)
+        if (midiNote > splitNote) {
+            audioEngine.noteOff(midiNote)
+            return
+        }
         val chord = chordDetector.noteOff(midiNote)
         if (chord != null) {
             onChordChanged(chord)
         } else {
             // Releasing the last chord key is NOT the same as Synchro Stop.
-            // Keep the last detected chord active so accompaniment continues
-            // in the last chord until a new chord is played.
-            // Synchro Stop should be an explicit playback-control feature.
+            // Keep the last detected chord active until a new chord arrives.
             DebugLog.add("🎹 Chord release: keep last chord")
         }
+    }
+
+    /** E343-compatible default split point, exposed for future UI control. */
+    fun setSplitPoint(midiNote: Int) {
+        splitNote = midiNote.coerceIn(24, 96)
+        chordDetector.reset()
+        _state.update { it.copy(currentChordLabel = "") }
+        DebugLog.add("🎹 Split Point: $splitNote")
     }
 
     private fun onChordChanged(chord: DetectedChord) {
@@ -183,9 +201,31 @@ class ArrangerBrain @Inject constructor(
     }
 }
 
-private val NOTE_NAMES = listOf("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
+private val NOTE_NAMES = listOf("C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B")
 
 private fun DetectedChord.label(): String {
+    if (displayName.isNotBlank()) return displayName
     val rootName = NOTE_NAMES[rootNote]
-    return if (bassNote != rootNote) "$rootName/${NOTE_NAMES[bassNote]}" else rootName
+    val qualityName = when (quality) {
+        ChordQuality.MAJOR -> ""
+        ChordQuality.MINOR -> "m"
+        ChordQuality.SUS4 -> "sus4"
+        ChordQuality.SUS2 -> "sus2"
+        ChordQuality.DOM7 -> "7"
+        ChordQuality.MIN7 -> "m7"
+        ChordQuality.MAJ7 -> "M7"
+        ChordQuality.SIX -> "6"
+        ChordQuality.MIN6 -> "m6"
+        ChordQuality.DIM -> "dim"
+        ChordQuality.DIM7 -> "dim7"
+        ChordQuality.AUG -> "aug"
+        ChordQuality.MIN7_FLAT5 -> "m7b5"
+        ChordQuality.DOM7_FLAT5 -> "7b5"
+        ChordQuality.SIX9 -> "6(9)"
+        ChordQuality.ADD9 -> "add9"
+        ChordQuality.DOM7_SUS4 -> "7sus4"
+        ChordQuality.MIN7_11 -> "m7(11)"
+        ChordQuality.POWER5 -> "5"
+    }
+    return if (bassNote != rootNote) "$rootName$qualityName/${NOTE_NAMES[bassNote]}" else "$rootName$qualityName"
 }
