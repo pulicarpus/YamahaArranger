@@ -49,9 +49,12 @@ class StyleRepository @Inject constructor(private val bridge: NativeStyleBridge)
                 val noteCount = events.count { it.isNoteOn || (it.status and 0xF0) == 0x80 }
                 val extraCount = events.size - noteCount
                 if (extraCount > 0) DebugLog.add("📦 $sectionName part=$partIndex preserved ${events.size} events ($extraCount non-note)")
-                val casm = parseCasm(bridge.nativeGetPartCasm(sectionName, partIndex))
-                if (casm != null) DebugLog.add("🎛 $sectionName src=${casm.sourceChannel} → dst=${casm.destinationChannel} ${casm.voiceName} NTR=${casm.ntr} NTT=${casm.ntt} HK=${casm.highKey} LIM=${casm.noteLimitLow}-${casm.noteLimitHigh} RTR=${casm.rtr}")
-                StylePartModel(bridge.nativeGetPartName(sectionName, partIndex), events, casm)
+                val rawCasm = bridge.nativeGetPartCasm(sectionName, partIndex)
+                val policies = parseCasmPolicies(rawCasm)
+                if (policies.isNotEmpty()) {
+                    DebugLog.add("🎛 $sectionName src=${policies.first().sourceChannel} policies=${policies.size} ranges=${policies.joinToString { "${it.sourceNoteLow}-${it.sourceNoteHigh}:NTR${it.ntr}/NTT${it.ntt}${if (it.bassOn) "+BASS" else ""}" }}")
+                }
+                StylePartModel(bridge.nativeGetPartName(sectionName, partIndex), events, policies.firstOrNull(), policies)
             }
             StyleSectionModel(sectionName, bridge.nativeGetSectionLengthTicks(sectionName), parts)
         }
@@ -94,12 +97,29 @@ class StyleRepository @Inject constructor(private val bridge: NativeStyleBridge)
         return result
     }
 
-    private fun parseCasm(raw: String): CasmPolicyModel? {
-        if (raw.isBlank()) return null
-        val p = raw.split("|", limit = 12)
-        if (p.size != 12) return null
-        return try {
-            CasmPolicyModel(p[0].toInt(), p[1].toInt(), p[2], p[3].toInt(), p[4].toInt(), p[5].toInt(), p[6].toInt(), p[7].toInt(), p[8].toInt(), p[9].toInt(), p[10].toInt(), p[11].toInt() != 0)
-        } catch (_: NumberFormatException) { null }
+    private fun parseCasmPolicies(raw: String): List<CasmPolicyModel> {
+        if (raw.isBlank()) return emptyList()
+        return raw.split(';').mapNotNull { record ->
+            val p = record.split('|', limit = 14)
+            if (p.size != 12 && p.size != 14) return@mapNotNull null
+            try {
+                CasmPolicyModel(
+                    sourceChannel = p[0].toInt(),
+                    destinationChannel = p[1].toInt(),
+                    voiceName = p[2],
+                    sourceChordRoot = p[3].toInt(),
+                    sourceChordType = p[4].toInt(),
+                    ntr = p[5].toInt(),
+                    ntt = p[6].toInt(),
+                    highKey = p[7].toInt(),
+                    noteLimitLow = p[8].toInt(),
+                    noteLimitHigh = p[9].toInt(),
+                    rtr = p[10].toInt(),
+                    bassOn = p[11].toInt() != 0,
+                    sourceNoteLow = if (p.size >= 14) p[12].toInt() else 0,
+                    sourceNoteHigh = if (p.size >= 14) p[13].toInt() else 127
+                )
+            } catch (_: NumberFormatException) { null }
+        }
     }
 }
