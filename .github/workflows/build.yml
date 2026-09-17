@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - fix/casm-policy
+      - test/build182-baseline
 
 jobs:
   build:
