@@ -1,0 +1,114 @@
+name: Inspect Smart Pianist
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Smart Pianist version on APKPure (for example 3.10.0 or latest)"
+        required: true
+        default: "latest"
+        type: string
+      apk_url:
+        description: "Optional direct XAPK URL; leave empty to use APKPure"
+        required: false
+        default: ""
+        type: string
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Smart Pianist XAPK
+        env:
+          VERSION: ${{ inputs.version }}
+          APK_URL: ${{ inputs.apk_url }}
+        run: |
+          set -euo pipefail
+          if [ -n "$APK_URL" ]; then
+            URL="$APK_URL"
+          else
+            URL="https://d.apkpure.net/b/XAPK/jp.co.yamaha.smartpianist?version=${VERSION}"
+          fi
+          echo "Source URL: $URL" | tee download-source.txt
+          curl -L --fail --retry 3 --retry-delay 2 --retry-all-errors \
+            --output smart-pianist.xapk "$URL"
+          ls -lh smart-pianist.xapk
+          sha256sum smart-pianist.xapk | tee smart-pianist-xapk.sha256
+
+      - name: Extract XAPK
+        run: |
+          set -euo pipefail
+          mkdir -p xapk
+          unzip -q smart-pianist.xapk -d xapk
+          echo "=== XAPK contents ===" | tee xapk-contents.txt
+          find xapk -maxdepth 3 -type f -printf '%p\t%s bytes\n' | sort | tee -a xapk-contents.txt
+
+      - name: Static package inventory
+        run: |
+          set -euo pipefail
+          python3 tools/smart_pianist_inspector.py xapk | tee smart-pianist-static-report.txt
+
+      - name: Install JADX 1.5.6
+        run: |
+          set -euo pipefail
+          curl -L --fail --retry 3 --retry-all-errors \
+            -o jadx.zip https://github.com/skylot/jadx/releases/download/v1.5.6/jadx-1.5.6.zip
+          mkdir -p jadx
+          unzip -q jadx.zip -d jadx
+          chmod +x jadx/bin/jadx
+          jadx/bin/jadx --version
+
+      - name: Decompile base APK for targeted analysis
+        run: |
+          set -euo pipefail
+          BASE="$(find xapk -type f -name 'base.apk' | head -n 1)"
+          if [ -z "$BASE" ]; then
+            BASE="$(find xapk -type f -name '*.apk' | sort | head -n 1)"
+          fi
+          test -n "$BASE"
+          echo "Base APK: $BASE" | tee jadx-source.txt
+          mkdir -p jadx-out
+          ./jadx/bin/jadx --threads-count 2 --show-bad-code --no-res -d jadx-out "$BASE" > jadx.log 2>&1 || true
+          grep -RniE --include='*.java' \
+            'MIDI|SysEx|sysex|System.?Exclusive|jp\.co\.yamaha|yamaha|Smart.?Pianist|Chord|Style|Accompaniment|Backing|CASM|SFF|NTR|NTT|RTR|High.?Key|Note.?Limit|Program.?Change|Bank.?Select|USB|Bluetooth' \
+            jadx-out 2>/dev/null | head -n 1200 > smart-pianist-jadx-matches.txt || true
+          echo "JADX log:" > smart-pianist-jadx-report.txt
+          tail -n 120 jadx.log >> smart-pianist-jadx-report.txt || true
+          echo >> smart-pianist-jadx-report.txt
+          echo "Targeted source matches:" >> smart-pianist-jadx-report.txt
+          cat smart-pianist-jadx-matches.txt >> smart-pianist-jadx-report.txt || true
+
+      - name: Inspect native libraries and binary strings
+        run: |
+          set -euo pipefail
+          mkdir -p native
+          find xapk -type f -path '*/lib/*/*.so' -exec cp --parents '{}' native/ \; 2>/dev/null || true
+          {
+            echo "=== Native libraries ==="
+            find xapk -type f -path '*/lib/*/*.so' -printf '%p\t%s bytes\n' | sort || true
+            echo
+            echo "=== Interesting native strings ==="
+            find xapk -type f -path '*/lib/*/*.so' -print0 | while IFS= read -r -d '' f; do
+              echo "--- $f ---"
+              strings -a "$f" | grep -Ei 'midi|sysex|yamaha|pianist|chord|style|accompan|backing|casm|sff|usb|bluetooth|audio|soundfont' | head -n 300 || true
+            done
+          } | tee smart-pianist-native-report.txt
+
+      - name: Upload inspection report
+        uses: actions/upload-artifact@v4
+        with:
+          name: smart-pianist-inspection
+          path: |
+            download-source.txt
+            smart-pianist-xapk.sha256
+            xapk-contents.txt
+            smart-pianist-static-report.txt
+            smart-pianist-jadx-report.txt
+            smart-pianist-native-report.txt
+            jadx-source.txt
+          if-no-files-found: error
+          retention-days: 14
