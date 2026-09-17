@@ -28,9 +28,13 @@ private val SxOrange = Color(0xFFB65300)
 private val SxOrangeBright = Color(0xFFFF8A00)
 private val SxGreen = Color(0xFF27D887)
 private val SxDim = Color(0xFF9AA3AD)
+private val SxMidiDisconnected = Color(0xFFD92D2D)
 
 @Composable
-fun SxMainScreen(viewModel: MainViewModel = hiltViewModel()) {
+fun SxMainScreen(
+    viewModel: MainViewModel = hiltViewModel(),
+    onOpenDiagnostics: () -> Unit = {}
+) {
     val state by viewModel.uiState.collectAsState()
     val stylePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(viewModel::onStyleFilePicked) }
     val soundFontPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(viewModel::onSoundFontFilePicked) }
@@ -46,7 +50,7 @@ fun SxMainScreen(viewModel: MainViewModel = hiltViewModel()) {
         Column(Modifier.fillMaxSize().padding(horizontal = 7.dp, vertical = 5.dp)) {
             SxHeader(state, headerH) { soundFontPicker.launch(arrayOf("audio/x-soundfont", "application/octet-stream", "audio/*", "*/*")) }
             Spacer(Modifier.height(gap))
-            SxNavBar(navH)
+            SxNavBar(navH, onOpenDiagnostics)
             Spacer(Modifier.height(gap))
             Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(gap)) {
                 SxSideMenu(Modifier.weight(.17f).fillMaxHeight(), compact)
@@ -64,13 +68,14 @@ fun SxMainScreen(viewModel: MainViewModel = hiltViewModel()) {
 
 @Composable
 private fun SxHeader(state: MainUiState, height: Dp, onPickSoundFont: () -> Unit) {
+    val midiConnected = !state.midiStatus.startsWith("No", ignoreCase = true) && state.midiStatus.isNotBlank()
     Surface(color = Color(0xFF080A0C), shape = RoundedCornerShape(5.dp), modifier = Modifier.fillMaxWidth().height(height).border(1.dp, Color(0xFF333A42), RoundedCornerShape(5.dp))) {
         Row(Modifier.fillMaxSize().padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("YAMAHA", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
             Spacer(Modifier.width(9.dp)); Text("PSR-SX900", color = SxDim, fontSize = 11.sp, letterSpacing = 1.2.sp)
             Spacer(Modifier.width(8.dp)); Text("YamahaArranger", color = Color(0xFF6EA7D2), fontSize = 8.sp)
             Spacer(Modifier.weight(1f))
-            Text("● MIDI", color = if (state.midiStatus.startsWith("No")) SxDim else SxGreen, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+            Text("● MIDI", color = if (midiConnected) SxBlue else SxMidiDisconnected, fontSize = 8.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.width(8.dp))
             Surface(color = if (state.soundFontName == "None" || state.soundFontName == "Load failed") Color(0xFF252B31) else SxBlueDark,
                 shape = RoundedCornerShape(3.dp), modifier = Modifier.clickable(onClick = onPickSoundFont).border(1.dp, Color(0xFF39434B), RoundedCornerShape(3.dp))) {
@@ -81,12 +86,19 @@ private fun SxHeader(state: MainUiState, height: Dp, onPickSoundFont: () -> Unit
 }
 
 @Composable
-private fun SxNavBar(height: Dp) {
-    val tabs = listOf("HOME", "STYLE", "VOICE", "SONG", "MULTI PAD", "REGIST", "MIXER", "UTILITY")
+private fun SxNavBar(height: Dp, onOpenDiagnostics: () -> Unit) {
+    val tabs = listOf("HOME", "STYLE", "VOICE", "SONG", "MULTI PAD", "LOG", "MIXER", "UTILITY")
     Row(Modifier.fillMaxWidth().height(height).background(Color(0xFF0D1115), RoundedCornerShape(5.dp)).padding(3.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
         tabs.forEachIndexed { i, label ->
-            Surface(color = if (i == 0) Color(0xFF073E82) else Color(0xFF1C2228), shape = RoundedCornerShape(3.dp), modifier = Modifier.weight(1f).fillMaxHeight()) {
-                Box(contentAlignment = Alignment.Center) { Text(label, color = Color.White, fontSize = 7.sp, fontWeight = FontWeight.Bold, maxLines = 1) }
+            val isLog = label == "LOG"
+            Surface(
+                color = if (i == 0) Color(0xFF073E82) else if (isLog) Color(0xFF26282C) else Color(0xFF1C2228),
+                shape = RoundedCornerShape(3.dp),
+                modifier = Modifier.weight(1f).fillMaxHeight().clickable(enabled = isLog, onClick = onOpenDiagnostics)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(label, color = Color.White, fontSize = 7.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                }
             }
         }
     }
@@ -176,5 +188,19 @@ private fun SxCenterDisplay(state: MainUiState, vm: MainViewModel, compact: Bool
     }
 }
 
-@Composable private fun SxMidiBar(state: MainUiState, vm: MainViewModel, height: Dp, compact: Boolean) { Row(Modifier.fillMaxWidth().height(height), verticalAlignment = Alignment.CenterVertically) { Text("YamahaArranger v0.1.0   |   MIDI: ${state.midiStatus}", color = SxDim, fontSize = if (compact) 6.sp else 7.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis); OutlinedButton(onClick = vm::refreshMidiConnection, modifier = Modifier.height(height), contentPadding = PaddingValues(horizontal = 10.dp)) { Text("CONNECT", fontSize = if (compact) 6.sp else 7.sp) }; Spacer(Modifier.width(4.dp)); Button(onClick = vm::toggleMidiOut, modifier = Modifier.height(height), contentPadding = PaddingValues(horizontal = 10.dp), colors = ButtonDefaults.buttonColors(containerColor = if (state.midiOutEnabled) SxBlue else SxPanel2)) { Text("MIDI OUT", fontSize = if (compact) 6.sp else 7.sp) } } }
+@Composable private fun SxMidiBar(state: MainUiState, vm: MainViewModel, height: Dp, compact: Boolean) {
+    val midiConnected = !state.midiStatus.startsWith("No", ignoreCase = true) && state.midiStatus.isNotBlank()
+    val connectColor = if (midiConnected) SxBlue else SxMidiDisconnected
+    Row(Modifier.fillMaxWidth().height(height), verticalAlignment = Alignment.CenterVertically) {
+        Text("YamahaArranger v0.1.0   |   MIDI: ${state.midiStatus}", color = SxDim, fontSize = if (compact) 6.sp else 7.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Button(
+            onClick = vm::refreshMidiConnection,
+            modifier = Modifier.height(height),
+            contentPadding = PaddingValues(horizontal = 10.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = connectColor, contentColor = Color.White)
+        ) { Text("CONNECT", fontSize = if (compact) 6.sp else 7.sp, fontWeight = FontWeight.Bold) }
+        Spacer(Modifier.width(4.dp))
+        Button(onClick = vm::toggleMidiOut, modifier = Modifier.height(height), contentPadding = PaddingValues(horizontal = 10.dp), colors = ButtonDefaults.buttonColors(containerColor = if (state.midiOutEnabled) SxBlue else SxPanel2)) { Text("MIDI OUT", fontSize = if (compact) 6.sp else 7.sp) }
+    }
+}
 @Composable private fun SmallKey(text: String, onClick: () -> Unit, compact: Boolean = false) { Button(onClick = onClick, modifier = Modifier.size(if (compact) 23.dp else 25.dp), contentPadding = PaddingValues(0.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF39434B)), shape = RoundedCornerShape(2.dp)) { Text(text, fontSize = if (compact) 10.sp else 12.sp) } }
