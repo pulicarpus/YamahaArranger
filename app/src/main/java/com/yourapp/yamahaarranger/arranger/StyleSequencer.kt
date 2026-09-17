@@ -19,7 +19,10 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         set(value){
             val old=field
             field=value
-            if(old!=null&&value!=null&&old!=value) handleChordChange(value)
+            when {
+                old!=null&&value!=null&&old!=value -> handleChordChange(value)
+                old!=null&&value==null -> handleNoChord()
+            }
         }
     private var loopCount=0
     private var voiceMap:Map<Int,String> = emptyMap()
@@ -41,31 +44,24 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     fun stop(){playbackJob?.cancel();playbackJob=null;audioEngine.allNotesOff();midiInputManager.allNotesOff();activeTransposedNotes.clear();com.yourapp.yamahaarranger.ui.DebugLog.add("⏹ STOP")}
     fun queueNextSection(section:StyleSectionModel,ppq:Int)=play(section,ppq)
 
+    private fun handleNoChord(){
+        val snapshot=activeTransposedNotes.values.toList()
+        snapshot.forEach{releaseActive(it)}
+        if(snapshot.isNotEmpty())com.yourapp.yamahaarranger.ui.DebugLog.add("🎹 NO CHORD: released ${snapshot.size} held style notes")
+    }
+
     private fun handleChordChange(newChord:DetectedChord){
         if(activeTransposedNotes.isEmpty())return
         val snapshot=activeTransposedNotes.values.toList()
         snapshot.forEach{active->
             val rtr=active.policy.rtr and 0x7f
             when(rtr){
-                0->{
-                    releaseActive(active)
-                    com.yourapp.yamahaarranger.ui.DebugLog.add("🎹 RTR STOP src${active.sourceChannel}:${active.sourceNote}")
-                }
-                1->{
-                    updateHeldPitch(active,newChord,rootOnly=false,retrigger=false)
-                }
-                2->{
-                    updateHeldPitch(active,newChord,rootOnly=true,retrigger=false)
-                }
-                3->{
-                    updateHeldPitch(active,newChord,rootOnly=false,retrigger=true)
-                }
-                4->{
-                    updateHeldPitch(active,newChord,rootOnly=true,retrigger=true)
-                }
-                5->{
-                    com.yourapp.yamahaarranger.ui.DebugLog.add("ℹ RTR NOTE GENERATOR src${active.sourceChannel}:${active.sourceNote}: deferred")
-                }
+                0->{releaseActive(active);com.yourapp.yamahaarranger.ui.DebugLog.add("🎹 RTR STOP src${active.sourceChannel}:${active.sourceNote}")}
+                1->updateHeldPitch(active,newChord,rootOnly=false,retrigger=false)
+                2->updateHeldPitch(active,newChord,rootOnly=true,retrigger=false)
+                3->updateHeldPitch(active,newChord,rootOnly=false,retrigger=true)
+                4->updateHeldPitch(active,newChord,rootOnly=true,retrigger=true)
+                5->com.yourapp.yamahaarranger.ui.DebugLog.add("ℹ RTR NOTE GENERATOR src${active.sourceChannel}:${active.sourceNote}: deferred")
                 else->updateHeldPitch(active,newChord,rootOnly=false,retrigger=true)
             }
         }
@@ -74,15 +70,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     private fun updateHeldPitch(active:ActiveTransposedNote,chord:DetectedChord,rootOnly:Boolean,retrigger:Boolean){
         val target=if(rootOnly) rootPitchForHeld(active,chord) else CasmNoteTransformer.transform(active.sourceNote,chord,active.policy)
         if(target==null||target==active.outputNote)return
-        if(!retrigger){
-            // The current engine has no pitch-bend/continuous-pitch API, so a
-            // held-note pitch change is represented as a same-velocity note
-            // replacement. Keep the state explicit so a native pitch path can
-            // replace this later without changing CASM state management.
-            com.yourapp.yamahaarranger.ui.DebugLog.add("🎹 RTR PITCH SHIFT src${active.sourceChannel}:${active.sourceNote} ${active.outputNote}→$target (note replacement)")
-        }else{
-            com.yourapp.yamahaarranger.ui.DebugLog.add("🎹 RTR RETRIGGER src${active.sourceChannel}:${active.sourceNote} ${active.outputNote}→$target")
-        }
+        if(!retrigger)com.yourapp.yamahaarranger.ui.DebugLog.add("🎹 RTR PITCH SHIFT src${active.sourceChannel}:${active.sourceNote} ${active.outputNote}→$target (note replacement)")
+        else com.yourapp.yamahaarranger.ui.DebugLog.add("🎹 RTR RETRIGGER src${active.sourceChannel}:${active.sourceNote} ${active.outputNote}→$target")
         audioEngine.noteOffChannel(active.destinationChannel,active.outputNote)
         midiInputManager.sendNoteOff(active.destinationChannel,active.outputNote)
         audioEngine.noteOnChannel(active.destinationChannel,target,active.velocity/127f)
