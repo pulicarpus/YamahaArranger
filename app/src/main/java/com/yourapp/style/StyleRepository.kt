@@ -33,7 +33,7 @@ class StyleRepository @Inject constructor(private val bridge: NativeStyleBridge)
                 }
             }
         } catch (e: Exception) { DebugLog.add("❌ Voice map error: ${e.message}") }
-        DebugLog.add("🎼 Legacy voice map: $voiceMap")
+        DebugLog.add("🎼 Legacy CASM voice labels: $voiceMap")
 
         val ppq = bridge.nativeGetPpq()
         val defaultTempoBpm = bridge.nativeGetDefaultTempoBpm()
@@ -48,19 +48,53 @@ class StyleRepository @Inject constructor(private val bridge: NativeStyleBridge)
                 val events = decodePackedEvents(flat)
                 val noteCount = events.count { it.isNoteOn || (it.status and 0xF0) == 0x80 }
                 val extraCount = events.size - noteCount
-                if (extraCount > 0) DebugLog.add("📦 $sectionName part=$partIndex preserved ${events.size} events ($extraCount non-note)")
+                if (extraCount > 0) DebugLog.add("📦 $sectionName part=$partIndex preserved ${events.size} events ($extraCount setup/control)")
+
                 val rawCasm = bridge.nativeGetPartCasm(sectionName, partIndex)
                 val policies = parseCasmPolicies(rawCasm)
                 if (policies.isNotEmpty()) {
                     DebugLog.add("🎛 $sectionName src=${policies.first().sourceChannel} policies=${policies.size} ranges=${policies.joinToString { "${it.sourceNoteLow}-${it.sourceNoteHigh}:NTR${it.ntr}/NTT${it.ntt}${if (it.bassOn) "+BASS" else ""}" }}")
                 }
-                StylePartModel(bridge.nativeGetPartName(sectionName, partIndex), events, policies.firstOrNull(), policies)
+
+                val setup = extractVoiceSetup(events)
+                if (setup.program >= 0 || setup.bankMsb != 0 || setup.bankLsb != 0) {
+                    DebugLog.add("🎚 $sectionName part=$partIndex ch=${events.firstOrNull()?.channel ?: -1}: bank=${setup.bankMsb}/${setup.bankLsb} pc=${setup.program}")
+                }
+
+                StylePartModel(
+                    name = bridge.nativeGetPartName(sectionName, partIndex),
+                    events = events,
+                    casm = policies.firstOrNull(),
+                    casmPolicies = policies,
+                    program = setup.program,
+                    bankMsb = setup.bankMsb,
+                    bankLsb = setup.bankLsb
+                )
             }
             StyleSectionModel(sectionName, bridge.nativeGetSectionLengthTicks(sectionName), parts)
         }
 
         if (sections.isEmpty()) { Timber.w("Style parsed but yielded no sections: $fileName"); return null }
         return ParsedStyle(fileName, ppq, sections, voiceMap, defaultTempoBpm)
+    }
+
+    private data class VoiceSetup(val program: Int, val bankMsb: Int, val bankLsb: Int)
+
+    /** Read actual MIDI CC0/CC32/PC events. Never derive a tone from the CASM label. */
+    private fun extractVoiceSetup(events: List<StyleNoteEvent>): VoiceSetup {
+        var msb = 0
+        var lsb = 0
+        var program = -1
+        events.sortedBy { it.tick }.forEach { e ->
+            when {
+                e.isControlChange && e.status and 0xF0 == 0xB0 && e.metaType == 0 -> when (e.note) {
+                    0 -> msb = e.velocity
+                    32 -> lsb = e.velocity
+                }
+                e.isProgramChange -> program = e.note
+            }
+        }
+        return VoiceSetup(program.coerceIn(-1, 127), msb.coerceIn(0, 127), lsb.coerceIn(0, 127))
     }
 
     private fun decodePackedEvents(flat: IntArray): List<StyleNoteEvent> {
