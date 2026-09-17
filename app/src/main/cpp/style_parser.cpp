@@ -46,6 +46,8 @@ StyleSection StyleParser::classifyMarkerText(const std::string& text) {
         if (t.find("bb") != std::string::npos) return StyleSection::FillBB;
         if (t.find("cc") != std::string::npos) return StyleSection::FillCC;
         if (t.find("dd") != std::string::npos) return StyleSection::FillDD;
+        // Yamaha uses "Fill In BA" as the Break section.
+        if (t.find("ba") != std::string::npos) return StyleSection::BreakDown;
     }
     if (t.find("break") != std::string::npos) return StyleSection::BreakDown;
     if (t.find("ending") != std::string::npos) {
@@ -137,9 +139,12 @@ void StyleParser::parseCasm(const uint8_t* data, size_t size) {
                     attachPolicy(policy);
                 }
 
-                // SFF2 Ctb2 records use the first 6-byte transform block for
-                // the active melodic/rhythm transform. NTT bit 7 is the
-                // bass-on flag used by Yamaha SFF2 styles.
+                // SFF2 Ctb2 contains three 6-byte NTR/NTT transform blocks:
+                // [NTR, NTT(+bass flag), HighKey, NoteLow, NoteHigh, RTR].
+                // The first block is the default/major transform. The other
+                // blocks are retained in the file but are not yet exposed by
+                // CasmPolicy, so the first block is used until chord-specific
+                // policy selection is added.
                 if (std::memcmp(subTag, "Ctb2", 4) == 0 && subLen >= 28) {
                     const uint8_t* d = data + subStart;
                     CasmPolicy policy;
