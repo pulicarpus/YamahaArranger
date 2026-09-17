@@ -36,6 +36,11 @@ class StyleRepository @Inject constructor(private val bridge: NativeStyleBridge)
         DebugLog.add("🎼 Legacy voice map: $voiceMap")
 
         val ppq = bridge.nativeGetPpq()
+        val defaultTempoBpm = bridge.nativeGetDefaultTempoBpm()
+            .toInt()
+            .coerceIn(20, 280)
+        DebugLog.add("🥁 Default style tempo: $defaultTempoBpm BPM")
+
         val sections = detectedSections.associateWith { sectionName ->
             val partCount = bridge.nativeGetPartCount(sectionName)
             val parts = (0 until partCount).map { partIndex ->
@@ -56,7 +61,7 @@ class StyleRepository @Inject constructor(private val bridge: NativeStyleBridge)
         }
 
         if (sections.isEmpty()) { Timber.w("Style parsed but yielded no sections: $fileName"); return null }
-        return ParsedStyle(fileName, ppq, sections, voiceMap)
+        return ParsedStyle(fileName, ppq, sections, voiceMap, defaultTempoBpm)
     }
 
     private fun parseCasm(raw: String): CasmPolicyModel? {
