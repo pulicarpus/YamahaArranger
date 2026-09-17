@@ -36,11 +36,15 @@ public:
 
     int ppq() const { return ppq_; }
     int format() const { return format_; }
+    // First tempo meta-event (0xFF 0x51) in the SMF, expressed in BPM.
+    // Yamaha styles conventionally store their default tempo at tick 0.
+    double defaultTempoBpm() const { return defaultTempoBpm_; }
     const std::vector<MidiTrack>& tracks() const { return tracks_; }
 
 private:
     int format_ = 0;
     int ppq_ = 480;
+    double defaultTempoBpm_ = 120.0;
     std::vector<MidiTrack> tracks_;
 
     static uint32_t readVarLen(const uint8_t* data, size_t size, size_t& pos);
