@@ -54,6 +54,11 @@ class StyleRepository @Inject constructor(
         DebugLog.add("🎼 Voice map: $voiceMap")
 
         val ppq = bridge.nativeGetPpq()
+        val defaultTempoBpm = bridge.nativeGetDefaultTempoBpm()
+            .toInt()
+            .coerceIn(20, 280)
+        DebugLog.add("🥁 Default style tempo: $defaultTempoBpm BPM")
+
         val sections = detectedSections.associateWith { sectionName ->
             val partCount = bridge.nativeGetPartCount(sectionName)
             val parts = (0 until partCount).map { partIndex ->
@@ -86,6 +91,6 @@ class StyleRepository @Inject constructor(
             return null
         }
 
-        return ParsedStyle(fileName, ppq, sections, voiceMap)
+        return ParsedStyle(fileName, ppq, sections, voiceMap, defaultTempoBpm)
     }
 }
