@@ -40,7 +40,11 @@ data class StylePartModel(
     val name: String,
     val events: List<StyleNoteEvent>,
     val casm: CasmPolicyModel? = null,
-    val casmPolicies: List<CasmPolicyModel> = emptyList()
+    val casmPolicies: List<CasmPolicyModel> = emptyList(),
+    /** Actual MIDI setup from the style track. */
+    val program: Int = -1,
+    val bankMsb: Int = 0,
+    val bankLsb: Int = 0
 )
 
 data class StyleSectionModel(
