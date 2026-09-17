@@ -61,7 +61,6 @@ object AcmpChordAnalyzer {
                     // major/minor pair whose third is below the root.
                     8 -> ChordQuality.MAJOR to other
                     9 -> ChordQuality.MINOR to other
-                    7 -> ChordQuality.POWER5 to bass
                     else -> null
                 }
                 if (qualityAndRoot != null) {
