@@ -1,4 +1,4 @@
-package com.yourapp.arranger
+package com.yourapp.yamahaarranger.arranger
 
 import com.yourapp.yamahaarranger.audio.AudioEngineManager
 import com.yourapp.yamahaarranger.chord.ChordDetector
@@ -40,10 +40,6 @@ class ArrangerBrain @Inject constructor(
     private lateinit var sequencer: StyleSequencer
     private var loadedStyle: ParsedStyle? = null
     private var externalScope: CoroutineScope? = null
-
-    // UI currently exposes Split: C4. Notes below C4 are arranger/chord input;
-    // notes at/above C4 are the live right-hand voice. This prevents the
-    // chord hand from being doubled by the GrandPiano preview voice.
     private val splitNote = 60
 
     private val _state = MutableStateFlow(ArrangerState())
@@ -92,10 +88,6 @@ class ArrangerBrain @Inject constructor(
         if (chord != null) {
             onChordChanged(chord)
         } else {
-            // Do not leave the sequencer holding the last chord forever.
-            // Yamaha-style accompaniment needs an explicit "no chord" state
-            // after the last chord-zone key is released; otherwise the next
-            // generated note can still be converted against the stale chord.
             ensureSequencer()
             sequencer.currentChord = null
             _state.update { it.copy(currentChordLabel = "") }
@@ -130,7 +122,6 @@ class ArrangerBrain @Inject constructor(
         val previous = _state.value.currentSection
         _state.update { it.copy(currentSection = target) }
         if (!wasPlaying) return
-
         val previousWasMain = previous in mainVariations
         val fill = fillFor(target)
         if (previousWasMain && previous != target && fill != null && sectionExists(fill)) {
@@ -167,7 +158,6 @@ class ArrangerBrain @Inject constructor(
             Timber.w("Style has no ${section.styleName} section, ignoring")
             return
         }
-
         if (thenPlay != null) {
             sequencer.play(model, style.ppq, loopLimit = 1) {
                 DebugLog.add("🎼 Fill selesai, lanjut ke ${thenPlay.styleName}")
