@@ -26,22 +26,15 @@ Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeInitLogger(JNIEnv*
     g_debugLogClass = static_cast<jclass>(env->NewGlobalRef(localClass));
     g_debugLogAddMethod = env->GetStaticMethodID(g_debugLogClass, "add", "(Ljava/lang/String;)V");
 }
-
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeStart(JNIEnv*, jobject) {
-    if (!g_engine) g_engine = std::make_unique<AudioEngine>();
-    return g_engine->start();
-}
+Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeStart(JNIEnv*, jobject) { if (!g_engine) g_engine = std::make_unique<AudioEngine>(); return g_engine->start(); }
 extern "C" JNIEXPORT void JNICALL
 Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeStop(JNIEnv*, jobject) { if (g_engine) g_engine->stop(); }
 extern "C" JNIEXPORT void JNICALL
-Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeNoteOn(JNIEnv* env, jobject, jint midiNote, jint rootNote, jfloat velocity, jobject sampleByteBuffer, jint sampleFrames, jint sampleRateHz) {
-    if (!g_engine) return;
-    auto* data = static_cast<float*>(env->GetDirectBufferAddress(sampleByteBuffer));
-    if (!data) return;
-    g_engine->noteOn(midiNote, rootNote, velocity, data, static_cast<size_t>(sampleFrames), sampleRateHz);
+Java_com_yourapp.yamahaarranger_audio_NativeAudioBridge_nativeNoteOn(JNIEnv* env, jobject, jint midiNote, jint rootNote, jfloat velocity, jobject sampleByteBuffer, jint sampleFrames, jint sampleRateHz) {
+    if (!g_engine) return; auto* data = static_cast<float*>(env->GetDirectBufferAddress(sampleByteBuffer)); if (!data) return; g_engine->noteOn(midiNote, rootNote, velocity, data, static_cast<size_t>(sampleFrames), sampleRateHz);
 }
 extern "C" JNIEXPORT void JNICALL
 Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeNoteOff(JNIEnv*, jobject, jint midiNote) { if (g_engine) g_engine->noteOff(midiNote); }
 extern "C" JNIEXPORT void JNICALL
-Java_com_yourapp.yamahaarranger_audio_NativeAudioBridge_nativeAllNotesOff(JNIEnv*, jobject) { if (g_engine) g_engine->allNotesOff(); }
+Java_com.yourapp.yamahaarranger.audio.NativeAudioBridge_nativeAllNotesOff(JNIEnv*, jobject) { if (g_engine) g_engine->allNotesOff(); }
