@@ -24,7 +24,7 @@ object AcmpChordAnalyzer {
         if (notes.isEmpty()) return null
         val normalized = notes.map { ((it % 12) + 12) % 12 }
         val pitchClasses = normalized.toSet()
-        val bass = notes.minOrNull()!!.mod(12)
+        val bass = notes.minOrNull()?.let { ((it % 12) + 12) % 12 } ?: return null
 
         var best: Candidate? = null
         for (root in pitchClasses) {
@@ -45,19 +45,33 @@ object AcmpChordAnalyzer {
             }
         }
 
-        // E343-style two-note/easy-chord fallback. This is deliberately lower
-        // confidence than a complete chord so the UI can distinguish it.
+        // Two-note ACMP input is common while a player is moving between
+        // voicings. Recognize both root-position and inverted major/minor/sus
+        // pairs instead of assuming the lowest note is always the root.
         if (best == null && pitchClasses.size == 2) {
-            val root = bass
-            val interval = ((pitchClasses.first { it != root } - root) + 12) % 12
-            val quality = when (interval) {
-                4 -> ChordQuality.MAJOR
-                3 -> ChordQuality.MINOR
-                5 -> ChordQuality.SUS4
-                7 -> ChordQuality.POWER5
-                else -> null
+            val other = pitchClasses.firstOrNull { it != bass }
+            if (other != null) {
+                val bassToOther = (other - bass + 12) % 12
+                val qualityAndRoot = when (bassToOther) {
+                    4 -> ChordQuality.MAJOR to bass
+                    3 -> ChordQuality.MINOR to bass
+                    5 -> ChordQuality.SUS4 to bass
+                    7 -> ChordQuality.POWER5 to bass
+                    // E-C is C major in first inversion; likewise for any
+                    // major/minor pair whose third is below the root.
+                    8 -> ChordQuality.MAJOR to other
+                    9 -> ChordQuality.MINOR to other
+                    7 -> ChordQuality.POWER5 to bass
+                    else -> null
+                }
+                if (qualityAndRoot != null) {
+                    best = Candidate(
+                        root = qualityAndRoot.second,
+                        quality = qualityAndRoot.first,
+                        score = qualityAndRoot.first.priority * 100 - 20
+                    )
+                }
             }
-            if (quality != null) best = Candidate(root, quality, quality.priority * 100 - 20)
         }
 
         val result = best ?: return null
