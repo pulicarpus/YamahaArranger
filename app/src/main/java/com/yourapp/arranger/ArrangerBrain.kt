@@ -88,9 +88,11 @@ class ArrangerBrain @Inject constructor(
         if (chord != null) {
             onChordChanged(chord)
         } else {
-            ensureSequencer()
-            sequencer.currentChord = null
-            _state.update { it.copy(currentChordLabel = "") }
+            // Releasing the last chord key is NOT the same as Synchro Stop.
+            // Keep the last detected chord active so accompaniment continues
+            // in the last chord until a new chord is played.
+            // Synchro Stop should be an explicit playback-control feature.
+            DebugLog.add("🎹 Chord release: keep last chord")
         }
     }
 
