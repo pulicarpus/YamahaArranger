@@ -54,13 +54,41 @@ class StyleRepository @Inject constructor(private val bridge: NativeStyleBridge)
                 if (policies.isNotEmpty()) {
                     DebugLog.add("🎛 $sectionName src=${policies.first().sourceChannel} policies=${policies.size} ranges=${policies.joinToString { "${it.sourceNoteLow}-${it.sourceNoteHigh}:NTR${it.ntr}/NTT${it.ntt}${if (it.bassOn) "+BASS" else ""}" }}")
                 }
-                StylePartModel(bridge.nativeGetPartName(sectionName, partIndex), events, policies.firstOrNull(), policies)
+                val setup = extractVoiceSetup(events)
+                if (setup.program >= 0 || setup.bankMsb != 0 || setup.bankLsb != 0) {
+                    DebugLog.add("🎚 $sectionName part=$partIndex ch=${events.firstOrNull()?.channel ?: -1}: bank=${setup.bankMsb}/${setup.bankLsb} pc=${setup.program}")
+                }
+                StylePartModel(
+                    name = bridge.nativeGetPartName(sectionName, partIndex),
+                    events = events,
+                    casm = policies.firstOrNull(),
+                    casmPolicies = policies,
+                    program = setup.program,
+                    bankMsb = setup.bankMsb,
+                    bankLsb = setup.bankLsb
+                )
             }
             StyleSectionModel(sectionName, bridge.nativeGetSectionLengthTicks(sectionName), parts)
         }
 
         if (sections.isEmpty()) { Timber.w("Style parsed but yielded no sections: $fileName"); return null }
         return ParsedStyle(fileName, ppq, sections, voiceMap, defaultTempoBpm)
+    }
+
+    private data class VoiceSetup(val program: Int, val bankMsb: Int, val bankLsb: Int)
+
+    private fun extractVoiceSetup(events: List<StyleNoteEvent>): VoiceSetup {
+        var msb = 0
+        var lsb = 0
+        var program = -1
+        events.sortedBy { it.tick }.forEach { e ->
+            when {
+                e.isControlChange && e.note == 0 -> msb = e.velocity
+                e.isControlChange && e.note == 32 -> lsb = e.velocity
+                e.isProgramChange -> program = e.note
+            }
+        }
+        return VoiceSetup(program, msb, lsb)
     }
 
     private fun decodePackedEvents(flat: IntArray): List<StyleNoteEvent> {
