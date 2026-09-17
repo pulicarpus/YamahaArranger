@@ -6,6 +6,7 @@
 #include "smf_reader.h"
 
 enum class StyleSection { IntroA, IntroB, IntroC, MainA, MainB, MainC, MainD, FillAA, FillBB, FillCC, FillDD, BreakDown, EndingA, EndingB, EndingC, Unknown };
+
 struct CasmPolicy {
     bool valid=false; uint8_t sourceChannel=0; uint8_t destinationChannel=0; std::string voiceName;
     uint8_t sourceChordRoot=0; uint8_t sourceChordType=0; uint8_t ntr=3; uint8_t ntt=0; uint8_t highKey=127;
@@ -13,13 +14,34 @@ struct CasmPolicy {
     uint8_t sourceNoteLow=0; uint8_t sourceNoteHigh=127;
     int program=-1; int bankMsb=0; int bankLsb=0;
 };
-struct StylePart { uint8_t midiChannel=0; std::string name; std::vector<MidiEvent> events; CasmPolicy casm; std::vector<CasmPolicy> casmPolicies; int program=-1; int bankMsb=0; int bankLsb=0; };
+
+struct MidiVoiceSetup {
+    int program=-1;
+    int bankMsb=0;
+    int bankLsb=0;
+};
+
+struct StylePart {
+    uint8_t midiChannel=0; std::string name; std::vector<MidiEvent> events;
+    CasmPolicy casm; std::vector<CasmPolicy> casmPolicies;
+    int program=-1; int bankMsb=0; int bankLsb=0;
+};
+
 struct StyleSectionData { StyleSection section=StyleSection::Unknown; uint32_t lengthTicks=0; std::vector<StylePart> parts; };
+
 class StyleParser {
 public:
-    bool parse(const uint8_t* rawStyBytes,size_t size); int ppq() const{return smf_.ppq();} double defaultTempoBpm() const{return smf_.defaultTempoBpm();}
+    bool parse(const uint8_t* rawStyBytes,size_t size);
+    int ppq() const{return smf_.ppq();}
+    double defaultTempoBpm() const{return smf_.defaultTempoBpm();}
     const std::map<StyleSection,StyleSectionData>& sections() const{return sections_;}
+    const std::map<uint8_t,MidiVoiceSetup>& voiceSetups() const{return voiceSetups_;}
 private:
-    SmfReader smf_; std::map<StyleSection,StyleSectionData> sections_; static StyleSection classifyMarkerText(const std::string& text); void parseCasm(const uint8_t* data,size_t size); static std::string trimAscii(const std::string& text);
+    SmfReader smf_;
+    std::map<StyleSection,StyleSectionData> sections_;
+    std::map<uint8_t,MidiVoiceSetup> voiceSetups_;
+    static StyleSection classifyMarkerText(const std::string& text);
+    void parseCasm(const uint8_t* data,size_t size);
+    static std::string trimAscii(const std::string& text);
 };
 std::string styleSectionToString(StyleSection s); StyleSection styleSectionFromString(const std::string& s);
