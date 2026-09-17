@@ -1,6 +1,9 @@
 name: Inspect Smart Pianist
 
 on:
+  push:
+    paths:
+      - '.github/workflows/inspect-smart-pianist.yml'
   workflow_dispatch:
     inputs:
       version:
@@ -24,7 +27,7 @@ jobs:
 
       - name: Download Smart Pianist XAPK
         env:
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ inputs.version || 'latest' }}
           APK_URL: ${{ inputs.apk_url }}
         run: |
           set -euo pipefail
@@ -85,8 +88,6 @@ jobs:
       - name: Inspect native libraries and binary strings
         run: |
           set -euo pipefail
-          mkdir -p native
-          find xapk -type f -path '*/lib/*/*.so' -exec cp --parents '{}' native/ \; 2>/dev/null || true
           {
             echo "=== Native libraries ==="
             find xapk -type f -path '*/lib/*/*.so' -printf '%p\t%s bytes\n' | sort || true
