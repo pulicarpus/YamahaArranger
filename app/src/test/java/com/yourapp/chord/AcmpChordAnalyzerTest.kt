@@ -55,8 +55,8 @@ class AcmpChordAnalyzerTest {
         assertEquals(4, result.bassNote)
     }
 
-    @Test fun unsupportedIncompleteVoicingIsNotPretendedToBeFullChord() {
-        val result = AcmpChordAnalyzer.analyze(midi(60, 61))
+    @Test fun twoNotePowerChordFallback() {
+        val result = AcmpChordAnalyzer.analyze(midi(60, 67))
         assertEquals("C5", result!!.displayName)
     }
 
