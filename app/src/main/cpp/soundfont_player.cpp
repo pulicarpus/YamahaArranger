@@ -64,7 +64,12 @@ SoundFontPlayer::SoundFontPlayer() {
         delete_fluid_settings(settings_);
         settings_ = nullptr;
     } else {
-        LOGI("FluidSynth synth created OK");
+        // MIDI Voyager's BASSMIDI stack exposes/uses high-quality sample
+        // interpolation. FluidSynth's MID mode is an 11th-order sinc
+        // interpolation and is a good quality/CPU compromise for Android.
+        // This is deliberately set on every MIDI channel (-1).
+        const int rc = fluid_synth_set_interp_method(synth_, -1, FLUID_INTERP_MID);
+        LOGI("FluidSynth synth created OK, interpolation=MID(sinc11), rc=%d", rc);
     }
 }
 
