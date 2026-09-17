@@ -21,7 +21,7 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideChordDetector(): ChordDetector = ChordDetector(mode = ChordMode.Fingered)
+    fun provideChordDetector(): ChordDetector = ChordDetector(mode = ChordMode.MultiFinger)
 
     // Phase 2: swap for a real SoundFont-backed SampleProvider once
     // TinySoundFont/FluidSynth is wired into the native layer.
