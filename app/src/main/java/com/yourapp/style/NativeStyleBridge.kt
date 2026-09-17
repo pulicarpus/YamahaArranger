@@ -12,6 +12,7 @@ class NativeStyleBridge @Inject constructor() {
 
     external fun nativeParseStyle(styBytes: ByteArray): Boolean
     external fun nativeGetPpq(): Int
+    external fun nativeGetDefaultTempoBpm(): Double
     external fun nativeGetSectionNames(): Array<String>
     external fun nativeGetSectionLengthTicks(sectionName: String): Int
     external fun nativeGetPartCount(sectionName: String): Int
