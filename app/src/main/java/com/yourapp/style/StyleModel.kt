@@ -31,13 +31,16 @@ data class CasmPolicyModel(
     val noteLimitLow: Int,
     val noteLimitHigh: Int,
     val rtr: Int,
-    val bassOn: Boolean
+    val bassOn: Boolean,
+    val sourceNoteLow: Int = 0,
+    val sourceNoteHigh: Int = 127
 )
 
 data class StylePartModel(
     val name: String,
     val events: List<StyleNoteEvent>,
-    val casm: CasmPolicyModel? = null
+    val casm: CasmPolicyModel? = null,
+    val casmPolicies: List<CasmPolicyModel> = emptyList()
 )
 
 data class StyleSectionModel(
