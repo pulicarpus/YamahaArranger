@@ -16,6 +16,7 @@ class NativeStyleBridge @Inject constructor() {
     external fun nativeGetPartName(sectionName: String, partIndex: Int): String
     external fun nativeGetPartEvents(sectionName: String, partIndex: Int): IntArray
     external fun nativeGetPartCasm(sectionName: String, partIndex: Int): String
+    external fun nativeGetPartProgram(sectionName: String, partIndex: Int): IntArray
     external fun nativeFindCasm(styBytes: ByteArray): String
     external fun nativeExtractVoiceMap(styBytes: ByteArray): String
     external fun nativeDumpMarkers(styBytes: ByteArray): String
