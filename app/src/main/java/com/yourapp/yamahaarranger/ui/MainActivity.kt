@@ -1,7 +1,6 @@
 package com.yourapp.yamahaarranger.ui
 
 import android.Manifest
-import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -12,12 +11,8 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
@@ -56,26 +51,17 @@ class MainActivity : ComponentActivity() {
         setContent {
             YamahaArrangerTheme {
                 Box(Modifier.fillMaxSize()) {
-                    SxMainScreen(viewModel = viewModel)
+                    SxMainScreen(
+                        viewModel = viewModel,
+                        onOpenDiagnostics = {
+                            startActivity(android.content.Intent(this@MainActivity, DiagnosticsActivity::class.java))
+                        }
+                    )
                     ChordModeSelector(
                         modifier = Modifier
                             .align(Alignment.TopCenter)
                             .padding(top = 7.dp)
                     )
-                    Button(
-                        onClick = {
-                            startActivity(Intent(this@MainActivity, DiagnosticsActivity::class.java))
-                        },
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(top = 7.dp, end = 8.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF26282C),
-                            contentColor = Color.White
-                        )
-                    ) {
-                        Text("LOG")
-                    }
                 }
             }
         }
