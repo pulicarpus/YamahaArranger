@@ -1,7 +1,6 @@
 package com.yourapp.yamahaarranger.arranger
 
 import com.yourapp.yamahaarranger.audio.AudioEngineManager
-import com.yourapp.yamahaarranger.chord.ChordQuality
 import com.yourapp.yamahaarranger.chord.DetectedChord
 import com.yourapp.midi.MidiInputManager
 import com.yourapp.yamahaarranger.style.CasmPolicyModel
@@ -58,12 +57,7 @@ class StyleSequencer(
         DebugLog.add("🎼 Legacy CASM VoiceMap received: ${vm.size}; actual MIDI setup takes precedence")
     }
 
-    fun play(
-        section: StyleSectionModel,
-        ppq: Int,
-        loopLimit: Int = -1,
-        onComplete: (() -> Unit)? = null
-    ) {
+    fun play(section: StyleSectionModel, ppq: Int, loopLimit: Int = -1, onComplete: (() -> Unit)? = null) {
         stop()
         loopCount = 0
         if (lastAppliedSection != section.name) {
@@ -116,8 +110,7 @@ class StyleSequencer(
     }
 
     private fun updateHeldPitch(active: ActiveTransposedNote, chord: DetectedChord, rootOnly: Boolean, retrigger: Boolean) {
-        val target = if (rootOnly) rootPitchForHeld(active, chord)
-        else CasmNoteTransformer.transform(active.sourceNote, chord, active.policy)
+        val target = if (rootOnly) rootPitchForHeld(active, chord) else CasmNoteTransformer.transform(active.sourceNote, chord, active.policy)
         if (target == null || target == active.outputNote) return
         DebugLog.add("🎹 RTR ${if (retrigger) "RETRIGGER" else "PITCH SHIFT"} src${active.sourceChannel}:${active.sourceNote} ${active.outputNote}→$target")
         audioEngine.noteOffChannel(active.destinationChannel, active.outputNote)
@@ -139,35 +132,25 @@ class StyleSequencer(
         activeTransposedNotes.remove(key)
     }
 
-    /**
-     * Apply the actual MIDI bank/program found in the style data. The CASM
-     * voiceName is only a logical label; it is NOT a GM program number.
-     */
     private fun applyVoicesFromCasm(section: StyleSectionModel) {
         section.parts.forEach { part ->
-            val policies = part.casmPolicies.ifEmpty { listOfNotNull(part.casm) }
-            val policy = policies.firstOrNull() ?: return@forEach
+            val policy = part.casmPolicies.firstOrNull() ?: part.casm ?: return@forEach
             val destination = policy.destinationChannel
             if (destination in lockedChannels) return@forEach
-
             val program = if (part.program in 0..127) part.program else -1
             if (program < 0) {
                 DebugLog.add("⚠ src${policy.sourceChannel}→dst$destination: no Program Change; keeping current voice '${policy.voiceName}'")
                 return@forEach
             }
-
             val isDrum = destination == 9 || isDrumVoice(policy.voiceName)
-            // Local FluidSynth uses bank 128 as the dedicated drum-SF2 role.
-            // The physical Yamaha receives the exact MSB/LSB from the style.
             val localBank = if (isDrum) 128 else part.bankMsb * 128 + part.bankLsb
             audioEngine.setChannelProgram(destination, program, localBank)
             midiInputManager.sendProgramChangeBank(
-                destination,
-                program,
+                destination, program,
                 if (isDrum && part.bankMsb == 0 && part.bankLsb == 0) 127 else part.bankMsb,
                 part.bankLsb
             )
-            DebugLog.add("🎼 src${policy.sourceChannel}→dst$destination: ${policy.voiceName} bank=${part.bankMsb}/${part.bankLsb} PC=$program localBank=$localBank policies=${policies.size}")
+            DebugLog.add("🎼 src${policy.sourceChannel}→dst$destination: ${policy.voiceName} bank=${part.bankMsb}/${part.bankLsb} PC=$program localBank=$localBank policies=${part.casmPolicies.size}")
         }
     }
 
@@ -176,58 +159,23 @@ class StyleSequencer(
             it.contains("add-dr") || it.contains("drum") || it.contains("kit") || it.startsWith("dr")
     }
 
-    /** Yamaha source chord type IDs are 0..34. We match by musical family when
-     * our detector does not expose the full 34-type vocabulary yet. */
-    private fun policyMatchesChord(policy: CasmPolicyModel, chord: DetectedChord): Boolean {
-        val type = policy.sourceChordType
-        if (type == 34 || type == 127) return true
-        return when (chord.quality) {
-            ChordQuality.MAJOR, ChordQuality.SIX, ChordQuality.MAJ7, ChordQuality.SIX9, ChordQuality.ADD9 ->
-                type in setOf(0, 1, 2, 3, 4, 5, 6, 28)
-            ChordQuality.MINOR, ChordQuality.MIN6, ChordQuality.MIN7, ChordQuality.MIN7_11, ChordQuality.MIN7_FLAT5 ->
-                type in 8..16
-            ChordQuality.DIM -> type == 17 || type == 18
-            ChordQuality.DIM7 -> type == 18
-            ChordQuality.AUG -> type == 7 || type == 28 || type == 29
-            ChordQuality.DOM7, ChordQuality.DOM7_FLAT5 -> type in setOf(19, 21, 22, 23, 24, 25, 26, 27, 29)
-            ChordQuality.DOM7_SUS4, ChordQuality.SUS4 -> type == 20 || type == 32
-            ChordQuality.POWER5 -> type == 31 || type == 33
-            ChordQuality.SUS2 -> type == 33
-        }
-    }
-
-    private fun selectPolicy(part: StylePartModel, eventNote: Int, chord: DetectedChord?): CasmPolicyModel? {
+    /**
+     * CASM source chord is the chord used when the source pattern was recorded.
+     * It is NOT a whitelist saying that a channel may play only for that chord.
+     * NTR/NTT perform the conversion from that source pattern to the current
+     * play chord. Filtering policies by the current chord type was therefore
+     * causing whole parts (for example piano on C/G) to disappear.
+     */
+    private fun selectPolicy(part: StylePartModel, eventNote: Int): CasmPolicyModel? {
         val policies = part.casmPolicies.ifEmpty { listOfNotNull(part.casm) }
         if (policies.isEmpty()) return null
         val inRange = policies.filter { eventNote in it.sourceNoteLow..it.sourceNoteHigh }
         if (inRange.isEmpty()) return null
-        if (chord == null) return inRange.first()
-        val matching = inRange.filter { policyMatchesChord(it, chord) }
-        if (matching.isEmpty()) return null
-        // Prefer the canonical source type when the detector has one.
-        val exact = matching.firstOrNull { it.sourceChordType == canonicalSourceType(chord.quality) }
-        return exact ?: matching.first()
-    }
-
-    private fun canonicalSourceType(q: ChordQuality): Int = when (q) {
-        ChordQuality.MAJOR -> 0
-        ChordQuality.SIX -> 1
-        ChordQuality.MAJ7 -> 2
-        ChordQuality.SIX9 -> 6
-        ChordQuality.AUG -> 7
-        ChordQuality.MINOR -> 8
-        ChordQuality.MIN6 -> 9
-        ChordQuality.MIN7 -> 10
-        ChordQuality.MIN7_FLAT5 -> 11
-        ChordQuality.DOM7 -> 19
-        ChordQuality.DOM7_SUS4 -> 20
-        ChordQuality.DOM7_FLAT5 -> 21
-        ChordQuality.SUS4 -> 32
-        ChordQuality.DIM -> 17
-        ChordQuality.DIM7 -> 18
-        ChordQuality.SUS2 -> 33
-        ChordQuality.POWER5 -> 31
-        else -> 0
+        // Prefer the narrowest matching zone. This matters for SFF2 styles that
+        // split a single source channel into separate note ranges (e.g. MegaVoice).
+        return inRange.minWithOrNull(compareBy<CasmPolicyModel> {
+            it.sourceNoteHigh - it.sourceNoteLow
+        }.thenBy { it.sourceNoteLow })
     }
 
     private fun isNoteEvent(event: StyleNoteEvent): Boolean {
@@ -238,22 +186,18 @@ class StyleSequencer(
     private suspend fun playOnce(section: StyleSectionModel, ppq: Int) {
         loopCount++
         if (section.lengthTicks <= 0) { delay(500); return }
-
         data class Scheduled(val tick: Int, val event: StyleNoteEvent, val part: StylePartModel)
         val merged = section.parts.flatMap { part ->
             part.events.filter(::isNoteEvent).map { Scheduled(it.tick, it, part) }
         }.sortedWith(compareBy<Scheduled> { it.tick }.thenBy { it.event.isNoteOn.not() })
-
         if (merged.isEmpty()) { delay(500); return }
         var lastTick = 0
         for (s in merged) {
             val delta = s.tick - lastTick
             if (delta > 0) delay(ticksToMillis(delta, ppq, tempoBpm))
             lastTick = s.tick
-
             val chord = currentChord
-            val policy = selectPolicy(s.part, s.event.note, chord)
-            if (policy == null && chord != null && s.event.isNoteOn && s.event.channel != 9) continue
+            val policy = selectPolicy(s.part, s.event.note)
             if (!s.event.isNoteOn) {
                 val key = "${s.event.channel}:${s.event.note}"
                 val active = activeTransposedNotes.remove(key)
@@ -263,7 +207,6 @@ class StyleSequencer(
                 }
                 continue
             }
-
             val sourceChannel = s.event.channel
             val destinationChannel = policy?.destinationChannel ?: sourceChannel
             if (destinationChannel in lockedChannels) continue
@@ -275,7 +218,6 @@ class StyleSequencer(
             } else s.event.note.coerceIn(0, 127)
             val note = transformed ?: continue
             val velocity = s.event.velocity.coerceIn(1, 127)
-
             if (policy != null && !isDrumPart) {
                 activeTransposedNotes[key] = ActiveTransposedNote(
                     sourceChannel, s.event.note, destinationChannel, note, velocity, policy
@@ -284,7 +226,6 @@ class StyleSequencer(
             audioEngine.noteOnChannel(destinationChannel, note, velocity / 127f)
             midiInputManager.sendNoteOn(destinationChannel, note, velocity)
         }
-
         val rem = section.lengthTicks - lastTick
         if (rem > 0) delay(ticksToMillis(rem, ppq, tempoBpm))
     }
