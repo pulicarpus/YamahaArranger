@@ -60,6 +60,18 @@ class AcmpChordAnalyzerTest {
         assertEquals("C5", result!!.displayName)
     }
 
+    @Test fun twoNoteMajorInversionEThenCHigher() {
+        val result = AcmpChordAnalyzer.analyze(midi(64, 72))
+        assertNotNull(result)
+        assertEquals("C/E", result!!.displayName)
+    }
+
+    @Test fun twoNoteMinorInversionAThenCHigher() {
+        val result = AcmpChordAnalyzer.analyze(midi(69, 72))
+        assertNotNull(result)
+        assertEquals("Am", result!!.displayName)
+    }
+
     @Test fun emptyInput() {
         assertNull(AcmpChordAnalyzer.analyze(emptyList()))
     }
