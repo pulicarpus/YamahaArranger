@@ -4,7 +4,7 @@ import com.yourapp.yamahaarranger.chord.ChordQuality
 import com.yourapp.yamahaarranger.chord.DetectedChord
 import com.yourapp.yamahaarranger.style.CasmPolicyModel
 
-/** Yamaha SFF2 CASM note conversion. */
+/** Yamaha SFF CASM note conversion. */
 object CasmNoteTransformer {
 
     fun transform(note: Int, chord: DetectedChord, policy: CasmPolicyModel): Int? {
@@ -17,14 +17,11 @@ object CasmNoteTransformer {
         val ntr = policy.ntr and 0x7f
         val ntt = policy.ntt and 0x7f
 
-        // Root Trans is a direct source-root -> play-root transposition.
-        // Do not force the interval into +/-6 semitones: Yamaha applies the
-        // octave decision afterwards through HIGH KEY.
         val base = when (ntr) {
-            0 -> note + rootDelta
-            1 -> note
+            0 -> note + rootDelta              // Root Trans
+            1 -> note                           // Root Fixed
             2 -> guitarFallback(note, chord, sourceRoot)
-            3 -> note
+            3 -> note                           // Bypass
             else -> note + rootDelta
         }
 
@@ -38,13 +35,7 @@ object CasmNoteTransformer {
             else -> base
         }
 
-        // Yamaha HIGH KEY changes the octave of the entire converted note when
-        // the chord root crosses the configured upper root limit. It must not
-        // be applied independently to each note's pitch class.
         val highKeyAdjusted = applyHighKey(converted, targetRoot, policy.highKey, ntr)
-
-        // Yamaha NOTE LIMIT does not mute notes outside the range. It moves
-        // them by octaves to the nearest octave that fits the configured range.
         return applyNoteLimit(highKeyAdjusted, policy.noteLimitLow, policy.noteLimitHigh)
     }
 
@@ -63,7 +54,11 @@ object CasmNoteTransformer {
             circularDistance(sourceInterval, it % 12)
         } ?: 0
         val targetPc = floorMod(chord.rootNote + targetInterval, 12)
-        return nearestPitch(original, targetPc)
+
+        // Root Fixed keeps the converted note close to the source register;
+        // Root Trans keeps the same interval relationship before the chord-role
+        // substitution. nearestPitch preserves that local voice-leading.
+        return nearestPitch(if (ntr == 1) original else base, targetPc)
     }
 
     private fun bass(
@@ -79,16 +74,14 @@ object CasmNoteTransformer {
     }
 
     private fun melodicMinor(note: Int, chord: DetectedChord, sourceRoot: Int): Int {
-        val targetMinor = chord.quality == ChordQuality.MINOR ||
-            chord.quality == ChordQuality.MIN6 || chord.quality == ChordQuality.MIN7
+        val targetMinor = isMinorFamily(chord.quality)
         if (!targetMinor) return note
         val sourceRelative = floorMod(note - sourceRoot, 12)
         return if (sourceRelative == 4) note - 1 else note
     }
 
     private fun harmonicMinor(note: Int, chord: DetectedChord, sourceRoot: Int): Int {
-        val targetMinor = chord.quality == ChordQuality.MINOR ||
-            chord.quality == ChordQuality.MIN6 || chord.quality == ChordQuality.MIN7
+        val targetMinor = isMinorFamily(chord.quality)
         if (!targetMinor) return note
         val sourceRelative = floorMod(note - sourceRoot, 12)
         return when (sourceRelative) {
@@ -119,6 +112,15 @@ object CasmNoteTransformer {
         while (result > high && result - 12 >= 0 && guard++ < 32) result -= 12
         if (result < low || result > high) return null
         return result.coerceIn(0, 127)
+    }
+
+    private fun isMinorFamily(q: ChordQuality): Boolean = when (q) {
+        ChordQuality.MINOR,
+        ChordQuality.MIN6,
+        ChordQuality.MIN7,
+        ChordQuality.MIN7_11,
+        ChordQuality.MIN7_FLAT5 -> true
+        else -> false
     }
 
     private fun nearestPitch(reference: Int, pitchClass: Int): Int {
