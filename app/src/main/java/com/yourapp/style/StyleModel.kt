@@ -5,8 +5,19 @@ data class StyleNoteEvent(
     val isNoteOn: Boolean,
     val note: Int,
     val velocity: Int,
-    val channel: Int = 0
-)
+    val channel: Int = 0,
+    val status: Int = if (isNoteOn) 0x90 or channel else 0x80 or channel,
+    val metaType: Int = 0,
+    val payload: ByteArray = ByteArray(0)
+) {
+    val isChannelVoice: Boolean get() = status in 0x80..0xEF
+    val isControlChange: Boolean get() = (status and 0xF0) == 0xB0
+    val isProgramChange: Boolean get() = (status and 0xF0) == 0xC0
+    val isPitchBend: Boolean get() = (status and 0xF0) == 0xE0
+    val isChannelPressure: Boolean get() = (status and 0xF0) == 0xD0
+    val isPolyPressure: Boolean get() = (status and 0xF0) == 0xA0
+    val isSysEx: Boolean get() = status == 0xF0 || status == 0xF7
+}
 
 data class CasmPolicyModel(
     val sourceChannel: Int,
