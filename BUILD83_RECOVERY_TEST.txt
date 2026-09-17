@@ -1,0 +1,3 @@
+Build83 recovery test branch.
+Base: b7956f4d5f5bdf47507b89557713796b79b9472d
+Purpose: reproduce the known-good Build #83 playback baseline for testing LoveSong.S687.prs.
