@@ -52,6 +52,7 @@ public:
     bool parse(const uint8_t* rawStyBytes, size_t size);
 
     int ppq() const { return smf_.ppq(); }
+    double defaultTempoBpm() const { return smf_.defaultTempoBpm(); }
     const std::map<StyleSection, StyleSectionData>& sections() const { return sections_; }
 
 private:
