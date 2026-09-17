@@ -1,13 +1,13 @@
 package com.yourapp.yamahaarranger.arranger
 
 import com.yourapp.yamahaarranger.audio.AudioEngineManager
-import com.yourapp.yamahaarranger.chord.DetectedChord
 import com.yourapp.midi.MidiInputManager
 import com.yourapp.yamahaarranger.style.CasmPolicyModel
 import com.yourapp.yamahaarranger.style.StyleNoteEvent
 import com.yourapp.yamahaarranger.style.StylePartModel
 import com.yourapp.yamahaarranger.style.StyleSectionModel
 import com.yourapp.yamahaarranger.ui.DebugLog
+import com.yourapp.yamahaarranger.chord.DetectedChord
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -24,9 +24,12 @@ class StyleSequencer(
         set(value) {
             val old = field
             field = value
-            when {
-                old != null && value != null && old != value -> handleChordChange(value)
-                old != null && value == null -> handleNoChord()
+            if (old != null && value != null && old != value) {
+                // Live CASM RTR is intentionally disabled while validating the
+                // base SFF NTR/NTT playback. Replacing every held note on a
+                // chord transition was producing large pitch jumps in complex
+                // Yamaha styles such as LoveSong.S687.prs.
+                DebugLog.add("🎹 CHORD CHANGE ${old.labelForLog()} → ${value.labelForLog()} (RTR live shift disabled)")
             }
         }
 
@@ -94,19 +97,10 @@ class StyleSequencer(
     }
 
     private fun handleChordChange(newChord: DetectedChord) {
-        if (activeTransposedNotes.isEmpty()) return
-        val snapshot = activeTransposedNotes.values.toList()
-        snapshot.forEach { active ->
-            when (active.policy.rtr and 0x7f) {
-                0 -> { releaseActive(active); DebugLog.add("🎹 RTR STOP src${active.sourceChannel}:${active.sourceNote}") }
-                1 -> updateHeldPitch(active, newChord, rootOnly = false, retrigger = false)
-                2 -> updateHeldPitch(active, newChord, rootOnly = true, retrigger = false)
-                3 -> updateHeldPitch(active, newChord, rootOnly = false, retrigger = true)
-                4 -> updateHeldPitch(active, newChord, rootOnly = true, retrigger = true)
-                5 -> DebugLog.add("ℹ RTR NOTE GENERATOR src${active.sourceChannel}:${active.sourceNote}: deferred")
-                else -> updateHeldPitch(active, newChord, rootOnly = false, retrigger = true)
-            }
-        }
+        // Intentionally disabled. Yamaha RTR needs a faithful per-part
+        // implementation; the previous generic note replacement caused many
+        // simultaneous pitch changes and made the style sound unstable.
+        DebugLog.add("🎹 RTR deferred for chord change: ${newChord.labelForLog()}")
     }
 
     private fun updateHeldPitch(active: ActiveTransposedNote, chord: DetectedChord, rootOnly: Boolean, retrigger: Boolean) {
@@ -122,7 +116,7 @@ class StyleSequencer(
 
     private fun rootPitchForHeld(active: ActiveTransposedNote, chord: DetectedChord): Int {
         val oldOctave = active.outputNote / 12
-        return (oldOctave * 12 + chord.bassNote.coerceIn(0, 11)).coerceIn(0, 127)
+        return (oldOctave * 12 + chord.rootNote.coerceIn(0, 11)).coerceIn(0, 127)
     }
 
     private fun releaseActive(active: ActiveTransposedNote) {
@@ -146,7 +140,8 @@ class StyleSequencer(
             val localBank = if (isDrum) 128 else part.bankMsb * 128 + part.bankLsb
             audioEngine.setChannelProgram(destination, program, localBank)
             midiInputManager.sendProgramChangeBank(
-                destination, program,
+                destination,
+                program,
                 if (isDrum && part.bankMsb == 0 && part.bankLsb == 0) 127 else part.bankMsb,
                 part.bankLsb
             )
@@ -159,20 +154,12 @@ class StyleSequencer(
             it.contains("add-dr") || it.contains("drum") || it.contains("kit") || it.startsWith("dr")
     }
 
-    /**
-     * CASM source chord is the chord used when the source pattern was recorded.
-     * It is NOT a whitelist saying that a channel may play only for that chord.
-     * NTR/NTT perform the conversion from that source pattern to the current
-     * play chord. Filtering policies by the current chord type was therefore
-     * causing whole parts (for example piano on C/G) to disappear.
-     */
+    /** CASM Source Chord is the recorded source pattern, not a chord whitelist. */
     private fun selectPolicy(part: StylePartModel, eventNote: Int): CasmPolicyModel? {
         val policies = part.casmPolicies.ifEmpty { listOfNotNull(part.casm) }
         if (policies.isEmpty()) return null
         val inRange = policies.filter { eventNote in it.sourceNoteLow..it.sourceNoteHigh }
         if (inRange.isEmpty()) return null
-        // Prefer the narrowest matching zone. This matters for SFF2 styles that
-        // split a single source channel into separate note ranges (e.g. MegaVoice).
         return inRange.minWithOrNull(compareBy<CasmPolicyModel> {
             it.sourceNoteHigh - it.sourceNoteLow
         }.thenBy { it.sourceNoteLow })
@@ -232,4 +219,7 @@ class StyleSequencer(
 
     private fun ticksToMillis(ticks: Int, ppq: Int, bpm: Int): Long =
         if (ppq <= 0 || bpm <= 0) 0 else ((ticks * (60000.0 / bpm)) / ppq).toLong().coerceAtLeast(0)
+
+    private fun DetectedChord.labelForLog(): String =
+        "${rootNote}:${quality.name}${if (bassNote != rootNote) "/$bassNote" else ""}"
 }
