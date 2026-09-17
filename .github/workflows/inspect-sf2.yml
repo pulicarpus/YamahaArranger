@@ -1,0 +1,36 @@
+name: Inspect SoundFont
+
+on:
+  workflow_dispatch:
+    inputs:
+      sf2_url:
+        description: "Direct URL to the .sf2 file"
+        required: true
+        type: string
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download SF2
+        env:
+          SF2_URL: ${{ inputs.sf2_url }}
+        run: |
+          set -euo pipefail
+          curl -L --fail --retry 3 --retry-delay 2 --output input.sf2 "$SF2_URL"
+          ls -lh input.sf2
+
+      - name: Inspect SF2 metadata
+        run: |
+          set -euo pipefail
+          python3 tools/sf2_inspector.py input.sf2 | tee sf2-report.txt
+
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: sf2-report
+          path: sf2-report.txt
+          if-no-files-found: error
