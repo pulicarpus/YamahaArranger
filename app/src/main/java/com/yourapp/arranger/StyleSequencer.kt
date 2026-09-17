@@ -145,6 +145,21 @@ class StyleSequencer(
             val destinationChannel = policy?.destinationChannel ?: sourceChannel
             if (destinationChannel in lockedChannels) continue
 
+            val key = "${sourceChannel}:${destinationChannel}:${s.event.note}"
+
+            // Note-off must always release the exact note that was produced by
+            // the corresponding note-on. Re-evaluating CASM against the *new*
+            // chord can otherwise produce a different note or null and leave
+            // a voice hanging when the player changes chords mid-bar.
+            if (!s.event.isNoteOn) {
+                val releaseNote = activeTransposedNotes.remove(key)
+                if (releaseNote != null) {
+                    audioEngine.noteOffChannel(destinationChannel, releaseNote)
+                    midiInputManager.sendNoteOff(destinationChannel, releaseNote)
+                }
+                continue
+            }
+
             // MIDI channel 10 (zero-based channel 9) is always percussion.
             // Never feed drum notes through melodic CASM transposition.
             val isDrumPart = destinationChannel == 9 || (policy != null && isDrumVoice(policy.voiceName))
@@ -156,18 +171,10 @@ class StyleSequencer(
             }
 
             val note = transformed ?: continue
-            val key = "${sourceChannel}:${destinationChannel}:${s.event.note}"
-
-            if (s.event.isNoteOn) {
-                activeTransposedNotes[key] = note
-                val velocity = s.event.velocity.coerceIn(1, 127)
-                audioEngine.noteOnChannel(destinationChannel, note, velocity / 127f)
-                midiInputManager.sendNoteOn(destinationChannel, note, velocity)
-            } else {
-                val releaseNote = activeTransposedNotes.remove(key) ?: note
-                audioEngine.noteOffChannel(destinationChannel, releaseNote)
-                midiInputManager.sendNoteOff(destinationChannel, releaseNote)
-            }
+            val velocity = s.event.velocity.coerceIn(1, 127)
+            activeTransposedNotes[key] = note
+            audioEngine.noteOnChannel(destinationChannel, note, velocity / 127f)
+            midiInputManager.sendNoteOn(destinationChannel, note, velocity)
         }
 
         val rem = section.lengthTicks - lastTick
