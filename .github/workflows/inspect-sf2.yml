@@ -4,9 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       sf2_url:
-        description: "Direct URL to the .sf2 file"
+        description: 'Direct URL to the SF2 file'
         required: true
         type: string
+        default: 'https://archive.org/download/free-soundfonts-sf2-2019-04/yamaha%20tyros%204_just_t4_fixed.sf2'
 
 jobs:
   inspect:
@@ -20,13 +21,14 @@ jobs:
           SF2_URL: ${{ inputs.sf2_url }}
         run: |
           set -euo pipefail
-          curl -L --fail --retry 3 --retry-delay 2 --output input.sf2 "$SF2_URL"
-          ls -lh input.sf2
+          mkdir -p sf2-input
+          curl -L --fail --retry 3 --retry-delay 2 --output sf2-input/input.sf2 "$SF2_URL"
+          ls -lh sf2-input/input.sf2
 
       - name: Inspect SF2 metadata
         run: |
           set -euo pipefail
-          python3 tools/sf2_inspector.py input.sf2 | tee sf2-report.txt
+          python3 tools/sf2_inspector.py sf2-input/input.sf2 | tee sf2-report.txt
 
       - name: Upload report
         uses: actions/upload-artifact@v4
@@ -34,3 +36,4 @@ jobs:
           name: sf2-report
           path: sf2-report.txt
           if-no-files-found: error
+          retention-days: 7
