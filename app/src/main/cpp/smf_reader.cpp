@@ -1,6 +1,7 @@
 #include "smf_reader.h"
 #include <android/log.h>
 #include <cstring>
+#include <cmath>
 
 #define LOG_TAG "SmfReader"
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
@@ -34,9 +35,8 @@ bool SmfReader::parse(const uint8_t* data, size_t size) {
     format_ = readU16BE(data + 8);
     uint16_t numTracks = readU16BE(data + 10);
     ppq_ = readU16BE(data + 12);
+    defaultTempoBpm_ = 120.0;
     if (ppq_ & 0x8000) {
-        // SMPTE time division is rare in .sty files; fall back to a sane
-        // default rather than mis-decoding tempo/section timing.
         LOGE("SMPTE time division not supported, defaulting ppq=480");
         ppq_ = 480;
     }
@@ -44,6 +44,8 @@ bool SmfReader::parse(const uint8_t* data, size_t size) {
     size_t pos = 8 + headerLen;
     tracks_.clear();
     tracks_.reserve(numTracks);
+
+    bool foundTempo = false;
 
     for (int t = 0; t < numTracks && pos + 8 <= size; ++t) {
         if (std::memcmp(data + pos, "MTrk", 4) != 0) {
@@ -67,7 +69,6 @@ bool SmfReader::parse(const uint8_t* data, size_t size) {
 
             uint8_t statusByte = data[p];
             if (statusByte < 0x80) {
-                // Running status: reuse previous status byte, this byte is data1.
                 statusByte = runningStatus;
             } else {
                 p++;
@@ -77,32 +78,41 @@ bool SmfReader::parse(const uint8_t* data, size_t size) {
             MidiEvent ev{};
             ev.tick = absTick;
             ev.status = statusByte;
-            // FIX: simpan channel (0-15) dari 4 bit rendah status byte,
-            // untuk channel-voice events saja (status < 0xF0). Tanpa ini
-            // style_parser.cpp tidak bisa mengelompokkan event per channel
-            // -> beberapa instrumen numpuk jadi satu "part".
             if (statusByte < 0xF0) {
                 ev.channel = statusByte & 0x0F;
             }
 
-            if (statusByte == 0xFF) { // Meta event
+            if (statusByte == 0xFF) {
                 if (p >= trackEnd) break;
                 ev.metaType = data[p++];
                 uint32_t len = readVarLen(data, trackEnd, p);
                 if (p + len > trackEnd) break;
-                if (ev.metaType == 0x03 && len > 0) { // Track name
+                if (ev.metaType == 0x03 && len > 0) {
                     track.name.assign(reinterpret_cast<const char*>(data + p), len);
+                }
+                if (ev.metaType == 0x51 && len == 3 && !foundTempo) {
+                    const uint32_t usPerQuarter =
+                        (uint32_t(data[p]) << 16) |
+                        (uint32_t(data[p + 1]) << 8) |
+                        uint32_t(data[p + 2]);
+                    if (usPerQuarter > 0) {
+                        const double bpm = 60000000.0 / static_cast<double>(usPerQuarter);
+                        if (std::isfinite(bpm) && bpm >= 1.0 && bpm <= 999.0) {
+                            defaultTempoBpm_ = bpm;
+                            foundTempo = true;
+                        }
+                    }
                 }
                 ev.metaOrSysexData.assign(data + p, data + p + len);
                 p += len;
-            } else if (statusByte == 0xF0 || statusByte == 0xF7) { // Sysex
+            } else if (statusByte == 0xF0 || statusByte == 0xF7) {
                 uint32_t len = readVarLen(data, trackEnd, p);
                 if (p + len > trackEnd) break;
                 ev.metaOrSysexData.assign(data + p, data + p + len);
                 p += len;
             } else {
                 uint8_t hi = statusByte & 0xF0;
-                int dataBytes = (hi == 0xC0 || hi == 0xD0) ? 1 : 2; // Program/Aftertouch = 1 byte
+                int dataBytes = (hi == 0xC0 || hi == 0xD0) ? 1 : 2;
                 if (p >= trackEnd) break;
                 ev.data1 = data[p++];
                 if (dataBytes == 2) {
