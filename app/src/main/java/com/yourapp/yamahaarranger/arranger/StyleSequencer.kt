@@ -20,6 +20,12 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             val old=field
             field=value
             when {
+                old==null&&value!=null -> {
+                    // The first detected chord must immediately retarget notes that
+                    // started while the arranger was still in the no-chord state.
+                    handleChordChange(value)
+                    com.yourapp.yamahaarranger.ui.DebugLog.add("🎹 FIRST CHORD: " + value.rootNote + " " + value.quality)
+                }
                 old!=null&&value!=null&&old!=value -> handleChordChange(value)
                 old!=null&&value==null -> handleNoChord()
             }
@@ -92,22 +98,42 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     }
 
     private fun applyVoicesFromCasm(section:StyleSectionModel) {
+        // Several CASM source parts can share one destination MIDI channel.
+        // A source without its own Program Change must never overwrite the
+        // program already established by another source on that destination.
+        val explicitByDestination = linkedMapOf<Int, Triple<Int, Int, Int>>()
         section.parts.forEach { part ->
             val policies = part.casmPolicies.ifEmpty { listOfNotNull(part.casm) }
             val c = policies.firstOrNull() ?: return@forEach
             val destination = c.destinationChannel
             if (destination in lockedChannels) return@forEach
+            if (part.program in 0..127 && !explicitByDestination.containsKey(destination)) {
+                explicitByDestination[destination] = Triple(part.program, part.bankMsb, part.bankLsb)
+            }
+        }
+
+        val applied = mutableSetOf<Int>()
+        section.parts.forEach { part ->
+            val policies = part.casmPolicies.ifEmpty { listOfNotNull(part.casm) }
+            val c = policies.firstOrNull() ?: return@forEach
+            val destination = c.destinationChannel
+            if (destination in lockedChannels || destination in applied) return@forEach
+
             val drum = destination == 9 || isDrumVoice(c.voiceName)
-            val prog = if (part.program in 0..127) part.program else guessProgramFromVoiceName(c.voiceName)
+            val explicit = explicitByDestination[destination]
+            val prog = explicit?.first ?: guessProgramFromVoiceName(c.voiceName)
             if (prog !in 0..127) {
                 com.yourapp.yamahaarranger.ui.DebugLog.add("⚠ src${c.sourceChannel}→dst$destination: no usable program for '${c.voiceName}'")
                 return@forEach
             }
+            val midiMsb = explicit?.second ?: part.bankMsb
             val audioBank = if (drum) 128 else 0
-            val midiBank = if (drum) 127 else part.bankMsb.coerceIn(0, 127)
+            val midiBank = if (drum) 127 else midiMsb.coerceIn(0, 127)
             audioEngine.setChannelProgram(destination, prog, audioBank)
             midiInputManager.sendProgramChange(destination, prog, midiBank)
-            com.yourapp.yamahaarranger.ui.DebugLog.add("🎼 src${c.sourceChannel}→dst$destination: ${c.voiceName} → PC=$prog MIDIbank=$midiBank SFbank=$audioBank policies=${policies.size}")
+            applied += destination
+            val source = if (explicit != null) "actual MIDI setup" else "fallback name"
+            com.yourapp.yamahaarranger.ui.DebugLog.add("🎼 dst$destination: ${c.voiceName} → PC=$prog MIDIbank=$midiBank SFbank=$audioBank ($source)")
         }
     }
     private fun guessProgramFromVoiceName(name:String):Int{val n=name.lowercase();val numeric=Regex("(?:^|\\D)(\\d{1,3})\\s*$").find(n)?.groupValues?.getOrNull(1)?.toIntOrNull();if(numeric!=null&&numeric in 0..127)return numeric;return when{n.contains("piano")->0;n.contains("e.piano")||n.contains("ep")->4;n.contains("organ")->16;n.contains("accordion")->21;n.contains("guitar")||n.contains("gtr")->24;n.contains("bass")->33;n.contains("violin")->40;n.contains("cello")->42;n.contains("strg")||n.contains("str")->48;n.contains("choir")->52;n.contains("trumpet")->56;n.contains("trombone")->57;n.contains("brass")->61;n.contains("sax")->65;n.contains("oboe")->68;n.contains("clarinet")->71;n.contains("flute")->73;n.contains("crash")||n.contains("cymbal")||n.contains("perc")||n.contains("dr")||n.contains("kit")||n.contains("drum")->0;n.contains("pad")->89;else->-1}}
