@@ -1,4 +1,4 @@
-package com.yourapp.yamahaarranger.arranger
+package com.yourapp.arranger
 
 import com.yourapp.yamahaarranger.audio.AudioEngineManager
 import com.yourapp.yamahaarranger.chord.ChordDetector
@@ -60,9 +60,7 @@ class ArrangerBrain @Inject constructor(
 
     fun attachScope(scope: CoroutineScope) {
         externalScope = scope
-        if (::sequencer.isInitialized) {
-            sequencer.stop()
-        }
+        if (::sequencer.isInitialized) sequencer.stop()
         sequencer = StyleSequencer(audioEngine, midiInputManager, scope)
         Timber.i("ArrangerBrain: scope attached")
     }
@@ -84,19 +82,22 @@ class ArrangerBrain @Inject constructor(
     }
 
     fun onKeyboardNoteOn(midiNote: Int, velocity: Float) {
-        // Chord-zone notes drive the arranger but are not rendered by the
-        // live voice. Right-hand notes remain playable locally.
-        if (midiNote >= splitNote) {
-            audioEngine.noteOn(midiNote, velocity)
-        }
+        if (midiNote >= splitNote) audioEngine.noteOn(midiNote, velocity)
         chordDetector.noteOn(midiNote)?.let(::onChordChanged)
     }
 
     fun onKeyboardNoteOff(midiNote: Int) {
-        if (midiNote >= splitNote) {
-            audioEngine.noteOff(midiNote)
-        }
-        chordDetector.noteOff(midiNote)?.let(::onChordChanged) ?: run {
+        if (midiNote >= splitNote) audioEngine.noteOff(midiNote)
+        val chord = chordDetector.noteOff(midiNote)
+        if (chord != null) {
+            onChordChanged(chord)
+        } else {
+            // Do not leave the sequencer holding the last chord forever.
+            // Yamaha-style accompaniment needs an explicit "no chord" state
+            // after the last chord-zone key is released; otherwise the next
+            // generated note can still be converted against the stale chord.
+            ensureSequencer()
+            sequencer.currentChord = null
             _state.update { it.copy(currentChordLabel = "") }
         }
     }
@@ -128,12 +129,10 @@ class ArrangerBrain @Inject constructor(
         val wasPlaying = _state.value.isPlaying
         val previous = _state.value.currentSection
         _state.update { it.copy(currentSection = target) }
-
         if (!wasPlaying) return
 
         val previousWasMain = previous in mainVariations
         val fill = fillFor(target)
-
         if (previousWasMain && previous != target && fill != null && sectionExists(fill)) {
             DebugLog.add("🎼 Main→Main: play fill $fill then $target")
             playSection(fill, thenPlay = target)
