@@ -9,6 +9,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.roundToLong
 
 class StyleSequencer(
     private val audioEngine: AudioEngineManager,
@@ -222,11 +223,20 @@ class StyleSequencer(
             return
         }
 
+        // IMPORTANT timing fix:
+        // The old scheduler converted every individual tick delta to a
+        // truncated Long millisecond value. At 1920 PPQ and 120 BPM, one
+        // tick is only ~0.2604 ms, so every small delta was rounded down to
+        // zero and the rounding error accumulated throughout the loop.
+        // MIDI Voyager/BASSMIDI schedules from MIDI ticks internally. We
+        // emulate the important part here by anchoring every event to one
+        // monotonic nanosecond timeline instead of repeatedly rounding
+        // each delta independently.
+        val loopStartNs = System.nanoTime()
         var lastTick = 0
         var noteOnCount = 0
         for (sched in merged) {
-            val delta = sched.tick - lastTick
-            if (delta > 0) delay(ticksToMillis(delta, ppq, tempoBpm))
+            delayUntil(loopStartNs + ticksToNanos(sched.tick, ppq, tempoBpm))
             lastTick = sched.tick
 
             // BUGFIX: key identifies "this physical note slot" (channel +
@@ -263,12 +273,31 @@ class StyleSequencer(
         }
         if (loopCount <= 1) DebugLog.add("✅ Loop1: $noteOnCount noteOn")
 
-        val rem = section.lengthTicks - lastTick
-        if (rem > 0) delay(ticksToMillis(rem, ppq, tempoBpm))
+        val endNs = loopStartNs + ticksToNanos(section.lengthTicks, ppq, tempoBpm)
+        delayUntil(endNs)
     }
 
-    private fun ticksToMillis(ticks: Int, ppq: Int, bpm: Int): Long {
-        if (ppq <= 0 || bpm <= 0) return 0
-        return ((ticks * (60_000.0 / bpm)) / ppq).toLong().coerceAtLeast(0)
+    private suspend fun delayUntil(targetNs: Long) {
+        while (true) {
+            val remainingNs = targetNs - System.nanoTime()
+            if (remainingNs <= 0L) return
+
+            // Keep the coroutine scheduler in charge for the coarse part,
+            // then finish with a small <=2 ms sleep. This avoids the old
+            // per-event millisecond truncation without busy-spinning the UI.
+            val remainingMs = remainingNs / 1_000_000L
+            if (remainingMs > 2L) {
+                delay(remainingMs - 1L)
+            } else {
+                delay(1L)
+            }
+        }
+    }
+
+    private fun ticksToNanos(ticks: Int, ppq: Int, bpm: Int): Long {
+        if (ticks <= 0 || ppq <= 0 || bpm <= 0) return 0L
+        return ((ticks.toDouble() * 60_000_000_000.0) / (ppq.toDouble() * bpm.toDouble()))
+            .roundToLong()
+            .coerceAtLeast(0L)
     }
 }
