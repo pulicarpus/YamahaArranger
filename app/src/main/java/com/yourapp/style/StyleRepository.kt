@@ -45,14 +45,10 @@ class StyleRepository @Inject constructor(private val bridge: NativeStyleBridge)
             val partCount = bridge.nativeGetPartCount(sectionName)
             val parts = (0 until partCount).map { partIndex ->
                 val flat = bridge.nativeGetPartEvents(sectionName, partIndex)
-                val events = buildList {
-                    var i = 0
-                    while (i + 3 < flat.size) {
-                        val tick = flat[i]; val status = flat[i + 1]; val data1 = flat[i + 2]; val data2 = flat[i + 3]
-                        add(StyleNoteEvent(tick, (status and 0xF0) == 0x90 && data2 > 0, data1, data2, status and 0x0F))
-                        i += 4
-                    }
-                }
+                val events = decodePackedEvents(flat)
+                val noteCount = events.count { it.isNoteOn || (it.status and 0xF0) == 0x80 }
+                val extraCount = events.size - noteCount
+                if (extraCount > 0) DebugLog.add("📦 $sectionName part=$partIndex preserved ${events.size} events ($extraCount non-note)")
                 val casm = parseCasm(bridge.nativeGetPartCasm(sectionName, partIndex))
                 if (casm != null) DebugLog.add("🎛 $sectionName src=${casm.sourceChannel} → dst=${casm.destinationChannel} ${casm.voiceName} NTR=${casm.ntr} NTT=${casm.ntt} HK=${casm.highKey} LIM=${casm.noteLimitLow}-${casm.noteLimitHigh} RTR=${casm.rtr}")
                 StylePartModel(bridge.nativeGetPartName(sectionName, partIndex), events, casm)
@@ -62,6 +58,40 @@ class StyleRepository @Inject constructor(private val bridge: NativeStyleBridge)
 
         if (sections.isEmpty()) { Timber.w("Style parsed but yielded no sections: $fileName"); return null }
         return ParsedStyle(fileName, ppq, sections, voiceMap, defaultTempoBpm)
+    }
+
+    private fun decodePackedEvents(flat: IntArray): List<StyleNoteEvent> {
+        val result = ArrayList<StyleNoteEvent>()
+        var i = 0
+        while (i + 5 < flat.size) {
+            val tick = flat[i]
+            val status = flat[i + 1] and 0xFF
+            val data1 = flat[i + 2] and 0xFF
+            val data2 = flat[i + 3] and 0xFF
+            val metaType = flat[i + 4] and 0xFF
+            val payloadLength = flat[i + 5]
+            if (payloadLength < 0 || i + 6 + payloadLength > flat.size) {
+                DebugLog.add("⚠️ Invalid packed MIDI event at index $i; stopping decode")
+                break
+            }
+            val payload = if (payloadLength == 0) ByteArray(0) else
+                ByteArray(payloadLength) { offset -> (flat[i + 6 + offset] and 0xFF).toByte() }
+            val channel = if (status in 0x80..0xEF) status and 0x0F else 0
+            val hi = status and 0xF0
+            val isNoteOn = hi == 0x90 && data2 > 0
+            result += StyleNoteEvent(
+                tick = tick,
+                isNoteOn = isNoteOn,
+                note = data1,
+                velocity = if (hi == 0xC0 || hi == 0xD0) 0 else data2,
+                channel = channel,
+                status = status,
+                metaType = metaType,
+                payload = payload
+            )
+            i += 6 + payloadLength
+        }
+        return result
     }
 
     private fun parseCasm(raw: String): CasmPolicyModel? {
