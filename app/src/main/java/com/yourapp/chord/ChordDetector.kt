@@ -36,13 +36,27 @@ data class DetectedChord(
  * recognized by a subsequent note-on. This prevents finger-lift transitions
  * from producing accidental chords.
  */
-class ChordDetector(private val mode: ChordMode = ChordMode.MultiFinger) {
+class ChordDetector(private val initialMode: ChordMode = ChordMode.MultiFinger) {
 
     private val heldNotes = LinkedHashSet<Int>()
     private val historyLimit = 10
     private var lastChord: DetectedChord? = null
+    private var activeMode = initialMode
+
+    init {
+        ChordModeController.setMode(initialMode)
+    }
+
+    private fun syncMode() {
+        val selected = ChordModeController.mode.value
+        if (selected != activeMode) {
+            activeMode = selected
+            reset()
+        }
+    }
 
     fun noteOn(midiNote: Int): DetectedChord? {
+        syncMode()
         heldNotes.add(midiNote)
         if (heldNotes.size > historyLimit) heldNotes.remove(heldNotes.first())
 
@@ -52,6 +66,7 @@ class ChordDetector(private val mode: ChordMode = ChordMode.MultiFinger) {
     }
 
     fun noteOff(midiNote: Int): DetectedChord? {
+        syncMode()
         heldNotes.remove(midiNote)
         // Deliberately return the last recognized chord. Releasing one finger
         // must not cause the remaining transition notes to become a new chord.
@@ -63,7 +78,7 @@ class ChordDetector(private val mode: ChordMode = ChordMode.MultiFinger) {
         lastChord = null
     }
 
-    private fun detectOn(): DetectedChord? = when (mode) {
+    private fun detectOn(): DetectedChord? = when (activeMode) {
         ChordMode.SingleFinger -> detectSingleFinger()
         ChordMode.MultiFinger -> detectMultiFinger()
         ChordMode.Fingered -> detectFingered()
