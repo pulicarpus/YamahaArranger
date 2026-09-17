@@ -22,7 +22,6 @@ add_library(yamaha_arranger_native SHARED
     soundfont_player.cpp
     style_parser.cpp
     smf_reader.cpp
-    style_tempo_jni.cpp
 )
 
 target_include_directories(yamaha_arranger_native PRIVATE
