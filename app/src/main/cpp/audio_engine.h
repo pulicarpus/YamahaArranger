@@ -4,6 +4,7 @@
 #include <array>
 #include <atomic>
 #include <mutex>
+#include <string>
 #include <vector>
 #include "voice.h"
 #include "soundfont_player.h"
@@ -16,7 +17,11 @@ public:
     void stop();
 
     bool loadSoundFont(const std::string& path);
+    bool loadMelodySoundFont(const std::string& path);
+    bool loadDrumSoundFont(const std::string& path);
     bool isSoundFontLoaded() const { return soundFont_.isLoaded(); }
+    bool isMelodySoundFontLoaded() const { return soundFont_.isMelodyLoaded(); }
+    bool isDrumSoundFontLoaded() const { return soundFont_.isDrumLoaded(); }
     void unloadSoundFont();
 
     void noteOn(int midiNote, int rootNote, float velocity01,

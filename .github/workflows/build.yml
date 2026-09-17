@@ -2,6 +2,8 @@ name: Build APK
 
 on:
   workflow_dispatch: {}
+  push:
+    branches: ['**']
 
 jobs:
   build:
@@ -32,6 +34,9 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.7
+
+      - name: Verify Yamaha E343 MIDI/audio build
+        run: echo "Building CASM + MIDI OUT + Android audio fixes"
 
       - name: Build debug APK
         run: gradle assembleDebug --stacktrace

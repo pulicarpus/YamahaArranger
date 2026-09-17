@@ -2,6 +2,8 @@ package com.yourapp.yamahaarranger.arranger
 
 import com.yourapp.yamahaarranger.audio.AudioEngineManager
 import com.yourapp.yamahaarranger.chord.DetectedChord
+import com.yourapp.midi.MidiInputManager
+import com.yourapp.yamahaarranger.style.CasmPolicyModel
 import com.yourapp.yamahaarranger.style.StyleNoteEvent
 import com.yourapp.yamahaarranger.style.StyleSectionModel
 import com.yourapp.yamahaarranger.ui.DebugLog
@@ -10,83 +12,46 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+/** CASM-aware style playback: section policy -> NTR/NTT -> limits -> audio + optional MIDI OUT. */
 class StyleSequencer(
     private val audioEngine: AudioEngineManager,
+    private val midiInputManager: MidiInputManager,
     private val scope: CoroutineScope
 ) {
     private var playbackJob: Job? = null
     var tempoBpm: Int = 120
     var currentChord: DetectedChord? = null
     private var loopCount = 0
-
     private var voiceMap: Map<Int, String> = emptyMap()
-    private var lastAppliedSection: String = ""
-
-    // FIX (menyertai ArrangerBrain.updateLockedChannels yang tadinya
-    // Unresolved reference): channel yang di-lock user lewat UI TIDAK
-    // boleh ditimpa oleh applyVoicesFromCasm() saat ganti section.
+    private var lastAppliedSection = ""
     private var lockedChannels: Set<Int> = emptySet()
+    private val activeTransposedNotes = mutableMapOf<String, Int>()
 
     fun setLockedChannels(channels: Set<Int>) {
         lockedChannels = channels
         DebugLog.add("🔒 Locked channels updated: $channels")
     }
 
-    // BUGFIX (note-off mismatch / "sumbang"): key = "channel:originalNote",
-    // value = the note actually sent to noteOnChannel(). currentChord can
-    // change (user re-fingers a chord) *between* a note-on and its matching
-    // note-off — if note-off recomputes the transpose against whatever
-    // currentChord is *now*, it sends an off for the WRONG pitch, so the
-    // original transposed note never gets a note-off and hangs. Every
-    // subsequent chord change piles on another stuck note, which is what
-    // produces the "berantakan/sumbang" (chaotic/dissonant) sound over
-    // time. Fix: compute the transpose once at note-on, remember it here,
-    // and reuse that exact value for the matching note-off.
-    private val activeTransposedNotes = mutableMapOf<String, Int>()
-
     fun setVoiceMap(vm: Map<Int, String>) {
         voiceMap = vm
         lastAppliedSection = ""
-        DebugLog.add("🎼 VoiceMap set: ${vm.size} entries")
+        DebugLog.add("🎼 Legacy VoiceMap received: ${vm.size}; CASM policy takes precedence")
     }
 
-    /**
-     * @param loopLimit -1 = loop selamanya (dipakai untuk Main/Intro/Ending).
-     *   Angka positif = main sejumlah itu loop, lalu STOP dan panggil
-     *   [onComplete] — dipakai untuk Fill, yang harus main sekali lalu
-     *   pindah ke Main target.
-     *
-     * BUGFIX ("klik Main A-D jadi Fill semua"): sebelumnya tidak ada cara
-     * untuk membatasi jumlah loop, jadi rantai fill->main di ArrangerBrain
-     * (`thenPlay`) cuma jadi TODO yang tidak pernah benar-benar jalan —
-     * Fill yang sudah mulai loop selamanya, dan klik Main berikutnya cuma
-     * memicu Fill baru lagi, bukan pernah benar-benar sampai ke Main.
-     */
-    fun play(
-        section: StyleSectionModel,
-        ppq: Int,
-        loopLimit: Int = -1,
-        onComplete: (() -> Unit)? = null
-    ) {
+    fun play(section: StyleSectionModel, ppq: Int, loopLimit: Int = -1, onComplete: (() -> Unit)? = null) {
         stop()
         loopCount = 0
-
-        // Apply CASM voice per part saat ganti section
         if (lastAppliedSection != section.name) {
             applyVoicesFromCasm(section)
             lastAppliedSection = section.name
         }
-
-        val totalEvents = section.parts.sumOf { it.events.size }
-        DebugLog.add("▶ PLAY ${section.name}: parts=${section.parts.size}, events=$totalEvents, loopLimit=$loopLimit")
-
+        DebugLog.add("▶ PLAY ${section.name}: parts=${section.parts.size}, events=${section.parts.sumOf { it.events.size }}, loopLimit=$loopLimit")
         playbackJob = scope.launch {
-            var loopsPlayed = 0
-            while (loopLimit < 0 || loopsPlayed < loopLimit) {
+            var loops = 0
+            while (loopLimit < 0 || loops < loopLimit) {
                 playOnce(section, ppq)
-                loopsPlayed++
+                loops++
             }
-            DebugLog.add("↪ ${section.name} selesai ($loopsPlayed loop), chaining...")
             onComplete?.invoke()
         }
     }
@@ -95,73 +60,35 @@ class StyleSequencer(
         playbackJob?.cancel()
         playbackJob = null
         audioEngine.allNotesOff()
-        // BUGFIX: must clear alongside allNotesOff(), otherwise stale
-        // entries here would make the *next* section's note-offs reuse
-        // pitches from a section that's no longer playing.
+        midiInputManager.allNotesOff()
         activeTransposedNotes.clear()
         DebugLog.add("⏹ STOP")
     }
 
     fun queueNextSection(section: StyleSectionModel, ppq: Int) = play(section, ppq)
 
-    /**
-     * Apply CASM voice per part.
-     * Pakai channel ASLI dari file (tidak remap).
-     */
     private fun applyVoicesFromCasm(section: StyleSectionModel) {
-        if (voiceMap.isEmpty()) {
-            DebugLog.add("⚠ No voice map available, using SF2 defaults")
-            return
-        }
-
-        DebugLog.add("🎼 Apply CASM voices for ${section.name}:")
-        section.parts.forEachIndexed { idx, part ->
-            val partNum = idx + 1
-            val voiceName = voiceMap[partNum] ?: return@forEachIndexed
-
-            // Ambil channel asli dari file
-            val ch = part.events.firstOrNull()?.channel ?: return@forEachIndexed
-
-            // FIX: channel yang di-lock user tidak boleh ditimpa CASM.
-            if (ch in lockedChannels) {
-                DebugLog.add("  · part$partNum ch$ch: SKIP (locked by user)")
-                return@forEachIndexed
-            }
-
-            val prog = guessProgramFromVoiceName(voiceName)
+        section.parts.forEach { part ->
+            val c = part.casm ?: return@forEach
+            val destination = c.destinationChannel
+            if (destination in lockedChannels) return@forEach
+            val prog = guessProgramFromVoiceName(c.voiceName)
             if (prog < 0) {
-                DebugLog.add("  · part$partNum ch$ch: $voiceName (unknown)")
-                return@forEachIndexed
+                DebugLog.add("⚠ src${c.sourceChannel}→dst$destination: unsupported '${c.voiceName}'")
+                return@forEach
             }
-
-            val bank = if (isDrumVoice(voiceName)) 128 else 0
-            audioEngine.setChannelProgram(ch, prog, bank)
-            DebugLog.add("  · part$partNum ch$ch: $voiceName → prog$prog (bank$bank)")
+            val drum = destination == 9 || isDrumVoice(c.voiceName)
+            val bank = if (drum) 128 else 0
+            audioEngine.setChannelProgram(destination, prog, bank)
+            midiInputManager.sendProgramChange(destination, prog, bank)
+            DebugLog.add("🎼 src${c.sourceChannel}→dst$destination: ${c.voiceName} → GM $prog bank=$bank NTR=${c.ntr} NTT=${c.ntt} HK=${c.highKey} LIM=${c.noteLimitLow}..${c.noteLimitHigh} RTR=${c.rtr}")
         }
     }
 
-    /** Extract GM program dari nama voice CASM.
-     *
-     * KNOWN LIMITATION (not fixed here — separate from the note-off bug):
-     * the trailing-digit shortcut below assumes a voice name's trailing
-     * number IS a GM program number. In real CASM data that number is
-     * usually Yamaha's own internal voice ID, which does not line up with
-     * GM program numbers except by coincidence. This can pick the wrong
-     * *timbre* (e.g. wrong kind of bass/guitar), but does not affect
-     * pitch/timing the way the note-off bug did. Worth revisiting once
-     * you're chasing "wrong instrument sound" rather than "wrong pitch".
-     */
     private fun guessProgramFromVoiceName(name: String): Int {
         val n = name.lowercase()
-
-        // 1) Coba extract digit di akhir (misal "bass33" → 33)
-        val trailingDigits = n.takeLastWhile { it.isDigit() }
-        if (trailingDigits.isNotEmpty()) {
-            val num = trailingDigits.toIntOrNull()
-            if (num != null && num in 0..127) return num
-        }
-
-        // 2) Keyword-based fallback
+        val numeric = Regex("(?:^|\\D)(\\d{1,3})\\s*$").find(n)?.groupValues?.getOrNull(1)?.toIntOrNull()
+        if (numeric != null && numeric in 0..127) return numeric
         return when {
             n.contains("piano") -> 0
             n.contains("e.piano") || n.contains("ep") -> 4
@@ -181,16 +108,13 @@ class StyleSequencer(
             n.contains("clarinet") -> 71
             n.contains("flute") -> 73
             n.contains("dr") || n.contains("kit") || n.contains("drum") -> 0
+            n.contains("pad") -> 89
             else -> -1
         }
     }
 
-    private fun isDrumVoice(name: String): Boolean {
-        val n = name.lowercase()
-        return n.contains("add-dr") ||
-               n.contains("drum") ||
-               n.contains("kit") ||
-               n.startsWith("dr")
+    private fun isDrumVoice(name: String) = name.lowercase().let {
+        it.contains("add-dr") || it.contains("drum") || it.contains("kit") || it.startsWith("dr")
     }
 
     private suspend fun playOnce(section: StyleSectionModel, ppq: Int) {
@@ -200,75 +124,63 @@ class StyleSequencer(
             return
         }
 
-        data class ScheduledEvent(
-            val tick: Int,
-            val event: StyleNoteEvent,
-            val transpose: Boolean,
-            val channel: Int
-        )
-
-        // Pakai channel ASLI dari file — TIDAK remap
-        val merged = section.parts.flatMap { part ->
-            part.events.map { ev ->
-                val isDrum = ev.channel == 9
-                val shouldTranspose = !isDrum
-                ScheduledEvent(ev.tick, ev, shouldTranspose, ev.channel)
-            }
-        }.sortedBy { it.tick }
+        data class Scheduled(val tick: Int, val event: StyleNoteEvent, val policy: CasmPolicyModel?)
+        val merged = section.parts
+            .flatMap { part -> part.events.map { e -> Scheduled(e.tick, e, part.casm) } }
+            .sortedWith(compareBy<Scheduled> { it.tick }.thenBy { it.event.isNoteOn.not() })
 
         if (merged.isEmpty()) {
-            DebugLog.add("⚠ Loop $loopCount: NO EVENTS")
             delay(500)
             return
         }
 
         var lastTick = 0
-        var noteOnCount = 0
-        for (sched in merged) {
-            val delta = sched.tick - lastTick
+        for (s in merged) {
+            val delta = s.tick - lastTick
             if (delta > 0) delay(ticksToMillis(delta, ppq, tempoBpm))
-            lastTick = sched.tick
+            lastTick = s.tick
 
-            // BUGFIX: key identifies "this physical note slot" (channel +
-            // the note number as written in the style file) so note-on and
-            // its matching note-off agree on which *actual sounding pitch*
-            // they're talking about, even if currentChord changes in
-            // between.
-            val key = "${sched.channel}:${sched.event.note}"
+            val policy = s.policy
+            val sourceChannel = s.event.channel
+            val destinationChannel = policy?.destinationChannel ?: sourceChannel
+            if (destinationChannel in lockedChannels) continue
 
-            if (sched.event.isNoteOn) {
-                // Compute the transpose ONCE, here, and remember it.
-                val note = if (sched.transpose) {
-                    currentChord?.let { NoteTransposer.transpose(sched.event.note, it) }
-                        ?: sched.event.note
-                } else {
-                    sched.event.note
+            val key = "${sourceChannel}:${destinationChannel}:${s.event.note}"
+
+            // Note-off must always release the exact note that was produced by
+            // the corresponding note-on. Re-evaluating CASM against the *new*
+            // chord can otherwise produce a different note or null and leave
+            // a voice hanging when the player changes chords mid-bar.
+            if (!s.event.isNoteOn) {
+                val releaseNote = activeTransposedNotes.remove(key)
+                if (releaseNote != null) {
+                    audioEngine.noteOffChannel(destinationChannel, releaseNote)
+                    midiInputManager.sendNoteOff(destinationChannel, releaseNote)
                 }
-                activeTransposedNotes[key] = note
-                audioEngine.noteOnChannel(sched.channel, note, sched.event.velocity / 127f)
-                noteOnCount++
-                if (loopCount <= 1 && noteOnCount <= 8) {
-                    DebugLog.add("  ♪ ch${sched.channel} n=$note v=${sched.event.velocity}")
-                }
-            } else {
-                // Reuse the exact pitch that was actually turned on for
-                // this slot — NOT a fresh transpose against whatever chord
-                // happens to be held right now. Falls back to the raw
-                // event note only if we somehow never saw the matching
-                // note-on (shouldn't normally happen, but keeps this from
-                // throwing instead of silently degrading).
-                val note = activeTransposedNotes.remove(key) ?: sched.event.note
-                audioEngine.noteOffChannel(sched.channel, note)
+                continue
             }
+
+            // MIDI channel 10 (zero-based channel 9) is always percussion.
+            // Never feed drum notes through melodic CASM transposition.
+            val isDrumPart = destinationChannel == 9 || (policy != null && isDrumVoice(policy.voiceName))
+            val transformed = if (policy != null && !isDrumPart) {
+                currentChord?.let { CasmNoteTransformer.transform(s.event.note, it, policy) }
+                    ?: s.event.note.coerceIn(0, 127)
+            } else {
+                s.event.note.coerceIn(0, 127)
+            }
+
+            val note = transformed ?: continue
+            val velocity = s.event.velocity.coerceIn(1, 127)
+            activeTransposedNotes[key] = note
+            audioEngine.noteOnChannel(destinationChannel, note, velocity / 127f)
+            midiInputManager.sendNoteOn(destinationChannel, note, velocity)
         }
-        if (loopCount <= 1) DebugLog.add("✅ Loop1: $noteOnCount noteOn")
 
         val rem = section.lengthTicks - lastTick
         if (rem > 0) delay(ticksToMillis(rem, ppq, tempoBpm))
     }
 
-    private fun ticksToMillis(ticks: Int, ppq: Int, bpm: Int): Long {
-        if (ppq <= 0 || bpm <= 0) return 0
-        return ((ticks * (60_000.0 / bpm)) / ppq).toLong().coerceAtLeast(0)
-    }
+    private fun ticksToMillis(ticks: Int, ppq: Int, bpm: Int): Long =
+        if (ppq <= 0 || bpm <= 0) 0 else ((ticks * (60000.0 / bpm)) / ppq).toLong().coerceAtLeast(0)
 }

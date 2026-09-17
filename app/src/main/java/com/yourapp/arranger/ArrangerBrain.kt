@@ -3,6 +3,7 @@ package com.yourapp.yamahaarranger.arranger
 import com.yourapp.yamahaarranger.audio.AudioEngineManager
 import com.yourapp.yamahaarranger.chord.ChordDetector
 import com.yourapp.yamahaarranger.chord.DetectedChord
+import com.yourapp.midi.MidiInputManager
 import com.yourapp.yamahaarranger.style.ParsedStyle
 import com.yourapp.yamahaarranger.ui.DebugLog
 import kotlinx.coroutines.CoroutineScope
@@ -33,11 +34,17 @@ data class ArrangerState(
 @Singleton
 class ArrangerBrain @Inject constructor(
     private val audioEngine: AudioEngineManager,
-    private val chordDetector: ChordDetector
+    private val chordDetector: ChordDetector,
+    private val midiInputManager: MidiInputManager
 ) {
     private lateinit var sequencer: StyleSequencer
     private var loadedStyle: ParsedStyle? = null
     private var externalScope: CoroutineScope? = null
+
+    // UI currently exposes Split: C4. Notes below C4 are arranger/chord input;
+    // notes at/above C4 are the live right-hand voice. This prevents the
+    // chord hand from being doubled by the GrandPiano preview voice.
+    private val splitNote = 60
 
     private val _state = MutableStateFlow(ArrangerState())
     val state: StateFlow<ArrangerState> = _state.asStateFlow()
@@ -53,22 +60,17 @@ class ArrangerBrain @Inject constructor(
 
     fun attachScope(scope: CoroutineScope) {
         externalScope = scope
-        // BUGFIX: kalau ensureSequencer() sempat bikin sequencer darurat
-        // duluan (misal ada event MIDI masuk sebelum ViewModel manggil
-        // attachScope), hentikan itu dulu sebelum diganti — supaya tidak
-        // ada dua StyleSequencer yang sama-sama ngirim note ke
-        // audioEngine yang sama secara bersamaan.
         if (::sequencer.isInitialized) {
             sequencer.stop()
         }
-        sequencer = StyleSequencer(audioEngine, scope)
+        sequencer = StyleSequencer(audioEngine, midiInputManager, scope)
         Timber.i("ArrangerBrain: scope attached")
     }
 
     private fun ensureSequencer() {
         if (!::sequencer.isInitialized) {
             val scope = externalScope ?: CoroutineScope(Dispatchers.Main + SupervisorJob())
-            sequencer = StyleSequencer(audioEngine, scope)
+            sequencer = StyleSequencer(audioEngine, midiInputManager, scope)
         }
     }
 
@@ -82,12 +84,18 @@ class ArrangerBrain @Inject constructor(
     }
 
     fun onKeyboardNoteOn(midiNote: Int, velocity: Float) {
-        audioEngine.noteOn(midiNote, velocity)
+        // Chord-zone notes drive the arranger but are not rendered by the
+        // live voice. Right-hand notes remain playable locally.
+        if (midiNote >= splitNote) {
+            audioEngine.noteOn(midiNote, velocity)
+        }
         chordDetector.noteOn(midiNote)?.let(::onChordChanged)
     }
 
     fun onKeyboardNoteOff(midiNote: Int) {
-        audioEngine.noteOff(midiNote)
+        if (midiNote >= splitNote) {
+            audioEngine.noteOff(midiNote)
+        }
         chordDetector.noteOff(midiNote)?.let(::onChordChanged) ?: run {
             _state.update { it.copy(currentChordLabel = "") }
         }
@@ -115,10 +123,6 @@ class ArrangerBrain @Inject constructor(
         }
     }
 
-    /**
-     * MAIN VARIATION — kalau sebelumnya main variation lain, putar fill dulu.
-     * Kalau sebelumnya FILL / INTRO / ENDING, langsung putar main.
-     */
     fun selectMainVariation(target: ArrangerSection) {
         ensureSequencer()
         val wasPlaying = _state.value.isPlaying
@@ -131,17 +135,13 @@ class ArrangerBrain @Inject constructor(
         val fill = fillFor(target)
 
         if (previousWasMain && previous != target && fill != null && sectionExists(fill)) {
-            // Pindah dari main ke main lain → putar fill dulu, LALU
-            // (setelah fill-nya benar-benar selesai) baru pindah ke Main.
             DebugLog.add("🎼 Main→Main: play fill $fill then $target")
             playSection(fill, thenPlay = target)
         } else {
-            // Dari fill/intro/ending, atau main yang sama → langsung main
             playSection(target)
         }
     }
 
-    /** FILL / INTRO / ENDING — langsung putar. */
     fun selectSection(target: ArrangerSection) {
         ensureSequencer()
         _state.update { it.copy(currentSection = target) }
@@ -155,14 +155,6 @@ class ArrangerBrain @Inject constructor(
         _state.update { it.copy(tempoBpm = clamped) }
     }
 
-    /**
-     * FIX (Unresolved reference: updateLockedChannels): MainViewModel's
-     * toggleChannelLock() sudah memanggil ini, tapi implementasinya belum
-     * pernah ditulis di ArrangerBrain — UI lock-nya jadi setengah jalan
-     * (state ke-toggle di ViewModel, tapi CASM tetap menimpa voice channel
-     * yang di-lock karena StyleSequencer tidak pernah tahu channel mana
-     * yang harus dilewati).
-     */
     fun updateLockedChannels(lockedChannels: Set<Int>) {
         ensureSequencer()
         sequencer.setLockedChannels(lockedChannels)
@@ -178,12 +170,6 @@ class ArrangerBrain @Inject constructor(
         }
 
         if (thenPlay != null) {
-            // BUGFIX: sebelumnya `thenPlay` cuma di-log ("TODO: chain..."),
-            // tidak pernah benar-benar dieksekusi — akibatnya Fill loop
-            // selamanya dan klik Main A-D berikutnya cuma memicu Fill baru
-            // lagi ("jadi fill semua"). Sekarang: Fill dimainkan TEPAT 1
-            // loop (loopLimit = 1), lalu onComplete beneran memanggil
-            // playSection(thenPlay) untuk pindah ke Main-nya.
             sequencer.play(model, style.ppq, loopLimit = 1) {
                 DebugLog.add("🎼 Fill selesai, lanjut ke ${thenPlay.styleName}")
                 playSection(thenPlay)
