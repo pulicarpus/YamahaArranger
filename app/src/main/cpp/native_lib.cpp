@@ -70,16 +70,22 @@ Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetChannelPreset(J
 
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeParseStyle(JNIEnv* env, jobject, jbyteArray styBytes) {
+    if (styBytes == nullptr) return JNI_FALSE;
     jsize len = env->GetArrayLength(styBytes);
     std::vector<uint8_t> buf(len);
     env->GetByteArrayRegion(styBytes, 0, len, reinterpret_cast<jbyte*>(buf.data()));
     g_lastParsedStyle = std::make_unique<StyleParser>();
-    return g_lastParsedStyle->parse(buf.data(), buf.size());
+    return g_lastParsedStyle->parse(buf.data(), buf.size()) ? JNI_TRUE : JNI_FALSE;
 }
+
 extern "C" JNIEXPORT jint JNICALL
 Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeGetSectionCount(JNIEnv*, jobject) { return g_lastParsedStyle ? static_cast<jint>(g_lastParsedStyle->sections().size()) : 0; }
 extern "C" JNIEXPORT jint JNICALL
 Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeGetPpq(JNIEnv*, jobject) { return g_lastParsedStyle ? g_lastParsedStyle->ppq() : 480; }
+extern "C" JNIEXPORT jdouble JNICALL
+Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeGetDefaultTempoBpm(JNIEnv*, jobject) {
+    return g_lastParsedStyle ? g_lastParsedStyle->defaultTempoBpm() : 120.0;
+}
 extern "C" JNIEXPORT jobjectArray JNICALL
 Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeGetSectionNames(JNIEnv* env, jobject) {
     jclass stringClass = env->FindClass("java/lang/String");
@@ -148,7 +154,7 @@ Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeFindCasm(JNIEnv* e
             uint32_t casmLen=(uint32_t(buf[i+4])<<24)|(uint32_t(buf[i+5])<<16)|(uint32_t(buf[i+6])<<8)|uint32_t(buf[i+7]);
             char header[128]; snprintf(header,sizeof(header),"CASM@%zu len=%u",i,casmLen); result+=header; result+="\n";
             size_t casmEnd=std::min(buf.size(),i+8+size_t(casmLen)); result+="Chunks: ";
-            for(size_t j=i+8;j+4<=casmEnd;++j){ if(buf[j]>='A'&&buf[j]<='Z'&&buf[j+1]>='A'&&buf[j+1]<='Z'&&buf[j+2]>='A'&&buf[j+2]<='Z'&&buf[j+3]>='A'&&buf[j+3]<='Z'){ char chunk[24]; snprintf(chunk,sizeof(chunk),"%.4s@%zu ",reinterpret_cast<const char*>(&buf[j]),j-i); result+=chunk; }} result+="\n"; break;
+            for(size_t j=i+8;j+4<=casmEnd;++j){ if(buf[j]>='A'&&buf[j]<='Z'&&buf[j+1]>='A'&&buf[j+2]>='A'&&buf[j+3]>='A'&&buf[j+3]<='Z'){ char chunk[24]; snprintf(chunk,sizeof(chunk),"%.4s@%zu ",reinterpret_cast<const char*>(&buf[j]),j-i); result+=chunk; }} result+="\n"; break;
         }
     }
     if(result.empty()) result="CASM NOT FOUND"; return env->NewStringUTF(result.c_str());
