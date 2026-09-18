@@ -40,6 +40,9 @@ jobs:
       - name: Verify Yamaha E343 MIDI/audio build
         run: echo "Building CASM + MIDI OUT + Android audio fixes"
 
+      - name: Run JVM unit tests
+        run: gradle testDebugUnitTest --stacktrace
+
       - name: Build debug APK
         run: gradle assembleDebug --stacktrace
 
