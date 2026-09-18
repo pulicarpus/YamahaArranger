@@ -119,7 +119,18 @@ fun MainScreen(
             Spacer(Modifier.height(5.dp))
             SectionRow(listOf("Main A", "Main B", "Main C", "Main D"), uiState.activeSection, viewModel::onSectionSelected)
             Spacer(Modifier.height(5.dp))
-            SectionRow(listOf("Fill A", "Fill B", "Fill C", "Fill D"), uiState.activeSection, viewModel::onSectionSelected)
+            Button(
+                onClick = viewModel::toggleAutoFill,
+                modifier = Modifier.fillMaxWidth().height(34.dp),
+                contentPadding = PaddingValues(0.dp),
+                shape = RoundedCornerShape(3.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (uiState.autoFill) LcdBlue else PanelMid,
+                    contentColor = Color.White
+                )
+            ) {
+                Text(if (uiState.autoFill) "AUTO FILL  •  ON" else "AUTO FILL  •  OFF", fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            }
             Spacer(Modifier.height(5.dp))
             SectionRow(listOf("Ending 1", "Ending 2", "Ending 3"), uiState.activeSection, viewModel::onSectionSelected)
             Spacer(Modifier.height(7.dp))
