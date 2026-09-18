@@ -146,6 +146,9 @@ class MainViewModel @Inject constructor(
         arrangerBrain.attachScope(viewModelScope)
         audioEngine.start()
         DebugLog.add("🎵 ViewModel init")
+        val sf2Dir = contentResolver.getSoundFontDir()
+        DebugLog.add("📂 SF2 folder: ${sf2Dir.absolutePath}")
+        viewModelScope.launch { autoLoadSoundFont() }
         midiInputManager.onNoteOn = { note, velocity -> arrangerBrain.onKeyboardNoteOn(note, velocity / 127f) }
         midiInputManager.onNoteOff = { note -> arrangerBrain.onKeyboardNoteOff(note) }
     }
@@ -267,24 +270,53 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    private suspend fun autoLoadSoundFont() {
+        val file = withContext(Dispatchers.IO) { contentResolver.firstSoundFontFile() }
+        if (file == null) {
+            DebugLog.add("📂 SF2 folder ready — no .sf2 found")
+            return
+        }
+        DebugLog.add("🔄 Auto-loading SF2: ${file.name}")
+        loadSoundFontFile(file, file.name)
+    }
+
+    private suspend fun loadSoundFontFile(file: File, displayName: String) {
+        if (!file.exists() || file.length() <= 0L) {
+            DebugLog.add("❌ SF2 file missing/empty: ${file.name}")
+            return
+        }
+        val ok = withContext(Dispatchers.Default) {
+            audioEngine.unloadSoundFont()
+            audioEngine.loadSoundFont(file.absolutePath)
+        }
+        _soundFontName.value = if (ok) displayName else "Load failed"
+        DebugLog.add(if (ok) "✅ SF2 loaded: $displayName" else "❌ SF2 load failed: $displayName")
+    }
+
     fun onSoundFontFilePicked(uri: Uri) {
         viewModelScope.launch {
             DebugLog.add("📂 SF2 picker…")
-            val fileName = contentResolver.fileName(uri) ?: "font.sf2"
-            val destFile = File(contentResolver.getFilesDir(), "user.sf2")
+            val sourceName = contentResolver.fileName(uri) ?: "font.sf2"
+            val safeName = sourceName.substringAfterLast('/').ifBlank { "font.sf2" }
+                .let { if (it.lowercase().endsWith(".sf2")) it else "$it.sf2" }
+            val destFile = File(contentResolver.getSoundFontDir(), safeName)
             val copied = withContext(Dispatchers.IO) {
                 try {
                     val input = contentResolver.openInputStream(uri) ?: return@withContext false
                     val output = FileOutputStream(destFile)
                     input.use { inp -> output.use { out -> inp.copyTo(out) } }
                     destFile.length() > 0
-                } catch (e: Exception) { Timber.e(e, "Copy SF2 failed"); false }
+                } catch (e: Exception) {
+                    Timber.e(e, "Copy SF2 failed")
+                    false
+                }
             }
-            if (!copied) { DebugLog.add("❌ Copy SF2 failed"); return@launch }
-            DebugLog.add("📂 SF2 copied: ${destFile.length() / 1024 / 1024} MB")
-            val ok = withContext(Dispatchers.Default) { audioEngine.loadSoundFont(destFile.absolutePath) }
-            _soundFontName.value = if (ok) fileName else "Load failed"
-            DebugLog.add(if (ok) "✅ SF2: $fileName" else "❌ SF2 load failed")
+            if (!copied) {
+                DebugLog.add("❌ Copy SF2 failed")
+                return@launch
+            }
+            DebugLog.add("📂 SF2 stored: ${destFile.absolutePath} (${destFile.length() / 1024 / 1024} MB)")
+            loadSoundFontFile(destFile, safeName)
         }
     }
 
