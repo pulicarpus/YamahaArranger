@@ -3,6 +3,7 @@ package com.yourapp.yamahaarranger.ui
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.os.Environment
 import dagger.hilt.android.qualifiers.ApplicationContext
 import timber.log.Timber
 import java.io.File
@@ -35,4 +36,20 @@ class ContentResolverProvider @Inject constructor(
         context.contentResolver.openInputStream(uri)
 
     fun getFilesDir(): File = context.filesDir
+
+    /**
+     * App-owned SF2 directory. Android creates the parent app-specific external
+     * storage area as needed; no broad storage permission is required.
+     */
+    fun getSoundFontDir(): File {
+        val base = context.getExternalFilesDir(Environment.DIRECTORY_MUSIC) ?: context.filesDir
+        return File(base, "YamahaArranger/SF2").apply { mkdirs() }
+    }
+
+    fun firstSoundFontFile(): File? {
+        val dir = getSoundFontDir()
+        return dir.listFiles { file ->
+            file.isFile && file.extension.equals("sf2", ignoreCase = true) && file.length() > 0
+        }?.sortedBy { it.name.lowercase() }?.firstOrNull()
+    }
 }
