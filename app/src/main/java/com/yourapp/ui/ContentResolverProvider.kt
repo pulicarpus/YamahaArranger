@@ -52,6 +52,46 @@ class ContentResolverProvider @Inject constructor(
      * Download folder without broad storage permission. Older Android versions
      * fall back to the public Download directory.
      */
+    fun ensureSoundFontFolder() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val resolver = context.contentResolver
+            val exists = resolver.query(
+                MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                arrayOf(MediaStore.Downloads._ID),
+                MediaStore.Downloads.RELATIVE_PATH + "=? AND " +
+                    MediaStore.Downloads.DISPLAY_NAME + "=?",
+                arrayOf(sf2RelativePath, "PUT_SF2_FILES_HERE.txt"),
+                null
+            )?.use { it.moveToFirst() } == true
+            if (!exists) {
+                val values = ContentValues().apply {
+                    put(MediaStore.Downloads.DISPLAY_NAME, "PUT_SF2_FILES_HERE.txt")
+                    put(MediaStore.Downloads.MIME_TYPE, "text/plain")
+                    put(MediaStore.Downloads.RELATIVE_PATH, sf2RelativePath)
+                    put(MediaStore.Downloads.IS_PENDING, 1)
+                }
+                resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)?.let { uri ->
+                    resolver.openOutputStream(uri)?.use {
+                        it.write("Place your SoundFont .sf2 files in this folder.\n".toByteArray())
+                    }
+                    val done = ContentValues().apply {
+                        put(MediaStore.Downloads.IS_PENDING, 0)
+                    }
+                    resolver.update(uri, done, null, null)
+                }
+            }
+        } else {
+            val dir = File(
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                "YamahaArranger/SF2"
+            )
+            dir.mkdirs()
+            File(dir, "PUT_SF2_FILES_HERE.txt").takeIf { !it.exists() }?.writeText(
+                "Place your SoundFont .sf2 files in this folder.\n"
+            )
+        }
+    }
+
     fun saveSoundFont(uri: Uri, displayName: String): Boolean {
         val safeName = displayName.substringAfterLast('/').ifBlank { "font.sf2" }
             .let { if (it.lowercase().endsWith(".sf2")) it else "$it.sf2" }
@@ -123,7 +163,9 @@ class ContentResolverProvider @Inject constructor(
             )
             val selection = buildString {
                 append(MediaStore.Downloads.RELATIVE_PATH)
-                append("=?")
+                append("=? AND ")
+                append(MediaStore.Downloads.DISPLAY_NAME)
+                append(" LIKE ?")
                 if (displayName != null) {
                     append(" AND ")
                     append(MediaStore.Downloads.DISPLAY_NAME)
@@ -131,9 +173,9 @@ class ContentResolverProvider @Inject constructor(
                 }
             }
             val args = if (displayName != null) {
-                arrayOf(sf2RelativePath, displayName)
+                arrayOf(sf2RelativePath, "%.sf2", displayName)
             } else {
-                arrayOf(sf2RelativePath)
+                arrayOf(sf2RelativePath, "%.sf2")
             }
             resolver.query(
                 MediaStore.Downloads.EXTERNAL_CONTENT_URI,
