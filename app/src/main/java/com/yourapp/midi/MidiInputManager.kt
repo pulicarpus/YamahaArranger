@@ -27,6 +27,9 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
         private set
     var midiOutEnabled = false
 
+    /** MIDI channel used by the E343 keyboard for chord/ACMP input (0 = MIDI channel 1). */
+    var chordInputChannel: Int = 0
+
     private var runningStatus = -1
     private var pendingData1 = -1
 
@@ -125,6 +128,7 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
             }
 
             val type = status and 0xF0
+            val channel = status and 0x0F
             if (type == 0xC0 || type == 0xD0) {
                 if (i < end) i++
                 continue
@@ -142,16 +146,18 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
             pendingData1 = -1
 
             when (type) {
-                0x90 -> if (d2 > 0) {
-                    onNoteOn?.invoke(d1, d2)
-                    DebugLog.add("🎹 IN NoteOn $d1 vel$d2")
-                } else {
-                    onNoteOff?.invoke(d1)
-                    DebugLog.add("🎹 IN NoteOff $d1")
+                0x90 -> if (channel == chordInputChannel) {
+                    if (d2 > 0) {
+                        onNoteOn?.invoke(d1, d2)
+                        DebugLog.add("🎹 IN ch$channel NoteOn $d1 vel$d2")
+                    } else {
+                        onNoteOff?.invoke(d1)
+                        DebugLog.add("🎹 IN ch$channel NoteOff $d1")
+                    }
                 }
-                0x80 -> {
+                0x80 -> if (channel == chordInputChannel) {
                     onNoteOff?.invoke(d1)
-                    DebugLog.add("🎹 IN NoteOff $d1")
+                    DebugLog.add("🎹 IN ch$channel NoteOff $d1")
                 }
             }
         }
