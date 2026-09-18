@@ -1,5 +1,6 @@
 package com.yourapp.yamahaarranger.ui
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -46,6 +47,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -607,24 +609,73 @@ private fun BottomStatusBar(voiceName: String, right2Name: String, splitPoint: S
 @Composable
 private fun DebugPanel() {
     var logs by remember { mutableStateOf(listOf<String>()) }
+    val context = LocalContext.current
+
     LaunchedEffect(Unit) {
         while (true) {
             logs = DebugLog.getAll()
-            delay(500)
+            delay(250)
         }
     }
+
+    val logText = logs.joinToString("\n")
+
     Surface(color = PanelDark, shape = RoundedCornerShape(4.dp), modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(8.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("ENGINE LOG", color = TextDim, fontSize = 8.sp, fontWeight = FontWeight.Bold)
-                TextButton(onClick = { DebugLog.clear() }, contentPadding = PaddingValues(0.dp)) { Text("CLEAR", fontSize = 8.sp) }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("ENGINE LOG  •  LIVE", color = TextDim, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(
+                        onClick = {
+                            val text = if (logText.isBlank()) "(no log yet)" else logText
+                            val intent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_SUBJECT, "YamahaArranger Engine Log")
+                                putExtra(Intent.EXTRA_TEXT, text)
+                            }
+                            context.startActivity(Intent.createChooser(intent, "Kirim YamahaArranger Log"))
+                        },
+                        contentPadding = PaddingValues(horizontal = 5.dp, vertical = 0.dp)
+                    ) { Text("SEND LOG", fontSize = 8.sp) }
+
+                    TextButton(
+                        onClick = { DebugLog.clear() },
+                        contentPadding = PaddingValues(horizontal = 5.dp, vertical = 0.dp)
+                    ) { Text("CLEAR", fontSize = 8.sp) }
+                }
             }
-            Box(modifier = Modifier.fillMaxWidth().height(150.dp).background(Color(0xFF0B0C0D), RoundedCornerShape(3.dp)).border(1.dp, PanelMid, RoundedCornerShape(3.dp)).padding(5.dp)) {
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(180.dp)
+                    .background(Color(0xFF0B0C0D), RoundedCornerShape(3.dp))
+                    .border(1.dp, PanelMid, RoundedCornerShape(3.dp))
+                    .padding(5.dp)
+            ) {
                 Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                    logs.forEach { line -> Text(line, color = Color(0xFFB8C0C8), fontFamily = FontFamily.Monospace, fontSize = 9.sp) }
+                    logs.forEach { line ->
+                        Text(
+                            line,
+                            color = Color(0xFFB8C0C8),
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 9.sp
+                        )
+                    }
                     if (logs.isEmpty()) Text("(no log yet)", color = TextDim, fontSize = 9.sp)
                 }
             }
+
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "SEND LOG = kirim teks log lewat WhatsApp/Telegram/email atau pilih ChatGPT.",
+                color = TextDim,
+                fontSize = 7.sp
+            )
         }
     }
 }
