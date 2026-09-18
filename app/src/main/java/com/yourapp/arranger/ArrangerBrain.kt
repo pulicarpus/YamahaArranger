@@ -135,21 +135,11 @@ class ArrangerBrain @Inject constructor(
             applyChordNow(chord)
             return
         }
-        // Keep chord response tight on the E343: quantize to the next eighth-note
-        // boundary rather than waiting a full beat. This avoids the long delay at slower
-        // LoveSong tempos while still preventing arbitrary mid-event revoice.
-        pendingChord = chord
+        // Chord recognition is already serialized by the MIDI callback. Apply it
+        // immediately so the E343 never waits for a beat/grid before retargeting.
         pendingChordJob?.cancel()
-        val waitMs = delayToNextGrid(2)
-        DebugLog.add("⏱ CHORD QUANTIZE ${chord.label()} in ${waitMs}ms")
-        val scope = externalScope ?: CoroutineScope(Dispatchers.Main + SupervisorJob())
-        pendingChordJob = scope.launch {
-            if (waitMs > 0) delay(waitMs)
-            if (_state.value.isPlaying && pendingChord?.sameChordAs(chord) == true) {
-                pendingChord = null
-                applyChordNow(chord)
-            }
-        }
+        pendingChord = null
+        applyChordNow(chord)
     }
 
     private fun applyChordNow(chord: DetectedChord) {
