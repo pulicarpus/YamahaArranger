@@ -54,6 +54,9 @@ class ArrangerBrain @Inject constructor(
     private var pendingChord: DetectedChord? = null
     private var pendingChordJob: Job? = null
     private var pendingTransitionJob: Job? = null
+    // MIDI keyboards commonly deliver the fingers of one chord a few
+    // milliseconds apart. Settle the note-on burst before retargeting CASM.
+    private val chordSettleMs = 15L
     // Monotonic anchor for the currently playing style section. Section changes
     // are quantized from the actual section start, not from app Start/Stop time.
     private var activeSection: ArrangerSection = ArrangerSection.MainA
@@ -137,15 +140,22 @@ class ArrangerBrain @Inject constructor(
         if (appliedChord?.sameChordAs(chord) == true) return
         if (pendingChord?.sameChordAs(chord) == true) return
         ensureSequencer()
-        if (!_state.value.isPlaying) {
-            applyChordNow(chord)
-            return
-        }
-        // Chord recognition is already serialized by the MIDI callback. Apply it
-        // immediately so the E343 never waits for a beat/grid before retargeting.
+
+        // E343 sends the fingers of one chord as separate MIDI NoteOn messages.
+        // Coalesce that short burst so CASM/RTR is retargeted only once.
         pendingChordJob?.cancel()
-        pendingChord = null
-        applyChordNow(chord)
+        pendingChord = chord
+        DebugLog.add("🎹 CHORD SETTLE " + chord.label() + " (" + chordSettleMs + "ms)")
+        val scope = externalScope ?: CoroutineScope(Dispatchers.Main + SupervisorJob())
+        pendingChordJob = scope.launch {
+            delay(chordSettleMs)
+            val settled = pendingChord
+            pendingChord = null
+            pendingChordJob = null
+            if (settled != null && appliedChord?.sameChordAs(settled) != true) {
+                applyChordNow(settled)
+            }
+        }
     }
 
     private fun applyChordNow(chord: DetectedChord) {
