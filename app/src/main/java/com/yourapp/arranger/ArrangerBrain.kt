@@ -33,7 +33,8 @@ data class ArrangerState(
     val isPlaying: Boolean = false,
     val currentSection: ArrangerSection = ArrangerSection.MainA,
     val tempoBpm: Int = 120,
-    val currentChordLabel: String = ""
+    val currentChordLabel: String = "",
+    val autoFill: Boolean = true
 )
 
 @Singleton
