@@ -52,7 +52,7 @@ class StyleRepository @Inject constructor(private val bridge: NativeStyleBridge)
                 val rawCasm = bridge.nativeGetPartCasm(sectionName, partIndex)
                 val policies = parseCasmPolicies(rawCasm)
                 if (policies.isNotEmpty()) {
-                    DebugLog.add("🎛 $sectionName src=${policies.first().sourceChannel} policies=${policies.size} ranges=${policies.joinToString { "${it.sourceNoteLow}-${it.sourceNoteHigh}:NTR${it.ntr}/NTT${it.ntt}${if (it.bassOn) "+BASS" else ""}" }}")
+                    DebugLog.add("🎛 $sectionName src=${policies.first().sourceChannel} policies=${policies.size} ranges=${policies.joinToString { "${it.sourceNoteLow}-${it.sourceNoteHigh}:NTR${it.ntr}/NTT${it.ntt}/MASK${it.chordMuteMask.toString(16)}${if (it.bassOn) "+BASS" else ""}" }}")
                 }
                 val setup = extractVoiceSetup(events)
                 if (setup.program >= 0 || setup.bankMsb != 0 || setup.bankLsb != 0) {
