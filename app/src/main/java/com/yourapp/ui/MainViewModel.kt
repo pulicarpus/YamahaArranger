@@ -100,7 +100,7 @@ fun defaultVoices(): List<VoiceSlot> = (0..15).map { ch ->
 
 data class MainUiState(
     val styleName: String = "No Style Loaded", val tempoBpm: Int = 120, val transpose: Int = 0,
-    val isPlaying: Boolean = false, val activeSection: String = "Main A", val detectedChordLabel: String = "",
+    val isPlaying: Boolean = false, val activeSection: String = "Main A", val detectedChordLabel: String = "", val autoFill: Boolean = true,
     val midiStatus: String = "No MIDI device", val midiOutEnabled: Boolean = false, val soundFontName: String = "None",
     val styleVolume: Int = 100, val voiceVolume: Int = 100, val masterVolume: Int = 110,
     val activeBank: Int = 1, val activeRegSlot: Int = 0, val voiceName: String = "GrandPiano",
@@ -137,7 +137,7 @@ class MainViewModel @Inject constructor(
     ) { arranger, (styleName, midi), (transpose, sfName), (voiceVol, masterVol), (bank, regSlot, voices) ->
         MainUiState(styleName = styleName, tempoBpm = arranger.tempoBpm, transpose = transpose,
             isPlaying = arranger.isPlaying, activeSection = displayLabelFor(arranger.currentSection),
-            detectedChordLabel = arranger.currentChordLabel, midiStatus = midi, midiOutEnabled = _midiOutEnabled.value,
+            detectedChordLabel = arranger.currentChordLabel, autoFill = arranger.autoFill, midiStatus = midi, midiOutEnabled = _midiOutEnabled.value,
             soundFontName = sfName, voiceVolume = voiceVol, masterVolume = masterVol,
             activeBank = bank, activeRegSlot = regSlot, voiceAssignments = voices)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, MainUiState())
