@@ -8,6 +8,7 @@ import com.yourapp.yamahaarranger.arranger.ArrangerSection
 import com.yourapp.yamahaarranger.audio.AudioEngineManager
 import com.yourapp.midi.MidiInputManager
 import com.yourapp.yamahaarranger.style.StyleRepository
+import com.yourapp.yamahaarranger.style.StyleChannelOverride
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -39,7 +40,7 @@ object DebugLog {
     fun clear() = _lines.clear()
 }
 
-data class VoiceSlot(val channel: Int, val label: String, val program: Int, val bank: Int = 0, val locked: Boolean = false) {
+data class VoiceSlot(val channel: Int, val label: String, val program: Int, val bank: Int = 0, val locked: Boolean = false, val styleVolume: Int = 100, val styleMuted: Boolean = false) {
     fun displayName(): String {
         if (bank == 128) return "DRUM KIT"
         return GM_VOICES.firstOrNull { it.second == program }?.first ?: "prog$program"
@@ -213,6 +214,28 @@ class MainViewModel @Inject constructor(
         }
         _voiceAssignments.value = updated
     }
+    fun setStyleChannelVolume(channel: Int, volume: Int) {
+        val v = volume.coerceIn(0, 127)
+        val slot = _voiceAssignments.value.firstOrNull { it.channel == channel } ?: return
+        _voiceAssignments.value = _voiceAssignments.value.map { if (it.channel == channel) it.copy(styleVolume = v) else it }
+        arrangerBrain.setStyleChannelOverride(channel, StyleChannelOverride(volume = v, program = slot.program, bank = slot.bank, muted = slot.styleMuted))
+    }
+
+    fun toggleStyleChannelMute(channel: Int) {
+        val slot = _voiceAssignments.value.firstOrNull { it.channel == channel } ?: return
+        val muted = !slot.styleMuted
+        _voiceAssignments.value = _voiceAssignments.value.map { if (it.channel == channel) it.copy(styleMuted = muted) else it }
+        arrangerBrain.setStyleChannelOverride(channel, StyleChannelOverride(volume = slot.styleVolume, program = slot.program, bank = slot.bank, muted = muted))
+        DebugLog.add(if (muted) "🔇 STYLE CH$channel muted" else "🔊 STYLE CH$channel unmuted")
+    }
+
+    fun setStyleChannelVoice(channel: Int, program: Int, bank: Int) {
+        val slot = _voiceAssignments.value.firstOrNull { it.channel == channel } ?: return
+        _voiceAssignments.value = _voiceAssignments.value.map { if (it.channel == channel) it.copy(program = program, bank = bank) else it }
+        arrangerBrain.setStyleChannelOverride(channel, StyleChannelOverride(volume = slot.styleVolume, program = program, bank = bank, muted = slot.styleMuted))
+        DebugLog.add("🎼 STYLE CH$channel → prog$program bank$bank")
+    }
+
     fun toggleChannelLock(channel: Int) {
         val updated = _voiceAssignments.value.map { slot ->
             if (slot.channel == channel) {
