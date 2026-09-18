@@ -36,6 +36,15 @@ data class CasmPolicyModel(
     val sourceNoteHigh: Int = 127
 )
 
+/** Runtime overrides for a style destination channel. These do not modify the source style file. */
+data class StyleChannelOverride(
+    val volume: Int = 127,
+    val program: Int? = null,
+    val bank: Int? = null,
+    val transpose: Int = 0,
+    val muted: Boolean = false
+)
+
 data class StylePartModel(
     val name: String,
     val events: List<StyleNoteEvent>,
