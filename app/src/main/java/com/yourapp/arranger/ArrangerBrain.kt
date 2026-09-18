@@ -10,6 +10,9 @@ import com.yourapp.yamahaarranger.style.StyleChannelOverride
 import com.yourapp.yamahaarranger.ui.DebugLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -47,6 +50,11 @@ class ArrangerBrain @Inject constructor(
     // the ACMP/chord area; keys above it are the right-hand performance area.
     private var splitNote = 54
     private var appliedChord: DetectedChord? = null
+    private var pendingChord: DetectedChord? = null
+    private var pendingChordJob: Job? = null
+    private var pendingTransitionJob: Job? = null
+    private var transportStartedAtNanos: Long = 0L
+    private var activeSection: ArrangerSection = ArrangerSection.MainA
 
     private val _state = MutableStateFlow(ArrangerState())
     val state: StateFlow<ArrangerState> = _state.asStateFlow()
@@ -118,11 +126,33 @@ class ArrangerBrain @Inject constructor(
     }
 
     private fun onChordChanged(chord: DetectedChord) {
-        // Note-off events return the last recognized chord by design. Do not
-        // re-apply an identical chord: doing so retriggers CASM revoice and can
-        // produce the small "phantom" note/flicker heard on USB MIDI keyboards.
+        // Never retrigger the same chord, including Note-Off callbacks.
         if (appliedChord?.sameChordAs(chord) == true) return
+        if (pendingChord?.sameChordAs(chord) == true) return
         ensureSequencer()
+        if (!_state.value.isPlaying) {
+            applyChordNow(chord)
+            return
+        }
+        // Chord changes commit on the next beat. This keeps CASM revoice out
+        // of the middle of a beat while remaining responsive to the player.
+        pendingChord = chord
+        pendingChordJob?.cancel()
+        val waitMs = delayToNextGrid(4)
+        DebugLog.add("⏱ CHORD QUANTIZE ${chord.label()} in ${waitMs}ms")
+        val scope = externalScope ?: CoroutineScope(Dispatchers.Main + SupervisorJob())
+        pendingChordJob = scope.launch {
+            if (waitMs > 0) delay(waitMs)
+            if (_state.value.isPlaying && pendingChord?.sameChordAs(chord) == true) {
+                pendingChord = null
+                applyChordNow(chord)
+            }
+        }
+    }
+
+    private fun applyChordNow(chord: DetectedChord) {
+        ensureSequencer()
+        pendingChord = null
         appliedChord = chord
         sequencer.currentChord = chord
         _state.update { it.copy(currentChordLabel = chord.label()) }
@@ -137,10 +167,19 @@ class ArrangerBrain @Inject constructor(
             return
         }
         if (_state.value.isPlaying) {
+            pendingTransitionJob?.cancel()
+            pendingChordJob?.cancel()
+            pendingChord = null
             sequencer.stop()
+            transportStartedAtNanos = 0L
             _state.update { it.copy(isPlaying = false) }
         } else {
-            playSection(_state.value.currentSection)
+            pendingTransitionJob?.cancel()
+            pendingChordJob?.cancel()
+            pendingChord = null
+            transportStartedAtNanos = System.nanoTime()
+            activeSection = _state.value.currentSection
+            playSection(activeSection)
             _state.update { it.copy(isPlaying = true) }
         }
     }
@@ -148,44 +187,75 @@ class ArrangerBrain @Inject constructor(
     fun selectMainVariation(target: ArrangerSection) {
         ensureSequencer()
         val wasPlaying = _state.value.isPlaying
-        val previous = _state.value.currentSection
+        val previous = activeSection
         _state.update { it.copy(currentSection = target) }
         if (!wasPlaying) return
         val previousWasMain = previous in mainVariations
         val fill = fillFor(target)
         if (previousWasMain && previous != target && fill != null && sectionExists(fill)) {
-            DebugLog.add("🎼 Main→Main: play fill $fill then $target")
-            playSection(fill, thenPlay = target)
+            DebugLog.add("🎼 Main→Main: queue fill $fill then $target at next bar")
+            scheduleSectionChange(fill, thenPlay = target)
         } else {
-            playSection(target)
+            scheduleSectionChange(target)
         }
     }
 
     fun selectSection(target: ArrangerSection) {
         ensureSequencer()
         val wasPlaying = _state.value.isPlaying
-        val previous = _state.value.currentSection
+        val previous = activeSection
         _state.update { it.copy(currentSection = target) }
         if (!wasPlaying) return
 
         when {
             target in setOf(ArrangerSection.IntroA, ArrangerSection.IntroB, ArrangerSection.IntroC) -> {
                 val returnMain = previous.takeIf { it in mainVariations } ?: ArrangerSection.MainA
-                DebugLog.add("🎼 INTRO $target: one-shot → $returnMain")
-                playSection(target, thenPlay = returnMain)
+                DebugLog.add("🎼 INTRO $target: one-shot → $returnMain (next bar)")
+                scheduleSectionChange(target, thenPlay = returnMain)
             }
             target in setOf(ArrangerSection.EndingA, ArrangerSection.EndingB, ArrangerSection.EndingC) -> {
-                DebugLog.add("🎼 ENDING $target: one-shot → STOP")
-                playSection(target, thenStop = true)
+                DebugLog.add("🎼 ENDING $target: one-shot → STOP (next bar)")
+                scheduleSectionChange(target, thenStop = true)
             }
             target in fillVariations -> {
                 val returnMain = previous.takeIf { it in mainVariations } ?: ArrangerSection.MainA
-                DebugLog.add("🎼 FILL $target: one-shot → $returnMain")
-                playSection(target, thenPlay = returnMain)
+                DebugLog.add("🎼 FILL $target: one-shot → $returnMain (next bar)")
+                scheduleSectionChange(target, thenPlay = returnMain)
             }
-            else -> playSection(target)
+            else -> scheduleSectionChange(target)
         }
     }
+
+    private fun scheduleSectionChange(
+        section: ArrangerSection,
+        thenPlay: ArrangerSection? = null,
+        thenStop: Boolean = false
+    ) {
+        pendingTransitionJob?.cancel()
+        val waitMs = delayToNextGrid(16)
+        DebugLog.add("⏱ SECTION QUANTIZE ${section.styleName} in ${waitMs}ms")
+        val scope = externalScope ?: CoroutineScope(Dispatchers.Main + SupervisorJob())
+        pendingTransitionJob = scope.launch {
+            if (waitMs > 0) delay(waitMs)
+            if (!_state.value.isPlaying) return@launch
+            pendingTransitionJob = null
+            playSection(section, thenPlay, thenStop)
+        }
+    }
+
+    // 4 = next beat; 16 = next four-beat bar (16 sixteenth-note units).
+    private fun delayToNextGrid(grid: Int): Long {
+        val bpm = _state.value.tempoBpm.coerceIn(20, 280)
+        val unitMs = 60_000.0 / bpm
+        val gridMs = unitMs * if (grid == 4) 1.0 else 4.0
+        if (transportStartedAtNanos == 0L) return 0L
+        val elapsedMs = (System.nanoTime() - transportStartedAtNanos) / 1_000_000L
+        val period = gridMs.toLong().coerceAtLeast(1L)
+        val remainder = elapsedMs % period
+        val wait = period - remainder
+        return if (wait <= 25L) 0L else wait
+    }
+
     fun setTempo(bpm: Int) {
         ensureSequencer()
         val clamped = bpm.coerceIn(20, 280)
@@ -220,6 +290,7 @@ class ArrangerBrain @Inject constructor(
 
     private fun playSection(section: ArrangerSection, thenPlay: ArrangerSection? = null, thenStop: Boolean = false) {
         ensureSequencer()
+        activeSection = section
         val style = loadedStyle ?: return
         val model = style.sections[section.styleName]
         if (model == null) {
