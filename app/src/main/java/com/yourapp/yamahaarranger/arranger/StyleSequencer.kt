@@ -41,10 +41,11 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     private data class ActiveTransposedNote(
         val sourceChannel:Int,
         val sourceNote:Int,
-        val destinationChannel:Int,
+        var destinationChannel:Int,
         var outputNote:Int,
         val velocity:Int,
-        val policy:CasmPolicyModel
+        var policy:CasmPolicyModel,
+        val policies:List<CasmPolicyModel>
     )
     private val activeTransposedNotes=mutableMapOf<String,ActiveTransposedNote>()
 
@@ -80,6 +81,18 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         if(activeTransposedNotes.isEmpty())return
         val snapshot=activeTransposedNotes.values.toList()
         snapshot.forEach{active->
+            val selectedPolicy=selectPolicy(active.policies,active.sourceNote,newChord)
+            if(selectedPolicy!=null){
+                if(selectedPolicy.destinationChannel!=active.destinationChannel){
+                    audioEngine.noteOffChannel(active.destinationChannel,active.outputNote)
+                    midiInputManager.sendNoteOff(active.destinationChannel,active.outputNote)
+                    active.destinationChannel=selectedPolicy.destinationChannel
+                }
+                active.policy=selectedPolicy
+                com.yourapp.yamahaarranger.ui.DebugLog.add(
+                    "🎼 CASM RETARGET src${active.sourceChannel}:${active.sourceNote} chord=${newChord.rootNote}/${newChord.quality} → dst${selectedPolicy.destinationChannel} NTR=${selectedPolicy.ntr and 0x7f} NTT=${selectedPolicy.ntt and 0x7f} RTR=${selectedPolicy.rtr and 0x7f}"
+                )
+            }
             val rtr=active.policy.rtr and 0x7f
             when(rtr){
                 0->{releaseActive(active);com.yourapp.yamahaarranger.ui.DebugLog.add("🎹 RTR STOP src${active.sourceChannel}:${active.sourceNote}")}
@@ -170,7 +183,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             else -> true
         }
     }
-    private fun selectPolicy(part:com.yourapp.yamahaarranger.style.StylePartModel,eventNote:Int,chord:DetectedChord?):CasmPolicyModel?{val policies=part.casmPolicies.ifEmpty{listOfNotNull(part.casm)};if(policies.isEmpty())return null
+    private fun selectPolicy(policies:List<CasmPolicyModel>,eventNote:Int,chord:DetectedChord?):CasmPolicyModel?{
+        if(policies.isEmpty())return null
         // CASM can contain multiple rules for the same source part, typically
         // split by source chord family (major/minor) and/or source note range.
         // Range alone is not sufficient: choosing the first rule makes a
@@ -179,7 +193,12 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         val chordMatched=if(chord!=null)policies.filter{policyMatchesChord(it,chord)}else policies
         val candidates=if(chordMatched.isNotEmpty())chordMatched else policies
         val inRange=candidates.filter{eventNote in it.sourceNoteLow..it.sourceNoteHigh}
-        return inRange.firstOrNull()?:candidates.firstOrNull()}
+        return inRange.firstOrNull()?:candidates.firstOrNull()
+    }
+    private fun selectPolicy(part:com.yourapp.yamahaarranger.style.StylePartModel,eventNote:Int,chord:DetectedChord?):CasmPolicyModel?{
+        val policies=part.casmPolicies.ifEmpty{listOfNotNull(part.casm)}
+        return selectPolicy(policies,eventNote,chord)
+    }
     private fun sourceChordTypeFor(chord:DetectedChord):Int=when(chord.quality){ChordQuality.MINOR,ChordQuality.MIN6,ChordQuality.MIN7->10;else->2}
     private fun isNoteEvent(event:StyleNoteEvent):Boolean{val hi=event.status and 0xF0;return hi==0x90||hi==0x80}
 
@@ -199,6 +218,12 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     // velocity untouched.
     private fun audioVelocityScale(destinationChannel:Int):Float =
         if (destinationChannel == 13) 0.85f else 1.0f
-    private suspend fun playOnce(section:StyleSectionModel,ppq:Int){loopCount++; barClockStartedAtNanos = System.nanoTime();if(section.lengthTicks<=0){delay(500);return};data class Scheduled(val tick:Int,val event:StyleNoteEvent,val part:com.yourapp.yamahaarranger.style.StylePartModel);val merged=section.parts.flatMap{part->part.events.filter(::isNoteEvent).map{e->Scheduled(e.tick,e,part)}}.sortedWith(compareBy<Scheduled>{it.tick}.thenBy{it.event.isNoteOn.not()});if(merged.isEmpty()){delay(500);return};var lastTick=0;for(s in merged){val delta=s.tick-lastTick;if(delta>0)delay(ticksToMillis(delta,ppq,tempoBpm));lastTick=s.tick;val chord=currentChord;val policy=selectPolicy(s.part,s.event.note,chord);if(policy==null&&chord!=null&&s.event.isNoteOn&&!isRhythmSource(s.event.channel))continue;if(s.event.isNoteOn&&isUnsupportedArticulation(policy)){com.yourapp.yamahaarranger.ui.DebugLog.add("🔇 SUPPRESS ${policy?.voiceName} src${s.event.channel}:${s.event.note} (MegaVoice articulation unsupported by SF2)");continue};if(!s.event.isNoteOn){val key="${s.event.channel}:${s.event.note}";val active=activeTransposedNotes.remove(key);if(active!=null){audioEngine.noteOffChannel(active.destinationChannel,active.outputNote);midiInputManager.sendNoteOff(active.destinationChannel,active.outputNote)};continue};val sourceChannel=s.event.channel;val destinationChannel=policy?.destinationChannel?:sourceChannel;if(destinationChannel in lockedChannels)continue;val channelOverride=channelOverrides[destinationChannel];if(channelOverride?.muted==true)continue;val key="${sourceChannel}:${s.event.note}";val isDrumPart=destinationChannel==9||(policy!=null&&isDrumVoice(policy.voiceName));val transformed=if(policy!=null&&!isDrumPart){chord?.let{CasmNoteTransformer.transform(s.event.note,it,policy)}?:s.event.note.coerceIn(0,127)}else{s.event.note.coerceIn(0,127)};val note=((transformed?:continue)+ (channelOverride?.transpose ?: 0)).coerceIn(0,127);val velocity=((s.event.velocity.coerceIn(1,127) * ((channelOverride?.volume ?: 127) / 127f)).roundToInt()).coerceIn(1,127);if(policy!=null&&!isDrumPart){activeTransposedNotes[key]=ActiveTransposedNote(sourceChannel,s.event.note,destinationChannel,note,velocity,policy)};audioEngine.noteOnChannel(destinationChannel,note,(velocity/127f)*audioVelocityScale(destinationChannel));midiInputManager.sendNoteOn(destinationChannel,note,velocity)};val rem=section.lengthTicks-lastTick;if(rem>0)delay(ticksToMillis(rem,ppq,tempoBpm))}
+    private suspend fun playOnce(section:StyleSectionModel,ppq:Int){loopCount++; barClockStartedAtNanos = System.nanoTime();if(section.lengthTicks<=0){delay(500);return};data class Scheduled(val tick:Int,val event:StyleNoteEvent,val part:com.yourapp.yamahaarranger.style.StylePartModel);val merged=section.parts.flatMap{part->part.events.filter(::isNoteEvent).map{e->Scheduled(e.tick,e,part)}}.sortedWith(compareBy<Scheduled>{it.tick}.thenBy{it.event.isNoteOn.not()});if(merged.isEmpty()){delay(500);return};var lastTick=0;for(s in merged){val delta=s.tick-lastTick;if(delta>0)delay(ticksToMillis(delta,ppq,tempoBpm));lastTick=s.tick;val chord=currentChord;val policy=selectPolicy(s.part,s.event.note,chord);if(policy==null&&chord!=null&&s.event.isNoteOn&&!isRhythmSource(s.event.channel))continue;if(s.event.isNoteOn&&isUnsupportedArticulation(policy)){com.yourapp.yamahaarranger.ui.DebugLog.add("🔇 SUPPRESS ${policy?.voiceName} src${s.event.channel}:${s.event.note} (MegaVoice articulation unsupported by SF2)");continue};if(!s.event.isNoteOn){val key="${s.event.channel}:${s.event.note}";val active=activeTransposedNotes.remove(key);if(active!=null){audioEngine.noteOffChannel(active.destinationChannel,active.outputNote);midiInputManager.sendNoteOff(active.destinationChannel,active.outputNote)};continue};val sourceChannel=s.event.channel;val destinationChannel=policy?.destinationChannel?:sourceChannel;if(destinationChannel in lockedChannels)continue;val channelOverride=channelOverrides[destinationChannel];if(channelOverride?.muted==true)continue;val key="${sourceChannel}:${s.event.note}";val isDrumPart=destinationChannel==9||(policy!=null&&isDrumVoice(policy.voiceName));val transformed=if(policy!=null&&!isDrumPart){chord?.let{CasmNoteTransformer.transform(s.event.note,it,policy)}?:s.event.note.coerceIn(0,127)}else{s.event.note.coerceIn(0,127)};val note=((transformed?:continue)+ (channelOverride?.transpose ?: 0)).coerceIn(0,127);val velocity=((s.event.velocity.coerceIn(1,127) * ((channelOverride?.volume ?: 127) / 127f)).roundToInt()).coerceIn(1,127);if(policy!=null&&!isDrumPart){val policyList=s.part.casmPolicies.ifEmpty{listOfNotNull(s.part.casm)}
+            activeTransposedNotes[key]=ActiveTransposedNote(sourceChannel,s.event.note,destinationChannel,note,velocity,policy,policyList)
+            if(destinationChannel==13){
+                com.yourapp.yamahaarranger.ui.DebugLog.add(
+                    "🎼 CASM SELECT src${sourceChannel}:${s.event.note} chord=${chord?.rootNote}/${chord?.quality} → dst${destinationChannel} NTR=${policy.ntr and 0x7f} NTT=${policy.ntt and 0x7f} SRC=${policy.sourceChordRoot}/${policy.sourceChordType} range=${policy.sourceNoteLow}-${policy.sourceNoteHigh} RTR=${policy.rtr and 0x7f}"
+                )
+            }};audioEngine.noteOnChannel(destinationChannel,note,(velocity/127f)*audioVelocityScale(destinationChannel));midiInputManager.sendNoteOn(destinationChannel,note,velocity)};val rem=section.lengthTicks-lastTick;if(rem>0)delay(ticksToMillis(rem,ppq,tempoBpm))}
     private fun ticksToMillis(ticks:Int,ppq:Int,bpm:Int):Long=if(ppq<=0||bpm<=0)0 else((ticks*(60000.0/bpm))/ppq).toLong().coerceAtLeast(0)
 }
