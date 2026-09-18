@@ -32,6 +32,8 @@ data class CasmPolicyModel(
     val noteLimitHigh: Int,
     val rtr: Int,
     val bassOn: Boolean,
+    /** 34-bit Yamaha CASM chord-mute/play mask. -1 means unavailable in legacy data. */
+    val chordMuteMask: Long = -1L,
     val sourceNoteLow: Int = 0,
     val sourceNoteHigh: Int = 127
 )
