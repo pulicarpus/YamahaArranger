@@ -176,6 +176,21 @@ class ArrangerBrain @Inject constructor(
         sequencer.setChannelOverride(channel, override)
     }
 
+    fun setStyleChannelVolume(channel: Int, volume: Int) {
+        ensureSequencer()
+        sequencer.setChannelVolume(channel, volume)
+    }
+
+    fun setStyleChannelMute(channel: Int, muted: Boolean) {
+        ensureSequencer()
+        sequencer.setChannelMute(channel, muted)
+    }
+
+    fun setStyleChannelProgram(channel: Int, program: Int, bank: Int) {
+        ensureSequencer()
+        sequencer.setChannelProgramOverride(channel, program, bank)
+    }
+
     private fun playSection(section: ArrangerSection, thenPlay: ArrangerSection? = null) {
         ensureSequencer()
         val style = loadedStyle ?: return
