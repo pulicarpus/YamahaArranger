@@ -7,10 +7,12 @@ import com.yourapp.midi.MidiInputManager
 import com.yourapp.yamahaarranger.style.CasmPolicyModel
 import com.yourapp.yamahaarranger.style.StyleNoteEvent
 import com.yourapp.yamahaarranger.style.StyleSectionModel
+import com.yourapp.yamahaarranger.style.StyleChannelOverride
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 class StyleSequencer(private val audioEngine: AudioEngineManager, private val midiInputManager: MidiInputManager, private val scope: CoroutineScope) {
     private var playbackJob:Job?=null
@@ -34,6 +36,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     private var voiceMap:Map<Int,String> = emptyMap()
     private var lastAppliedSection=""
     private var lockedChannels:Set<Int> = emptySet()
+    private val channelOverrides = mutableMapOf<Int, StyleChannelOverride>()
     private data class ActiveTransposedNote(
         val sourceChannel:Int,
         val sourceNote:Int,
@@ -45,6 +48,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     private val activeTransposedNotes=mutableMapOf<String,ActiveTransposedNote>()
 
     fun setLockedChannels(channels:Set<Int>){lockedChannels=channels;com.yourapp.yamahaarranger.ui.DebugLog.add("🔒 Locked channels updated: $channels")}
+    fun setChannelOverride(channel:Int, override:StyleChannelOverride){channelOverrides[channel]=override;com.yourapp.yamahaarranger.ui.DebugLog.add("🎚 STYLE CH$channel: vol=${override.volume} prog=${override.program ?: "AUTO"} bank=${override.bank ?: "AUTO"} tr=${override.transpose} mute=${override.muted}")}
+    fun channelOverride(channel:Int):StyleChannelOverride = channelOverrides[channel] ?: StyleChannelOverride()
     fun setVoiceMap(vm:Map<Int,String>){voiceMap=vm;lastAppliedSection="";com.yourapp.yamahaarranger.ui.DebugLog.add("🎼 Legacy VoiceMap received: ${vm.size}; CASM policy takes precedence")}
     fun play(section:StyleSectionModel,ppq:Int,loopLimit:Int=-1,onComplete:(()->Unit)?=null){stop();com.yourapp.yamahaarranger.ui.DebugLog.add("🎼 SECTION " + section.name + ": preserving current chord for immediate CASM retarget");loopCount=0;if(lastAppliedSection!=section.name){applyVoicesFromCasm(section);lastAppliedSection=section.name};val noteCount=section.parts.sumOf{part->part.events.count{isNoteEvent(it)}};com.yourapp.yamahaarranger.ui.DebugLog.add("▶ PLAY ${section.name}: parts=${section.parts.size}, events=${section.parts.sumOf{it.events.size}}, noteEvents=$noteCount, loopLimit=$loopLimit");playbackJob=scope.launch{var loops=0;while(loopLimit<0||loops<loopLimit){playOnce(section,ppq);loops++};onComplete?.invoke()}}
     fun stop(){playbackJob?.cancel();playbackJob=null;audioEngine.allNotesOff();midiInputManager.allNotesOff();activeTransposedNotes.clear();com.yourapp.yamahaarranger.ui.DebugLog.add("⏹ STOP")}
@@ -120,19 +125,21 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             if (destination in lockedChannels || destination in applied) return@forEach
 
             val drum = destination == 9 || isDrumVoice(c.voiceName)
+            val override = channelOverrides[destination]
+            if (override?.muted == true) { applied += destination; com.yourapp.yamahaarranger.ui.DebugLog.add("🔇 dst$destination muted by style editor"); return@forEach }
             val explicit = explicitByDestination[destination]
-            val prog = explicit?.first ?: guessProgramFromVoiceName(c.voiceName)
+            val prog = override?.program ?: explicit?.first ?: guessProgramFromVoiceName(c.voiceName)
             if (prog !in 0..127) {
                 com.yourapp.yamahaarranger.ui.DebugLog.add("⚠ src${c.sourceChannel}→dst$destination: no usable program for '${c.voiceName}'")
                 return@forEach
             }
-            val midiMsb = explicit?.second ?: part.bankMsb
+            val midiMsb = override?.bank ?: explicit?.second ?: part.bankMsb
             val audioBank = if (drum) 128 else 0
             val midiBank = if (drum) 127 else midiMsb.coerceIn(0, 127)
             audioEngine.setChannelProgram(destination, prog, audioBank)
             midiInputManager.sendProgramChange(destination, prog, midiBank)
             applied += destination
-            val source = if (explicit != null) "actual MIDI setup" else "fallback name"
+            val source = if (override?.program != null) "STYLE OVERRIDE" else if (explicit != null) "actual MIDI setup" else "fallback name"
             com.yourapp.yamahaarranger.ui.DebugLog.add("🎼 dst$destination: ${c.voiceName} → PC=$prog MIDIbank=$midiBank SFbank=$audioBank ($source)")
         }
     }
@@ -168,6 +175,6 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     // velocity untouched.
     private fun audioVelocityScale(destinationChannel:Int):Float =
         if (destinationChannel == 13) 0.85f else 1.0f
-    private suspend fun playOnce(section:StyleSectionModel,ppq:Int){loopCount++;if(section.lengthTicks<=0){delay(500);return};data class Scheduled(val tick:Int,val event:StyleNoteEvent,val part:com.yourapp.yamahaarranger.style.StylePartModel);val merged=section.parts.flatMap{part->part.events.filter(::isNoteEvent).map{e->Scheduled(e.tick,e,part)}}.sortedWith(compareBy<Scheduled>{it.tick}.thenBy{it.event.isNoteOn.not()});if(merged.isEmpty()){delay(500);return};var lastTick=0;for(s in merged){val delta=s.tick-lastTick;if(delta>0)delay(ticksToMillis(delta,ppq,tempoBpm));lastTick=s.tick;val chord=currentChord;val policy=selectPolicy(s.part,s.event.note,chord);if(policy==null&&chord!=null&&s.event.isNoteOn&&!isRhythmSource(s.event.channel))continue;if(s.event.isNoteOn&&isUnsupportedArticulation(policy)){com.yourapp.yamahaarranger.ui.DebugLog.add("🔇 SUPPRESS ${policy?.voiceName} src${s.event.channel}:${s.event.note} (MegaVoice articulation unsupported by SF2)");continue};if(!s.event.isNoteOn){val key="${s.event.channel}:${s.event.note}";val active=activeTransposedNotes.remove(key);if(active!=null){audioEngine.noteOffChannel(active.destinationChannel,active.outputNote);midiInputManager.sendNoteOff(active.destinationChannel,active.outputNote)};continue};val sourceChannel=s.event.channel;val destinationChannel=policy?.destinationChannel?:sourceChannel;if(destinationChannel in lockedChannels)continue;val key="${sourceChannel}:${s.event.note}";val isDrumPart=destinationChannel==9||(policy!=null&&isDrumVoice(policy.voiceName));val transformed=if(policy!=null&&!isDrumPart){chord?.let{CasmNoteTransformer.transform(s.event.note,it,policy)}?:s.event.note.coerceIn(0,127)}else{s.event.note.coerceIn(0,127)};val note=transformed?:continue;val velocity=s.event.velocity.coerceIn(1,127);if(policy!=null&&!isDrumPart){activeTransposedNotes[key]=ActiveTransposedNote(sourceChannel,s.event.note,destinationChannel,note,velocity,policy)};audioEngine.noteOnChannel(destinationChannel,note,(velocity/127f)*audioVelocityScale(destinationChannel));midiInputManager.sendNoteOn(destinationChannel,note,velocity)};val rem=section.lengthTicks-lastTick;if(rem>0)delay(ticksToMillis(rem,ppq,tempoBpm))}
+    private suspend fun playOnce(section:StyleSectionModel,ppq:Int){loopCount++;if(section.lengthTicks<=0){delay(500);return};data class Scheduled(val tick:Int,val event:StyleNoteEvent,val part:com.yourapp.yamahaarranger.style.StylePartModel);val merged=section.parts.flatMap{part->part.events.filter(::isNoteEvent).map{e->Scheduled(e.tick,e,part)}}.sortedWith(compareBy<Scheduled>{it.tick}.thenBy{it.event.isNoteOn.not()});if(merged.isEmpty()){delay(500);return};var lastTick=0;for(s in merged){val delta=s.tick-lastTick;if(delta>0)delay(ticksToMillis(delta,ppq,tempoBpm));lastTick=s.tick;val chord=currentChord;val policy=selectPolicy(s.part,s.event.note,chord);if(policy==null&&chord!=null&&s.event.isNoteOn&&!isRhythmSource(s.event.channel))continue;if(s.event.isNoteOn&&isUnsupportedArticulation(policy)){com.yourapp.yamahaarranger.ui.DebugLog.add("🔇 SUPPRESS ${policy?.voiceName} src${s.event.channel}:${s.event.note} (MegaVoice articulation unsupported by SF2)");continue};if(!s.event.isNoteOn){val key="${s.event.channel}:${s.event.note}";val active=activeTransposedNotes.remove(key);if(active!=null){audioEngine.noteOffChannel(active.destinationChannel,active.outputNote);midiInputManager.sendNoteOff(active.destinationChannel,active.outputNote)};continue};val sourceChannel=s.event.channel;val destinationChannel=policy?.destinationChannel?:sourceChannel;if(destinationChannel in lockedChannels)continue;val channelOverride=channelOverrides[destinationChannel];if(channelOverride?.muted==true)continue;val key="${sourceChannel}:${s.event.note}";val isDrumPart=destinationChannel==9||(policy!=null&&isDrumVoice(policy.voiceName));val transformed=if(policy!=null&&!isDrumPart){chord?.let{CasmNoteTransformer.transform(s.event.note,it,policy)}?:s.event.note.coerceIn(0,127)}else{s.event.note.coerceIn(0,127)};val note=((transformed?:continue)+ (channelOverride?.transpose ?: 0)).coerceIn(0,127);val velocity=((s.event.velocity.coerceIn(1,127) * ((channelOverride?.volume ?: 127) / 127f)).roundToInt()).coerceIn(1,127);if(policy!=null&&!isDrumPart){activeTransposedNotes[key]=ActiveTransposedNote(sourceChannel,s.event.note,destinationChannel,note,velocity,policy)};audioEngine.noteOnChannel(destinationChannel,note,(velocity/127f)*audioVelocityScale(destinationChannel));midiInputManager.sendNoteOn(destinationChannel,note,velocity)};val rem=section.lengthTicks-lastTick;if(rem>0)delay(ticksToMillis(rem,ppq,tempoBpm))}
     private fun ticksToMillis(ticks:Int,ppq:Int,bpm:Int):Long=if(ppq<=0||bpm<=0)0 else((ticks*(60000.0/bpm))/ppq).toLong().coerceAtLeast(0)
 }
