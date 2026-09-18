@@ -94,20 +94,25 @@ class ArrangerBrain @Inject constructor(
     }
 
     fun onKeyboardNoteOn(midiNote: Int, velocity: Float) {
+        val velocity127 = (velocity * 127f).toInt().coerceIn(0, 127)
         if (midiNote > splitNote) {
+            DebugLog.add("🎹 RIGHT IN note=$midiNote vel=$velocity127 → VOICE")
             audioEngine.noteOn(midiNote, velocity)
             return
         }
-        // ACMP area: do not send these chord-control notes directly to the
-        // keyboard sound engine; they only determine the accompaniment chord.
+        // ACMP area: these notes are chord-control ONLY. They must never
+        // enter the normal keyboard voice path, regardless of velocity.
+        DebugLog.add("🎹 ACMP IN note=$midiNote vel=$velocity127 → CHORD ONLY")
         chordDetector.noteOn(midiNote)?.let(::onChordChanged)
     }
 
     fun onKeyboardNoteOff(midiNote: Int) {
         if (midiNote > splitNote) {
+            DebugLog.add("🎹 RIGHT OFF note=$midiNote → VOICE OFF")
             audioEngine.noteOff(midiNote)
             return
         }
+        DebugLog.add("🎹 ACMP OFF note=$midiNote → CHORD ONLY")
         val chord = chordDetector.noteOff(midiNote)
         if (chord != null) {
             onChordChanged(chord)
