@@ -6,6 +6,7 @@ on:
     branches:
       - fix/casm-policy
       - test/build182-baseline
+      - stage1/casm-policy-selection
 
 jobs:
   build:
