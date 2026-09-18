@@ -46,6 +46,7 @@ class ArrangerBrain @Inject constructor(
     // PSR-E343 default split point is F#2 (MIDI 54). Keys at or below it are
     // the ACMP/chord area; keys above it are the right-hand performance area.
     private var splitNote = 54
+    private var appliedChord: DetectedChord? = null
 
     private val _state = MutableStateFlow(ArrangerState())
     val state: StateFlow<ArrangerState> = _state.asStateFlow()
@@ -111,14 +112,21 @@ class ArrangerBrain @Inject constructor(
     fun setSplitPoint(midiNote: Int) {
         splitNote = midiNote.coerceIn(24, 96)
         chordDetector.reset()
+        appliedChord = null
         _state.update { it.copy(currentChordLabel = "") }
         DebugLog.add("🎹 Split Point: $splitNote")
     }
 
     private fun onChordChanged(chord: DetectedChord) {
+        // Note-off events return the last recognized chord by design. Do not
+        // re-apply an identical chord: doing so retriggers CASM revoice and can
+        // produce the small "phantom" note/flicker heard on USB MIDI keyboards.
+        if (appliedChord?.sameChordAs(chord) == true) return
         ensureSequencer()
+        appliedChord = chord
         sequencer.currentChord = chord
         _state.update { it.copy(currentChordLabel = chord.label()) }
+        DebugLog.add("🎼 ACMP chord → ${chord.label()}")
     }
 
     fun startStop() {
@@ -250,6 +258,9 @@ class ArrangerBrain @Inject constructor(
 }
 
 private val NOTE_NAMES = listOf("C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B")
+
+private fun DetectedChord.sameChordAs(other: DetectedChord): Boolean =
+    rootNote == other.rootNote && bassNote == other.bassNote && quality == other.quality
 
 private fun DetectedChord.label(): String {
     if (displayName.isNotBlank()) return displayName
