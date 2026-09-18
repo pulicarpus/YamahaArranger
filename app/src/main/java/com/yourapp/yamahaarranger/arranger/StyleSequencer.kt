@@ -221,7 +221,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         // minor chord reuse a major-only NTR/NTT policy, which is audible in
         // melodic/string parts even when bass is already correct.
         val chordMatched=if(chord!=null)policies.filter{policyMatchesChord(it,chord)}else policies
-        val candidates=if(chordMatched.isNotEmpty())chordMatched else policies
+        if(chord!=null && chordMatched.isEmpty()) return null
+        val candidates=chordMatched
         val inRange=candidates.filter{eventNote in it.sourceNoteLow..it.sourceNoteHigh}
         return inRange.firstOrNull()?:candidates.firstOrNull()
     }
