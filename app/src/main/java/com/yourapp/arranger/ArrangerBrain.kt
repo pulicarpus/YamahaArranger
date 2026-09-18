@@ -54,7 +54,6 @@ class ArrangerBrain @Inject constructor(
     private var pendingChord: DetectedChord? = null
     private var pendingChordJob: Job? = null
     private var pendingTransitionJob: Job? = null
-    private var transportStartedAtNanos: Long = 0L
     // Monotonic anchor for the currently playing style section. Section changes
     // are quantized from the actual section start, not from app Start/Stop time.
     private var activeSection: ArrangerSection = ArrangerSection.MainA
@@ -165,13 +164,11 @@ class ArrangerBrain @Inject constructor(
             pendingChordJob?.cancel()
             pendingChord = null
             sequencer.stop()
-            transportStartedAtNanos = 0L
             _state.update { it.copy(isPlaying = false) }
         } else {
             pendingTransitionJob?.cancel()
             pendingChordJob?.cancel()
             pendingChord = null
-            transportStartedAtNanos = System.nanoTime()
             activeSection = _state.value.currentSection
             playSection(activeSection)
             _state.update { it.copy(isPlaying = true) }
@@ -283,10 +280,6 @@ class ArrangerBrain @Inject constructor(
             Timber.w("Style has no ${section.styleName} section, ignoring")
             return
         }
-        // This is the phase anchor used by delayToNextBar(). Set it immediately
-        // before handing control to the sequencer so the next requested change
-        // lands on a real bar boundary instead of an app-time boundary.
-        sectionStartedAtNanos = System.nanoTime()
         if (thenPlay != null || thenStop) {
             sequencer.play(model, style.ppq, loopLimit = 1) {
                 when {
