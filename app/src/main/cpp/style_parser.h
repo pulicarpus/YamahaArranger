@@ -10,7 +10,7 @@ struct CasmPolicy {
     bool valid=false; uint8_t sourceChannel=0; uint8_t destinationChannel=0; std::string voiceName;
     uint8_t sourceChordRoot=0; uint8_t sourceChordType=0; uint8_t ntr=3; uint8_t ntt=0; uint8_t highKey=127;
     uint8_t noteLimitLow=0; uint8_t noteLimitHigh=127; uint8_t rtr=0; bool bassOn=false;
-    uint8_t sourceNoteLow=0; uint8_t sourceNoteHigh=127;
+    uint8_t sourceNoteLow=0; uint8_t sourceNoteHigh=127; uint64_t chordMuteMask=0;
     int program=-1; int bankMsb=0; int bankLsb=0;
 };
 struct StylePart { uint8_t midiChannel=0; std::string name; std::vector<MidiEvent> events; CasmPolicy casm; std::vector<CasmPolicy> casmPolicies; int program=-1; int bankMsb=0; int bankLsb=0; };
