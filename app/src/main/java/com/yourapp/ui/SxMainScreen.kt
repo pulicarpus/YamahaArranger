@@ -1,5 +1,6 @@
 package com.yourapp.yamahaarranger.ui
 
+import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -34,6 +35,7 @@ fun SxMainScreen(viewModel: MainViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsState()
     val stylePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(viewModel::onStyleFilePicked) }
     val soundFontPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(viewModel::onSoundFontFilePicked) }
+    var showUtilityLog by remember { mutableStateOf(false) }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(SxBlack)) {
         val compact = maxHeight < 620.dp
@@ -46,7 +48,7 @@ fun SxMainScreen(viewModel: MainViewModel = hiltViewModel()) {
         Column(Modifier.fillMaxSize().padding(horizontal = 7.dp, vertical = 5.dp)) {
             SxHeader(state, headerH) { soundFontPicker.launch(arrayOf("audio/x-soundfont", "application/octet-stream", "audio/*", "*/*")) }
             Spacer(Modifier.height(gap))
-            SxNavBar(navH)
+            SxNavBar(navH, onUtility = { showUtilityLog = true })
             Spacer(Modifier.height(gap))
             Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(gap)) {
                 SxSideMenu(Modifier.weight(.17f).fillMaxHeight(), compact)
@@ -59,6 +61,10 @@ fun SxMainScreen(viewModel: MainViewModel = hiltViewModel()) {
             Spacer(Modifier.height(gap)); SxRegistration(state, viewModel, regH, compact)
             Spacer(Modifier.height(gap)); SxMidiBar(state, viewModel, footerH, compact)
         }
+    }
+
+    if (showUtilityLog) {
+        SxEngineLogDialog(onDismiss = { showUtilityLog = false })
     }
 }
 
@@ -81,15 +87,62 @@ private fun SxHeader(state: MainUiState, height: Dp, onPickSoundFont: () -> Unit
 }
 
 @Composable
-private fun SxNavBar(height: Dp) {
+private fun SxNavBar(height: Dp, onUtility: () -> Unit) {
     val tabs = listOf("HOME", "STYLE", "VOICE", "SONG", "MULTI PAD", "REGIST", "MIXER", "UTILITY")
     Row(Modifier.fillMaxWidth().height(height).background(Color(0xFF0D1115), RoundedCornerShape(5.dp)).padding(3.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
         tabs.forEachIndexed { i, label ->
-            Surface(color = if (i == 0) Color(0xFF073E82) else Color(0xFF1C2228), shape = RoundedCornerShape(3.dp), modifier = Modifier.weight(1f).fillMaxHeight()) {
+            val modifier = Modifier.weight(1f).fillMaxHeight().then(if (label == "UTILITY") Modifier.clickable(onClick = onUtility) else Modifier)
+            Surface(color = if (i == 0) Color(0xFF073E82) else Color(0xFF1C2228), shape = RoundedCornerShape(3.dp), modifier = modifier) {
                 Box(contentAlignment = Alignment.Center) { Text(label, color = Color.White, fontSize = 7.sp, fontWeight = FontWeight.Bold, maxLines = 1) }
             }
         }
     }
+}
+
+@Composable
+private fun SxEngineLogDialog(onDismiss: () -> Unit) {
+    var logs by remember { mutableStateOf(listOf<String>()) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            logs = DebugLog.getAll()
+            delay(250)
+        }
+    }
+
+    val logText = logs.joinToString("\n")
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("UTILITY  •  ENGINE LOG") },
+        text = {
+            Column(Modifier.fillMaxWidth().heightIn(max = 520.dp)) {
+                Text("Live engine/MIDI diagnostics. Clear before reproducing a problem.", color = SxDim, fontSize = 9.sp)
+                Spacer(Modifier.height(6.dp))
+                Surface(color = Color(0xFF080B0E), shape = RoundedCornerShape(3.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 300.dp, max = 430.dp)) {
+                    Column(Modifier.verticalScroll(rememberScrollState()).padding(6.dp)) {
+                        logs.forEach { line -> Text(line, color = Color(0xFFB8C0C8), fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontSize = 8.sp) }
+                        if (logs.isEmpty()) Text("(no log yet)", color = SxDim, fontSize = 8.sp)
+                    }
+                }
+            }
+        },
+        dismissButton = {
+            Row {
+                TextButton(onClick = { DebugLog.clear(); logs = emptyList() }) { Text("CLEAR") }
+                TextButton(onClick = {
+                    val text = if (logText.isBlank()) "(no log yet)" else logText
+                    val intent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_SUBJECT, "YamahaArranger Engine Log")
+                        putExtra(Intent.EXTRA_TEXT, text)
+                    }
+                    context.startActivity(Intent.createChooser(intent, "Kirim YamahaArranger Log"))
+                }) { Text("SEND LOG") }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("CLOSE") } }
+    )
 }
 
 @Composable
