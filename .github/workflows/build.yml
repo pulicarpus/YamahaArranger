@@ -7,6 +7,8 @@ on:
       - fix/casm-policy
       - test/build182-baseline
       - stage1/casm-policy-selection
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 jobs:
   build:
