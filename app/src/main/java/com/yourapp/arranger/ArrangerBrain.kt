@@ -57,7 +57,6 @@ class ArrangerBrain @Inject constructor(
     private var transportStartedAtNanos: Long = 0L
     // Monotonic anchor for the currently playing style section. Section changes
     // are quantized from the actual section start, not from app Start/Stop time.
-    private var sectionStartedAtNanos: Long = 0L
     private var activeSection: ArrangerSection = ArrangerSection.MainA
 
     private val _state = MutableStateFlow(ArrangerState())
@@ -167,7 +166,6 @@ class ArrangerBrain @Inject constructor(
             pendingChord = null
             sequencer.stop()
             transportStartedAtNanos = 0L
-            sectionStartedAtNanos = 0L
             _state.update { it.copy(isPlaying = false) }
         } else {
             pendingTransitionJob?.cancel()
@@ -228,7 +226,8 @@ class ArrangerBrain @Inject constructor(
         thenStop: Boolean = false
     ) {
         pendingTransitionJob?.cancel()
-        val waitMs = delayToNextBar()
+        val style = loadedStyle
+        val waitMs = if (style != null) sequencer.millisToNextBar(style.ppq) else 0L
         DebugLog.add("⏱ SECTION QUANTIZE ${section.styleName} to next bar in ${waitMs}ms")
         val scope = externalScope ?: CoroutineScope(Dispatchers.Main + SupervisorJob())
         pendingTransitionJob = scope.launch {
@@ -238,29 +237,6 @@ class ArrangerBrain @Inject constructor(
             playSection(section, thenPlay, thenStop)
         }
     }
-
-    /**
-     * Quantize Main/Intro/Ending/Fill transitions to the next musical bar.
-     *
-     * The old implementation measured from Start/Stop. That allowed the
-     * arranger clock and the actual StyleSequencer loop to drift apart, so a
-     * button pressed mid-bar could restart a section slightly early/late.
-     * Anchor the phase to the moment the current section is started instead.
-     * Yamaha styles in this phase are 4/4, so one bar = four quarter notes.
-     */
-    private fun delayToNextBar(): Long {
-        val anchor = sectionStartedAtNanos
-        if (anchor == 0L) return 0L
-        val bpm = _state.value.tempoBpm.coerceIn(20, 280)
-        val barMs = (4.0 * 60_000.0 / bpm).toLong().coerceAtLeast(1L)
-        val elapsedMs = (System.nanoTime() - anchor) / 1_000_000L
-        val remainder = elapsedMs % barMs
-        val wait = if (remainder == 0L) 0L else barMs - remainder
-        // Do not introduce a whole-bar wait because of scheduler jitter right
-        // on the boundary.
-        return if (wait <= 25L) 0L else wait
-    }
-
     fun setAutoFill(enabled: Boolean) {
         _state.update { it.copy(autoFill = enabled) }
         DebugLog.add(if (enabled) "🎼 AUTO FILL: ON" else "🎼 AUTO FILL: OFF")
