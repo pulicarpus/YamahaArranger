@@ -147,7 +147,10 @@ class MainViewModel @Inject constructor(
         audioEngine.start()
         DebugLog.add("🎵 ViewModel init")
         DebugLog.add("📂 SF2 folder: Download/YamahaArranger/SF2")
-        viewModelScope.launch { autoLoadSoundFont() }
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { contentResolver.ensureSoundFontFolder() }
+            autoLoadSoundFont()
+        }
         midiInputManager.onNoteOn = { note, velocity -> arrangerBrain.onKeyboardNoteOn(note, velocity / 127f) }
         midiInputManager.onNoteOff = { note -> arrangerBrain.onKeyboardNoteOff(note) }
     }
