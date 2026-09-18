@@ -58,13 +58,35 @@ object CasmNoteTransformer {
         val intervals = chord.quality.intervalsFromRoot
         if (intervals.isEmpty()) return base
 
+        /*
+         * Yamaha CHORD NTT is role-based, not simply "nearest chord tone".
+         * A source C/E/G/B pattern represents root/3rd/5th/7th roles. When the
+         * played chord changes, those roles are mapped to the corresponding
+         * intervals of the new chord. In particular, a source 7th over a plain
+         * triad must not accidentally become the new chord's nearest extension.
+         *
+         * Cadenza's open Yamaha engine uses the same distinction. Keep the
+         * nearest-tone fallback for genuine colour tones.
+         */
         val sourceInterval = floorMod(original - sourceRoot, 12)
-        val targetInterval = intervals.minByOrNull {
-            circularDistance(sourceInterval, it % 12)
-        } ?: 0
+        val targetInterval = when (sourceInterval) {
+            0 -> 0
+            3, 4 -> intervals.getOrNull(1) ?: nearestInterval(sourceInterval, intervals)
+            6, 7 -> intervals.getOrNull(2) ?: nearestInterval(sourceInterval, intervals)
+            10, 11 -> {
+                // If the target chord has no seventh, Yamaha chord-role 7ths
+                // fold back to the root instead of creating an unwanted colour.
+                if (intervals.size >= 4) intervals[3] else 0
+            }
+            else -> nearestInterval(sourceInterval, intervals)
+        }
+
         val targetPc = floorMod(chord.rootNote + targetInterval, 12)
         return nearestPitch(original, targetPc)
     }
+
+    private fun nearestInterval(sourceInterval: Int, intervals: List<Int>): Int =
+        intervals.minByOrNull { circularDistance(sourceInterval, it % 12) } ?: 0
 
     private fun bass(
         base: Int,
