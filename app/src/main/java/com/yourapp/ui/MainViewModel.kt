@@ -218,21 +218,21 @@ class MainViewModel @Inject constructor(
         val v = volume.coerceIn(0, 127)
         val slot = _voiceAssignments.value.firstOrNull { it.channel == channel } ?: return
         _voiceAssignments.value = _voiceAssignments.value.map { if (it.channel == channel) it.copy(styleVolume = v) else it }
-        arrangerBrain.setStyleChannelOverride(channel, StyleChannelOverride(volume = v, program = slot.program, bank = slot.bank, muted = slot.styleMuted))
+        arrangerBrain.setStyleChannelVolume(channel, v)
     }
 
     fun toggleStyleChannelMute(channel: Int) {
         val slot = _voiceAssignments.value.firstOrNull { it.channel == channel } ?: return
         val muted = !slot.styleMuted
         _voiceAssignments.value = _voiceAssignments.value.map { if (it.channel == channel) it.copy(styleMuted = muted) else it }
-        arrangerBrain.setStyleChannelOverride(channel, StyleChannelOverride(volume = slot.styleVolume, program = slot.program, bank = slot.bank, muted = muted))
+        arrangerBrain.setStyleChannelMute(channel, muted)
         DebugLog.add(if (muted) "🔇 STYLE CH$channel muted" else "🔊 STYLE CH$channel unmuted")
     }
 
     fun setStyleChannelVoice(channel: Int, program: Int, bank: Int) {
         val slot = _voiceAssignments.value.firstOrNull { it.channel == channel } ?: return
         _voiceAssignments.value = _voiceAssignments.value.map { if (it.channel == channel) it.copy(program = program, bank = bank) else it }
-        arrangerBrain.setStyleChannelOverride(channel, StyleChannelOverride(volume = slot.styleVolume, program = program, bank = bank, muted = slot.styleMuted))
+        arrangerBrain.setStyleChannelProgram(channel, program, bank)
         DebugLog.add("🎼 STYLE CH$channel → prog$program bank$bank")
     }
 
