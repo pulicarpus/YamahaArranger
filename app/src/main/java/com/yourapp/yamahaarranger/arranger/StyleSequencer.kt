@@ -158,7 +158,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             else -> true
         }
     }
-    private fun selectPolicy(part:com.yourapp.yamahaarranger.style.StylePartModel,eventNote:Int,chord:DetectedChord?):CasmPolicyModel?{val policies=part.casmPolicies.ifEmpty{listOfNotNull(part.casm)};if(policies.isEmpty())return null;val inRange=policies.filter{eventNote in it.sourceNoteLow..it.sourceNoteHigh};if(chord==null)return inRange.firstOrNull()?:policies.first();val matching=inRange.filter{policyMatchesChord(it,chord)};if(matching.isEmpty())return null;val exactType=matching.firstOrNull{it.sourceChordType==sourceChordTypeFor(chord)};return exactType?:matching.firstOrNull{it.sourceChordType==0}?:matching.firstOrNull()}
+    private fun selectPolicy(part:com.yourapp.yamahaarranger.style.StylePartModel,eventNote:Int,chord:DetectedChord?):CasmPolicyModel?{val policies=part.casmPolicies.ifEmpty{listOfNotNull(part.casm)};if(policies.isEmpty())return null;val inRange=policies.filter{eventNote in it.sourceNoteLow..it.sourceNoteHigh};return inRange.firstOrNull()?:policies.first()}
     private fun sourceChordTypeFor(chord:DetectedChord):Int=when(chord.quality){ChordQuality.MINOR,ChordQuality.MIN6,ChordQuality.MIN7->10;else->2}
     private fun isNoteEvent(event:StyleNoteEvent):Boolean{val hi=event.status and 0xF0;return hi==0x90||hi==0x80}
 
