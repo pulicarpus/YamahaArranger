@@ -155,10 +155,29 @@ class ArrangerBrain @Inject constructor(
 
     fun selectSection(target: ArrangerSection) {
         ensureSequencer()
+        val wasPlaying = _state.value.isPlaying
+        val previous = _state.value.currentSection
         _state.update { it.copy(currentSection = target) }
-        if (_state.value.isPlaying) playSection(target)
-    }
+        if (!wasPlaying) return
 
+        when {
+            target in setOf(ArrangerSection.IntroA, ArrangerSection.IntroB, ArrangerSection.IntroC) -> {
+                val returnMain = previous.takeIf { it in mainVariations } ?: ArrangerSection.MainA
+                DebugLog.add("🎼 INTRO $target: one-shot → $returnMain")
+                playSection(target, thenPlay = returnMain)
+            }
+            target in setOf(ArrangerSection.EndingA, ArrangerSection.EndingB, ArrangerSection.EndingC) -> {
+                DebugLog.add("🎼 ENDING $target: one-shot → STOP")
+                playSection(target, thenStop = true)
+            }
+            target in fillVariations -> {
+                val returnMain = previous.takeIf { it in mainVariations } ?: ArrangerSection.MainA
+                DebugLog.add("🎼 FILL $target: one-shot → $returnMain")
+                playSection(target, thenPlay = returnMain)
+            }
+            else -> playSection(target)
+        }
+    }
     fun setTempo(bpm: Int) {
         ensureSequencer()
         val clamped = bpm.coerceIn(20, 280)
@@ -191,7 +210,7 @@ class ArrangerBrain @Inject constructor(
         sequencer.setChannelProgramOverride(channel, program, bank)
     }
 
-    private fun playSection(section: ArrangerSection, thenPlay: ArrangerSection? = null) {
+    private fun playSection(section: ArrangerSection, thenPlay: ArrangerSection? = null, thenStop: Boolean = false) {
         ensureSequencer()
         val style = loadedStyle ?: return
         val model = style.sections[section.styleName]
@@ -199,17 +218,25 @@ class ArrangerBrain @Inject constructor(
             Timber.w("Style has no ${section.styleName} section, ignoring")
             return
         }
-        if (thenPlay != null) {
+        if (thenPlay != null || thenStop) {
             sequencer.play(model, style.ppq, loopLimit = 1) {
-                DebugLog.add("🎼 Fill selesai, lanjut ke ${thenPlay.styleName}")
-                playSection(thenPlay)
-                _state.update { it.copy(currentSection = thenPlay) }
+                when {
+                    thenPlay != null -> {
+                        DebugLog.add("🎼 ${section.styleName} selesai → ${thenPlay.styleName}")
+                        playSection(thenPlay)
+                        _state.update { it.copy(currentSection = thenPlay, isPlaying = true) }
+                    }
+                    thenStop -> {
+                        DebugLog.add("🎼 ${section.styleName} selesai → STOP")
+                        sequencer.stop()
+                        _state.update { it.copy(isPlaying = false) }
+                    }
+                }
             }
         } else {
             sequencer.play(model, style.ppq)
         }
     }
-
     private fun sectionExists(section: ArrangerSection): Boolean =
         loadedStyle?.sections?.containsKey(section.styleName) == true
 
