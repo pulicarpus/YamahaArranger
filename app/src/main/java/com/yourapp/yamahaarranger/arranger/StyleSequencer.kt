@@ -82,8 +82,14 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         val snapshot=activeTransposedNotes.values.toList()
         snapshot.forEach{active->
             val selectedPolicy=selectPolicy(active.policies,active.sourceNote,newChord)
-            if(selectedPolicy!=null){
-                if(selectedPolicy.destinationChannel!=active.destinationChannel){
+            if(selectedPolicy==null){
+                releaseActive(active)
+                com.yourapp.yamahaarranger.ui.DebugLog.add(
+                    "🔇 CASM CHORD MUTE src${active.sourceChannel}:${active.sourceNote} chord=${newChord.rootNote}/${newChord.quality}"
+                )
+                return@forEach
+            }
+            if(selectedPolicy.destinationChannel!=active.destinationChannel){
                     audioEngine.noteOffChannel(active.destinationChannel,active.outputNote)
                     midiInputManager.sendNoteOff(active.destinationChannel,active.outputNote)
                     active.destinationChannel=selectedPolicy.destinationChannel
@@ -173,15 +179,39 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     }
     private fun guessProgramFromVoiceName(name:String):Int{val n=name.lowercase();val numeric=Regex("(?:^|\\D)(\\d{1,3})\\s*$").find(n)?.groupValues?.getOrNull(1)?.toIntOrNull();if(numeric!=null&&numeric in 0..127)return numeric;return when{n.contains("piano")->0;n.contains("e.piano")||n.contains("ep")->4;n.contains("organ")->16;n.contains("accordion")->21;n.contains("guitar")||n.contains("gtr")->24;n.contains("bass")->33;n.contains("violin")->40;n.contains("cello")->42;n.contains("strg")||n.contains("str")->48;n.contains("choir")->52;n.contains("trumpet")->56;n.contains("trombone")->57;n.contains("brass")->61;n.contains("sax")->65;n.contains("oboe")->68;n.contains("clarinet")->71;n.contains("flute")->73;n.contains("crash")||n.contains("cymbal")||n.contains("perc")||n.contains("dr")||n.contains("kit")||n.contains("drum")->0;n.contains("pad")->89;else->-1}}
     private fun isDrumVoice(name:String)=name.lowercase().let{it.contains("crash")||it.contains("cymbal")||it.contains("perc")||it.contains("add-dr")||it.contains("drum")||it.contains("kit")||it.startsWith("dr")}
+    private fun yamahaChordType(chord:DetectedChord):Int = when(chord.quality){
+        ChordQuality.MAJOR -> 0
+        ChordQuality.SIX -> 1
+        ChordQuality.MAJ7 -> 2
+        ChordQuality.ADD9 -> 4
+        ChordQuality.SIX9 -> 6
+        ChordQuality.AUG -> 7
+        ChordQuality.MINOR -> 8
+        ChordQuality.MIN6 -> 9
+        ChordQuality.MIN7 -> 10
+        ChordQuality.MIN7_FLAT5 -> 11
+        ChordQuality.MIN7_11 -> 14
+        ChordQuality.DIM -> 17
+        ChordQuality.DIM7 -> 18
+        ChordQuality.DOM7 -> 19
+        ChordQuality.DOM7_SUS4 -> 20
+        ChordQuality.DOM7_FLAT5 -> 21
+        ChordQuality.SUS4 -> 32
+        ChordQuality.SUS2 -> 33
+        ChordQuality.POWER5 -> 31
+    }
+
     private fun policyMatchesChord(policy:CasmPolicyModel,chord:DetectedChord):Boolean {
-        // Rhythm/sub-rhythm policies are not chord-family filters.
+        // Yamaha Chord Mute is the real per-chord selector. Source Chord Type
+        // describes the recorded source pattern; it is NOT a major/minor
+        // selector. The old family heuristic made string/pad parts reuse the
+        // wrong CASM rule.
         if (policy.destinationChannel == 8 || policy.destinationChannel == 9 || isDrumVoice(policy.voiceName)) return true
-        return when(policy.sourceChordType){
-            0 -> true
-            2 -> chord.quality!=ChordQuality.MINOR&&chord.quality!=ChordQuality.MIN6&&chord.quality!=ChordQuality.MIN7
-            10 -> chord.quality==ChordQuality.MINOR||chord.quality==ChordQuality.MIN6||chord.quality==ChordQuality.MIN7
-            else -> true
+        if (policy.chordMuteMask >= 0L) {
+            val type = yamahaChordType(chord)
+            return type in 0..33 && ((policy.chordMuteMask ushr type) and 1L) != 0L
         }
+        return true
     }
     private fun selectPolicy(policies:List<CasmPolicyModel>,eventNote:Int,chord:DetectedChord?):CasmPolicyModel?{
         if(policies.isEmpty())return null
