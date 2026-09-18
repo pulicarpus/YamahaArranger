@@ -170,7 +170,7 @@ class MainViewModel @Inject constructor(
 
     fun onKeyboardNoteOn(midiNote: Int, velocity: Float) = arrangerBrain.onKeyboardNoteOn(midiNote, velocity)
     fun onKeyboardNoteOff(midiNote: Int) = arrangerBrain.onKeyboardNoteOff(midiNote)
-    fun onSectionSelected(sectionLabel: String) {
+    fun toggleAutoFill() = arrangerBrain.setAutoFill(!arrangerBrain.state.value.autoFill)\n\n    fun onSectionSelected(sectionLabel: String) {
         val section = SECTION_BUTTON_MAP[sectionLabel] ?: return
         if (section in MAIN_VARIATIONS) arrangerBrain.selectMainVariation(section) else arrangerBrain.selectSection(section)
     }
