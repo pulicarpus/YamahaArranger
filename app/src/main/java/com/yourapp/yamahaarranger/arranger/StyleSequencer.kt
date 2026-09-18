@@ -201,33 +201,83 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     }
 
     private fun policyMatchesChord(policy:CasmPolicyModel,chord:DetectedChord):Boolean {
-        // Yamaha Chord Mute is the real per-chord selector. Source Chord Type
-        // describes the recorded source pattern; it is NOT a major/minor
-        // selector. The old family heuristic made string/pad parts reuse the
-        // wrong CASM rule.
-        if (policy.destinationChannel == 8 || policy.destinationChannel == 9 || isDrumVoice(policy.voiceName)) return true
-        if (policy.chordMuteMask >= 0L) {
-            val type = yamahaChordType(chord)
-            return type in 0..33 && ((policy.chordMuteMask ushr type) and 1L) != 0L
+        return policyScore(policy,0,chord)!=null
+    }
+    private fun policyScore(
+        policy:CasmPolicyModel,
+        eventNote:Int,
+        chord:DetectedChord?,
+        sourceChannel:Int?=null
+    ):Int?{
+        var score=0
+
+        // 1) Chord mute/play mask is the strongest selector. A present mask
+        // with a cleared bit is a real CASM mute, not a fallback candidate.
+        if(chord!=null && policy.chordMuteMask>=0L){
+            val type=yamahaChordType(chord)
+            if(type !in 0..34) return null
+            if(((policy.chordMuteMask ushr type) and 1L)==0L) return null
+            score+=100000
         }
-        return true
+
+        // 2) Prefer an exact source chord type when the style provides one.
+        // SourceChordType describes the source pattern's original chord;
+        // it is not itself the current-played chord selector.
+        if(chord!=null && policy.sourceChordType in 0..34 &&
+            policy.sourceChordType==yamahaChordType(chord)){
+            score+=10000
+        }
+
+        // 3) Prefer the rule whose source-note range actually contains this
+        // event. Among matching ranges, narrower ranges are more specific.
+        val low=policy.sourceNoteLow.coerceIn(0,127)
+        val high=policy.sourceNoteHigh.coerceIn(low,127)
+        val width=high-low
+        if(eventNote in low..high){
+            score+=5000
+            score+=(127-width)
+        }
+
+        // 4) Keep source-channel identity as a compatibility tie-breaker.
+        if(sourceChannel!=null && policy.sourceChannel==sourceChannel) score+=1000
+
+        // 5) Explicit source-root/type metadata makes a rule more specific.
+        // Source root is the key of the recorded Source Pattern, so it is
+        // deliberately NOT compared to the currently played chord root.
+        if(policy.sourceChordRoot in 0..11) score+=100
+        if(policy.sourceChordType in 0..34) score+=100
+
+        return score
     }
-    private fun selectPolicy(policies:List<CasmPolicyModel>,eventNote:Int,chord:DetectedChord?):CasmPolicyModel?{
+
+    private fun selectPolicy(
+        policies:List<CasmPolicyModel>,
+        eventNote:Int,
+        chord:DetectedChord?,
+        sourceChannel:Int?=null
+    ):CasmPolicyModel?{
         if(policies.isEmpty())return null
-        // CASM can contain multiple rules for the same source part, typically
-        // split by source chord family (major/minor) and/or source note range.
-        // Range alone is not sufficient: choosing the first rule makes a
-        // minor chord reuse a major-only NTR/NTT policy, which is audible in
-        // melodic/string parts even when bass is already correct.
-        val chordMatched=if(chord!=null)policies.filter{policyMatchesChord(it,chord)}else policies
-        if(chord!=null && chordMatched.isEmpty()) return null
-        val candidates=chordMatched
-        val inRange=candidates.filter{eventNote in it.sourceNoteLow..it.sourceNoteHigh}
-        return inRange.firstOrNull()?:candidates.firstOrNull()
+        // Never use firstOrNull() as the resolution rule. CASM may contain
+        // several policies for one source part; choose the most specific
+        // compatible rule deterministically, then fall back to the best
+        // metadata/range candidate when no mask is available.
+        return policies.mapNotNull{policy->
+            policyScore(policy,eventNote,chord,sourceChannel)?.let{score->policy to score}
+        }.maxWithOrNull(
+            compareBy<Pair<CasmPolicyModel,Int>>{it.second}
+                .thenByDescending{it.first.sourceNoteLow}
+                .thenBy{it.first.sourceNoteHigh}
+        )?.first
     }
-    private fun selectPolicy(part:com.yourapp.yamahaarranger.style.StylePartModel,eventNote:Int,chord:DetectedChord?):CasmPolicyModel?{
+
+    private fun selectPolicy(
+        part:com.yourapp.yamahaarranger.style.StylePartModel,
+        eventNote:Int,
+        chord:DetectedChord?
+    ):CasmPolicyModel?{
         val policies=part.casmPolicies.ifEmpty{listOfNotNull(part.casm)}
-        return selectPolicy(policies,eventNote,chord)
+        val sourceChannel=part.events.firstOrNull()?.channel
+        return selectPolicy(policies,eventNote,chord,sourceChannel)
     }
     private fun sourceChordTypeFor(chord:DetectedChord):Int=when(chord.quality){ChordQuality.MINOR,ChordQuality.MIN6,ChordQuality.MIN7->10;else->2}
     private fun isNoteEvent(event:StyleNoteEvent):Boolean{val hi=event.status and 0xF0;return hi==0x90||hi==0x80}
