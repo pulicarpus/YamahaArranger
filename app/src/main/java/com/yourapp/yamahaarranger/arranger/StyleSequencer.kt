@@ -95,10 +95,9 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                     active.destinationChannel=selectedPolicy.destinationChannel
                 }
                 active.policy=selectedPolicy
-                com.yourapp.yamahaarranger.ui.DebugLog.add(
-                    "🎼 CASM RETARGET src${active.sourceChannel}:${active.sourceNote} chord=${newChord.rootNote}/${newChord.quality} → dst${selectedPolicy.destinationChannel} NTR=${selectedPolicy.ntr and 0x7f} NTT=${selectedPolicy.ntt and 0x7f} RTR=${selectedPolicy.rtr and 0x7f}"
-                )
-            }
+            com.yourapp.yamahaarranger.ui.DebugLog.add(
+                "🎼 CASM RETARGET src${active.sourceChannel}:${active.sourceNote} chord=${newChord.rootNote}/${newChord.quality} → dst${selectedPolicy.destinationChannel} NTR=${selectedPolicy.ntr and 0x7f} NTT=${selectedPolicy.ntt and 0x7f} RTR=${selectedPolicy.rtr and 0x7f}"
+            )
             val rtr=active.policy.rtr and 0x7f
             when(rtr){
                 0->{releaseActive(active);com.yourapp.yamahaarranger.ui.DebugLog.add("🎹 RTR STOP src${active.sourceChannel}:${active.sourceNote}")}
