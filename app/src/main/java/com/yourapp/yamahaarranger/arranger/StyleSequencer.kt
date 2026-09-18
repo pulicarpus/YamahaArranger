@@ -170,7 +170,16 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             else -> true
         }
     }
-    private fun selectPolicy(part:com.yourapp.yamahaarranger.style.StylePartModel,eventNote:Int,chord:DetectedChord?):CasmPolicyModel?{val policies=part.casmPolicies.ifEmpty{listOfNotNull(part.casm)};if(policies.isEmpty())return null;val inRange=policies.filter{eventNote in it.sourceNoteLow..it.sourceNoteHigh};return inRange.firstOrNull()?:policies.first()}
+    private fun selectPolicy(part:com.yourapp.yamahaarranger.style.StylePartModel,eventNote:Int,chord:DetectedChord?):CasmPolicyModel?{val policies=part.casmPolicies.ifEmpty{listOfNotNull(part.casm)};if(policies.isEmpty())return null
+        // CASM can contain multiple rules for the same source part, typically
+        // split by source chord family (major/minor) and/or source note range.
+        // Range alone is not sufficient: choosing the first rule makes a
+        // minor chord reuse a major-only NTR/NTT policy, which is audible in
+        // melodic/string parts even when bass is already correct.
+        val chordMatched=if(chord!=null)policies.filter{policyMatchesChord(it,chord)}else policies
+        val candidates=if(chordMatched.isNotEmpty())chordMatched else policies
+        val inRange=candidates.filter{eventNote in it.sourceNoteLow..it.sourceNoteHigh}
+        return inRange.firstOrNull()?:candidates.firstOrNull()}
     private fun sourceChordTypeFor(chord:DetectedChord):Int=when(chord.quality){ChordQuality.MINOR,ChordQuality.MIN6,ChordQuality.MIN7->10;else->2}
     private fun isNoteEvent(event:StyleNoteEvent):Boolean{val hi=event.status and 0xF0;return hi==0x90||hi==0x80}
 
