@@ -134,11 +134,12 @@ class ArrangerBrain @Inject constructor(
             applyChordNow(chord)
             return
         }
-        // Chord changes commit on the next beat. This keeps CASM revoice out
-        // of the middle of a beat while remaining responsive to the player.
+        // Keep chord response tight on the E343: quantize to the next eighth-note
+        // boundary rather than waiting a full beat. This avoids the long delay at slower
+        // LoveSong tempos while still preventing arbitrary mid-event revoice.
         pendingChord = chord
         pendingChordJob?.cancel()
-        val waitMs = delayToNextGrid(4)
+        val waitMs = delayToNextGrid(2)
         DebugLog.add("⏱ CHORD QUANTIZE ${chord.label()} in ${waitMs}ms")
         val scope = externalScope ?: CoroutineScope(Dispatchers.Main + SupervisorJob())
         pendingChordJob = scope.launch {
@@ -256,7 +257,12 @@ class ArrangerBrain @Inject constructor(
         return if (wait <= 25L) 0L else wait
     }
 
-    fun setAutoFill(enabled: Boolean) {\n        _state.update { it.copy(autoFill = enabled) }\n        DebugLog.add(if (enabled) "🎼 AUTO FILL: ON" else "🎼 AUTO FILL: OFF")\n    }\n\n    fun setTempo(bpm: Int) {
+    fun setAutoFill(enabled: Boolean) {
+        _state.update { it.copy(autoFill = enabled) }
+        DebugLog.add(if (enabled) "🎼 AUTO FILL: ON" else "🎼 AUTO FILL: OFF")
+    }
+
+    fun setTempo(bpm: Int) {
         ensureSequencer()
         val clamped = bpm.coerceIn(20, 280)
         sequencer.tempoBpm = clamped
