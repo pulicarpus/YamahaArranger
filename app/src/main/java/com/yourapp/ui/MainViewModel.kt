@@ -146,8 +146,7 @@ class MainViewModel @Inject constructor(
         arrangerBrain.attachScope(viewModelScope)
         audioEngine.start()
         DebugLog.add("🎵 ViewModel init")
-        val sf2Dir = contentResolver.getSoundFontDir()
-        DebugLog.add("📂 SF2 folder: ${sf2Dir.absolutePath}")
+        DebugLog.add("📂 SF2 folder: Download/YamahaArranger/SF2")
         viewModelScope.launch { autoLoadSoundFont() }
         midiInputManager.onNoteOn = { note, velocity -> arrangerBrain.onKeyboardNoteOn(note, velocity / 127f) }
         midiInputManager.onNoteOff = { note -> arrangerBrain.onKeyboardNoteOff(note) }
@@ -271,23 +270,27 @@ class MainViewModel @Inject constructor(
     }
 
     private suspend fun autoLoadSoundFont() {
-        val file = withContext(Dispatchers.IO) { contentResolver.firstSoundFontFile() }
-        if (file == null) {
-            DebugLog.add("📂 SF2 folder ready — no .sf2 found")
+        val found = withContext(Dispatchers.IO) { contentResolver.findSoundFont() }
+        if (found == null) {
+            DebugLog.add("📂 SF2 folder ready: Download/YamahaArranger/SF2")
             return
         }
-        DebugLog.add("🔄 Auto-loading SF2: ${file.name}")
-        loadSoundFontFile(file, file.name)
+        val (uri, name) = found
+        DebugLog.add("🔄 Auto-loading SF2: $name")
+        loadSoundFontUri(uri, name)
     }
 
-    private suspend fun loadSoundFontFile(file: File, displayName: String) {
-        if (!file.exists() || file.length() <= 0L) {
-            DebugLog.add("❌ SF2 file missing/empty: ${file.name}")
+    private suspend fun loadSoundFontUri(uri: Uri, displayName: String) {
+        val cached = withContext(Dispatchers.IO) {
+            contentResolver.copySoundFontToCache(uri, displayName)
+        }
+        if (cached == null) {
+            DebugLog.add("❌ SF2 cache failed: $displayName")
             return
         }
         val ok = withContext(Dispatchers.Default) {
             audioEngine.unloadSoundFont()
-            audioEngine.loadSoundFont(file.absolutePath)
+            audioEngine.loadSoundFont(cached.absolutePath)
         }
         _soundFontName.value = if (ok) displayName else "Load failed"
         DebugLog.add(if (ok) "✅ SF2 loaded: $displayName" else "❌ SF2 load failed: $displayName")
@@ -299,24 +302,22 @@ class MainViewModel @Inject constructor(
             val sourceName = contentResolver.fileName(uri) ?: "font.sf2"
             val safeName = sourceName.substringAfterLast('/').ifBlank { "font.sf2" }
                 .let { if (it.lowercase().endsWith(".sf2")) it else "$it.sf2" }
-            val destFile = File(contentResolver.getSoundFontDir(), safeName)
-            val copied = withContext(Dispatchers.IO) {
-                try {
-                    val input = contentResolver.openInputStream(uri) ?: return@withContext false
-                    val output = FileOutputStream(destFile)
-                    input.use { inp -> output.use { out -> inp.copyTo(out) } }
-                    destFile.length() > 0
-                } catch (e: Exception) {
-                    Timber.e(e, "Copy SF2 failed")
-                    false
-                }
+
+            val stored = withContext(Dispatchers.IO) {
+                contentResolver.saveSoundFont(uri, safeName)
             }
-            if (!copied) {
-                DebugLog.add("❌ Copy SF2 failed")
+            if (!stored) {
+                DebugLog.add("❌ Could not store SF2 in Download/YamahaArranger/SF2")
                 return@launch
             }
-            DebugLog.add("📂 SF2 stored: ${destFile.absolutePath} (${destFile.length() / 1024 / 1024} MB)")
-            loadSoundFontFile(destFile, safeName)
+            DebugLog.add("📂 SF2 stored: Download/YamahaArranger/SF2/$safeName")
+
+            val found = withContext(Dispatchers.IO) { contentResolver.findSoundFont(safeName) }
+            if (found == null) {
+                DebugLog.add("❌ Stored SF2 could not be reopened")
+                return@launch
+            }
+            loadSoundFontUri(found.first, found.second)
         }
     }
 
