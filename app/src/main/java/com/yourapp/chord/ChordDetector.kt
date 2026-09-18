@@ -111,14 +111,18 @@ class ChordDetector(private val initialMode: ChordMode = ChordMode.MultiFinger) 
         return DetectedChord(rootPc, rootPc, quality)
     }
 
-    /** Multi Finger accepts either the Single Finger shorthand or full
-     * fingered voicings. */
-    private fun detectMultiFinger(): DetectedChord {
-        val acmp = AcmpChordAnalyzer.analyze(heldNotes)
-        if (heldNotes.size >= 2 && acmp != null && acmp.confidence >= 0.99f) {
-            return DetectedChord(acmp.rootNote, acmp.bassNote, acmp.quality, acmp.displayName)
+    /** Multi Finger: full three-note voicings are required before the
+     * accompaniment is retargeted. Single-finger shorthand is handled only
+     * when exactly one note is held, but it must not make a two-note transition
+     * (such as E+G while building C major) become Em. */
+    private fun detectMultiFinger(): DetectedChord? {
+        if (heldNotes.size >= 3) {
+            val acmp = AcmpChordAnalyzer.analyze(heldNotes)
+            if (acmp != null && acmp.confidence >= 0.99f) {
+                return DetectedChord(acmp.rootNote, acmp.bassNote, acmp.quality, acmp.displayName)
+            }
         }
-        return detectSingleFinger()
+        return null
     }
 
     private fun detectFingered(): DetectedChord {
