@@ -6,6 +6,7 @@ import com.yourapp.yamahaarranger.chord.ChordQuality
 import com.yourapp.yamahaarranger.chord.DetectedChord
 import com.yourapp.midi.MidiInputManager
 import com.yourapp.yamahaarranger.style.ParsedStyle
+import com.yourapp.yamahaarranger.style.StyleChannelOverride
 import com.yourapp.yamahaarranger.ui.DebugLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -168,6 +169,11 @@ class ArrangerBrain @Inject constructor(
     fun updateLockedChannels(lockedChannels: Set<Int>) {
         ensureSequencer()
         sequencer.setLockedChannels(lockedChannels)
+    }
+
+    fun setStyleChannelOverride(channel: Int, override: StyleChannelOverride) {
+        ensureSequencer()
+        sequencer.setChannelOverride(channel, override)
     }
 
     private fun playSection(section: ArrangerSection, thenPlay: ArrangerSection? = null) {
