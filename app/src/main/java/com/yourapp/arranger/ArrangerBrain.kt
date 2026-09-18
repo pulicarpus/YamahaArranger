@@ -192,7 +192,7 @@ class ArrangerBrain @Inject constructor(
         if (!wasPlaying) return
         val previousWasMain = previous in mainVariations
         val fill = fillFor(target)
-        if (previousWasMain && previous != target && fill != null && sectionExists(fill)) {
+        if (_state.value.autoFill && previousWasMain && previous != target && fill != null && sectionExists(fill)) {
             DebugLog.add("🎼 Main→Main: queue fill $fill then $target at next bar")
             scheduleSectionChange(fill, thenPlay = target)
         } else {
@@ -243,11 +243,11 @@ class ArrangerBrain @Inject constructor(
         }
     }
 
-    // 4 = next beat; 16 = next four-beat bar (16 sixteenth-note units).
+    // 2 = next eighth-note; 4 = next beat; 16 = next four-beat bar.
     private fun delayToNextGrid(grid: Int): Long {
         val bpm = _state.value.tempoBpm.coerceIn(20, 280)
         val unitMs = 60_000.0 / bpm
-        val gridMs = unitMs * if (grid == 4) 1.0 else 4.0
+        val gridMs = unitMs * when (grid) { 2 -> 0.5; 4 -> 1.0; else -> 4.0 }
         if (transportStartedAtNanos == 0L) return 0L
         val elapsedMs = (System.nanoTime() - transportStartedAtNanos) / 1_000_000L
         val period = gridMs.toLong().coerceAtLeast(1L)
@@ -256,7 +256,7 @@ class ArrangerBrain @Inject constructor(
         return if (wait <= 25L) 0L else wait
     }
 
-    fun setTempo(bpm: Int) {
+    fun setAutoFill(enabled: Boolean) {\n        _state.update { it.copy(autoFill = enabled) }\n        DebugLog.add(if (enabled) "🎼 AUTO FILL: ON" else "🎼 AUTO FILL: OFF")\n    }\n\n    fun setTempo(bpm: Int) {
         ensureSequencer()
         val clamped = bpm.coerceIn(20, 280)
         sequencer.tempoBpm = clamped
