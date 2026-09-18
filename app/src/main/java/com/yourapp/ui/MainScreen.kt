@@ -67,6 +67,8 @@ fun MainScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showVoicePicker by remember { mutableStateOf<VoiceSlot?>(null) }
+    var showStyleEditor by remember { mutableStateOf(false) }
+    var showStyleVoicePicker by remember { mutableStateOf<VoiceSlot?>(null) }
 
     Column(
         modifier = Modifier
@@ -141,6 +143,14 @@ fun MainScreen(
         )
         Spacer(Modifier.height(8.dp))
 
+        Button(
+            onClick = { showStyleEditor = true },
+            modifier = Modifier.fillMaxWidth().height(42.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = LcdBlue, contentColor = Color.White),
+            shape = RoundedCornerShape(4.dp)
+        ) { Text("STYLE EDITOR  •  MIX / VOICE / MUTE", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
+        Spacer(Modifier.height(8.dp))
+
         PanelSection("MASTER / MIXER") {
             VolumeSlider("STYLE", uiState.styleVolume, viewModel::onStyleVolumeChange)
             VolumeSlider("VOICE", uiState.voiceVolume, viewModel::onVoiceVolumeChange)
@@ -161,6 +171,27 @@ fun MainScreen(
         DebugPanel()
     }
 
+    if (showStyleEditor) {
+        StyleMixerDialog(
+            voices = uiState.voiceAssignments,
+            onDismiss = { showStyleEditor = false },
+            onVolume = viewModel::setStyleChannelVolume,
+            onMute = viewModel::toggleStyleChannelMute,
+            onVoice = { showStyleVoicePicker = it }
+        )
+    }
+
+    showStyleVoicePicker?.let { slot ->
+        VoicePickerDialog(
+            slot = slot,
+            onDismiss = { showStyleVoicePicker = null },
+            onSelect = { program, bank ->
+                viewModel.setStyleChannelVoice(slot.channel, program, bank)
+                showStyleVoicePicker = null
+            }
+        )
+    }
+
     showVoicePicker?.let { slot ->
         VoicePickerDialog(
             slot = slot,
@@ -171,6 +202,44 @@ fun MainScreen(
             }
         )
     }
+}
+
+@Composable
+private fun StyleMixerDialog(
+    voices: List<VoiceSlot>,
+    onDismiss: () -> Unit,
+    onVolume: (Int, Int) -> Unit,
+    onMute: (Int) -> Unit,
+    onVoice: (VoiceSlot) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("STYLE EDITOR  •  CHANNEL MIXER") },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth().heightIn(max = 560.dp).verticalScroll(rememberScrollState())) {
+                Text("Per-channel overrides apply only during style playback. The original STY/PRS file is untouched.", color = TextDim, fontSize = 10.sp)
+                Spacer(Modifier.height(8.dp))
+                voices.forEach { slot ->
+                    Surface(color = if (slot.styleMuted) PanelMid else PanelDark, shape = RoundedCornerShape(3.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 5.dp)) {
+                        Column(modifier = Modifier.padding(6.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("CH${slot.channel}", color = AccentBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(34.dp))
+                                Text(slot.displayName(), color = Color.White, fontSize = 10.sp, modifier = Modifier.weight(1f), maxLines = 1)
+                                TextButton(onClick = { onVoice(slot) }, contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)) { Text("VOICE", fontSize = 8.sp) }
+                                TextButton(onClick = { onMute(slot.channel) }, contentPadding = PaddingValues(horizontal = 5.dp, vertical = 0.dp)) { Text(if (slot.styleMuted) "MUTED" else "MUTE", fontSize = 8.sp) }
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("VOL", color = TextDim, fontSize = 8.sp, modifier = Modifier.width(34.dp))
+                                Slider(value = slot.styleVolume.toFloat(), onValueChange = { onVolume(slot.channel, it.roundToInt()) }, valueRange = 0f..127f, modifier = Modifier.weight(1f))
+                                Text("${slot.styleVolume}", color = Color.White, fontSize = 9.sp, modifier = Modifier.width(28.dp))
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("DONE") } }
+    )
 }
 
 @Composable
