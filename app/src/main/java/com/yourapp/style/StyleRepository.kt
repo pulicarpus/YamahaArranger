@@ -128,8 +128,8 @@ class StyleRepository @Inject constructor(private val bridge: NativeStyleBridge)
     private fun parseCasmPolicies(raw: String): List<CasmPolicyModel> {
         if (raw.isBlank()) return emptyList()
         return raw.split(';').mapNotNull { record ->
-            val p = record.split('|', limit = 14)
-            if (p.size != 12 && p.size != 14) return@mapNotNull null
+            val p = record.split('|', limit = 15)
+            if (p.size != 12 && p.size != 14 && p.size != 15) return@mapNotNull null
             try {
                 CasmPolicyModel(
                     sourceChannel = p[0].toInt(),
@@ -144,8 +144,9 @@ class StyleRepository @Inject constructor(private val bridge: NativeStyleBridge)
                     noteLimitHigh = p[9].toInt(),
                     rtr = p[10].toInt(),
                     bassOn = p[11].toInt() != 0,
-                    sourceNoteLow = if (p.size >= 14) p[12].toInt() else 0,
-                    sourceNoteHigh = if (p.size >= 14) p[13].toInt() else 127
+                    chordMuteMask = if (p.size >= 15) p[12].toLong() else -1L,
+                    sourceNoteLow = if (p.size >= 15) p[13].toInt() else if (p.size >= 14) p[12].toInt() else 0,
+                    sourceNoteHigh = if (p.size >= 15) p[14].toInt() else if (p.size >= 14) p[13].toInt() else 127
                 )
             } catch (_: NumberFormatException) { null }
         }
