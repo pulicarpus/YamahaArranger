@@ -318,17 +318,31 @@ class MainViewModel @Inject constructor(
     }
 
     private suspend fun autoLoadSoundFont() {
-        val found = withContext(Dispatchers.IO) { contentResolver.findSoundFont() }
-        if (found == null) {
+        val files = withContext(Dispatchers.IO) { contentResolver.listSoundFonts() }
+        if (files.isEmpty()) {
             DebugLog.add("📂 SF2 folder ready: Download/YamahaArranger/SF2")
             return
         }
-        val (uri, name) = found
-        DebugLog.add("🔄 Auto-loading SF2: $name")
-        loadSoundFontUri(uri, name)
+        val drum = files.firstOrNull { (_, name) ->
+            val n = name.lowercase()
+            n.contains("drum") || n.contains("drumkit") || n.contains("percussion")
+        }
+        val melody = files.firstOrNull { it != drum }
+        if (melody != null) {
+            DebugLog.add("🔄 Auto-loading MELODY SF2: " + melody.second)
+            loadSoundFontUri(melody.first, melody.second, role = "MELODY", replaceAll = false)
+        }
+        if (drum != null) {
+            DebugLog.add("🥁 Auto-loading DRUM SF2: " + drum.second)
+            loadSoundFontUri(drum.first, drum.second, role = "DRUM", replaceAll = false)
+        }
+        if (melody == null && drum == null) {
+            val first = files.first()
+            loadSoundFontUri(first.first, first.second, role = "MELODY", replaceAll = false)
+        }
     }
 
-    private suspend fun loadSoundFontUri(uri: Uri, displayName: String) {
+    private suspend fun loadSoundFontUri(uri: Uri, displayName: String, role: String? = null, replaceAll: Boolean = true) {
         val cached = withContext(Dispatchers.IO) {
             contentResolver.copySoundFontToCache(uri, displayName)
         }
@@ -337,8 +351,12 @@ class MainViewModel @Inject constructor(
             return
         }
         val ok = withContext(Dispatchers.Default) {
-            audioEngine.unloadSoundFont()
-            audioEngine.loadSoundFont(cached.absolutePath)
+            if (replaceAll) audioEngine.unloadSoundFont()
+            when (role) {
+                "DRUM" -> audioEngine.loadDrumSoundFont(cached.absolutePath)
+                "MELODY" -> audioEngine.loadMelodySoundFont(cached.absolutePath)
+                else -> audioEngine.loadSoundFont(cached.absolutePath)
+            }
         }
         _soundFontName.value = if (ok) displayName else "Load failed"
         if (ok) _sf2Presets.value = audioEngine.loadedSoundFontPresets()
