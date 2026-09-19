@@ -164,22 +164,22 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
     }
 
     fun sendNoteOn(channel: Int, note: Int, velocity: Int) {
-        if (!midiOutEnabled) return
-        val port = inputPort ?: return
+        if (!midiOutEnabled) { DebugLog.traceMidi("NOTE_ON suppressed (MIDI OUT OFF) ch=$channel note=$note vel=$velocity"); return }
+        val port = inputPort ?: run { DebugLog.traceMidi("NOTE_ON dropped (no output port) ch=$channel note=$note"); return }
         val ch = channel.coerceIn(0, 15)
         val n = note.coerceIn(0, 127)
         val v = velocity.coerceIn(1, 127)
-        try { port.send(byteArrayOf((0x90 or ch).toByte(), n.toByte(), v.toByte()), 0, 3) }
-        catch (e: Exception) { Timber.w(e, "sendNoteOn failed") }
+        try { port.send(byteArrayOf((0x90 or ch).toByte(), n.toByte(), v.toByte()), 0, 3); DebugLog.traceMidi("NOTE_ON ch=$ch note=$n vel=$v") }
+        catch (e: Exception) { DebugLog.traceError("MIDI NOTE_ON failed ch=$ch note=$n: ${e.message}"); Timber.w(e, "sendNoteOn failed") }
     }
 
     fun sendNoteOff(channel: Int, note: Int) {
-        if (!midiOutEnabled) return
-        val port = inputPort ?: return
+        if (!midiOutEnabled) { DebugLog.traceMidi("NOTE_OFF suppressed (MIDI OUT OFF) ch=$channel note=$note"); return }
+        val port = inputPort ?: run { DebugLog.traceMidi("NOTE_OFF dropped (no output port) ch=$channel note=$note"); return }
         val ch = channel.coerceIn(0, 15)
         val n = note.coerceIn(0, 127)
-        try { port.send(byteArrayOf((0x80 or ch).toByte(), n.toByte(), 0), 0, 3) }
-        catch (e: Exception) { Timber.w(e, "sendNoteOff failed") }
+        try { port.send(byteArrayOf((0x80 or ch).toByte(), n.toByte(), 0), 0, 3); DebugLog.traceMidi("NOTE_OFF ch=$ch note=$n") }
+        catch (e: Exception) { DebugLog.traceError("MIDI NOTE_OFF failed ch=$ch note=$n: ${e.message}"); Timber.w(e, "sendNoteOff failed") }
     }
 
     fun sendProgramChange(channel: Int, program: Int, bank: Int = 0) {

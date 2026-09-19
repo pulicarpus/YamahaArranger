@@ -1,12 +1,21 @@
 package com.yourapp.yamahaarranger.ui
 
-import android.content.Intent
+import com.yourapp.yamahaarranger.audio.AudioEngineManager
+
+import android.widget.Toast
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.window.Dialog
+import kotlin.math.roundToInt
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,6 +24,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -38,7 +48,25 @@ fun SxMainScreen(viewModel: MainViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsState()
     val stylePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(viewModel::onStyleFilePicked) }
     val soundFontPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(viewModel::onSoundFontFilePicked) }
+    val context = LocalContext.current
+    val saveLogLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+        if (uri != null) {
+            val fullTrace = DebugLog.getFullText()
+            val text = if (fullTrace.isNotBlank()) fullTrace else DebugLog.getAll().joinToString("\n")
+            runCatching {
+                requireNotNull(context.contentResolver.openOutputStream(uri)).use { out ->
+                    out.write(text.toByteArray(Charsets.UTF_8))
+                }
+            }.onSuccess {
+                Toast.makeText(context, "All log saved", Toast.LENGTH_SHORT).show()
+            }.onFailure {
+                Toast.makeText(context, "Failed to save log: " + it.message, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
     var showUtilityLog by remember { mutableStateOf(false) }
+    var showMixer by remember { mutableStateOf(false) }
+    var showSf2Manager by remember { mutableStateOf(false) }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(SxBlack)) {
         val compact = maxHeight < 620.dp
@@ -49,9 +77,9 @@ fun SxMainScreen(viewModel: MainViewModel = hiltViewModel()) {
         val regH = if (compact) 48.dp else 56.dp
         val footerH = if (compact) 28.dp else 32.dp
         Column(Modifier.fillMaxSize().padding(horizontal = 7.dp, vertical = 5.dp)) {
-            SxHeader(state, headerH) { soundFontPicker.launch(arrayOf("audio/x-soundfont", "application/octet-stream", "audio/*", "*/*")) }
+            SxHeader(state, headerH) { showSf2Manager = true }
             Spacer(Modifier.height(gap))
-            SxNavBar(navH, onUtility = { showUtilityLog = true })
+            SxNavBar(navH, onMixer = { showMixer = true }, onUtility = { showUtilityLog = true })
             Spacer(Modifier.height(gap))
             Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(gap)) {
                 SxSideMenu(Modifier.weight(.17f).fillMaxHeight(), compact)
@@ -66,8 +94,142 @@ fun SxMainScreen(viewModel: MainViewModel = hiltViewModel()) {
         }
     }
 
+    if (showMixer) {
+        SxStyleMixerDialog(
+            voices = state.voiceAssignments,
+            presets = state.sf2Presets,
+            onDismiss = { showMixer = false },
+            onMixer = viewModel::setStyleChannelMixer,
+            onMute = viewModel::toggleStyleChannelMute,
+            onVoice = viewModel::setChannelVoice,
+        )
+    }
+
+    if (showSf2Manager) {
+        SxSf2ManagerDialog(
+            files = state.availableSoundFonts,
+            currentName = state.soundFontName,
+            onDismiss = { showSf2Manager = false },
+            onSelect = { uri, name ->
+                viewModel.selectSoundFont(uri, name)
+                showSf2Manager = false
+            },
+            onRefresh = viewModel::refreshSoundFontList,
+            onImport = {
+                showSf2Manager = false
+                soundFontPicker.launch(arrayOf("audio/x-soundfont", "application/octet-stream", "audio/*", "*/*"))
+            }
+        )
+    }
+
     if (showUtilityLog) {
-        SxEngineLogDialog(onDismiss = { showUtilityLog = false })
+        SxEngineLogDialog(onDismiss = { showUtilityLog = false }, onSaveAllLog = { saveLogLauncher.launch("YamahaArranger_AllLog_" + java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(java.util.Date()) + ".txt") })
+    }
+}
+
+@Composable
+private fun SxStyleMixerDialog(voices: List<VoiceSlot>, presets: List<AudioEngineManager.SfPreset>, onDismiss: () -> Unit, onMixer: (Int, Int, Int, Int, Int, Int) -> Unit, onMute: (Int) -> Unit, onVoice: (Int, Int, Int) -> Unit) {
+    var expandedChannel by remember { mutableStateOf<Int?>(null) }
+    var voicePickerSlot by remember { mutableStateOf<VoiceSlot?>(null) }
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(color = SxPanel, shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth().fillMaxHeight(.9f)) {
+            Column(Modifier.fillMaxSize().padding(10.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("STYLE MIXER • 16 CHANNEL", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    TextButton(onClick = onDismiss) { Text("CLOSE") }
+                }
+                Text("Tap = volume • long-press VOL = effects + instrument", color = SxDim, fontSize = 9.sp)
+                Spacer(Modifier.height(6.dp))
+                LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    items(voices, key = { it.channel }) { slot ->
+                        Surface(color = if (slot.styleMuted) SxPanel2 else Color(0xFF171D23), shape = RoundedCornerShape(4.dp)) {
+                            Column(Modifier.padding(6.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("CH" + slot.channel, color = SxBlue, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(38.dp))
+                                    Text(slot.displayName(), color = Color.White, fontSize = 9.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    TextButton(onClick = { onMute(slot.channel) }, contentPadding = PaddingValues(horizontal = 5.dp)) { Text(if (slot.styleMuted) "UNMUTE" else "MUTE", fontSize = 7.sp) }
+                                }
+                                SxMixRow("VOL", slot.styleVolume,
+                                    { onMixer(slot.channel, it, slot.stylePan, slot.styleExpression, slot.styleReverb, slot.styleChorus) },
+                                    { expandedChannel = if (expandedChannel == slot.channel) null else slot.channel })
+                                if (expandedChannel == slot.channel) {
+                                    Button(onClick = { voicePickerSlot = slot }, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(vertical = 4.dp)) {
+                                        Text("VOICE • " + slot.displayName(), fontSize = 8.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    }
+                                    SxMixRow("PAN", slot.stylePan, { onMixer(slot.channel, slot.styleVolume, it, slot.styleExpression, slot.styleReverb, slot.styleChorus) })
+                                    SxMixRow("EXP", slot.styleExpression, { onMixer(slot.channel, slot.styleVolume, slot.stylePan, it, slot.styleReverb, slot.styleChorus) })
+                                    SxMixRow("REV", slot.styleReverb, { onMixer(slot.channel, slot.styleVolume, slot.stylePan, slot.styleExpression, it, slot.styleChorus) })
+                                    SxMixRow("CHO", slot.styleChorus, { onMixer(slot.channel, slot.styleVolume, slot.stylePan, slot.styleExpression, slot.styleReverb, it) })
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    voicePickerSlot?.let { slot ->
+        VoicePickerDialog(
+            slot = slot,
+            presets = presets,
+            onDismiss = { voicePickerSlot = null },
+            onSelect = { program, bank ->
+                onVoice(slot.channel, program, bank)
+                voicePickerSlot = null
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+// Mixer: volume is compact by default; long-press opens channel details.
+private fun SxMixRow(label: String, value: Int, onChange: (Int) -> Unit, onLongPress: (() -> Unit)? = null) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().combinedClickable(
+        onClick = { },
+        onLongClick = onLongPress,
+        onLongClickLabel = if (onLongPress != null) "Open channel details" else null
+    )) {
+        Text(label, color = SxDim, fontSize = 7.sp, modifier = Modifier.width(30.dp))
+        Slider(value = value.toFloat(), onValueChange = { onChange(it.roundToInt()) }, valueRange = 0f..127f, modifier = Modifier.weight(1f))
+        Text(value.toString(), color = Color.White, fontSize = 7.sp, modifier = Modifier.width(28.dp))
+    }
+}
+@Composable
+private fun SxSf2ManagerDialog(files: List<Pair<Uri, String>>, currentName: String, onDismiss: () -> Unit, onSelect: (Uri, String) -> Unit, onRefresh: () -> Unit, onImport: () -> Unit) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(color = SxPanel, shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth(.9f).fillMaxHeight(.75f)) {
+            Column(Modifier.fillMaxSize().padding(10.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("SF2 MANAGER", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    TextButton(onClick = onDismiss) { Text("CLOSE") }
+                }
+                Text("Current: " + currentName.ifBlank { "None" }, color = SxBlue, fontSize = 9.sp)
+                Spacer(Modifier.height(6.dp))
+                if (files.isEmpty()) {
+                    Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { Text("No SF2 files found. Use IMPORT to add one.", color = SxDim, fontSize = 10.sp) }
+                } else {
+                    LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        items(files, key = { it.second }) { item ->
+                            val active = item.second == currentName
+                            Surface(color = if (active) SxBlueDark else SxPanel2, shape = RoundedCornerShape(4.dp), modifier = Modifier.fillMaxWidth().clickable { onSelect(item.first, item.second) }) {
+                                Row(Modifier.padding(9.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Text(if (active) "✓" else "○", color = if (active) SxGreen else SxDim, fontSize = 12.sp)
+                                    Spacer(Modifier.width(7.dp))
+                                    Text(item.second, color = Color.White, fontSize = 10.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                }
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(5.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Button(onClick = onRefresh, modifier = Modifier.weight(1f)) { Text("REFRESH", fontSize = 8.sp) }
+                    Button(onClick = onImport, modifier = Modifier.weight(1f)) { Text("IMPORT", fontSize = 8.sp) }
+                }
+            }
+        }
     }
 }
 
@@ -90,11 +252,17 @@ private fun SxHeader(state: MainUiState, height: Dp, onPickSoundFont: () -> Unit
 }
 
 @Composable
-private fun SxNavBar(height: Dp, onUtility: () -> Unit) {
+private fun SxNavBar(height: Dp, onMixer: () -> Unit, onUtility: () -> Unit) {
     val tabs = listOf("HOME", "STYLE", "VOICE", "SONG", "MULTI PAD", "REGIST", "MIXER", "UTILITY")
     Row(Modifier.fillMaxWidth().height(height).background(Color(0xFF0D1115), RoundedCornerShape(5.dp)).padding(3.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
         tabs.forEachIndexed { i, label ->
-            val modifier = Modifier.weight(1f).fillMaxHeight().then(if (label == "UTILITY") Modifier.clickable(onClick = onUtility) else Modifier)
+            val modifier = Modifier.weight(1f).fillMaxHeight().then(
+                when (label) {
+                    "MIXER" -> Modifier.clickable(onClick = onMixer)
+                    "UTILITY" -> Modifier.clickable(onClick = onUtility)
+                    else -> Modifier
+                }
+            )
             Surface(color = if (i == 0) Color(0xFF073E82) else Color(0xFF1C2228), shape = RoundedCornerShape(3.dp), modifier = modifier) {
                 Box(contentAlignment = Alignment.Center) { Text(label, color = Color.White, fontSize = 7.sp, fontWeight = FontWeight.Bold, maxLines = 1) }
             }
@@ -103,8 +271,9 @@ private fun SxNavBar(height: Dp, onUtility: () -> Unit) {
 }
 
 @Composable
-private fun SxEngineLogDialog(onDismiss: () -> Unit) {
+private fun SxEngineLogDialog(onDismiss: () -> Unit, onSaveAllLog: () -> Unit) {
     var logs by remember { mutableStateOf(listOf<String>()) }
+    var filter by remember { mutableStateOf("ALL") }
     val context = androidx.compose.ui.platform.LocalContext.current
 
     LaunchedEffect(Unit) {
@@ -114,18 +283,34 @@ private fun SxEngineLogDialog(onDismiss: () -> Unit) {
         }
     }
 
-    val logText = logs.joinToString("\n")
+    val filteredLogs = when (filter) {
+        "AUDIO" -> logs.filter { it.contains("🔊 AUDIO") }
+        "MIDI" -> logs.filter { it.contains("🎹 IN") || it.contains("📤 MIDI OUT") }
+        "CASM" -> logs.filter { it.contains("CASM") || it.contains("RTR") || it.contains("RETARGET") }
+        "STRING" -> logs.filter { it.contains("STRING") || it.contains("dst=13") || it.contains("dst13") }
+        "ERROR" -> logs.filter { it.contains("❌") || it.contains("FAILED") || it.contains("error", ignoreCase = true) }
+        else -> logs
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("UTILITY  •  ENGINE LOG") },
         text = {
             Column(Modifier.fillMaxWidth().heightIn(max = 520.dp)) {
-                Text("Live engine/MIDI diagnostics. Clear before reproducing a problem.", color = SxDim, fontSize = 9.sp)
-                Spacer(Modifier.height(6.dp))
+                Text("Live engine/MIDI diagnostics. Full history is saved with SAVE ALL LOG.", color = SxDim, fontSize = 9.sp)
+                Spacer(Modifier.height(5.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                    listOf("ALL", "AUDIO", "MIDI", "CASM", "STRING", "ERROR").forEach { f ->
+                        TextButton(
+                            onClick = { filter = f },
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                        ) { Text(f, fontSize = 7.sp, color = if (filter == f) SxGreen else SxDim) }
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
                 Surface(color = Color(0xFF080B0E), shape = RoundedCornerShape(3.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 300.dp, max = 430.dp)) {
                     Column(Modifier.verticalScroll(rememberScrollState()).padding(6.dp)) {
-                        logs.forEach { line -> Text(line, color = Color(0xFFB8C0C8), fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontSize = 8.sp) }
-                        if (logs.isEmpty()) Text("(no log yet)", color = SxDim, fontSize = 8.sp)
+                        filteredLogs.forEach { line -> Text(line, color = Color(0xFFB8C0C8), fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontSize = 8.sp) }
+                        if (filteredLogs.isEmpty()) Text("(no log yet)", color = SxDim, fontSize = 8.sp)
                     }
                 }
             }
@@ -134,14 +319,8 @@ private fun SxEngineLogDialog(onDismiss: () -> Unit) {
             Row {
                 TextButton(onClick = { DebugLog.clear(); logs = emptyList() }) { Text("CLEAR") }
                 TextButton(onClick = {
-                    val text = if (logText.isBlank()) "(no log yet)" else logText
-                    val intent = Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_SUBJECT, "YamahaArranger Engine Log")
-                        putExtra(Intent.EXTRA_TEXT, text)
-                    }
-                    context.startActivity(Intent.createChooser(intent, "Kirim YamahaArranger Log"))
-                }) { Text("SEND LOG") }
+                    onSaveAllLog()
+                }) { Text("SAVE ALL LOG") }
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("CLOSE") } }

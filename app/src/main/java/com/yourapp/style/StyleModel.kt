@@ -44,7 +44,11 @@ data class StyleChannelOverride(
     val program: Int? = null,
     val bank: Int? = null,
     val transpose: Int = 0,
-    val muted: Boolean = false
+    val muted: Boolean = false,
+    val pan: Int = 64,
+    val expression: Int = 127,
+    val reverbSend: Int = 40,
+    val chorusSend: Int = 0
 )
 
 data class StylePartModel(

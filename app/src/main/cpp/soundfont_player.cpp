@@ -103,7 +103,8 @@ bool SoundFontPlayer::loadRole(const std::string& path, bool drum) {
         }
         for (int ch = 0; ch < 16; ++ch) {
             if (ch == 9) continue;
-            fluid_synth_cc(synth_, ch, 7, (ch <= 2 || ch == 8) ? 127 : (ch <= 5 ? 100 : 115));
+            const int defaultVolume = (ch == 13) ? 98 : ((ch <= 2 || ch == 8) ? 127 : (ch <= 5 ? 100 : 115));
+            fluid_synth_cc(synth_, ch, 7, defaultVolume);
         }
     }
     LOGI("SF2 role ready: %s", drum ? "DRUM bank=128 ch9" : "MELODY bank=0 channels=1-16 except ch10");
@@ -164,6 +165,30 @@ void SoundFontPlayer::allNotesOff() {
     for (int ch = 0; ch < 16; ++ch) fluid_synth_all_notes_off(synth_, ch);
 }
 
+void SoundFontPlayer::setChannelMixer(int channel, int volume, int pan, int expression, int reverbSend, int chorusSend) {
+    if (!synth_) return;
+    std::lock_guard<std::mutex> lock(g_synthMutex);
+    channel = std::max(0, std::min(15, channel));
+    fluid_synth_cc(synth_, channel, 7, std::max(0, std::min(127, volume)));
+    fluid_synth_cc(synth_, channel, 10, std::max(0, std::min(127, pan)));
+    fluid_synth_cc(synth_, channel, 11, std::max(0, std::min(127, expression)));
+    fluid_synth_cc(synth_, channel, 91, std::max(0, std::min(127, reverbSend)));
+    fluid_synth_cc(synth_, channel, 93, std::max(0, std::min(127, chorusSend)));
+}
+
+void SoundFontPlayer::setChannelExpression(int channel, int expression) {
+    if (!synth_) return;
+    std::lock_guard<std::mutex> lock(g_synthMutex);
+    channel = std::max(0, std::min(15, channel));
+    fluid_synth_cc(synth_, channel, 11, std::max(0, std::min(127, expression)));
+}
+
+void SoundFontPlayer::setMasterGain(float gain) {
+    if (!synth_) return;
+    std::lock_guard<std::mutex> lock(g_synthMutex);
+    fluid_synth_set_gain(synth_, std::max(0.0f, std::min(2.0f, gain)));
+}
+
 void SoundFontPlayer::setChannelPreset(int channel, int bank, int program) {
     if (!synth_) return;
     std::lock_guard<std::mutex> lock(g_synthMutex);
@@ -173,6 +198,37 @@ void SoundFontPlayer::setChannelPreset(int channel, int bank, int program) {
     if (sfId < 0) { LOGE("No SF2 loaded for channel %d", channel); return; }
     fluid_synth_program_select(synth_, channel, sfId, bank, program);
     LOGI("Ch %d -> %s SF2 id=%d bank=%d prog=%d", channel, drum ? "DRUM" : "MELODY", sfId, bank, program);
+}
+
+std::string SoundFontPlayer::presetList() const {
+    if (!synth_) return "";
+    std::lock_guard<std::mutex> lock(g_synthMutex);
+    std::string out;
+    auto appendRole = [&](int sfId, const char* role) {
+        if (sfId < 0) return;
+        fluid_sfont_t* sfont = fluid_synth_get_sfont_by_id(synth_, sfId);
+        if (!sfont) return;
+        fluid_sfont_iteration_start(sfont);
+        fluid_preset_t* preset = nullptr;
+        while ((preset = fluid_sfont_iteration_next(sfont)) != nullptr) {
+            const char* name = fluid_preset_get_name(preset);
+            const int bank = fluid_preset_get_banknum(preset);
+            const int program = fluid_preset_get_num(preset);
+            if (!name) name = "";
+            // role|bank|program|name. Names are kept verbatim from the SF2.
+            out += role;
+            out += "|";
+            out += std::to_string(bank);
+            out += "|";
+            out += std::to_string(program);
+            out += "|";
+            out += name;
+            out += "\n";
+        }
+    };
+    appendRole(melodySfId_, "MELODY");
+    if (drumSfId_ != melodySfId_) appendRole(drumSfId_, "DRUM");
+    return out;
 }
 
 int SoundFontPlayer::presetCount() const {

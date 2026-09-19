@@ -1,6 +1,8 @@
 package com.yourapp.yamahaarranger.ui
 
 import android.content.Intent
+import android.net.Uri
+import com.yourapp.yamahaarranger.audio.AudioEngineManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -70,7 +72,9 @@ fun MainScreen(
     val uiState by viewModel.uiState.collectAsState()
     var showVoicePicker by remember { mutableStateOf<VoiceSlot?>(null) }
     var showStyleEditor by remember { mutableStateOf(false) }
+    var showMixer by remember { mutableStateOf(false) }
     var showStyleVoicePicker by remember { mutableStateOf<VoiceSlot?>(null) }
+    var showSf2Manager by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -157,6 +161,25 @@ fun MainScreen(
         Spacer(Modifier.height(8.dp))
 
         Button(
+            onClick = {
+                viewModel.refreshSoundFontList()
+                showSf2Manager = true
+            },
+            modifier = Modifier.fillMaxWidth().height(42.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = PanelMid, contentColor = Color.White),
+            shape = RoundedCornerShape(4.dp)
+        ) { Text("SF2 MANAGER  •  SELECT SOUND FONT", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
+        Spacer(Modifier.height(8.dp))
+
+        Button(
+            onClick = { showMixer = true },
+            modifier = Modifier.fillMaxWidth().height(46.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = AccentOrange, contentColor = Color.White),
+            shape = RoundedCornerShape(4.dp)
+        ) { Text("MIXER  •  16 CHANNEL / PART", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+        Spacer(Modifier.height(8.dp))
+
+        Button(
             onClick = { showStyleEditor = true },
             modifier = Modifier.fillMaxWidth().height(42.dp),
             colors = ButtonDefaults.buttonColors(containerColor = LcdBlue, contentColor = Color.White),
@@ -166,7 +189,10 @@ fun MainScreen(
 
         PanelSection("MASTER / MIXER") {
             VolumeSlider("STYLE", uiState.styleVolume, viewModel::onStyleVolumeChange)
-            VolumeSlider("VOICE", uiState.voiceVolume, viewModel::onVoiceVolumeChange)
+            VolumeSlider("LEFT", uiState.leftVolume, viewModel::onLeftVolumeChange)
+            VolumeSlider("RIGHT1", uiState.right1Volume, viewModel::onRight1VolumeChange)
+            VolumeSlider("RIGHT2", uiState.right2Volume, viewModel::onRight2VolumeChange)
+            VolumeSlider("RIGHT3", uiState.right3Volume, viewModel::onRight3VolumeChange)
             VolumeSlider("MASTER", uiState.masterVolume, viewModel::onMasterVolumeChange)
         }
         Spacer(Modifier.height(8.dp))
@@ -184,19 +210,49 @@ fun MainScreen(
         DebugPanel()
     }
 
+    if (showMixer) {
+        StyleMixerDialog(
+            voices = uiState.voiceAssignments,
+            presets = uiState.sf2Presets,
+            onDismiss = { showMixer = false },
+            onMixer = viewModel::setStyleChannelMixer,
+            onMute = viewModel::toggleStyleChannelMute,
+            onVoice = { showStyleVoicePicker = it }
+        )
+    }
+
     if (showStyleEditor) {
         StyleMixerDialog(
             voices = uiState.voiceAssignments,
             onDismiss = { showStyleEditor = false },
-            onVolume = viewModel::setStyleChannelVolume,
+            onMixer = viewModel::setStyleChannelMixer,
             onMute = viewModel::toggleStyleChannelMute,
-            onVoice = { showStyleVoicePicker = it }
+            onVoice = { showStyleVoicePicker = it },
+            presets = uiState.sf2Presets
+        )
+    }
+
+    if (showSf2Manager) {
+        Sf2ManagerDialog(
+            files = uiState.availableSoundFonts,
+            currentName = uiState.soundFontName,
+            onDismiss = { showSf2Manager = false },
+            onSelect = { uri, name ->
+                viewModel.selectSoundFont(uri, name)
+                showSf2Manager = false
+            },
+            onRefresh = viewModel::refreshSoundFontList,
+            onImport = {
+                showSf2Manager = false
+                onImportSoundFontClicked()
+            }
         )
     }
 
     showStyleVoicePicker?.let { slot ->
         VoicePickerDialog(
             slot = slot,
+            presets = uiState.sf2Presets,
             onDismiss = { showStyleVoicePicker = null },
             onSelect = { program, bank ->
                 viewModel.setStyleChannelVoice(slot.channel, program, bank)
@@ -208,6 +264,7 @@ fun MainScreen(
     showVoicePicker?.let { slot ->
         VoicePickerDialog(
             slot = slot,
+            presets = uiState.sf2Presets,
             onDismiss = { showVoicePicker = null },
             onSelect = { program, bank ->
                 viewModel.setChannelVoice(slot.channel, program, bank)
@@ -218,10 +275,11 @@ fun MainScreen(
 }
 
 @Composable
-private fun StyleMixerDialog(
+fun StyleMixerDialog(
     voices: List<VoiceSlot>,
+    presets: List<AudioEngineManager.SfPreset>,
     onDismiss: () -> Unit,
-    onVolume: (Int, Int) -> Unit,
+    onMixer: (Int, Int, Int, Int, Int, Int) -> Unit,
     onMute: (Int) -> Unit,
     onVoice: (VoiceSlot) -> Unit
 ) {
@@ -241,11 +299,11 @@ private fun StyleMixerDialog(
                                 TextButton(onClick = { onVoice(slot) }, contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)) { Text("VOICE", fontSize = 8.sp) }
                                 TextButton(onClick = { onMute(slot.channel) }, contentPadding = PaddingValues(horizontal = 5.dp, vertical = 0.dp)) { Text(if (slot.styleMuted) "MUTED" else "MUTE", fontSize = 8.sp) }
                             }
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("VOL", color = TextDim, fontSize = 8.sp, modifier = Modifier.width(34.dp))
-                                Slider(value = slot.styleVolume.toFloat(), onValueChange = { onVolume(slot.channel, it.roundToInt()) }, valueRange = 0f..127f, modifier = Modifier.weight(1f))
-                                Text("${slot.styleVolume}", color = Color.White, fontSize = 9.sp, modifier = Modifier.width(28.dp))
-                            }
+                            MixerSlider("VOL", slot.styleVolume) { onMixer(slot.channel, it, slot.stylePan, slot.styleExpression, slot.styleReverb, slot.styleChorus) }
+                            MixerSlider("PAN", slot.stylePan) { onMixer(slot.channel, slot.styleVolume, it, slot.styleExpression, slot.styleReverb, slot.styleChorus) }
+                            MixerSlider("EXP", slot.styleExpression) { onMixer(slot.channel, slot.styleVolume, slot.stylePan, it, slot.styleReverb, slot.styleChorus) }
+                            MixerSlider("REV", slot.styleReverb) { onMixer(slot.channel, slot.styleVolume, slot.stylePan, slot.styleExpression, it, slot.styleChorus) }
+                            MixerSlider("CHO", slot.styleChorus) { onMixer(slot.channel, slot.styleVolume, slot.stylePan, slot.styleExpression, slot.styleReverb, it) }
                         }
                     }
                 }
@@ -567,8 +625,72 @@ private fun VolumeSlider(label: String, value: Int, onChange: (Int) -> Unit) {
 }
 
 @Composable
-private fun VoicePickerDialog(slot: VoiceSlot, onDismiss: () -> Unit, onSelect: (program: Int, bank: Int) -> Unit) {
+fun Sf2ManagerDialog(
+    files: List<Pair<Uri, String>>,
+    currentName: String,
+    onDismiss: () -> Unit,
+    onSelect: (Uri, String) -> Unit,
+    onRefresh: () -> Unit,
+    onImport: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("SF2 MANAGER") },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth().heightIn(max = 500.dp).verticalScroll(rememberScrollState())) {
+                Text("Folder: Download/YamahaArranger/SF2", color = TextDim, fontSize = 9.sp)
+                Text("Current: " + currentName.ifBlank { "None" }, color = AccentBlue, fontSize = 9.sp)
+                Spacer(Modifier.height(8.dp))
+                if (files.isEmpty()) {
+                    Text("No .sf2 files found.", color = TextDim, fontSize = 10.sp)
+                } else {
+                    files.forEach { (uri, name) ->
+                        val active = name == currentName
+                        Surface(
+                            color = if (active) LcdBlueDark else PanelMid,
+                            shape = RoundedCornerShape(3.dp),
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 5.dp).clickable { onSelect(uri, name) }
+                        ) {
+                            Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(if (active) "✓" else "○", color = if (active) AccentBlue else TextDim, fontSize = 12.sp)
+                                Spacer(Modifier.width(7.dp))
+                                Text(name, color = Color.White, fontSize = 9.sp, maxLines = 2)
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                TextButton(onClick = onRefresh) { Text("REFRESH") }
+                TextButton(onClick = onImport) { Text("IMPORT") }
+                TextButton(onClick = onDismiss) { Text("CLOSE") }
+            }
+        }
+    )
+}
+
+@Composable
+private fun MixerSlider(label: String, value: Int, onChange: (Int) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Text(label, color = TextDim, fontSize = 7.sp, modifier = Modifier.width(34.dp))
+        Slider(value = value.toFloat(), onValueChange = { onChange(it.roundToInt()) }, valueRange = 0f..127f, modifier = Modifier.weight(1f))
+        Text("$value", color = Color.White, fontSize = 8.sp, modifier = Modifier.width(28.dp))
+    }
+}
+
+@Composable
+fun VoicePickerDialog(
+    slot: VoiceSlot,
+    presets: List<AudioEngineManager.SfPreset>,
+    onDismiss: () -> Unit,
+    onSelect: (program: Int, bank: Int) -> Unit
+) {
     var search by remember { mutableStateOf("") }
+    val drum = slot.channel == 9 || slot.isDrum()
+    val sfPresets = presets.filter { if (drum) it.role == "DRUM" || it.bank == 128 else it.role == "MELODY" }
+    val filteredSf = sfPresets.filter { search.isBlank() || it.name.contains(search, ignoreCase = true) }
     val filteredVoices = remember(search) { if (search.isBlank()) GM_VOICES else GM_VOICES.filter { it.first.contains(search, ignoreCase = true) } }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -581,6 +703,20 @@ private fun VoicePickerDialog(slot: VoiceSlot, onDismiss: () -> Unit, onSelect: 
                 }
                 OutlinedTextField(value = search, onValueChange = { search = it }, modifier = Modifier.fillMaxWidth(), placeholder = { Text("Search voice…") }, singleLine = true)
                 Spacer(Modifier.height(5.dp))
+                if (sfPresets.isNotEmpty()) {
+                    Text("LOADED SF2  •  " + if (drum) "DRUM / KIT" else "MELODY", color = AccentOrange, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(3.dp))
+                    LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 250.dp)) {
+                        items(filteredSf) { item ->
+                            Row(modifier = Modifier.fillMaxWidth().clickable { onSelect(item.program, item.bank) }.padding(7.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(item.bank.toString() + ":" + (item.program + 1), fontSize = 9.sp, color = TextDim, modifier = Modifier.width(62.dp))
+                                Text(item.name, fontSize = 11.sp, color = Color.White, maxLines = 1)
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(5.dp))
+                    Text("GENERAL MIDI FALLBACK", color = TextDim, fontSize = 7.sp)
+                }
                 LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 350.dp)) {
                     items(filteredVoices) { item ->
                         Row(modifier = Modifier.fillMaxWidth().clickable { onSelect(item.second, 0) }.padding(7.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -631,10 +767,15 @@ private fun DebugPanel() {
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     TextButton(
                         onClick = {
-                            val text = if (logText.isBlank()) "(no log yet)" else logText
+                            val fullTrace = DebugLog.getLongText()
+                            val text = when {
+                                fullTrace.isNotBlank() -> fullTrace
+                                logText.isNotBlank() -> logText
+                                else -> "(no log yet)"
+                            }
                             val intent = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
-                                putExtra(Intent.EXTRA_SUBJECT, "YamahaArranger Engine Log")
+                                putExtra(Intent.EXTRA_SUBJECT, if (fullTrace.isNotBlank()) "YamahaArranger Full String/CASM Trace" else "YamahaArranger Engine Log")
                                 putExtra(Intent.EXTRA_TEXT, text)
                             }
                             context.startActivity(Intent.createChooser(intent, "Kirim YamahaArranger Log"))

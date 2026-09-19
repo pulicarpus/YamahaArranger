@@ -30,18 +30,37 @@ import javax.inject.Inject
 
 object DebugLog {
     private val _lines = ConcurrentLinkedQueue<String>()
+    private val _fullLines = ConcurrentLinkedQueue<String>()
     private const val MAX_LINES = 30
+    private const val MAX_FULL_LINES = 30000
+    @Volatile private var longText: String = ""
     @JvmStatic fun add(msg: String) {
-        val ts = SimpleDateFormat("HH:mm:ss", Locale.US).format(Date())
-        _lines.add("[$ts] $msg")
+        val ts = SimpleDateFormat("HH:mm:ss.SSS", Locale.US).format(Date())
+        val line = "[$ts] $msg"
+        _lines.add(line)
         while (_lines.size > MAX_LINES) _lines.poll()
+        _fullLines.add(line)
+        while (_fullLines.size > MAX_FULL_LINES) _fullLines.poll()
     }
+    @JvmStatic fun traceAudio(msg: String) = add("🔊 AUDIO $msg")
+    @JvmStatic fun traceMidi(msg: String) = add("📤 MIDI OUT $msg")
+    @JvmStatic fun traceError(msg: String) = add("❌ ERROR $msg")
     fun getAll(): List<String> = _lines.toList()
-    fun clear() = _lines.clear()
+    fun getFullAll(): List<String> = _fullLines.toList()
+    fun setLongText(text: String) { longText = text }
+    fun getLongText(): String = longText
+    fun getFullText(): String = _fullLines.joinToString("\n")
+    fun clear() { _lines.clear(); _fullLines.clear(); longText = "" }
 }
 
-data class VoiceSlot(val channel: Int, val label: String, val program: Int, val bank: Int = 0, val locked: Boolean = false, val styleVolume: Int = 100, val styleMuted: Boolean = false) {
+data class VoiceSlot(
+    val channel: Int, val label: String, val program: Int, val bank: Int = 0,
+    val locked: Boolean = false, val styleVolume: Int = 100, val styleMuted: Boolean = false,
+    val stylePan: Int = 64, val styleExpression: Int = 127,
+    val styleReverb: Int = 40, val styleChorus: Int = 0, val sf2Name: String? = null
+) {
     fun displayName(): String {
+        sf2Name?.let { return it }
         if (bank == 128) return "DRUM KIT"
         return GM_VOICES.firstOrNull { it.second == program }?.first ?: "prog$program"
     }
@@ -102,9 +121,11 @@ data class MainUiState(
     val styleName: String = "No Style Loaded", val tempoBpm: Int = 120, val transpose: Int = 0,
     val isPlaying: Boolean = false, val activeSection: String = "Main A", val detectedChordLabel: String = "", val autoFill: Boolean = true,
     val midiStatus: String = "No MIDI device", val midiOutEnabled: Boolean = false, val soundFontName: String = "None",
-    val styleVolume: Int = 100, val voiceVolume: Int = 100, val masterVolume: Int = 110,
+    val styleVolume: Int = 100, val leftVolume: Int = 100, val right1Volume: Int = 100, val right2Volume: Int = 100, val right3Volume: Int = 100, val masterVolume: Int = 100,
     val activeBank: Int = 1, val activeRegSlot: Int = 0, val voiceName: String = "GrandPiano",
-    val right2Name: String = "OFF", val splitPoint: String = "C4", val voiceAssignments: List<VoiceSlot> = defaultVoices()
+    val right2Name: String = "OFF", val splitPoint: String = "C4", val voiceAssignments: List<VoiceSlot> = defaultVoices(),
+    val availableSoundFonts: List<Pair<Uri, String>> = emptyList(),
+    val sf2Presets: List<AudioEngineManager.SfPreset> = emptyList()
 )
 
 @HiltViewModel
@@ -120,26 +141,68 @@ class MainViewModel @Inject constructor(
     private val _midiOutEnabled = MutableStateFlow(false)
     private val _transpose = MutableStateFlow(0)
     private val _soundFontName = MutableStateFlow("None")
+    private val _availableSoundFonts = MutableStateFlow<List<Pair<Uri, String>>>(emptyList())
+    private val _sf2Presets = MutableStateFlow<List<AudioEngineManager.SfPreset>>(emptyList())
     private val _styleVolume = MutableStateFlow(100)
-    private val _voiceVolume = MutableStateFlow(100)
-    private val _masterVolume = MutableStateFlow(110)
+    private val _leftVolume = MutableStateFlow(100)
+    private val _right1Volume = MutableStateFlow(100)
+    private val _right2Volume = MutableStateFlow(100)
+    private val _right3Volume = MutableStateFlow(100)
+    private val _masterVolume = MutableStateFlow(100)
     private val _activeBank = MutableStateFlow(1)
     private val _activeRegSlot = MutableStateFlow(0)
     private val _voiceAssignments = MutableStateFlow(defaultVoices())
     private var activeChordNotes: List<Int> = emptyList()
 
+    private val volumeState = combine(
+        combine(_styleVolume, _leftVolume, _right1Volume, _right2Volume, _right3Volume) { s, l, r1, r2, r3 ->
+            listOf(s, l, r1, r2, r3)
+        },
+        _masterVolume
+    ) { volumes, master -> volumes to master }
+
+    private val voiceAndSoundFontState = combine(
+        combine(_activeBank, _activeRegSlot, _voiceAssignments) { b, r, v -> Triple(b, r, v) },
+        combine(_availableSoundFonts, _sf2Presets) { files, presets -> files to presets }
+    ) { voiceData, sfData -> voiceData to sfData }
+
     val uiState: StateFlow<MainUiState> = combine(
         arrangerBrain.state,
         combine(_styleName, _midiStatus) { s, m -> s to m },
         combine(_transpose, _soundFontName) { t, sf -> t to sf },
-        combine(_voiceVolume, _masterVolume) { vv, mv -> vv to mv },
-        combine(_activeBank, _activeRegSlot, _voiceAssignments) { b, r, v -> Triple(b, r, v) }
-    ) { arranger, (styleName, midi), (transpose, sfName), (voiceVol, masterVol), (bank, regSlot, voices) ->
-        MainUiState(styleName = styleName, tempoBpm = arranger.tempoBpm, transpose = transpose,
-            isPlaying = arranger.isPlaying, activeSection = displayLabelFor(arranger.currentSection),
-            detectedChordLabel = arranger.currentChordLabel, autoFill = arranger.autoFill, midiStatus = midi, midiOutEnabled = _midiOutEnabled.value,
-            soundFontName = sfName, voiceVolume = voiceVol, masterVolume = masterVol,
-            activeBank = bank, activeRegSlot = regSlot, voiceAssignments = voices)
+        volumeState,
+        voiceAndSoundFontState
+    ) { arranger, styleMidi, transposeSf, volumesMaster, voiceDataSf ->
+        val (styleName, midi) = styleMidi
+        val (transpose, sfName) = transposeSf
+        val (voiceVolumes, masterVol) = volumesMaster
+        val (voiceData, sfData) = voiceDataSf
+        val (bank, regSlot, voices) = voiceData
+        val sfFiles = sfData.first
+        val sfPresets = sfData.second
+        MainUiState(
+            styleName = styleName,
+            tempoBpm = arranger.tempoBpm,
+            transpose = transpose,
+            isPlaying = arranger.isPlaying,
+            activeSection = displayLabelFor(arranger.currentSection),
+            detectedChordLabel = arranger.currentChordLabel,
+            autoFill = arranger.autoFill,
+            midiStatus = midi,
+            midiOutEnabled = _midiOutEnabled.value,
+            soundFontName = sfName,
+            styleVolume = voiceVolumes[0],
+            leftVolume = voiceVolumes[1],
+            right1Volume = voiceVolumes[2],
+            right2Volume = voiceVolumes[3],
+            right3Volume = voiceVolumes[4],
+            masterVolume = masterVol,
+            sf2Presets = sfPresets,
+            activeBank = bank,
+            activeRegSlot = regSlot,
+            voiceAssignments = voices,
+            availableSoundFonts = sfFiles
+        )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, MainUiState())
 
     init {
@@ -148,8 +211,12 @@ class MainViewModel @Inject constructor(
         DebugLog.add("🎵 ViewModel init")
         DebugLog.add("📂 SF2 folder: Download/YamahaArranger/SF2")
         viewModelScope.launch {
-            withContext(Dispatchers.IO) { contentResolver.ensureSoundFontFolder() }
+            withContext(Dispatchers.IO) {
+                contentResolver.ensureSoundFontFolder()
+                _availableSoundFonts.value = contentResolver.listSoundFonts()
+            }
             autoLoadSoundFont()
+            _sf2Presets.value = audioEngine.loadedSoundFontPresets()
         }
         midiInputManager.onNoteOn = { note, velocity -> arrangerBrain.onKeyboardNoteOn(note, velocity / 127f) }
         midiInputManager.onNoteOff = { note -> arrangerBrain.onKeyboardNoteOff(note) }
@@ -188,9 +255,16 @@ class MainViewModel @Inject constructor(
     fun onTempoUp() { arrangerBrain.setTempo((arrangerBrain.state.value.tempoBpm + 5).coerceIn(20, 280)) }
     fun onTransposeDown() { _transpose.value = (_transpose.value - 1).coerceIn(-12, 12) }
     fun onTransposeUp() { _transpose.value = (_transpose.value + 1).coerceIn(-12, 12) }
-    fun onStyleVolumeChange(value: Int) { _styleVolume.value = value }
-    fun onVoiceVolumeChange(value: Int) { _voiceVolume.value = value }
-    fun onMasterVolumeChange(value: Int) { _masterVolume.value = value }
+    fun onStyleVolumeChange(value: Int) {
+        val v = value.coerceIn(0, 127); _styleVolume.value = v
+        // Style parts currently render on destination channels 8..15.
+        for (ch in 8..15) audioEngine.setChannelExpression(ch, v)
+    }
+    fun onLeftVolumeChange(value: Int) { _leftVolume.value = value.coerceIn(0, 127); audioEngine.setChannelExpression(3, _leftVolume.value) }
+    fun onRight1VolumeChange(value: Int) { _right1Volume.value = value.coerceIn(0, 127); audioEngine.setChannelExpression(0, _right1Volume.value) }
+    fun onRight2VolumeChange(value: Int) { _right2Volume.value = value.coerceIn(0, 127); audioEngine.setChannelExpression(1, _right2Volume.value) }
+    fun onRight3VolumeChange(value: Int) { _right3Volume.value = value.coerceIn(0, 127); audioEngine.setChannelExpression(2, _right3Volume.value) }
+    fun onMasterVolumeChange(value: Int) { _masterVolume.value = value.coerceIn(0, 127); audioEngine.setMasterVolume(_masterVolume.value) }
 
     // Temporary registration-as-chord pads for style development/testing.
     fun onBankChange(bank: Int) { _activeBank.value = bank.coerceIn(1, 8) }
@@ -216,7 +290,7 @@ class MainViewModel @Inject constructor(
                 audioEngine.setChannelProgram(channel, program, bank)
                 midiInputManager.sendProgramChange(channel, program, bank)
                 DebugLog.add("🎼 Ch$channel → prog$program (bank$bank)")
-                slot.copy(program = program, bank = bank)
+                slot.copy(program = program, bank = bank, sf2Name = _sf2Presets.value.firstOrNull { it.bank == bank && it.program == program }?.name)
             } else slot
         }
         _voiceAssignments.value = updated
@@ -226,6 +300,18 @@ class MainViewModel @Inject constructor(
         val slot = _voiceAssignments.value.firstOrNull { it.channel == channel } ?: return
         _voiceAssignments.value = _voiceAssignments.value.map { if (it.channel == channel) it.copy(styleVolume = v) else it }
         arrangerBrain.setStyleChannelVolume(channel, v)
+    }
+
+    fun setStyleChannelMixer(channel: Int, volume: Int, pan: Int, expression: Int, reverb: Int, chorus: Int) {
+        val v = volume.coerceIn(0, 127)
+        val p = pan.coerceIn(0, 127)
+        val e = expression.coerceIn(0, 127)
+        val r = reverb.coerceIn(0, 127)
+        val c = chorus.coerceIn(0, 127)
+        _voiceAssignments.value = _voiceAssignments.value.map { slot ->
+            if (slot.channel == channel) slot.copy(styleVolume = v, stylePan = p, styleExpression = e, styleReverb = r, styleChorus = c) else slot
+        }
+        arrangerBrain.setStyleChannelMixer(channel, v, p, e, r, c)
     }
 
     fun toggleStyleChannelMute(channel: Int) {
@@ -238,7 +324,7 @@ class MainViewModel @Inject constructor(
 
     fun setStyleChannelVoice(channel: Int, program: Int, bank: Int) {
         val slot = _voiceAssignments.value.firstOrNull { it.channel == channel } ?: return
-        _voiceAssignments.value = _voiceAssignments.value.map { if (it.channel == channel) it.copy(program = program, bank = bank) else it }
+        _voiceAssignments.value = _voiceAssignments.value.map { if (it.channel == channel) it.copy(program = program, bank = bank, sf2Name = _sf2Presets.value.firstOrNull { p -> p.bank == bank && p.program == program }?.name) else it }
         arrangerBrain.setStyleChannelProgram(channel, program, bank)
         DebugLog.add("🎼 STYLE CH$channel → prog$program bank$bank")
     }
@@ -273,17 +359,31 @@ class MainViewModel @Inject constructor(
     }
 
     private suspend fun autoLoadSoundFont() {
-        val found = withContext(Dispatchers.IO) { contentResolver.findSoundFont() }
-        if (found == null) {
+        val files = withContext(Dispatchers.IO) { contentResolver.listSoundFonts() }
+        if (files.isEmpty()) {
             DebugLog.add("📂 SF2 folder ready: Download/YamahaArranger/SF2")
             return
         }
-        val (uri, name) = found
-        DebugLog.add("🔄 Auto-loading SF2: $name")
-        loadSoundFontUri(uri, name)
+        val drum = files.firstOrNull { (_, name) ->
+            val n = name.lowercase()
+            n.contains("drum") || n.contains("drumkit") || n.contains("percussion")
+        }
+        val melody = files.firstOrNull { it != drum }
+        if (melody != null) {
+            DebugLog.add("🔄 Auto-loading MELODY SF2: " + melody.second)
+            loadSoundFontUri(melody.first, melody.second, role = "MELODY", replaceAll = false)
+        }
+        if (drum != null) {
+            DebugLog.add("🥁 Auto-loading DRUM SF2: " + drum.second)
+            loadSoundFontUri(drum.first, drum.second, role = "DRUM", replaceAll = false)
+        }
+        if (melody == null && drum == null) {
+            val first = files.first()
+            loadSoundFontUri(first.first, first.second, role = "MELODY", replaceAll = false)
+        }
     }
 
-    private suspend fun loadSoundFontUri(uri: Uri, displayName: String) {
+    private suspend fun loadSoundFontUri(uri: Uri, displayName: String, role: String? = null, replaceAll: Boolean = true) {
         val cached = withContext(Dispatchers.IO) {
             contentResolver.copySoundFontToCache(uri, displayName)
         }
@@ -292,11 +392,31 @@ class MainViewModel @Inject constructor(
             return
         }
         val ok = withContext(Dispatchers.Default) {
-            audioEngine.unloadSoundFont()
-            audioEngine.loadSoundFont(cached.absolutePath)
+            if (replaceAll) audioEngine.unloadSoundFont()
+            when (role) {
+                "DRUM" -> audioEngine.loadDrumSoundFont(cached.absolutePath)
+                "MELODY" -> audioEngine.loadMelodySoundFont(cached.absolutePath)
+                else -> audioEngine.loadSoundFont(cached.absolutePath)
+            }
         }
         _soundFontName.value = if (ok) displayName else "Load failed"
+        if (ok) _sf2Presets.value = audioEngine.loadedSoundFontPresets()
         DebugLog.add(if (ok) "✅ SF2 loaded: $displayName" else "❌ SF2 load failed: $displayName")
+    }
+
+    fun refreshSoundFontList() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _availableSoundFonts.value = contentResolver.listSoundFonts()
+            _sf2Presets.value = audioEngine.loadedSoundFontPresets()
+            DebugLog.add("📂 SF2 found: " + _availableSoundFonts.value.size + " presets=" + _sf2Presets.value.size)
+        }
+    }
+
+    fun selectSoundFont(uri: Uri, name: String) {
+        viewModelScope.launch {
+            DebugLog.add("🔄 Selecting SF2: $name")
+            loadSoundFontUri(uri, name)
+        }
     }
 
     fun onSoundFontFilePicked(uri: Uri) {
@@ -306,21 +426,16 @@ class MainViewModel @Inject constructor(
             val safeName = sourceName.substringAfterLast('/').ifBlank { "font.sf2" }
                 .let { if (it.lowercase().endsWith(".sf2")) it else "$it.sf2" }
 
-            val stored = withContext(Dispatchers.IO) {
+            val storedUri = withContext(Dispatchers.IO) {
                 contentResolver.saveSoundFont(uri, safeName)
             }
-            if (!stored) {
+            if (storedUri == null) {
                 DebugLog.add("❌ Could not store SF2 in Download/YamahaArranger/SF2")
                 return@launch
             }
             DebugLog.add("📂 SF2 stored: Download/YamahaArranger/SF2/$safeName")
-
-            val found = withContext(Dispatchers.IO) { contentResolver.findSoundFont(safeName) }
-            if (found == null) {
-                DebugLog.add("❌ Stored SF2 could not be reopened")
-                return@launch
-            }
-            loadSoundFontUri(found.first, found.second)
+            DebugLog.add("🔄 Loading stored SF2 directly…")
+            loadSoundFontUri(storedUri, safeName)
         }
     }
 
