@@ -1,6 +1,7 @@
 package com.yourapp.yamahaarranger.ui
 
 import android.widget.Toast
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -92,11 +93,9 @@ fun SxMainScreen(viewModel: MainViewModel = hiltViewModel()) {
     if (showMixer) {
         SxStyleMixerDialog(
             voices = state.voiceAssignments,
-            presets = state.sf2Presets,
             onDismiss = { showMixer = false },
             onMixer = viewModel::setStyleChannelMixer,
             onMute = viewModel::toggleStyleChannelMute,
-            onVoice = { }
         )
     }
 
