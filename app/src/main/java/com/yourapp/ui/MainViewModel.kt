@@ -153,13 +153,17 @@ class MainViewModel @Inject constructor(
         combine(_styleName, _midiStatus) { s, m -> s to m },
         combine(_transpose, _soundFontName) { t, sf -> t to sf },
         combine(_voiceVolume, _masterVolume) { vv, mv -> vv to mv },
-        combine(_activeBank, _activeRegSlot, _voiceAssignments) { b, r, v -> Triple(b, r, v) }
-    ) { arranger, (styleName, midi), (transpose, sfName), (voiceVol, masterVol), (bank, regSlot, voices) ->
+        combine(
+            combine(_activeBank, _activeRegSlot, _voiceAssignments) { b, r, v -> Triple(b, r, v) },
+            _availableSoundFonts
+        ) { voiceData, sfFiles -> voiceData to sfFiles }
+    ) { arranger, (styleName, midi), (transpose, sfName), (voiceVol, masterVol), (voiceData, sfFiles) ->
+        val (bank, regSlot, voices) = voiceData
         MainUiState(styleName = styleName, tempoBpm = arranger.tempoBpm, transpose = transpose,
             isPlaying = arranger.isPlaying, activeSection = displayLabelFor(arranger.currentSection),
             detectedChordLabel = arranger.currentChordLabel, autoFill = arranger.autoFill, midiStatus = midi, midiOutEnabled = _midiOutEnabled.value,
             soundFontName = sfName, voiceVolume = voiceVol, masterVolume = masterVol,
-            activeBank = bank, activeRegSlot = regSlot, voiceAssignments = voices, availableSoundFonts = _availableSoundFonts.value)
+            activeBank = bank, activeRegSlot = regSlot, voiceAssignments = voices, availableSoundFonts = sfFiles)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, MainUiState())
 
     init {
