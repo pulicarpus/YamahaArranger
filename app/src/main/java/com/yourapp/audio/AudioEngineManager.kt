@@ -94,6 +94,16 @@ class AudioEngineManager @Inject constructor(
 
     fun setChannelVolume(channel: Int, volume: Int) = setChannelMixer(channel, volume=volume)
 
+    data class SfPreset(val role: String, val bank: Int, val program: Int, val name: String)
+
+    fun loadedSoundFontPresets(): List<SfPreset> = bridge.nativeGetSoundFontPresets()
+        .lineSequence()
+        .mapNotNull { line ->
+            val p = line.split('|', limit = 4)
+            if (p.size == 4) p[1].toIntOrNull()?.let { bank -> p[2].toIntOrNull()?.let { program -> SfPreset(p[0], bank, program, p[3]) } } else null
+        }
+        .toList()
+
     fun setChannelProgram(channel: Int, program: Int, bank: Int = 0) {
         DebugLog.traceAudio("PROGRAM ch=$channel bank=$bank program=$program")
         bridge.nativeSetChannelPreset(channel, bank, program)
