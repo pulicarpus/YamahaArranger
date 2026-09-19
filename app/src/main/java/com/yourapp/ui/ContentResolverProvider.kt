@@ -144,7 +144,7 @@ class ContentResolverProvider @Inject constructor(
                 return if (dest.length() > 0) Uri.fromFile(dest) else null
             } catch (e: Exception) {
                 Timber.e(e, "Failed storing legacy SF2")
-                false
+                null
             }
         }
     }
