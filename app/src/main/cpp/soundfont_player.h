@@ -24,6 +24,8 @@ public:
 
     void setChannelPreset(int channel, int bank, int program);
     void setChannelMixer(int channel, int volume, int pan, int expression, int reverbSend, int chorusSend);
+    void setChannelExpression(int channel, int expression);
+    void setMasterGain(float gain);
     int presetCount() const;
     std::string presetList() const;
 
