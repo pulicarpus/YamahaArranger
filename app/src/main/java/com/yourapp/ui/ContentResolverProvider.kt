@@ -284,6 +284,25 @@ class ContentResolverProvider @Inject constructor(
                     result += MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY, id) to name
                 }
             }
+            if (result.isEmpty()) {
+                val downloadSelection = MediaStore.Files.FileColumns.DISPLAY_NAME + " LIKE ? AND " +
+                    MediaStore.Files.FileColumns.RELATIVE_PATH + " LIKE ?"
+                resolver.query(
+                    MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),
+                    projection,
+                    downloadSelection,
+                    arrayOf("%.sf2", "%Download/%"),
+                    MediaStore.Files.FileColumns.DISPLAY_NAME + " COLLATE NOCASE ASC"
+                )?.use { cursor ->
+                    val idCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
+                    val nameCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
+                    while (cursor.moveToNext()) {
+                        val id = cursor.getLong(idCol)
+                        val name = cursor.getString(nameCol)
+                        result += MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY, id) to name
+                    }
+                }
+            }
             result
         } catch (e: Exception) {
             Timber.w(e, "SF2 list query failed")
