@@ -306,21 +306,16 @@ class MainViewModel @Inject constructor(
             val safeName = sourceName.substringAfterLast('/').ifBlank { "font.sf2" }
                 .let { if (it.lowercase().endsWith(".sf2")) it else "$it.sf2" }
 
-            val stored = withContext(Dispatchers.IO) {
+            val storedUri = withContext(Dispatchers.IO) {
                 contentResolver.saveSoundFont(uri, safeName)
             }
-            if (!stored) {
+            if (storedUri == null) {
                 DebugLog.add("❌ Could not store SF2 in Download/YamahaArranger/SF2")
                 return@launch
             }
             DebugLog.add("📂 SF2 stored: Download/YamahaArranger/SF2/$safeName")
-
-            val found = withContext(Dispatchers.IO) { contentResolver.findSoundFont(safeName) }
-            if (found == null) {
-                DebugLog.add("❌ Stored SF2 could not be reopened")
-                return@launch
-            }
-            loadSoundFontUri(found.first, found.second)
+            DebugLog.add("🔄 Loading stored SF2 directly…")
+            loadSoundFontUri(storedUri, safeName)
         }
     }
 
