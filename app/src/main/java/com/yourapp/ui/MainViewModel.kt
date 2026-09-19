@@ -57,9 +57,10 @@ data class VoiceSlot(
     val channel: Int, val label: String, val program: Int, val bank: Int = 0,
     val locked: Boolean = false, val styleVolume: Int = 100, val styleMuted: Boolean = false,
     val stylePan: Int = 64, val styleExpression: Int = 127,
-    val styleReverb: Int = 40, val styleChorus: Int = 0
+    val styleReverb: Int = 40, val styleChorus: Int = 0, val sf2Name: String? = null
 ) {
     fun displayName(): String {
+        sf2Name?.let { return it }
         if (bank == 128) return "DRUM KIT"
         return GM_VOICES.firstOrNull { it.second == program }?.first ?: "prog$program"
     }
@@ -249,7 +250,7 @@ class MainViewModel @Inject constructor(
                 audioEngine.setChannelProgram(channel, program, bank)
                 midiInputManager.sendProgramChange(channel, program, bank)
                 DebugLog.add("🎼 Ch$channel → prog$program (bank$bank)")
-                slot.copy(program = program, bank = bank)
+                slot.copy(program = program, bank = bank, sf2Name = _sf2Presets.value.firstOrNull { it.bank == bank && it.program == program }?.name)
             } else slot
         }
         _voiceAssignments.value = updated
@@ -283,7 +284,7 @@ class MainViewModel @Inject constructor(
 
     fun setStyleChannelVoice(channel: Int, program: Int, bank: Int) {
         val slot = _voiceAssignments.value.firstOrNull { it.channel == channel } ?: return
-        _voiceAssignments.value = _voiceAssignments.value.map { if (it.channel == channel) it.copy(program = program, bank = bank) else it }
+        _voiceAssignments.value = _voiceAssignments.value.map { if (it.channel == channel) it.copy(program = program, bank = bank, sf2Name = _sf2Presets.value.firstOrNull { p -> p.bank == bank && p.program == program }?.name) else it }
         arrangerBrain.setStyleChannelProgram(channel, program, bank)
         DebugLog.add("🎼 STYLE CH$channel → prog$program bank$bank")
     }
