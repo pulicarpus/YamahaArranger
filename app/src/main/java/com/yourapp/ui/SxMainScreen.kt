@@ -84,7 +84,7 @@ fun SxMainScreen(viewModel: MainViewModel = hiltViewModel()) {
     }
 
     if (showUtilityLog) {
-        SxEngineLogDialog(onDismiss = { showUtilityLog = false })
+        SxEngineLogDialog(onDismiss = { showUtilityLog = false }, onSaveAllLog = { saveLogLauncher.launch("YamahaArranger_AllLog_" + java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(java.util.Date()) + ".txt") })
     }
 }
 
@@ -120,7 +120,7 @@ private fun SxNavBar(height: Dp, onUtility: () -> Unit) {
 }
 
 @Composable
-private fun SxEngineLogDialog(onDismiss: () -> Unit) {
+private fun SxEngineLogDialog(onDismiss: () -> Unit, onSaveAllLog: () -> Unit) {
     var logs by remember { mutableStateOf(listOf<String>()) }
     val context = androidx.compose.ui.platform.LocalContext.current
 
@@ -152,7 +152,7 @@ private fun SxEngineLogDialog(onDismiss: () -> Unit) {
                 TextButton(onClick = { DebugLog.clear(); logs = emptyList() }) { Text("CLEAR") }
                 TextButton(onClick = {
                     val stamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(java.util.Date())
-                    saveLogLauncher.launch("YamahaArranger_AllLog_$stamp.txt")
+                    onSaveAllLog()
                 }) { Text("SAVE ALL LOG") }
             }
         },
