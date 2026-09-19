@@ -631,10 +631,15 @@ private fun DebugPanel() {
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     TextButton(
                         onClick = {
-                            val text = if (logText.isBlank()) "(no log yet)" else logText
+                            val fullTrace = DebugLog.getLongText()
+                            val text = when {
+                                fullTrace.isNotBlank() -> fullTrace
+                                logText.isNotBlank() -> logText
+                                else -> "(no log yet)"
+                            }
                             val intent = Intent(Intent.ACTION_SEND).apply {
                                 type = "text/plain"
-                                putExtra(Intent.EXTRA_SUBJECT, "YamahaArranger Engine Log")
+                                putExtra(Intent.EXTRA_SUBJECT, if (fullTrace.isNotBlank()) "YamahaArranger Full String/CASM Trace" else "YamahaArranger Engine Log")
                                 putExtra(Intent.EXTRA_TEXT, text)
                             }
                             context.startActivity(Intent.createChooser(intent, "Kirim YamahaArranger Log"))
