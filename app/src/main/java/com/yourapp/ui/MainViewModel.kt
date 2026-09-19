@@ -123,7 +123,8 @@ data class MainUiState(
     val styleVolume: Int = 100, val voiceVolume: Int = 100, val masterVolume: Int = 110,
     val activeBank: Int = 1, val activeRegSlot: Int = 0, val voiceName: String = "GrandPiano",
     val right2Name: String = "OFF", val splitPoint: String = "C4", val voiceAssignments: List<VoiceSlot> = defaultVoices(),
-    val availableSoundFonts: List<Pair<Uri, String>> = emptyList()
+    val availableSoundFonts: List<Pair<Uri, String>> = emptyList(),
+    val sf2Presets: List<AudioEngineManager.SfPreset> = emptyList()
 )
 
 @HiltViewModel
@@ -140,6 +141,7 @@ class MainViewModel @Inject constructor(
     private val _transpose = MutableStateFlow(0)
     private val _soundFontName = MutableStateFlow("None")
     private val _availableSoundFonts = MutableStateFlow<List<Pair<Uri, String>>>(emptyList())
+    private val _sf2Presets = MutableStateFlow<List<AudioEngineManager.SfPreset>>(emptyList())
     private val _styleVolume = MutableStateFlow(100)
     private val _voiceVolume = MutableStateFlow(100)
     private val _masterVolume = MutableStateFlow(110)
@@ -155,14 +157,16 @@ class MainViewModel @Inject constructor(
         combine(_voiceVolume, _masterVolume) { vv, mv -> vv to mv },
         combine(
             combine(_activeBank, _activeRegSlot, _voiceAssignments) { b, r, v -> Triple(b, r, v) },
-            _availableSoundFonts
-        ) { voiceData, sfFiles -> voiceData to sfFiles }
+            combine(_availableSoundFonts, _sf2Presets) { files, presets -> files to presets }
+        ) { voiceData, sfData -> voiceData to sfData }
     ) { arranger, (styleName, midi), (transpose, sfName), (voiceVol, masterVol), (voiceData, sfFiles) ->
         val (bank, regSlot, voices) = voiceData
+        val sfFiles = sfData.first
         MainUiState(styleName = styleName, tempoBpm = arranger.tempoBpm, transpose = transpose,
             isPlaying = arranger.isPlaying, activeSection = displayLabelFor(arranger.currentSection),
             detectedChordLabel = arranger.currentChordLabel, autoFill = arranger.autoFill, midiStatus = midi, midiOutEnabled = _midiOutEnabled.value,
             soundFontName = sfName, voiceVolume = voiceVol, masterVolume = masterVol,
+            sf2Presets = sfFiles.second,
             activeBank = bank, activeRegSlot = regSlot, voiceAssignments = voices, availableSoundFonts = sfFiles)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, MainUiState())
 
@@ -177,6 +181,7 @@ class MainViewModel @Inject constructor(
                 _availableSoundFonts.value = contentResolver.listSoundFonts()
             }
             autoLoadSoundFont()
+            _sf2Presets.value = audioEngine.loadedSoundFontPresets()
         }
         midiInputManager.onNoteOn = { note, velocity -> arrangerBrain.onKeyboardNoteOn(note, velocity / 127f) }
         midiInputManager.onNoteOff = { note -> arrangerBrain.onKeyboardNoteOff(note) }
@@ -335,13 +340,15 @@ class MainViewModel @Inject constructor(
             audioEngine.loadSoundFont(cached.absolutePath)
         }
         _soundFontName.value = if (ok) displayName else "Load failed"
+        if (ok) _sf2Presets.value = audioEngine.loadedSoundFontPresets()
         DebugLog.add(if (ok) "✅ SF2 loaded: $displayName" else "❌ SF2 load failed: $displayName")
     }
 
     fun refreshSoundFontList() {
         viewModelScope.launch(Dispatchers.IO) {
             _availableSoundFonts.value = contentResolver.listSoundFonts()
-            DebugLog.add("📂 SF2 found: " + _availableSoundFonts.value.size)
+            _sf2Presets.value = audioEngine.loadedSoundFontPresets()
+            DebugLog.add("📂 SF2 found: " + _availableSoundFonts.value.size + " presets=" + _sf2Presets.value.size)
         }
     }
 
