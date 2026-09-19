@@ -240,6 +240,7 @@ fun MainScreen(
     showVoicePicker?.let { slot ->
         VoicePickerDialog(
             slot = slot,
+            presets = uiState.sf2Presets,
             onDismiss = { showVoicePicker = null },
             onSelect = { program, bank ->
                 viewModel.setChannelVoice(slot.channel, program, bank)
