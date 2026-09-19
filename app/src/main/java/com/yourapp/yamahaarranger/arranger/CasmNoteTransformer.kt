@@ -59,34 +59,50 @@ object CasmNoteTransformer {
         if (intervals.isEmpty()) return base
 
         /*
-         * Yamaha CHORD NTT is role-based, not simply "nearest chord tone".
-         * A source C/E/G/B pattern represents root/3rd/5th/7th roles. When the
-         * played chord changes, those roles are mapped to the corresponding
-         * intervals of the new chord. In particular, a source 7th over a plain
-         * triad must not accidentally become the new chord's nearest extension.
+         * Yamaha documents ROOT FIXED as keeping each chord note as close as
+         * possible to its previous range. The canonical example is:
          *
-         * Cadenza's open Yamaha engine uses the same distinction. Keep the
-         * nearest-tone fallback for genuine colour tones.
+         *   C3-E3-G3  ->  C3-F3-A3
+         *
+         * when C major changes to F major. That is not a fixed "root/third/
+         * fifth" role table: it is a nearest-voicing operation.
+         *
+         * The old implementation hard-coded 3rd/5th/7th roles. That breaks
+         * real source chords such as LoveSong's C-min7(11): source intervals
+         * 5/10/3 could collapse onto the same target chord tone. For CHORD
+         * NTT we therefore select the nearest target chord pitch-class for the
+         * actual source pitch, preserving its octave whenever possible.
+         *
+         * For ROOT TRANS, base already contains the root transposition; using
+         * the original pitch here would undo the root movement. For ROOT FIXED,
+         * original is the correct reference because Yamaha keeps the previous
+         * voicing range.
          */
-        val sourceInterval = floorMod(original - sourceRoot, 12)
-        val targetInterval = when (sourceInterval) {
-            0 -> 0
-            3, 4 -> intervals.getOrNull(1) ?: nearestInterval(sourceInterval, intervals)
-            6, 7 -> intervals.getOrNull(2) ?: nearestInterval(sourceInterval, intervals)
-            10, 11 -> {
-                // If the target chord has no seventh, Yamaha chord-role 7ths
-                // fold back to the root instead of creating an unwanted colour.
-                if (intervals.size >= 4) intervals[3] else 0
-            }
-            else -> nearestInterval(sourceInterval, intervals)
-        }
-
-        val targetPc = floorMod(chord.rootNote + targetInterval, 12)
-        return nearestPitch(original, targetPc)
+        val reference = if (ntr == 1) original else base
+        val targetPitches = intervals.map { floorMod(chord.rootNote + it, 12) }
+        val targetPc = nearestPitchClass(reference, targetPitches)
+        return nearestPitch(reference, targetPc)
     }
 
-    private fun nearestInterval(sourceInterval: Int, intervals: List<Int>): Int =
-        intervals.minByOrNull { circularDistance(sourceInterval, it % 12) } ?: 0
+    private fun nearestPitchClass(reference: Int, pitchClasses: List<Int>): Int {
+        var bestPc = pitchClasses.firstOrNull()?.coerceIn(0, 11) ?: 0
+        var bestDistance = Int.MAX_VALUE
+
+        for (pc in pitchClasses.distinct()) {
+            val d = circularDistance(reference % 12, pc)
+            if (d < bestDistance) {
+                bestDistance = d
+                bestPc = pc
+            } else if (d == bestDistance) {
+                // Stable tie-break: prefer the target pitch above the source
+                // when both directions are equally close.
+                val up = floorMod(pc - (reference % 12), 12)
+                val bestUp = floorMod(bestPc - (reference % 12), 12)
+                if (up < bestUp) bestPc = pc
+            }
+        }
+        return bestPc
+    }
 
     private fun bass(
         base: Int,
