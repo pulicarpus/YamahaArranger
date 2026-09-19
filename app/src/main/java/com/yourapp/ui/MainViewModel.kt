@@ -31,13 +31,16 @@ import javax.inject.Inject
 object DebugLog {
     private val _lines = ConcurrentLinkedQueue<String>()
     private const val MAX_LINES = 30
+    @Volatile private var longText: String = ""
     @JvmStatic fun add(msg: String) {
         val ts = SimpleDateFormat("HH:mm:ss", Locale.US).format(Date())
         _lines.add("[$ts] $msg")
         while (_lines.size > MAX_LINES) _lines.poll()
     }
     fun getAll(): List<String> = _lines.toList()
-    fun clear() = _lines.clear()
+    fun setLongText(text: String) { longText = text }
+    fun getLongText(): String = longText
+    fun clear() { _lines.clear(); longText = "" }
 }
 
 data class VoiceSlot(val channel: Int, val label: String, val program: Int, val bank: Int = 0, val locked: Boolean = false, val styleVolume: Int = 100, val styleMuted: Boolean = false) {
