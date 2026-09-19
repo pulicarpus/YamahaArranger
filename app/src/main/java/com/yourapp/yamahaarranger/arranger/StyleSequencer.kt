@@ -13,6 +13,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import java.util.concurrent.atomic.AtomicLong
 
 class StyleSequencer(private val audioEngine: AudioEngineManager, private val midiInputManager: MidiInputManager, private val scope: CoroutineScope) {
     private var playbackJob:Job?=null
@@ -49,6 +50,46 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     )
     private val activeTransposedNotes=mutableMapOf<String,ActiveTransposedNote>()
 
+    // Long-running diagnostic recorder for String/CASM lifecycle.
+    private val traceSequence = AtomicLong(0L)
+    private val stringTrace = ArrayDeque<String>()
+    private val stringTraceLock = Any()
+    private val stringTraceMaxEntries = 12000
+    @Volatile private var stringTraceEnabled = true
+
+    private fun stringTrace(message:String){
+        if(!stringTraceEnabled)return
+        val n=traceSequence.incrementAndGet()
+        val line="#${n.toString().padStart(5,'0')} t=${System.currentTimeMillis()} $message"
+        synchronized(stringTraceLock){
+            if(stringTrace.size>=stringTraceMaxEntries)stringTrace.removeFirst()
+            stringTrace.addLast(line)
+        }
+        com.yourapp.yamahaarranger.ui.DebugLog.add("🔬 $line")
+    }
+
+    fun setStringTraceEnabled(enabled:Boolean){
+        stringTraceEnabled=enabled
+        com.yourapp.yamahaarranger.ui.DebugLog.add("🔬 STRING TRACE ${if(enabled) "ON" else "OFF"}")
+    }
+
+    fun clearStringTrace(){
+        synchronized(stringTraceLock){stringTrace.clear()}
+        traceSequence.set(0L)
+        com.yourapp.yamahaarranger.ui.DebugLog.add("🔬 STRING TRACE CLEARED")
+    }
+
+    fun dumpStringTrace(){
+        val snapshot=synchronized(stringTraceLock){stringTrace.toList()}
+        com.yourapp.yamahaarranger.ui.DebugLog.add("========== STRING TRACE BEGIN entries=${snapshot.size} active=${activeTransposedNotes.size} chord=${currentChord?.rootNote}/${currentChord?.quality} ==========")
+        snapshot.chunked(80).forEachIndexed{index,chunk->
+            com.yourapp.yamahaarranger.ui.DebugLog.add("🔬 TRACE CHUNK ${index+1}/${(snapshot.size+79)/80}")
+            chunk.forEach{com.yourapp.yamahaarranger.ui.DebugLog.add(it)}
+        }
+        com.yourapp.yamahaarranger.ui.DebugLog.add("========== STRING TRACE END entries=${snapshot.size} active=${activeTransposedNotes.size} ==========")
+    }
+
+
     fun setLockedChannels(channels:Set<Int>){lockedChannels=channels;com.yourapp.yamahaarranger.ui.DebugLog.add("🔒 Locked channels updated: $channels")}
     fun setChannelOverride(channel:Int, override:StyleChannelOverride){channelOverrides[channel]=override;com.yourapp.yamahaarranger.ui.DebugLog.add("🎚 STYLE CH$channel: vol=${override.volume} prog=${override.program ?: "AUTO"} bank=${override.bank ?: "AUTO"} tr=${override.transpose} mute=${override.muted}")}
     fun channelOverride(channel:Int):StyleChannelOverride = channelOverrides[channel] ?: StyleChannelOverride()
@@ -56,8 +97,13 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     fun setChannelMute(channel:Int, muted:Boolean){ val old=channelOverride(channel); setChannelOverride(channel, old.copy(muted=muted)) }
     fun setChannelProgramOverride(channel:Int, program:Int, bank:Int){ val old=channelOverride(channel); setChannelOverride(channel, old.copy(program=program.coerceIn(0,127), bank=bank.coerceIn(0,128))) }
     fun setVoiceMap(vm:Map<Int,String>){voiceMap=vm;lastAppliedSection="";com.yourapp.yamahaarranger.ui.DebugLog.add("🎼 Legacy VoiceMap received: ${vm.size}; CASM policy takes precedence")}
-    fun play(section:StyleSectionModel,ppq:Int,loopLimit:Int=-1,onComplete:(()->Unit)?=null){stop();com.yourapp.yamahaarranger.ui.DebugLog.add("🎼 SECTION " + section.name + ": preserving current chord for immediate CASM retarget");loopCount=0;if(lastAppliedSection!=section.name){applyVoicesFromCasm(section);lastAppliedSection=section.name};val noteCount=section.parts.sumOf{part->part.events.count{isNoteEvent(it)}};com.yourapp.yamahaarranger.ui.DebugLog.add("▶ PLAY ${section.name}: parts=${section.parts.size}, events=${section.parts.sumOf{it.events.size}}, noteEvents=$noteCount, loopLimit=$loopLimit");playbackJob=scope.launch{var loops=0;while(loopLimit<0||loops<loopLimit){playOnce(section,ppq);loops++};onComplete?.invoke()}}
-    fun stop(){playbackJob?.cancel();playbackJob=null;barClockStartedAtNanos=0L;audioEngine.allNotesOff();midiInputManager.allNotesOff();activeTransposedNotes.clear();com.yourapp.yamahaarranger.ui.DebugLog.add("⏹ STOP")}
+    fun play(section:StyleSectionModel,ppq:Int,loopLimit:Int=-1,onComplete:(()->Unit)?=null){stop();clearStringTrace();stringTrace("TRACE_SESSION section=\${section.name} ppq=\${ppq} loopLimit=\${loopLimit}");com.yourapp.yamahaarranger.ui.DebugLog.add("🎼 SECTION " + section.name + ": preserving current chord for immediate CASM retarget");loopCount=0;if(lastAppliedSection!=section.name){applyVoicesFromCasm(section);lastAppliedSection=section.name};val noteCount=section.parts.sumOf{part->part.events.count{isNoteEvent(it)}};com.yourapp.yamahaarranger.ui.DebugLog.add("▶ PLAY ${section.name}: parts=${section.parts.size}, events=${section.parts.sumOf{it.events.size}}, noteEvents=$noteCount, loopLimit=$loopLimit");playbackJob=scope.launch{var loops=0;while(loopLimit<0||loops<loopLimit){playOnce(section,ppq);loops++};onComplete?.invoke()}}
+    fun stop(){
+        playbackJob?.cancel();playbackJob=null;barClockStartedAtNanos=0L
+        if(stringTraceEnabled && synchronized(stringTraceLock){stringTrace.isNotEmpty()}) dumpStringTrace()
+        audioEngine.allNotesOff();midiInputManager.allNotesOff();activeTransposedNotes.clear()
+        com.yourapp.yamahaarranger.ui.DebugLog.add("⏹ STOP")
+    }
     fun queueNextSection(section:StyleSectionModel,ppq:Int)=play(section,ppq)
     fun millisToNextBar(ppq: Int, beatsPerBar: Int = 4): Long {
         val anchor = barClockStartedAtNanos
