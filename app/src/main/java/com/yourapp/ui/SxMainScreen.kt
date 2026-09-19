@@ -98,6 +98,7 @@ fun SxMainScreen(viewModel: MainViewModel = hiltViewModel()) {
             onDismiss = { showMixer = false },
             onMixer = viewModel::setStyleChannelMixer,
             onMute = viewModel::toggleStyleChannelMute,
+            onVoice = viewModel::setChannelVoice,
         )
     }
 
@@ -162,7 +163,20 @@ private fun SxStyleMixerDialog(voices: List<VoiceSlot>, presets: List<AudioEngin
             }
         }
     }
+
+    voicePickerSlot?.let { slot ->
+        VoicePickerDialog(
+            slot = slot,
+            presets = presets,
+            onDismiss = { voicePickerSlot = null },
+            onSelect = { program, bank ->
+                onVoice(slot.channel, program, bank)
+                voicePickerSlot = null
+            }
+        )
+    }
 }
+
 @Composable
 private fun SxMixRow(label: String, value: Int, onChange: (Int) -> Unit, onLongPress: (() -> Unit)? = null) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().combinedClickable(
