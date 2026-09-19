@@ -30,7 +30,7 @@ object CasmNoteTransformer {
 
         val converted = when (ntt) {
             0 -> base
-            1 -> base // Melody
+            1 -> melody(base, note, chord, sourceRoot, ntr)
             2 -> chordal(base, note, chord, sourceRoot, ntr)
             3 -> bass(base, note, chord, policy.bassOn, ntr)
             4 -> melodicMinor(base, chord, sourceRoot)
@@ -102,6 +102,33 @@ object CasmNoteTransformer {
             }
         }
         return bestPc
+    }
+
+    /**
+     * Yamaha MELODY NTT is not BYPASS. In particular, LoveSong's real
+     * strg48 table is NTR=ROOT FIXED + NTT=MELODY, so leaving NTT=1 as
+     * "base" makes its C5/C6 source notes stay on C forever.
+     *
+     * MELODY preserves the source note's scale-degree relationship to the
+     * source root, then ROOT FIXED chooses the nearest octave around the
+     * previous pitch. For ROOT TRANS the root movement is already represented
+     * by base, so we simply keep that result.
+     */
+    private fun melody(
+        base: Int,
+        original: Int,
+        chord: DetectedChord,
+        sourceRoot: Int,
+        ntr: Int
+    ): Int {
+        if (ntr != 1) return base
+
+        // Preserve the source note's interval from the source root, but move
+        // that interval onto the played chord root. ROOT FIXED then keeps the
+        // resulting melody note in the octave closest to its previous pitch.
+        val sourceInterval = floorMod(original - sourceRoot, 12)
+        val targetPc = floorMod(chord.rootNote + sourceInterval, 12)
+        return nearestPitch(original, targetPc)
     }
 
     private fun bass(
