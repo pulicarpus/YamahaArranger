@@ -154,26 +154,55 @@ class MainViewModel @Inject constructor(
     private val _voiceAssignments = MutableStateFlow(defaultVoices())
     private var activeChordNotes: List<Int> = emptyList()
 
+    private val volumeState = combine(
+        combine(_styleVolume, _leftVolume, _right1Volume, _right2Volume, _right3Volume) { s, l, r1, r2, r3 ->
+            listOf(s, l, r1, r2, r3)
+        },
+        _masterVolume
+    ) { volumes, master -> volumes to master }
+
+    private val voiceAndSoundFontState = combine(
+        combine(_activeBank, _activeRegSlot, _voiceAssignments) { b, r, v -> Triple(b, r, v) },
+        combine(_availableSoundFonts, _sf2Presets) { files, presets -> files to presets }
+    ) { voiceData, sfData -> voiceData to sfData }
+
     val uiState: StateFlow<MainUiState> = combine(
         arrangerBrain.state,
         combine(_styleName, _midiStatus) { s, m -> s to m },
         combine(_transpose, _soundFontName) { t, sf -> t to sf },
-        combine(_styleVolume, _leftVolume, _right1Volume, _right2Volume, _right3Volume) { s, l, r1, r2, r3 -> listOf(s, l, r1, r2, r3) },
-        _masterVolume,
-        combine(
-            combine(_activeBank, _activeRegSlot, _voiceAssignments) { b, r, v -> Triple(b, r, v) },
-            combine(_availableSoundFonts, _sf2Presets) { files, presets -> files to presets }
-        ) { voiceData, sfData -> voiceData to sfData }
-    ) { arranger, (styleName, midi), (transpose, sfName), voiceVolumes, masterVol, (voiceData, sfData) ->
+        volumeState,
+        voiceAndSoundFontState
+    ) { arranger, styleMidi, transposeSf, volumesMaster, voiceDataSf ->
+        val (styleName, midi) = styleMidi
+        val (transpose, sfName) = transposeSf
+        val (voiceVolumes, masterVol) = volumesMaster
+        val (voiceData, sfData) = voiceDataSf
         val (bank, regSlot, voices) = voiceData
         val sfFiles = sfData.first
         val sfPresets = sfData.second
-        MainUiState(styleName = styleName, tempoBpm = arranger.tempoBpm, transpose = transpose,
-            isPlaying = arranger.isPlaying, activeSection = displayLabelFor(arranger.currentSection),
-            detectedChordLabel = arranger.currentChordLabel, autoFill = arranger.autoFill, midiStatus = midi, midiOutEnabled = _midiOutEnabled.value,
-            soundFontName = sfName, styleVolume = voiceVolumes[0], leftVolume = voiceVolumes[1], right1Volume = voiceVolumes[2], right2Volume = voiceVolumes[3], right3Volume = voiceVolumes[4], masterVolume = masterVol,
+        MainUiState(
+            styleName = styleName,
+            tempoBpm = arranger.tempoBpm,
+            transpose = transpose,
+            isPlaying = arranger.isPlaying,
+            activeSection = displayLabelFor(arranger.currentSection),
+            detectedChordLabel = arranger.currentChordLabel,
+            autoFill = arranger.autoFill,
+            midiStatus = midi,
+            midiOutEnabled = _midiOutEnabled.value,
+            soundFontName = sfName,
+            styleVolume = voiceVolumes[0],
+            leftVolume = voiceVolumes[1],
+            right1Volume = voiceVolumes[2],
+            right2Volume = voiceVolumes[3],
+            right3Volume = voiceVolumes[4],
+            masterVolume = masterVol,
             sf2Presets = sfPresets,
-            activeBank = bank, activeRegSlot = regSlot, voiceAssignments = voices, availableSoundFonts = sfFiles)
+            activeBank = bank,
+            activeRegSlot = regSlot,
+            voiceAssignments = voices,
+            availableSoundFonts = sfFiles
+        )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, MainUiState())
 
     init {
