@@ -275,7 +275,7 @@ fun MainScreen(
 }
 
 @Composable
-private fun StyleMixerDialog(
+fun StyleMixerDialog(
     voices: List<VoiceSlot>,
     presets: List<AudioEngineManager.SfPreset>,
     onDismiss: () -> Unit,
@@ -625,7 +625,7 @@ private fun VolumeSlider(label: String, value: Int, onChange: (Int) -> Unit) {
 }
 
 @Composable
-private fun Sf2ManagerDialog(
+fun Sf2ManagerDialog(
     files: List<Pair<Uri, String>>,
     currentName: String,
     onDismiss: () -> Unit,
