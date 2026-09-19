@@ -71,6 +71,7 @@ fun MainScreen(
     var showVoicePicker by remember { mutableStateOf<VoiceSlot?>(null) }
     var showStyleEditor by remember { mutableStateOf(false) }
     var showStyleVoicePicker by remember { mutableStateOf<VoiceSlot?>(null) }
+    var showSf2Manager by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -157,6 +158,17 @@ fun MainScreen(
         Spacer(Modifier.height(8.dp))
 
         Button(
+            onClick = {
+                viewModel.refreshSoundFontList()
+                showSf2Manager = true
+            },
+            modifier = Modifier.fillMaxWidth().height(42.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = PanelMid, contentColor = Color.White),
+            shape = RoundedCornerShape(4.dp)
+        ) { Text("SF2 MANAGER  •  SELECT SOUND FONT", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
+        Spacer(Modifier.height(8.dp))
+
+        Button(
             onClick = { showStyleEditor = true },
             modifier = Modifier.fillMaxWidth().height(42.dp),
             colors = ButtonDefaults.buttonColors(containerColor = LcdBlue, contentColor = Color.White),
@@ -191,6 +203,23 @@ fun MainScreen(
             onMixer = viewModel::setStyleChannelMixer,
             onMute = viewModel::toggleStyleChannelMute,
             onVoice = { showStyleVoicePicker = it }
+        )
+    }
+
+    if (showSf2Manager) {
+        Sf2ManagerDialog(
+            files = uiState.availableSoundFonts,
+            currentName = uiState.soundFontName,
+            onDismiss = { showSf2Manager = false },
+            onSelect = { uri, name ->
+                viewModel.selectSoundFont(uri, name)
+                showSf2Manager = false
+            },
+            onRefresh = viewModel::refreshSoundFontList,
+            onImport = {
+                showSf2Manager = false
+                onImportSoundFontClicked()
+            }
         )
     }
 
@@ -564,6 +593,53 @@ private fun VolumeSlider(label: String, value: Int, onChange: (Int) -> Unit) {
         Slider(value = value.toFloat(), onValueChange = { onChange(it.roundToInt()) }, valueRange = 0f..127f, modifier = Modifier.weight(1f))
         Text("$value", color = Color.White, fontSize = 8.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(30.dp))
     }
+}
+
+@Composable
+private fun Sf2ManagerDialog(
+    files: List<Pair<Uri, String>>,
+    currentName: String,
+    onDismiss: () -> Unit,
+    onSelect: (Uri, String) -> Unit,
+    onRefresh: () -> Unit,
+    onImport: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("SF2 MANAGER") },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth().heightIn(max = 500.dp).verticalScroll(rememberScrollState())) {
+                Text("Folder: Download/YamahaArranger/SF2", color = TextDim, fontSize = 9.sp)
+                Text("Current: " + currentName.ifBlank { "None" }, color = AccentBlue, fontSize = 9.sp)
+                Spacer(Modifier.height(8.dp))
+                if (files.isEmpty()) {
+                    Text("No .sf2 files found.", color = TextDim, fontSize = 10.sp)
+                } else {
+                    files.forEach { (uri, name) ->
+                        val active = name == currentName
+                        Surface(
+                            color = if (active) LcdBlueDark else PanelMid,
+                            shape = RoundedCornerShape(3.dp),
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 5.dp).clickable { onSelect(uri, name) }
+                        ) {
+                            Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(if (active) "✓" else "○", color = if (active) AccentBlue else TextDim, fontSize = 12.sp)
+                                Spacer(Modifier.width(7.dp))
+                                Text(name, color = Color.White, fontSize = 9.sp, maxLines = 2)
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                TextButton(onClick = onRefresh) { Text("REFRESH") }
+                TextButton(onClick = onImport) { Text("IMPORT") }
+                TextButton(onClick = onDismiss) { Text("CLOSE") }
+            }
+        }
+    )
 }
 
 @Composable
