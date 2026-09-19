@@ -369,11 +369,31 @@ class MainViewModel @Inject constructor(
             n.contains("drum") || n.contains("drumkit") || n.contains("percussion")
         }
         val melody = files.firstOrNull { it != drum }
-        if (melody != null) {
+        if (melody != null && drum != null) {
+            DebugLog.add("🔄 Auto-loading MELODY + DRUM SF2 as one transaction")
+            val melodyCache = withContext(Dispatchers.IO) {
+                contentResolver.copySoundFontToCache(melody.first, melody.second)
+            }
+            val drumCache = withContext(Dispatchers.IO) {
+                contentResolver.copySoundFontToCache(drum.first, drum.second)
+            }
+            if (melodyCache != null && drumCache != null) {
+                val ok = withContext(Dispatchers.Default) {
+                    audioEngine.unloadSoundFont()
+                    audioEngine.loadSoundFontPair(melodyCache.absolutePath, drumCache.absolutePath)
+                }
+                if (ok) {
+                    _soundFontName.value = melody.second + " + " + drum.second
+                    _sf2Presets.value = audioEngine.loadedSoundFontPresets()
+                    DebugLog.add("✅ Auto SF2 pair loaded")
+                }
+            } else {
+                DebugLog.add("❌ Auto SF2 pair cache failed")
+            }
+        } else if (melody != null) {
             DebugLog.add("🔄 Auto-loading MELODY SF2: " + melody.second)
             loadSoundFontUri(melody.first, melody.second, role = "MELODY", replaceAll = false)
-        }
-        if (drum != null) {
+        } else if (drum != null) {
             DebugLog.add("🥁 Auto-loading DRUM SF2: " + drum.second)
             loadSoundFontUri(drum.first, drum.second, role = "DRUM", replaceAll = false)
         }
