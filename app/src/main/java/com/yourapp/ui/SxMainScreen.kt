@@ -125,7 +125,9 @@ fun SxMainScreen(viewModel: MainViewModel = hiltViewModel()) {
 }
 
 @Composable
-private fun SxStyleMixerDialog(voices: List<VoiceSlot>, presets: List<AudioEngineManager.SfPreset>, onDismiss: () -> Unit, onMixer: (Int, Int, Int, Int, Int, Int) -> Unit, onMute: (Int) -> Unit) {
+private fun SxStyleMixerDialog(voices: List<VoiceSlot>, presets: List<AudioEngineManager.SfPreset>, onDismiss: () -> Unit, onMixer: (Int, Int, Int, Int, Int, Int) -> Unit, onMute: (Int) -> Unit, onVoice: (Int, Int, Int) -> Unit) {
+    var expandedChannel by remember { mutableStateOf<Int?>(null) }
+    var voicePickerSlot by remember { mutableStateOf<VoiceSlot?>(null) }
     Dialog(onDismissRequest = onDismiss) {
         Surface(color = SxPanel, shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth().fillMaxHeight(.9f)) {
             Column(Modifier.fillMaxSize().padding(10.dp)) {
