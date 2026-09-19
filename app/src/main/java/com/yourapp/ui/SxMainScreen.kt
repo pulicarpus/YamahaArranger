@@ -56,6 +56,8 @@ fun SxMainScreen(viewModel: MainViewModel = hiltViewModel()) {
         }
     }
     var showUtilityLog by remember { mutableStateOf(false) }
+    var showMixer by remember { mutableStateOf(false) }
+    var showSf2Manager by remember { mutableStateOf(false) }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(SxBlack)) {
         val compact = maxHeight < 620.dp
@@ -66,9 +68,9 @@ fun SxMainScreen(viewModel: MainViewModel = hiltViewModel()) {
         val regH = if (compact) 48.dp else 56.dp
         val footerH = if (compact) 28.dp else 32.dp
         Column(Modifier.fillMaxSize().padding(horizontal = 7.dp, vertical = 5.dp)) {
-            SxHeader(state, headerH) { soundFontPicker.launch(arrayOf("audio/x-soundfont", "application/octet-stream", "audio/*", "*/*")) }
+            SxHeader(state, headerH) { showSf2Manager = true }
             Spacer(Modifier.height(gap))
-            SxNavBar(navH, onUtility = { showUtilityLog = true })
+            SxNavBar(navH, onMixer = { showMixer = true }, onUtility = { showUtilityLog = true })
             Spacer(Modifier.height(gap))
             Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(gap)) {
                 SxSideMenu(Modifier.weight(.17f).fillMaxHeight(), compact)
@@ -81,6 +83,34 @@ fun SxMainScreen(viewModel: MainViewModel = hiltViewModel()) {
             Spacer(Modifier.height(gap)); SxRegistration(state, viewModel, regH, compact)
             Spacer(Modifier.height(gap)); SxMidiBar(state, viewModel, footerH, compact)
         }
+    }
+
+    if (showMixer) {
+        StyleMixerDialog(
+            voices = state.voiceAssignments,
+            presets = state.sf2Presets,
+            onDismiss = { showMixer = false },
+            onMixer = viewModel::setStyleChannelMixer,
+            onMute = viewModel::toggleStyleChannelMute,
+            onVoice = { }
+        )
+    }
+
+    if (showSf2Manager) {
+        Sf2ManagerDialog(
+            files = state.availableSoundFonts,
+            currentName = state.soundFontName,
+            onDismiss = { showSf2Manager = false },
+            onSelect = { uri, name ->
+                viewModel.selectSoundFont(uri, name)
+                showSf2Manager = false
+            },
+            onRefresh = viewModel::refreshSoundFontList,
+            onImport = {
+                showSf2Manager = false
+                soundFontPicker.launch(arrayOf("audio/x-soundfont", "application/octet-stream", "audio/*", "*/*"))
+            }
+        )
     }
 
     if (showUtilityLog) {
@@ -107,11 +137,17 @@ private fun SxHeader(state: MainUiState, height: Dp, onPickSoundFont: () -> Unit
 }
 
 @Composable
-private fun SxNavBar(height: Dp, onUtility: () -> Unit) {
+private fun SxNavBar(height: Dp, onMixer: () -> Unit, onUtility: () -> Unit) {
     val tabs = listOf("HOME", "STYLE", "VOICE", "SONG", "MULTI PAD", "REGIST", "MIXER", "UTILITY")
     Row(Modifier.fillMaxWidth().height(height).background(Color(0xFF0D1115), RoundedCornerShape(5.dp)).padding(3.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
         tabs.forEachIndexed { i, label ->
-            val modifier = Modifier.weight(1f).fillMaxHeight().then(if (label == "UTILITY") Modifier.clickable(onClick = onUtility) else Modifier)
+            val modifier = Modifier.weight(1f).fillMaxHeight().then(
+                when (label) {
+                    "MIXER" -> Modifier.clickable(onClick = onMixer)
+                    "UTILITY" -> Modifier.clickable(onClick = onUtility)
+                    else -> Modifier
+                }
+            )
             Surface(color = if (i == 0) Color(0xFF073E82) else Color(0xFF1C2228), shape = RoundedCornerShape(3.dp), modifier = modifier) {
                 Box(contentAlignment = Alignment.Center) { Text(label, color = Color.White, fontSize = 7.sp, fontWeight = FontWeight.Bold, maxLines = 1) }
             }
