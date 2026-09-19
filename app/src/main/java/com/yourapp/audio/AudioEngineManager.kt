@@ -19,13 +19,16 @@ class AudioEngineManager @Inject constructor(
         bridge.nativeInitLogger()
         DebugLog.add("📋 Native logger initialized")
         started = bridge.nativeStart()
+        DebugLog.traceAudio("START result=$started sf2Loaded=$soundFontLoaded")
         DebugLog.add(if (started) "✅ AudioEngine OK" else "❌ AudioEngine FAILED")
     }
 
     fun stop() {
         if (!started) return
+        DebugLog.traceAudio("STOP begin")
         bridge.nativeStop()
         started = false
+        DebugLog.traceAudio("STOP complete")
         DebugLog.add("🛑 AudioEngine stopped")
     }
 
@@ -37,6 +40,7 @@ class AudioEngineManager @Inject constructor(
     fun loadSoundFont(filePath: String): Boolean {
         val role = if (nextSoundFontRole == 0) "MELODY" else "DRUM"
         DebugLog.add("🎼 Loading $role SF2…")
+        DebugLog.traceAudio("SF2 LOAD role=$role path=$filePath")
         val ok = bridge.nativeLoadSoundFont(filePath)
         if (ok) {
             soundFontLoaded = true
@@ -51,6 +55,7 @@ class AudioEngineManager @Inject constructor(
     fun isSoundFontLoaded(): Boolean = soundFontLoaded
 
     fun unloadSoundFont() {
+        DebugLog.traceAudio("SF2 UNLOAD")
         bridge.nativeUnloadSoundFont()
         soundFontLoaded = false
         nextSoundFontRole = 0
@@ -58,6 +63,7 @@ class AudioEngineManager @Inject constructor(
     }
 
     fun noteOn(midiNote: Int, velocity01: Float) {
+        DebugLog.traceAudio("NOTE_ON ch=legacy note=$midiNote vel=${"%.3f".format(java.util.Locale.US, velocity01)} sf2=$soundFontLoaded")
         if (soundFontLoaded) bridge.nativeSfNoteOn(midiNote, velocity01)
         else {
             val sample = sampleProvider.sampleForNote(midiNote) ?: return
@@ -66,25 +72,29 @@ class AudioEngineManager @Inject constructor(
     }
 
     fun noteOff(midiNote: Int) {
+        DebugLog.traceAudio("NOTE_OFF ch=legacy note=$midiNote sf2=$soundFontLoaded")
         if (soundFontLoaded) bridge.nativeSfNoteOff(midiNote) else bridge.nativeNoteOff(midiNote)
     }
 
     fun noteOnChannel(channel: Int, midiNote: Int, velocity01: Float) {
+        DebugLog.traceAudio("NOTE_ON ch=$channel note=$midiNote vel=${"%.3f".format(java.util.Locale.US, velocity01)} sf2=$soundFontLoaded")
         if (soundFontLoaded) bridge.nativeSfNoteOnChannel(channel, midiNote, velocity01)
         else noteOn(midiNote, velocity01)
     }
 
     fun noteOffChannel(channel: Int, midiNote: Int) {
+        DebugLog.traceAudio("NOTE_OFF ch=$channel note=$midiNote sf2=$soundFontLoaded")
         if (soundFontLoaded) bridge.nativeSfNoteOffChannel(channel, midiNote)
         else noteOff(midiNote)
     }
 
     fun setChannelProgram(channel: Int, program: Int, bank: Int = 0) {
+        DebugLog.traceAudio("PROGRAM ch=$channel bank=$bank program=$program")
         bridge.nativeSetChannelPreset(channel, bank, program)
         DebugLog.add("🎼 Ch$channel → prog=$program bank=$bank")
     }
 
-    fun allNotesOff() = bridge.nativeAllNotesOff()
+    fun allNotesOff() { DebugLog.traceAudio("ALL_NOTES_OFF"); bridge.nativeAllNotesOff() }
 
     fun testTone(note: Int, velocity: Float) {
         if (soundFontLoaded) {
