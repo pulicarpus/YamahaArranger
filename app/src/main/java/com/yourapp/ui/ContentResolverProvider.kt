@@ -255,6 +255,42 @@ class ContentResolverProvider @Inject constructor(
         }
     }
 
+    fun listSoundFonts(): List<Pair<Uri, String>> {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            val dir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "YamahaArranger/SF2")
+            return dir.listFiles { f -> f.isFile && f.extension.equals("sf2", true) }
+                ?.sortedBy { it.name.lowercase() }
+                ?.map { Uri.fromFile(it) to it.name }
+                ?: emptyList()
+        }
+        return try {
+            val resolver = context.contentResolver
+            val result = mutableListOf<Pair<Uri, String>>()
+            val projection = arrayOf(MediaStore.Files.FileColumns._ID, MediaStore.Files.FileColumns.DISPLAY_NAME)
+            val selection = MediaStore.Files.FileColumns.RELATIVE_PATH + " LIKE ? AND " +
+                MediaStore.Files.FileColumns.DISPLAY_NAME + " LIKE ?"
+            resolver.query(
+                MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),
+                projection,
+                selection,
+                arrayOf("%/YamahaArranger/SF2/%", "%.sf2"),
+                MediaStore.Files.FileColumns.DISPLAY_NAME + " COLLATE NOCASE ASC"
+            )?.use { cursor ->
+                val idCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
+                val nameCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
+                while (cursor.moveToNext()) {
+                    val id = cursor.getLong(idCol)
+                    val name = cursor.getString(nameCol)
+                    result += MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY, id) to name
+                }
+            }
+            result
+        } catch (e: Exception) {
+            Timber.w(e, "SF2 list query failed")
+            emptyList()
+        }
+    }
+
     fun copySoundFontToCache(uri: Uri, displayName: String): File? {
         val dir = File(context.cacheDir, "sf2").apply { mkdirs() }
         val dest = File(dir, displayName)
