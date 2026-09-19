@@ -53,7 +53,12 @@ object DebugLog {
     fun clear() { _lines.clear(); _fullLines.clear(); longText = "" }
 }
 
-data class VoiceSlot(val channel: Int, val label: String, val program: Int, val bank: Int = 0, val locked: Boolean = false, val styleVolume: Int = 100, val styleMuted: Boolean = false) {
+data class VoiceSlot(
+    val channel: Int, val label: String, val program: Int, val bank: Int = 0,
+    val locked: Boolean = false, val styleVolume: Int = 100, val styleMuted: Boolean = false,
+    val stylePan: Int = 64, val styleExpression: Int = 127,
+    val styleReverb: Int = 40, val styleChorus: Int = 0
+) {
     fun displayName(): String {
         if (bank == 128) return "DRUM KIT"
         return GM_VOICES.firstOrNull { it.second == program }?.first ?: "prog$program"
@@ -239,6 +244,18 @@ class MainViewModel @Inject constructor(
         val slot = _voiceAssignments.value.firstOrNull { it.channel == channel } ?: return
         _voiceAssignments.value = _voiceAssignments.value.map { if (it.channel == channel) it.copy(styleVolume = v) else it }
         arrangerBrain.setStyleChannelVolume(channel, v)
+    }
+
+    fun setStyleChannelMixer(channel: Int, volume: Int, pan: Int, expression: Int, reverb: Int, chorus: Int) {
+        val v = volume.coerceIn(0, 127)
+        val p = pan.coerceIn(0, 127)
+        val e = expression.coerceIn(0, 127)
+        val r = reverb.coerceIn(0, 127)
+        val c = chorus.coerceIn(0, 127)
+        _voiceAssignments.value = _voiceAssignments.value.map { slot ->
+            if (slot.channel == channel) slot.copy(styleVolume = v, stylePan = p, styleExpression = e, styleReverb = r, styleChorus = c) else slot
+        }
+        arrangerBrain.setStyleChannelMixer(channel, v, p, e, r, c)
     }
 
     fun toggleStyleChannelMute(channel: Int) {
