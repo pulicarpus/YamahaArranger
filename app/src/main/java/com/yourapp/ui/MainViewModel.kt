@@ -138,6 +138,7 @@ class MainViewModel @Inject constructor(
     private val _midiOutEnabled = MutableStateFlow(false)
     private val _transpose = MutableStateFlow(0)
     private val _soundFontName = MutableStateFlow("None")
+    private val _availableSoundFonts = MutableStateFlow<List<Pair<Uri, String>>>(emptyList())
     private val _styleVolume = MutableStateFlow(100)
     private val _voiceVolume = MutableStateFlow(100)
     private val _masterVolume = MutableStateFlow(110)
@@ -166,7 +167,10 @@ class MainViewModel @Inject constructor(
         DebugLog.add("🎵 ViewModel init")
         DebugLog.add("📂 SF2 folder: Download/YamahaArranger/SF2")
         viewModelScope.launch {
-            withContext(Dispatchers.IO) { contentResolver.ensureSoundFontFolder() }
+            withContext(Dispatchers.IO) {
+                contentResolver.ensureSoundFontFolder()
+                _availableSoundFonts.value = contentResolver.listSoundFonts()
+            }
             autoLoadSoundFont()
         }
         midiInputManager.onNoteOn = { note, velocity -> arrangerBrain.onKeyboardNoteOn(note, velocity / 127f) }
@@ -327,6 +331,20 @@ class MainViewModel @Inject constructor(
         }
         _soundFontName.value = if (ok) displayName else "Load failed"
         DebugLog.add(if (ok) "✅ SF2 loaded: $displayName" else "❌ SF2 load failed: $displayName")
+    }
+
+    fun refreshSoundFontList() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _availableSoundFonts.value = contentResolver.listSoundFonts()
+            DebugLog.add("📂 SF2 found: " + _availableSoundFonts.value.size)
+        }
+    }
+
+    fun selectSoundFont(uri: Uri, name: String) {
+        viewModelScope.launch {
+            DebugLog.add("🔄 Selecting SF2: $name")
+            loadSoundFontUri(uri, name)
+        }
     }
 
     fun onSoundFontFilePicked(uri: Uri) {
