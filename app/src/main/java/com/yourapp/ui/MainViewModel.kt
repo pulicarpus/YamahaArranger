@@ -121,7 +121,7 @@ data class MainUiState(
     val styleName: String = "No Style Loaded", val tempoBpm: Int = 120, val transpose: Int = 0,
     val isPlaying: Boolean = false, val activeSection: String = "Main A", val detectedChordLabel: String = "", val autoFill: Boolean = true,
     val midiStatus: String = "No MIDI device", val midiOutEnabled: Boolean = false, val soundFontName: String = "None",
-    val styleVolume: Int = 100, val voiceVolume: Int = 100, val masterVolume: Int = 110,
+    val styleVolume: Int = 100, val leftVolume: Int = 100, val right1Volume: Int = 100, val right2Volume: Int = 100, val right3Volume: Int = 100, val masterVolume: Int = 100,
     val activeBank: Int = 1, val activeRegSlot: Int = 0, val voiceName: String = "GrandPiano",
     val right2Name: String = "OFF", val splitPoint: String = "C4", val voiceAssignments: List<VoiceSlot> = defaultVoices(),
     val availableSoundFonts: List<Pair<Uri, String>> = emptyList(),
@@ -144,8 +144,11 @@ class MainViewModel @Inject constructor(
     private val _availableSoundFonts = MutableStateFlow<List<Pair<Uri, String>>>(emptyList())
     private val _sf2Presets = MutableStateFlow<List<AudioEngineManager.SfPreset>>(emptyList())
     private val _styleVolume = MutableStateFlow(100)
-    private val _voiceVolume = MutableStateFlow(100)
-    private val _masterVolume = MutableStateFlow(110)
+    private val _leftVolume = MutableStateFlow(100)
+    private val _right1Volume = MutableStateFlow(100)
+    private val _right2Volume = MutableStateFlow(100)
+    private val _right3Volume = MutableStateFlow(100)
+    private val _masterVolume = MutableStateFlow(100)
     private val _activeBank = MutableStateFlow(1)
     private val _activeRegSlot = MutableStateFlow(0)
     private val _voiceAssignments = MutableStateFlow(defaultVoices())
@@ -155,19 +158,20 @@ class MainViewModel @Inject constructor(
         arrangerBrain.state,
         combine(_styleName, _midiStatus) { s, m -> s to m },
         combine(_transpose, _soundFontName) { t, sf -> t to sf },
-        combine(_voiceVolume, _masterVolume) { vv, mv -> vv to mv },
+        combine(_leftVolume, _right1Volume, _right2Volume, _right3Volume) { l, r1, r2, r3 -> listOf(l, r1, r2, r3) },
+        _masterVolume,
         combine(
             combine(_activeBank, _activeRegSlot, _voiceAssignments) { b, r, v -> Triple(b, r, v) },
             combine(_availableSoundFonts, _sf2Presets) { files, presets -> files to presets }
         ) { voiceData, sfData -> voiceData to sfData }
-    ) { arranger, (styleName, midi), (transpose, sfName), (voiceVol, masterVol), (voiceData, sfData) ->
+    ) { arranger, (styleName, midi), (transpose, sfName), voiceVolumes, masterVol, (voiceData, sfData) ->
         val (bank, regSlot, voices) = voiceData
         val sfFiles = sfData.first
         val sfPresets = sfData.second
         MainUiState(styleName = styleName, tempoBpm = arranger.tempoBpm, transpose = transpose,
             isPlaying = arranger.isPlaying, activeSection = displayLabelFor(arranger.currentSection),
             detectedChordLabel = arranger.currentChordLabel, autoFill = arranger.autoFill, midiStatus = midi, midiOutEnabled = _midiOutEnabled.value,
-            soundFontName = sfName, voiceVolume = voiceVol, masterVolume = masterVol,
+            soundFontName = sfName, leftVolume = voiceVolumes[0], right1Volume = voiceVolumes[1], right2Volume = voiceVolumes[2], right3Volume = voiceVolumes[3], masterVolume = masterVol,
             sf2Presets = sfPresets,
             activeBank = bank, activeRegSlot = regSlot, voiceAssignments = voices, availableSoundFonts = sfFiles)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, MainUiState())
@@ -222,9 +226,16 @@ class MainViewModel @Inject constructor(
     fun onTempoUp() { arrangerBrain.setTempo((arrangerBrain.state.value.tempoBpm + 5).coerceIn(20, 280)) }
     fun onTransposeDown() { _transpose.value = (_transpose.value - 1).coerceIn(-12, 12) }
     fun onTransposeUp() { _transpose.value = (_transpose.value + 1).coerceIn(-12, 12) }
-    fun onStyleVolumeChange(value: Int) { _styleVolume.value = value }
-    fun onVoiceVolumeChange(value: Int) { _voiceVolume.value = value }
-    fun onMasterVolumeChange(value: Int) { _masterVolume.value = value }
+    fun onStyleVolumeChange(value: Int) {
+        val v = value.coerceIn(0, 127); _styleVolume.value = v
+        // Style parts currently render on destination channels 8..15.
+        for (ch in 8..15) audioEngine.setChannelExpression(ch, v)
+    }
+    fun onLeftVolumeChange(value: Int) { _leftVolume.value = value.coerceIn(0, 127); audioEngine.setChannelExpression(3, _leftVolume.value) }
+    fun onRight1VolumeChange(value: Int) { _right1Volume.value = value.coerceIn(0, 127); audioEngine.setChannelExpression(0, _right1Volume.value) }
+    fun onRight2VolumeChange(value: Int) { _right2Volume.value = value.coerceIn(0, 127); audioEngine.setChannelExpression(1, _right2Volume.value) }
+    fun onRight3VolumeChange(value: Int) { _right3Volume.value = value.coerceIn(0, 127); audioEngine.setChannelExpression(2, _right3Volume.value) }
+    fun onMasterVolumeChange(value: Int) { _masterVolume.value = value.coerceIn(0, 127); audioEngine.setMasterVolume(_masterVolume.value) }
 
     // Temporary registration-as-chord pads for style development/testing.
     fun onBankChange(bank: Int) { _activeBank.value = bank.coerceIn(1, 8) }
