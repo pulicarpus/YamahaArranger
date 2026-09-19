@@ -203,7 +203,8 @@ fun MainScreen(
             onDismiss = { showStyleEditor = false },
             onMixer = viewModel::setStyleChannelMixer,
             onMute = viewModel::toggleStyleChannelMute,
-            onVoice = { showStyleVoicePicker = it }
+            onVoice = { showStyleVoicePicker = it },
+            presets = uiState.sf2Presets
         )
     }
 
@@ -227,6 +228,7 @@ fun MainScreen(
     showStyleVoicePicker?.let { slot ->
         VoicePickerDialog(
             slot = slot,
+            presets = uiState.sf2Presets,
             onDismiss = { showStyleVoicePicker = null },
             onSelect = { program, bank ->
                 viewModel.setStyleChannelVoice(slot.channel, program, bank)
@@ -250,6 +252,7 @@ fun MainScreen(
 @Composable
 private fun StyleMixerDialog(
     voices: List<VoiceSlot>,
+    presets: List<AudioEngineManager.SfPreset>,
     onDismiss: () -> Unit,
     onMixer: (Int, Int, Int, Int, Int, Int) -> Unit,
     onMute: (Int) -> Unit,
@@ -653,8 +656,16 @@ private fun MixerSlider(label: String, value: Int, onChange: (Int) -> Unit) {
 }
 
 @Composable
-private fun VoicePickerDialog(slot: VoiceSlot, onDismiss: () -> Unit, onSelect: (program: Int, bank: Int) -> Unit) {
+private fun VoicePickerDialog(
+    slot: VoiceSlot,
+    presets: List<AudioEngineManager.SfPreset>,
+    onDismiss: () -> Unit,
+    onSelect: (program: Int, bank: Int) -> Unit
+) {
     var search by remember { mutableStateOf("") }
+    val drum = slot.channel == 9 || slot.isDrum()
+    val sfPresets = presets.filter { if (drum) it.role == "DRUM" || it.bank == 128 else it.role == "MELODY" }
+    val filteredSf = sfPresets.filter { search.isBlank() || it.name.contains(search, ignoreCase = true) }
     val filteredVoices = remember(search) { if (search.isBlank()) GM_VOICES else GM_VOICES.filter { it.first.contains(search, ignoreCase = true) } }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -667,6 +678,20 @@ private fun VoicePickerDialog(slot: VoiceSlot, onDismiss: () -> Unit, onSelect: 
                 }
                 OutlinedTextField(value = search, onValueChange = { search = it }, modifier = Modifier.fillMaxWidth(), placeholder = { Text("Search voice…") }, singleLine = true)
                 Spacer(Modifier.height(5.dp))
+                if (sfPresets.isNotEmpty()) {
+                    Text("LOADED SF2  •  " + if (drum) "DRUM / KIT" else "MELODY", color = AccentOrange, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(3.dp))
+                    LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 250.dp)) {
+                        items(filteredSf) { item ->
+                            Row(modifier = Modifier.fillMaxWidth().clickable { onSelect(item.program, item.bank) }.padding(7.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(item.bank.toString() + ":" + (item.program + 1), fontSize = 9.sp, color = TextDim, modifier = Modifier.width(62.dp))
+                                Text(item.name, fontSize = 11.sp, color = Color.White, maxLines = 1)
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(5.dp))
+                    Text("GENERAL MIDI FALLBACK", color = TextDim, fontSize = 7.sp)
+                }
                 LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 350.dp)) {
                     items(filteredVoices) { item ->
                         Row(modifier = Modifier.fillMaxWidth().clickable { onSelect(item.second, 0) }.padding(7.dp), verticalAlignment = Alignment.CenterVertically) {
