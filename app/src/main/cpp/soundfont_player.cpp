@@ -176,6 +176,19 @@ void SoundFontPlayer::setChannelMixer(int channel, int volume, int pan, int expr
     fluid_synth_cc(synth_, channel, 93, std::max(0, std::min(127, chorusSend)));
 }
 
+void SoundFontPlayer::setChannelExpression(int channel, int expression) {
+    if (!synth_) return;
+    std::lock_guard<std::mutex> lock(g_synthMutex);
+    channel = std::max(0, std::min(15, channel));
+    fluid_synth_cc(synth_, channel, 11, std::max(0, std::min(127, expression)));
+}
+
+void SoundFontPlayer::setMasterGain(float gain) {
+    if (!synth_) return;
+    std::lock_guard<std::mutex> lock(g_synthMutex);
+    fluid_synth_set_gain(synth_, std::max(0.0f, std::min(2.0f, gain)));
+}
+
 void SoundFontPlayer::setChannelPreset(int channel, int bank, int program) {
     if (!synth_) return;
     std::lock_guard<std::mutex> lock(g_synthMutex);
