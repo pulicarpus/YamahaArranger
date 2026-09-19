@@ -189,7 +189,10 @@ fun MainScreen(
 
         PanelSection("MASTER / MIXER") {
             VolumeSlider("STYLE", uiState.styleVolume, viewModel::onStyleVolumeChange)
-            VolumeSlider("VOICE", uiState.voiceVolume, viewModel::onVoiceVolumeChange)
+            VolumeSlider("LEFT", uiState.leftVolume, viewModel::onLeftVolumeChange)
+            VolumeSlider("RIGHT1", uiState.right1Volume, viewModel::onRight1VolumeChange)
+            VolumeSlider("RIGHT2", uiState.right2Volume, viewModel::onRight2VolumeChange)
+            VolumeSlider("RIGHT3", uiState.right3Volume, viewModel::onRight3VolumeChange)
             VolumeSlider("MASTER", uiState.masterVolume, viewModel::onMasterVolumeChange)
         }
         Spacer(Modifier.height(8.dp))
