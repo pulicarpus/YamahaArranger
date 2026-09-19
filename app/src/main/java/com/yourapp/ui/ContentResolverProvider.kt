@@ -154,46 +154,91 @@ class ContentResolverProvider @Inject constructor(
      * Returns the Uri and display name.
      */
     fun findSoundFont(displayName: String? = null): Pair<Uri, String>? {
+        val wantedName = displayName?.trim()
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val resolver = context.contentResolver
-            val projection = arrayOf(
-                MediaStore.Downloads._ID,
-                MediaStore.Downloads.DISPLAY_NAME,
-                MediaStore.Downloads.RELATIVE_PATH
-            )
+
+            // First search the Downloads collection. This covers files created
+            // through MediaStore as well as normal files indexed by Android.
+            fun queryCollection(uri: Uri, projection: Array<String>, selection: String, args: Array<String>): Pair<Uri, String>? {
+                return try {
+                    resolver.query(uri, projection, selection, args, "date_modified DESC")?.use { cursor ->
+                        val idCol = cursor.getColumnIndex(MediaStore.Downloads._ID)
+                        val nameCol = cursor.getColumnIndex(MediaStore.Downloads.DISPLAY_NAME)
+                        if (idCol >= 0 && nameCol >= 0 && cursor.moveToFirst()) {
+                            val id = cursor.getLong(idCol)
+                            val name = cursor.getString(nameCol)
+                            MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY, id) to name
+                        } else null
+                    }
+                } catch (e: Exception) {
+                    Timber.w(e, "SF2 MediaStore Downloads query failed")
+                    null
+                }
+            }
+
             val selection = buildString {
                 append(MediaStore.Downloads.RELATIVE_PATH)
-                append("=? AND ")
+                append(" LIKE ? AND ")
                 append(MediaStore.Downloads.DISPLAY_NAME)
                 append(" LIKE ?")
-                if (displayName != null) {
+                if (wantedName != null) {
                     append(" AND ")
                     append(MediaStore.Downloads.DISPLAY_NAME)
                     append("=?")
                 }
             }
-            val args = if (displayName != null) {
-                arrayOf(sf2RelativePath, "%.sf2", displayName)
+            val args = if (wantedName != null) {
+                arrayOf("%/YamahaArranger/SF2/%", "%.sf2", wantedName)
             } else {
-                arrayOf(sf2RelativePath, "%.sf2")
+                arrayOf("%/YamahaArranger/SF2/%", "%.sf2")
             }
-            resolver.query(
+            queryCollection(
                 MediaStore.Downloads.EXTERNAL_CONTENT_URI,
-                projection,
+                arrayOf(MediaStore.Downloads._ID, MediaStore.Downloads.DISPLAY_NAME),
                 selection,
-                args,
-                MediaStore.Downloads.DISPLAY_NAME + " COLLATE NOCASE ASC"
-            )?.use { cursor ->
-                val idCol = cursor.getColumnIndexOrThrow(MediaStore.Downloads._ID)
-                val nameCol = cursor.getColumnIndexOrThrow(MediaStore.Downloads.DISPLAY_NAME)
-                if (cursor.moveToFirst()) {
-                    val id = cursor.getLong(idCol)
-                    val name = cursor.getString(nameCol)
-                    return MediaStore.Downloads.getContentUri(
-                        MediaStore.VOLUME_EXTERNAL_PRIMARY,
-                        id
-                    ) to name
+                args
+            )?.let { return it }
+
+            // Fallback: some file managers place the file in Downloads but the
+            // Downloads collection is not populated immediately. Search the
+            // general MediaStore file index as well.
+            try {
+                val projection = arrayOf(MediaStore.Files.FileColumns._ID, MediaStore.Files.FileColumns.DISPLAY_NAME)
+                val selectionFiles = buildString {
+                    append(MediaStore.Files.FileColumns.RELATIVE_PATH)
+                    append(" LIKE ? AND ")
+                    append(MediaStore.Files.FileColumns.DISPLAY_NAME)
+                    append(" LIKE ?")
+                    if (wantedName != null) {
+                        append(" AND ")
+                        append(MediaStore.Files.FileColumns.DISPLAY_NAME)
+                        append("=?")
+                    }
                 }
+                val argsFiles = if (wantedName != null) {
+                    arrayOf("%/YamahaArranger/SF2/%", "%.sf2", wantedName)
+                } else {
+                    arrayOf("%/YamahaArranger/SF2/%", "%.sf2")
+                }
+                resolver.query(
+                    MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),
+                    projection,
+                    selectionFiles,
+                    argsFiles,
+                    MediaStore.Files.FileColumns.DATE_MODIFIED + " DESC"
+                )?.use { cursor ->
+                    val idCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
+                    val nameCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
+                    if (cursor.moveToFirst()) {
+                        val id = cursor.getLong(idCol)
+                        val name = cursor.getString(nameCol)
+                        return MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY, id) to name
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.w(e, "SF2 MediaStore Files fallback failed")
             }
             return null
         }
@@ -202,9 +247,9 @@ class ContentResolverProvider @Inject constructor(
             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
             "YamahaArranger/SF2"
         )
-        val file = if (displayName != null) File(dir, displayName)
+        val file = if (wantedName != null) File(dir, wantedName)
         else dir.listFiles { f -> f.isFile && f.extension.equals("sf2", true) }
-            ?.sortedBy { it.name.lowercase() }?.firstOrNull()
+            ?.sortedByDescending { it.lastModified() }?.firstOrNull()
         return file?.takeIf { it.exists() && it.length() > 0 }?.let {
             Uri.fromFile(it) to it.name
         }
