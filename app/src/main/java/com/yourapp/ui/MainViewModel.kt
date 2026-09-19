@@ -30,17 +30,27 @@ import javax.inject.Inject
 
 object DebugLog {
     private val _lines = ConcurrentLinkedQueue<String>()
+    private val _fullLines = ConcurrentLinkedQueue<String>()
     private const val MAX_LINES = 30
+    private const val MAX_FULL_LINES = 30000
     @Volatile private var longText: String = ""
     @JvmStatic fun add(msg: String) {
-        val ts = SimpleDateFormat("HH:mm:ss", Locale.US).format(Date())
-        _lines.add("[$ts] $msg")
+        val ts = SimpleDateFormat("HH:mm:ss.SSS", Locale.US).format(Date())
+        val line = "[$ts] $msg"
+        _lines.add(line)
         while (_lines.size > MAX_LINES) _lines.poll()
+        _fullLines.add(line)
+        while (_fullLines.size > MAX_FULL_LINES) _fullLines.poll()
     }
+    @JvmStatic fun traceAudio(msg: String) = add("🔊 AUDIO $msg")
+    @JvmStatic fun traceMidi(msg: String) = add("📤 MIDI OUT $msg")
+    @JvmStatic fun traceError(msg: String) = add("❌ ERROR $msg")
     fun getAll(): List<String> = _lines.toList()
+    fun getFullAll(): List<String> = _fullLines.toList()
     fun setLongText(text: String) { longText = text }
     fun getLongText(): String = longText
-    fun clear() { _lines.clear(); longText = "" }
+    fun getFullText(): String = _fullLines.joinToString("\n")
+    fun clear() { _lines.clear(); _fullLines.clear(); longText = "" }
 }
 
 data class VoiceSlot(val channel: Int, val label: String, val program: Int, val bank: Int = 0, val locked: Boolean = false, val styleVolume: Int = 100, val styleMuted: Boolean = false) {
