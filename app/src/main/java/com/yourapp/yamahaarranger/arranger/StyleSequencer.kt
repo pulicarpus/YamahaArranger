@@ -100,8 +100,28 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     fun setLockedChannels(channels:Set<Int>){lockedChannels=channels;com.yourapp.yamahaarranger.ui.DebugLog.add("🔒 Locked channels updated: $channels")}
     fun setChannelOverride(channel:Int, override:StyleChannelOverride){channelOverrides[channel]=override;com.yourapp.yamahaarranger.ui.DebugLog.add("🎚 STYLE CH$channel: vol=${override.volume} prog=${override.program ?: "AUTO"} bank=${override.bank ?: "AUTO"} tr=${override.transpose} mute=${override.muted}")}
     fun channelOverride(channel:Int):StyleChannelOverride = channelOverrides[channel] ?: StyleChannelOverride()
-    fun setChannelVolume(channel:Int, volume:Int){ val v=volume.coerceIn(0,127); val old=channelOverride(channel); setChannelOverride(channel, old.copy(volume=v)); audioEngine.setChannelVolume(channel,v) }
-    fun setChannelMute(channel:Int, muted:Boolean){ val old=channelOverride(channel); setChannelOverride(channel, old.copy(muted=muted)); audioEngine.setChannelVolume(channel, if(muted) 0 else old.volume) }
+    fun setChannelVolume(channel:Int, volume:Int){
+        val v=volume.coerceIn(0,127)
+        val old=channelOverride(channel)
+        setChannelOverride(channel, old.copy(volume=v))
+        audioEngine.setChannelVolume(channel, if(old.muted) 0 else v)
+    }
+    fun setChannelMute(channel:Int, muted:Boolean){
+        val old=channelOverride(channel)
+        setChannelOverride(channel, old.copy(muted=muted))
+        audioEngine.setChannelMixer(channel, volume=if(muted) 0 else old.volume, pan=old.pan, expression=old.expression, reverbSend=old.reverbSend, chorusSend=old.chorusSend)
+    }
+    fun setChannelMixer(channel:Int, volume:Int, pan:Int, expression:Int, reverbSend:Int, chorusSend:Int){
+        val old=channelOverride(channel)
+        val v=volume.coerceIn(0,127)
+        val p=pan.coerceIn(0,127)
+        val e=expression.coerceIn(0,127)
+        val r=reverbSend.coerceIn(0,127)
+        val ch=chorusSend.coerceIn(0,127)
+        val next=old.copy(volume=v, pan=p, expression=e, reverbSend=r, chorusSend=ch)
+        setChannelOverride(channel,next)
+        audioEngine.setChannelMixer(channel, volume=if(next.muted) 0 else v, pan=p, expression=e, reverbSend=r, chorusSend=ch)
+    }
     fun setChannelProgramOverride(channel:Int, program:Int, bank:Int){ val old=channelOverride(channel); setChannelOverride(channel, old.copy(program=program.coerceIn(0,127), bank=bank.coerceIn(0,128))) }
     fun setVoiceMap(vm:Map<Int,String>){voiceMap=vm;lastAppliedSection="";com.yourapp.yamahaarranger.ui.DebugLog.add("🎼 Legacy VoiceMap received: ${vm.size}; CASM policy takes precedence")}
     fun play(section:StyleSectionModel,ppq:Int,loopLimit:Int=-1,onComplete:(()->Unit)?=null){stop();clearStringTrace();stringTrace("TRACE_SESSION section=\${section.name} ppq=\${ppq} loopLimit=\${loopLimit}");com.yourapp.yamahaarranger.ui.DebugLog.add("🎼 SECTION " + section.name + ": preserving current chord for immediate CASM retarget");loopCount=0;if(lastAppliedSection!=section.name){applyVoicesFromCasm(section);lastAppliedSection=section.name};val noteCount=section.parts.sumOf{part->part.events.count{isNoteEvent(it)}};com.yourapp.yamahaarranger.ui.DebugLog.add("▶ PLAY ${section.name}: parts=${section.parts.size}, events=${section.parts.sumOf{it.events.size}}, noteEvents=$noteCount, loopLimit=$loopLimit");playbackJob=scope.launch{var loops=0;while(loopLimit<0||loops<loopLimit){playOnce(section,ppq);loops++};onComplete?.invoke()}}
@@ -233,7 +253,16 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             val audioBank = if (drum) 128 else 0
             val midiBank = if (drum) 127 else midiMsb.coerceIn(0, 127)
             audioEngine.setChannelProgram(destination, prog, audioBank)
-            if (override != null) audioEngine.setChannelMixer(destination, volume=override.volume)
+            if (override != null) {
+                audioEngine.setChannelMixer(
+                    destination,
+                    volume = if (override.muted) 0 else override.volume,
+                    pan = override.pan,
+                    expression = override.expression,
+                    reverbSend = override.reverbSend,
+                    chorusSend = override.chorusSend
+                )
+            }
             midiInputManager.sendProgramChange(destination, prog, midiBank)
             applied += destination
             val source = if (override?.program != null) "STYLE OVERRIDE" else if (explicit != null) "actual MIDI setup" else "fallback name"
