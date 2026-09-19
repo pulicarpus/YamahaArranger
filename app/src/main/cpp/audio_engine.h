@@ -33,6 +33,8 @@ public:
     void sfNoteOffChannel(int channel, int midiNote);
     void sfSetChannelPreset(int channel, int bank, int program);
     void sfSetChannelMixer(int channel, int volume, int pan, int expression, int reverbSend, int chorusSend);
+    void sfSetChannelExpression(int channel, int expression);
+    void sfSetMasterGain(float gain);
     std::string sfPresetList() const;
 
     oboe::DataCallbackResult onAudioReady(oboe::AudioStream* stream,
