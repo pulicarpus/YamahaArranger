@@ -92,7 +92,7 @@ class ContentResolverProvider @Inject constructor(
         }
     }
 
-    fun saveSoundFont(uri: Uri, displayName: String): Boolean {
+    fun saveSoundFont(uri: Uri, displayName: String): Uri? {
         val safeName = displayName.substringAfterLast('/').ifBlank { "font.sf2" }
             .let { if (it.lowercase().endsWith(".sf2")) it else "$it.sf2" }
 
@@ -108,7 +108,7 @@ class ContentResolverProvider @Inject constructor(
                 put(MediaStore.Downloads.IS_PENDING, 1)
             }
             val outUri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-                ?: return false
+                ?: return null
             try {
                 val copied = resolver.openInputStream(uri)?.use { input ->
                     resolver.openOutputStream(outUri)?.use { output ->
@@ -118,18 +118,18 @@ class ContentResolverProvider @Inject constructor(
                 } ?: false
                 if (!copied) {
                     resolver.delete(outUri, null, null)
-                    false
+                    null
                 } else {
                     val done = ContentValues().apply {
                         put(MediaStore.Downloads.IS_PENDING, 0)
                     }
                     resolver.update(outUri, done, null, null)
-                    true
+                    outUri
                 }
             } catch (e: Exception) {
                 resolver.delete(outUri, null, null)
                 Timber.e(e, "Failed storing SF2 in shared Downloads")
-                false
+                null
             }
         } else {
             val dir = File(
@@ -141,7 +141,7 @@ class ContentResolverProvider @Inject constructor(
                 openInputStream(uri)?.use { input ->
                     dest.outputStream().use { output -> input.copyTo(output) }
                 }
-                dest.length() > 0
+                if (dest.length() > 0) Uri.fromFile(dest) else null
             } catch (e: Exception) {
                 Timber.e(e, "Failed storing legacy SF2")
                 false
