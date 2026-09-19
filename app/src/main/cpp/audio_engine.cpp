@@ -145,6 +145,8 @@ void AudioEngine::sfNoteOffChannel(int channel, int midiNote) { soundFont_.noteO
 void AudioEngine::sfSetChannelPreset(int channel, int bank, int program) { soundFont_.setChannelPreset(channel, bank, program); }
 void AudioEngine::sfSetChannelMixer(int channel, int volume, int pan, int expression, int reverbSend, int chorusSend) { soundFont_.setChannelMixer(channel, volume, pan, expression, reverbSend, chorusSend); }
 std::string AudioEngine::sfPresetList() const { return soundFont_.presetList(); }
+void AudioEngine::sfSetChannelExpression(int channel, int expression) { soundFont_.setChannelExpression(channel, expression); }
+void AudioEngine::sfSetMasterGain(float gain) { soundFont_.setMasterGain(gain); }
 
 void AudioEngine::noteOn(int midiNote, int rootNote, float velocity01, const float* sampleData, size_t sampleFrames, int sampleRateHz) {
     std::lock_guard<std::mutex> lock(voiceMutex_);
