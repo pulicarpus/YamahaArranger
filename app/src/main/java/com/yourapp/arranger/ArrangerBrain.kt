@@ -281,6 +281,18 @@ class ArrangerBrain @Inject constructor(
         sequencer.setChannelMute(channel, muted)
     }
 
+    fun setStyleChannelMixer(
+        channel: Int,
+        volume: Int,
+        pan: Int,
+        expression: Int,
+        reverbSend: Int,
+        chorusSend: Int
+    ) {
+        ensureSequencer()
+        sequencer.setChannelMixer(channel, volume, pan, expression, reverbSend, chorusSend)
+    }
+
     fun setStyleChannelProgram(channel: Int, program: Int, bank: Int) {
         ensureSequencer()
         sequencer.setChannelProgramOverride(channel, program, bank)
