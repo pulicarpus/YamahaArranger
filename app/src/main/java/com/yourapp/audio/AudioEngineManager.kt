@@ -41,7 +41,7 @@ class AudioEngineManager @Inject constructor(
         val role = if (nextSoundFontRole == 0) "MELODY" else "DRUM"
         DebugLog.add("🎼 Loading $role SF2…")
         DebugLog.traceAudio("SF2 LOAD role=$role path=$filePath")
-        val ok = bridge.nativeLoadSoundFont(filePath)
+        val ok = withAudioStreamPaused { bridge.nativeLoadSoundFont(filePath) }
         if (ok) {
             soundFontLoaded = true
             nextSoundFontRole = 1 - nextSoundFontRole
@@ -52,15 +52,38 @@ class AudioEngineManager @Inject constructor(
         return ok
     }
 
+    /**
+     * FluidSynth owns the live synth used by the Oboe render callback.
+     * Never mutate/unload its SoundFont stack while the callback can render.
+     * Pause the stream for the load, then resume it even when loading fails.
+     */
+    private fun <T> withAudioStreamPaused(block: () -> T): T {
+        val resume = started
+        if (resume) {
+            DebugLog.traceAudio("PAUSE for SF2 operation")
+            bridge.nativeStop()
+            started = false
+        }
+        return try {
+            block()
+        } finally {
+            if (resume) {
+                bridge.nativeInitLogger()
+                started = bridge.nativeStart()
+                DebugLog.traceAudio("RESUME after SF2 operation started=$started")
+            }
+        }
+    }
+
     fun loadMelodySoundFont(filePath: String): Boolean {
-        val ok = bridge.nativeLoadMelodySoundFont(filePath)
+        val ok = withAudioStreamPaused { bridge.nativeLoadMelodySoundFont(filePath) }
         soundFontLoaded = soundFontLoaded || ok
         if (ok) DebugLog.add("✅ MELODY SF2 OK") else DebugLog.add("❌ MELODY SF2 FAILED")
         return ok
     }
 
     fun loadDrumSoundFont(filePath: String): Boolean {
-        val ok = bridge.nativeLoadDrumSoundFont(filePath)
+        val ok = withAudioStreamPaused { bridge.nativeLoadDrumSoundFont(filePath) }
         soundFontLoaded = soundFontLoaded || ok
         if (ok) DebugLog.add("✅ DRUM SF2 OK") else DebugLog.add("❌ DRUM SF2 FAILED")
         return ok
@@ -70,7 +93,7 @@ class AudioEngineManager @Inject constructor(
 
     fun unloadSoundFont() {
         DebugLog.traceAudio("SF2 UNLOAD")
-        bridge.nativeUnloadSoundFont()
+        withAudioStreamPaused { bridge.nativeUnloadSoundFont() }
         soundFontLoaded = false
         nextSoundFontRole = 0
         DebugLog.add("🗑️ All SF2 unloaded")
