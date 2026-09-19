@@ -81,6 +81,13 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
 
     fun dumpStringTrace(){
         val snapshot=synchronized(stringTraceLock){stringTrace.toList()}
+        val fullText = buildString {
+            appendLine("========== YAMAHA ARRANGER FULL STRING/CASM TRACE entries=${snapshot.size} active=${activeTransposedNotes.size} chord=${currentChord?.rootNote}/${currentChord?.quality} ==========")
+            snapshot.forEach { appendLine(it) }
+            appendLine("========== TRACE END ==========")
+        }
+        com.yourapp.yamahaarranger.ui.DebugLog.setLongText(fullText)
+        com.yourapp.yamahaarranger.ui.DebugLog.add("🔬 FULL TRACE READY: ${snapshot.size} entries — tap SEND LOG to send the complete trace")
         com.yourapp.yamahaarranger.ui.DebugLog.add("========== STRING TRACE BEGIN entries=${snapshot.size} active=${activeTransposedNotes.size} chord=${currentChord?.rootNote}/${currentChord?.quality} ==========")
         snapshot.chunked(80).forEachIndexed{index,chunk->
             com.yourapp.yamahaarranger.ui.DebugLog.add("🔬 TRACE CHUNK ${index+1}/${(snapshot.size+79)/80}")
