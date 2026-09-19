@@ -71,6 +71,7 @@ fun MainScreen(
     val uiState by viewModel.uiState.collectAsState()
     var showVoicePicker by remember { mutableStateOf<VoiceSlot?>(null) }
     var showStyleEditor by remember { mutableStateOf(false) }
+    var showMixer by remember { mutableStateOf(false) }
     var showStyleVoicePicker by remember { mutableStateOf<VoiceSlot?>(null) }
     var showSf2Manager by remember { mutableStateOf(false) }
 
@@ -170,6 +171,14 @@ fun MainScreen(
         Spacer(Modifier.height(8.dp))
 
         Button(
+            onClick = { showMixer = true },
+            modifier = Modifier.fillMaxWidth().height(46.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = AccentOrange, contentColor = Color.White),
+            shape = RoundedCornerShape(4.dp)
+        ) { Text("MIXER  •  16 CHANNEL / PART", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+        Spacer(Modifier.height(8.dp))
+
+        Button(
             onClick = { showStyleEditor = true },
             modifier = Modifier.fillMaxWidth().height(42.dp),
             colors = ButtonDefaults.buttonColors(containerColor = LcdBlue, contentColor = Color.White),
@@ -195,6 +204,17 @@ fun MainScreen(
         BottomStatusBar(uiState.voiceName, uiState.right2Name, uiState.splitPoint)
         Spacer(Modifier.height(8.dp))
         DebugPanel()
+    }
+
+    if (showMixer) {
+        StyleMixerDialog(
+            voices = uiState.voiceAssignments,
+            presets = uiState.sf2Presets,
+            onDismiss = { showMixer = false },
+            onMixer = viewModel::setStyleChannelMixer,
+            onMute = viewModel::toggleStyleChannelMute,
+            onVoice = { showStyleVoicePicker = it }
+        )
     }
 
     if (showStyleEditor) {
