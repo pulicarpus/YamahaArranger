@@ -1,8 +1,9 @@
 name: Build APK
 
 on:
-  # Build only when manually requested. This prevents Telegram from
-  # receiving an APK for every intermediate commit.
+  push:
+    branches:
+      - stage1/casm-policy-selection
   workflow_dispatch: {}
 
 jobs:
