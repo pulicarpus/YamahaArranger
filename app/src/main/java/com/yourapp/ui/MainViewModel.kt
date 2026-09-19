@@ -122,7 +122,8 @@ data class MainUiState(
     val midiStatus: String = "No MIDI device", val midiOutEnabled: Boolean = false, val soundFontName: String = "None",
     val styleVolume: Int = 100, val voiceVolume: Int = 100, val masterVolume: Int = 110,
     val activeBank: Int = 1, val activeRegSlot: Int = 0, val voiceName: String = "GrandPiano",
-    val right2Name: String = "OFF", val splitPoint: String = "C4", val voiceAssignments: List<VoiceSlot> = defaultVoices()
+    val right2Name: String = "OFF", val splitPoint: String = "C4", val voiceAssignments: List<VoiceSlot> = defaultVoices(),
+    val availableSoundFonts: List<Pair<Uri, String>> = emptyList()
 )
 
 @HiltViewModel
@@ -158,7 +159,7 @@ class MainViewModel @Inject constructor(
             isPlaying = arranger.isPlaying, activeSection = displayLabelFor(arranger.currentSection),
             detectedChordLabel = arranger.currentChordLabel, autoFill = arranger.autoFill, midiStatus = midi, midiOutEnabled = _midiOutEnabled.value,
             soundFontName = sfName, voiceVolume = voiceVol, masterVolume = masterVol,
-            activeBank = bank, activeRegSlot = regSlot, voiceAssignments = voices)
+            activeBank = bank, activeRegSlot = regSlot, voiceAssignments = voices, availableSoundFonts = _availableSoundFonts.value)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, MainUiState())
 
     init {
