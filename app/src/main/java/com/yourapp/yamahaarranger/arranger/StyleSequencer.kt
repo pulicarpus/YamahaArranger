@@ -118,17 +118,24 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
 
 
     private fun handleNoChord(){
+        stringTrace("NO_CHORD active="+activeTransposedNotes.size)
         val snapshot=activeTransposedNotes.values.toList()
         snapshot.forEach{releaseActive(it)}
         if(snapshot.isNotEmpty())com.yourapp.yamahaarranger.ui.DebugLog.add("🎹 NO CHORD: released ${snapshot.size} held style notes")
     }
 
     private fun handleChordChange(newChord:DetectedChord){
-        if(activeTransposedNotes.isEmpty())return
+        stringTrace("CHORD_CHANGE new="+newChord.rootNote+"/"+newChord.quality+" active="+activeTransposedNotes.size)
+        if(activeTransposedNotes.isEmpty()){
+            stringTrace("CHORD_CHANGE no-active-notes")
+            return
+        }
         val snapshot=activeTransposedNotes.values.toList()
         snapshot.forEach{active->
+            stringTrace("ACTIVE src"+active.sourceChannel+":"+active.sourceNote+" dst="+active.destinationChannel+" note="+active.outputNote+" NTR="+(active.policy.ntr and 0x7f)+" NTT="+(active.policy.ntt and 0x7f)+" RTR="+(active.policy.rtr and 0x7f))
             val selectedPolicy=selectPolicy(active.policies,active.sourceNote,newChord)
             if(selectedPolicy==null){
+                stringTrace("POLICY_MISS src"+active.sourceChannel+":"+active.sourceNote+" chord="+newChord.rootNote+"/"+newChord.quality+" -> RELEASE")
                 releaseActive(active)
                 com.yourapp.yamahaarranger.ui.DebugLog.add(
                     "🔇 CASM CHORD MUTE src${active.sourceChannel}:${active.sourceNote} chord=${newChord.rootNote}/${newChord.quality}"
@@ -141,6 +148,9 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                 active.destinationChannel=selectedPolicy.destinationChannel
             }
             active.policy=selectedPolicy
+            if(selectedPolicy.destinationChannel==13 || active.destinationChannel==13){
+                stringTrace("RETARGET src"+active.sourceChannel+":"+active.sourceNote+" chord="+newChord.rootNote+"/"+newChord.quality+" dst="+selectedPolicy.destinationChannel+" NTR="+(selectedPolicy.ntr and 0x7f)+" NTT="+(selectedPolicy.ntt and 0x7f)+" RTR="+(selectedPolicy.rtr and 0x7f)+" range="+selectedPolicy.sourceNoteLow+"-"+selectedPolicy.sourceNoteHigh+" mask="+selectedPolicy.chordMuteMask)
+            }
             com.yourapp.yamahaarranger.ui.DebugLog.add(
                 "🎼 CASM RETARGET src${active.sourceChannel}:${active.sourceNote} chord=${newChord.rootNote}/${newChord.quality} → dst${selectedPolicy.destinationChannel} NTR=${selectedPolicy.ntr and 0x7f} NTT=${selectedPolicy.ntt and 0x7f} RTR=${selectedPolicy.rtr and 0x7f}"
             )
