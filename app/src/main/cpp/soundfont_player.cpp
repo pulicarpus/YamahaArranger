@@ -187,6 +187,37 @@ void SoundFontPlayer::setChannelPreset(int channel, int bank, int program) {
     LOGI("Ch %d -> %s SF2 id=%d bank=%d prog=%d", channel, drum ? "DRUM" : "MELODY", sfId, bank, program);
 }
 
+std::string SoundFontPlayer::presetList() const {
+    if (!synth_) return "";
+    std::lock_guard<std::mutex> lock(g_synthMutex);
+    std::string out;
+    auto appendRole = [&](int sfId, const char* role) {
+        if (sfId < 0) return;
+        fluid_sfont_t* sfont = fluid_synth_get_sfont_by_id(synth_, sfId);
+        if (!sfont) return;
+        fluid_sfont_iteration_start(sfont);
+        fluid_preset_t* preset = nullptr;
+        while ((preset = fluid_sfont_iteration_next(sfont)) != nullptr) {
+            const char* name = fluid_preset_get_name(preset);
+            const int bank = fluid_preset_get_banknum(preset);
+            const int program = fluid_preset_get_num(preset);
+            if (!name) name = "";
+            // role|bank|program|name. Names are kept verbatim from the SF2.
+            out += role;
+            out += "|";
+            out += std::to_string(bank);
+            out += "|";
+            out += std::to_string(program);
+            out += "|";
+            out += name;
+            out += "\n";
+        }
+    };
+    appendRole(melodySfId_, "MELODY");
+    if (drumSfId_ != melodySfId_) appendRole(drumSfId_, "DRUM");
+    return out;
+}
+
 int SoundFontPlayer::presetCount() const {
     if (!synth_) return 0;
     int count = 0;
