@@ -52,6 +52,20 @@ class AudioEngineManager @Inject constructor(
         return ok
     }
 
+    fun loadMelodySoundFont(filePath: String): Boolean {
+        val ok = bridge.nativeLoadMelodySoundFont(filePath)
+        soundFontLoaded = soundFontLoaded || ok
+        if (ok) DebugLog.add("✅ MELODY SF2 OK") else DebugLog.add("❌ MELODY SF2 FAILED")
+        return ok
+    }
+
+    fun loadDrumSoundFont(filePath: String): Boolean {
+        val ok = bridge.nativeLoadDrumSoundFont(filePath)
+        soundFontLoaded = soundFontLoaded || ok
+        if (ok) DebugLog.add("✅ DRUM SF2 OK") else DebugLog.add("❌ DRUM SF2 FAILED")
+        return ok
+    }
+
     fun isSoundFontLoaded(): Boolean = soundFontLoaded
 
     fun unloadSoundFont() {
