@@ -42,7 +42,7 @@ fun SxMainScreen(viewModel: MainViewModel = hiltViewModel()) {
     val context = LocalContext.current
     val saveLogLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
         if (uri != null) {
-            val fullTrace = DebugLog.getLongText()
+            val fullTrace = DebugLog.getFullText()
             val text = if (fullTrace.isNotBlank()) fullTrace else DebugLog.getAll().joinToString("\n")
             runCatching {
                 requireNotNull(context.contentResolver.openOutputStream(uri)).use { out ->
@@ -122,6 +122,7 @@ private fun SxNavBar(height: Dp, onUtility: () -> Unit) {
 @Composable
 private fun SxEngineLogDialog(onDismiss: () -> Unit, onSaveAllLog: () -> Unit) {
     var logs by remember { mutableStateOf(listOf<String>()) }
+    var filter by remember { mutableStateOf("ALL") }
     val context = androidx.compose.ui.platform.LocalContext.current
 
     LaunchedEffect(Unit) {
@@ -131,18 +132,34 @@ private fun SxEngineLogDialog(onDismiss: () -> Unit, onSaveAllLog: () -> Unit) {
         }
     }
 
-    val logText = logs.joinToString("\n")
+    val filteredLogs = when (filter) {
+        "AUDIO" -> logs.filter { it.contains("🔊 AUDIO") }
+        "MIDI" -> logs.filter { it.contains("🎹 IN") || it.contains("📤 MIDI OUT") }
+        "CASM" -> logs.filter { it.contains("CASM") || it.contains("RTR") || it.contains("RETARGET") }
+        "STRING" -> logs.filter { it.contains("STRING") || it.contains("dst=13") || it.contains("dst13") }
+        "ERROR" -> logs.filter { it.contains("❌") || it.contains("FAILED") || it.contains("error", ignoreCase = true) }
+        else -> logs
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("UTILITY  •  ENGINE LOG") },
         text = {
             Column(Modifier.fillMaxWidth().heightIn(max = 520.dp)) {
-                Text("Live engine/MIDI diagnostics. Clear before reproducing a problem.", color = SxDim, fontSize = 9.sp)
-                Spacer(Modifier.height(6.dp))
+                Text("Live engine/MIDI diagnostics. Full history is saved with SAVE ALL LOG.", color = SxDim, fontSize = 9.sp)
+                Spacer(Modifier.height(5.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                    listOf("ALL", "AUDIO", "MIDI", "CASM", "STRING", "ERROR").forEach { f ->
+                        TextButton(
+                            onClick = { filter = f },
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                        ) { Text(f, fontSize = 7.sp, color = if (filter == f) SxGreen else SxDim) }
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
                 Surface(color = Color(0xFF080B0E), shape = RoundedCornerShape(3.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 300.dp, max = 430.dp)) {
                     Column(Modifier.verticalScroll(rememberScrollState()).padding(6.dp)) {
-                        logs.forEach { line -> Text(line, color = Color(0xFFB8C0C8), fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontSize = 8.sp) }
-                        if (logs.isEmpty()) Text("(no log yet)", color = SxDim, fontSize = 8.sp)
+                        filteredLogs.forEach { line -> Text(line, color = Color(0xFFB8C0C8), fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace, fontSize = 8.sp) }
+                        if (filteredLogs.isEmpty()) Text("(no log yet)", color = SxDim, fontSize = 8.sp)
                     }
                 }
             }
@@ -151,7 +168,6 @@ private fun SxEngineLogDialog(onDismiss: () -> Unit, onSaveAllLog: () -> Unit) {
             Row {
                 TextButton(onClick = { DebugLog.clear(); logs = emptyList() }) { Text("CLEAR") }
                 TextButton(onClick = {
-                    val stamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(java.util.Date())
                     onSaveAllLog()
                 }) { Text("SAVE ALL LOG") }
             }
