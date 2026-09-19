@@ -107,6 +107,14 @@ class AudioEngineManager @Inject constructor(
     }
 
     fun setChannelVolume(channel: Int, volume: Int) = setChannelMixer(channel, volume=volume)
+    fun setChannelExpression(channel: Int, expression: Int) = bridge.nativeSetChannelExpression(channel, expression.coerceIn(0, 127))
+
+    fun setMasterVolume(volume: Int) {
+        val v = volume.coerceIn(0, 127)
+        // Keep 100 as unity; 0 is silent and 127 gives modest headroom above unity.
+        bridge.nativeSetMasterGain((v / 100f).coerceIn(0f, 1.27f))
+    }
+
 
     data class SfPreset(val role: String, val bank: Int, val program: Int, val name: String)
 
