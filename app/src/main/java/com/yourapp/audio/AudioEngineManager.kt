@@ -89,6 +89,24 @@ class AudioEngineManager @Inject constructor(
         return ok
     }
 
+    /**
+     * Load melody + drum as one transaction. Pause once and enumerate
+     * presets only after both native loads have completed.
+     */
+    fun loadSoundFontPair(melodyPath: String, drumPath: String): Boolean {
+        val result = withAudioStreamPaused {
+            val melodyOk = bridge.nativeLoadMelodySoundFont(melodyPath)
+            if (!melodyOk) return@withAudioStreamPaused false
+            val drumOk = bridge.nativeLoadDrumSoundFont(drumPath)
+            melodyOk && drumOk
+        }
+        soundFontLoaded = soundFontLoaded || result
+        if (result) DebugLog.add("✅ MELODY + DRUM SF2 OK (atomic pair)")
+        else DebugLog.add("❌ MELODY + DRUM SF2 FAILED")
+        return result
+    }
+
+
     fun isSoundFontLoaded(): Boolean = soundFontLoaded
 
     fun unloadSoundFont() {
