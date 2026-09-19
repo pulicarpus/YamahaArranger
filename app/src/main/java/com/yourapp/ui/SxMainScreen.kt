@@ -1,6 +1,6 @@
 package com.yourapp.yamahaarranger.ui
 
-import android.content.Intent
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -38,6 +39,22 @@ fun SxMainScreen(viewModel: MainViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsState()
     val stylePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(viewModel::onStyleFilePicked) }
     val soundFontPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(viewModel::onSoundFontFilePicked) }
+    val context = LocalContext.current
+    val saveLogLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+        if (uri != null) {
+            val fullTrace = DebugLog.getLongText()
+            val text = if (fullTrace.isNotBlank()) fullTrace else DebugLog.getAll().joinToString("\n")
+            runCatching {
+                requireNotNull(context.contentResolver.openOutputStream(uri)).use { out ->
+                    out.write(text.toByteArray(Charsets.UTF_8))
+                }
+            }.onSuccess {
+                Toast.makeText(context, "All log saved", Toast.LENGTH_SHORT).show()
+            }.onFailure {
+                Toast.makeText(context, "Failed to save log: " + it.message, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
     var showUtilityLog by remember { mutableStateOf(false) }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(SxBlack)) {
@@ -134,14 +151,9 @@ private fun SxEngineLogDialog(onDismiss: () -> Unit) {
             Row {
                 TextButton(onClick = { DebugLog.clear(); logs = emptyList() }) { Text("CLEAR") }
                 TextButton(onClick = {
-                    val text = if (logText.isBlank()) "(no log yet)" else logText
-                    val intent = Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_SUBJECT, "YamahaArranger Engine Log")
-                        putExtra(Intent.EXTRA_TEXT, text)
-                    }
-                    context.startActivity(Intent.createChooser(intent, "Kirim YamahaArranger Log"))
-                }) { Text("SEND LOG") }
+                    val stamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(java.util.Date())
+                    saveLogLauncher.launch("YamahaArranger_AllLog_$stamp.txt")
+                }) { Text("SAVE ALL LOG") }
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("CLOSE") } }
