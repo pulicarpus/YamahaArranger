@@ -681,7 +681,7 @@ private fun MixerSlider(label: String, value: Int, onChange: (Int) -> Unit) {
 }
 
 @Composable
-private fun VoicePickerDialog(
+fun VoicePickerDialog(
     slot: VoiceSlot,
     presets: List<AudioEngineManager.SfPreset>,
     onDismiss: () -> Unit,
