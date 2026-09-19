@@ -153,10 +153,10 @@ private fun SxStyleMixerDialog(voices: List<VoiceSlot>, presets: List<AudioEngin
                                     Button(onClick = { voicePickerSlot = slot }, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(vertical = 4.dp)) {
                                         Text("VOICE • " + slot.displayName(), fontSize = 8.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                     }
-                                    SxMixRow("PAN", slot.stylePan) { onMixer(slot.channel, slot.styleVolume, it, slot.styleExpression, slot.styleReverb, slot.styleChorus) }
-                                    SxMixRow("EXP", slot.styleExpression) { onMixer(slot.channel, slot.styleVolume, slot.stylePan, it, slot.styleReverb, slot.styleChorus) }
-                                    SxMixRow("REV", slot.styleReverb) { onMixer(slot.channel, slot.styleVolume, slot.stylePan, slot.styleExpression, it, slot.styleChorus) }
-                                    SxMixRow("CHO", slot.styleChorus) { onMixer(slot.channel, slot.styleVolume, slot.stylePan, slot.styleExpression, slot.styleReverb, it) }
+                                    SxMixRow("PAN", slot.stylePan, { onMixer(slot.channel, slot.styleVolume, it, slot.styleExpression, slot.styleReverb, slot.styleChorus) })
+                                    SxMixRow("EXP", slot.styleExpression, { onMixer(slot.channel, slot.styleVolume, slot.stylePan, it, slot.styleReverb, slot.styleChorus) })
+                                    SxMixRow("REV", slot.styleReverb, { onMixer(slot.channel, slot.styleVolume, slot.stylePan, slot.styleExpression, it, slot.styleChorus) })
+                                    SxMixRow("CHO", slot.styleChorus, { onMixer(slot.channel, slot.styleVolume, slot.stylePan, slot.styleExpression, slot.styleReverb, it) })
                                 }
                             }
                         }
