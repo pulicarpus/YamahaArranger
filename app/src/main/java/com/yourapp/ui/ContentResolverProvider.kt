@@ -141,7 +141,7 @@ class ContentResolverProvider @Inject constructor(
                 openInputStream(uri)?.use { input ->
                     dest.outputStream().use { output -> input.copyTo(output) }
                 }
-                if (dest.length() > 0) Uri.fromFile(dest) else null
+                return if (dest.length() > 0) Uri.fromFile(dest) else null
             } catch (e: Exception) {
                 Timber.e(e, "Failed storing legacy SF2")
                 false
