@@ -88,6 +88,12 @@ class AudioEngineManager @Inject constructor(
         else noteOff(midiNote)
     }
 
+    fun setChannelMixer(channel: Int, volume: Int = 127, pan: Int = 64, expression: Int = 127, reverbSend: Int = 40, chorusSend: Int = 0) {
+        bridge.nativeSetChannelMixer(channel, volume.coerceIn(0,127), pan.coerceIn(0,127), expression.coerceIn(0,127), reverbSend.coerceIn(0,127), chorusSend.coerceIn(0,127))
+    }
+
+    fun setChannelVolume(channel: Int, volume: Int) = setChannelMixer(channel, volume=volume)
+
     fun setChannelProgram(channel: Int, program: Int, bank: Int = 0) {
         DebugLog.traceAudio("PROGRAM ch=$channel bank=$bank program=$program")
         bridge.nativeSetChannelPreset(channel, bank, program)

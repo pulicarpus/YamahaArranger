@@ -23,6 +23,7 @@ public:
     void allNotesOff();
 
     void setChannelPreset(int channel, int bank, int program);
+    void setChannelMixer(int channel, int volume, int pan, int expression, int reverbSend, int chorusSend);
     int presetCount() const;
 
 private:

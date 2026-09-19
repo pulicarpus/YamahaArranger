@@ -103,7 +103,8 @@ bool SoundFontPlayer::loadRole(const std::string& path, bool drum) {
         }
         for (int ch = 0; ch < 16; ++ch) {
             if (ch == 9) continue;
-            fluid_synth_cc(synth_, ch, 7, (ch <= 2 || ch == 8) ? 127 : (ch <= 5 ? 100 : 115));
+            const int defaultVolume = (ch == 13) ? 98 : ((ch <= 2 || ch == 8) ? 127 : (ch <= 5 ? 100 : 115));
+            fluid_synth_cc(synth_, ch, 7, defaultVolume);
         }
     }
     LOGI("SF2 role ready: %s", drum ? "DRUM bank=128 ch9" : "MELODY bank=0 channels=1-16 except ch10");
@@ -162,6 +163,17 @@ void SoundFontPlayer::allNotesOff() {
     if (!synth_) return;
     std::lock_guard<std::mutex> lock(g_synthMutex);
     for (int ch = 0; ch < 16; ++ch) fluid_synth_all_notes_off(synth_, ch);
+}
+
+void SoundFontPlayer::setChannelMixer(int channel, int volume, int pan, int expression, int reverbSend, int chorusSend) {
+    if (!synth_) return;
+    std::lock_guard<std::mutex> lock(g_synthMutex);
+    channel = std::max(0, std::min(15, channel));
+    fluid_synth_cc(synth_, channel, 7, std::max(0, std::min(127, volume)));
+    fluid_synth_cc(synth_, channel, 10, std::max(0, std::min(127, pan)));
+    fluid_synth_cc(synth_, channel, 11, std::max(0, std::min(127, expression)));
+    fluid_synth_cc(synth_, channel, 91, std::max(0, std::min(127, reverbSend)));
+    fluid_synth_cc(synth_, channel, 93, std::max(0, std::min(127, chorusSend)));
 }
 
 void SoundFontPlayer::setChannelPreset(int channel, int bank, int program) {
