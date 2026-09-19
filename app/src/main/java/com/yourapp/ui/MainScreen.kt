@@ -188,7 +188,7 @@ fun MainScreen(
         StyleMixerDialog(
             voices = uiState.voiceAssignments,
             onDismiss = { showStyleEditor = false },
-            onVolume = viewModel::setStyleChannelVolume,
+            onMixer = viewModel::setStyleChannelMixer,
             onMute = viewModel::toggleStyleChannelMute,
             onVoice = { showStyleVoicePicker = it }
         )
@@ -221,7 +221,7 @@ fun MainScreen(
 private fun StyleMixerDialog(
     voices: List<VoiceSlot>,
     onDismiss: () -> Unit,
-    onVolume: (Int, Int) -> Unit,
+    onMixer: (Int, Int, Int, Int, Int, Int) -> Unit,
     onMute: (Int) -> Unit,
     onVoice: (VoiceSlot) -> Unit
 ) {
@@ -241,11 +241,11 @@ private fun StyleMixerDialog(
                                 TextButton(onClick = { onVoice(slot) }, contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)) { Text("VOICE", fontSize = 8.sp) }
                                 TextButton(onClick = { onMute(slot.channel) }, contentPadding = PaddingValues(horizontal = 5.dp, vertical = 0.dp)) { Text(if (slot.styleMuted) "MUTED" else "MUTE", fontSize = 8.sp) }
                             }
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("VOL", color = TextDim, fontSize = 8.sp, modifier = Modifier.width(34.dp))
-                                Slider(value = slot.styleVolume.toFloat(), onValueChange = { onVolume(slot.channel, it.roundToInt()) }, valueRange = 0f..127f, modifier = Modifier.weight(1f))
-                                Text("${slot.styleVolume}", color = Color.White, fontSize = 9.sp, modifier = Modifier.width(28.dp))
-                            }
+                            MixerSlider("VOL", slot.styleVolume) { onMixer(slot.channel, it, slot.stylePan, slot.styleExpression, slot.styleReverb, slot.styleChorus) }
+                            MixerSlider("PAN", slot.stylePan) { onMixer(slot.channel, slot.styleVolume, it, slot.styleExpression, slot.styleReverb, slot.styleChorus) }
+                            MixerSlider("EXP", slot.styleExpression) { onMixer(slot.channel, slot.styleVolume, slot.stylePan, it, slot.styleReverb, slot.styleChorus) }
+                            MixerSlider("REV", slot.styleReverb) { onMixer(slot.channel, slot.styleVolume, slot.stylePan, slot.styleExpression, it, slot.styleChorus) }
+                            MixerSlider("CHO", slot.styleChorus) { onMixer(slot.channel, slot.styleVolume, slot.stylePan, slot.styleExpression, slot.styleReverb, it) }
                         }
                     }
                 }
@@ -563,6 +563,15 @@ private fun VolumeSlider(label: String, value: Int, onChange: (Int) -> Unit) {
         Text(label, color = TextDim, fontSize = 8.sp, modifier = Modifier.width(55.dp))
         Slider(value = value.toFloat(), onValueChange = { onChange(it.roundToInt()) }, valueRange = 0f..127f, modifier = Modifier.weight(1f))
         Text("$value", color = Color.White, fontSize = 8.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(30.dp))
+    }
+}
+
+@Composable
+private fun MixerSlider(label: String, value: Int, onChange: (Int) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Text(label, color = TextDim, fontSize = 7.sp, modifier = Modifier.width(34.dp))
+        Slider(value = value.toFloat(), onValueChange = { onChange(it.roundToInt()) }, valueRange = 0f..127f, modifier = Modifier.weight(1f))
+        Text("$value", color = Color.White, fontSize = 8.sp, modifier = Modifier.width(28.dp))
     }
 }
 
