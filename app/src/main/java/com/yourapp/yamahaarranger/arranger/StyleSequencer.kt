@@ -203,6 +203,19 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     private fun policyMatchesChord(policy:CasmPolicyModel,chord:DetectedChord):Boolean {
         return policyScore(policy,0,chord)!=null
     }
+
+    /**
+     * Resolve one CASM rule for the current source note/chord.
+     *
+     * Important semantics:
+     * - A present Chord Mute/Play mask is a hard selector.
+     * - SourceChordType/SourceChordRoot describe the recorded source pattern;
+     *   they are metadata, not the currently played chord.
+     * - Source-note range is a hard compatibility gate. An out-of-range rule
+     *   must never win merely because its metadata happens to score higher.
+     * - Among compatible rules, narrower source ranges are more specific.
+     * - Source-channel compatibility is a later tie-breaker.
+     */
     private fun policyScore(
         policy:CasmPolicyModel,
         eventNote:Int,
@@ -211,41 +224,30 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     ):Int?{
         var score=0
 
-        // 1) Chord mute/play mask is the strongest selector. A present mask
-        // with a cleared bit is a real CASM mute, not a fallback candidate.
+        // 1) Chord mute/play mask is the strongest selector.
         if(chord!=null && policy.chordMuteMask>=0L){
             val type=yamahaChordType(chord)
-            if(type !in 0..34) return null
+            if(type !in 0..33) return null
             if(((policy.chordMuteMask ushr type) and 1L)==0L) return null
-            score+=100000
+            score+=1_000_000
         }
 
-        // 2) Prefer an exact source chord type when the style provides one.
-        // SourceChordType describes the source pattern's original chord;
-        // it is not itself the current-played chord selector.
-        if(chord!=null && policy.sourceChordType in 0..34 &&
-            policy.sourceChordType==yamahaChordType(chord)){
-            score+=10000
-        }
-
-        // 3) Prefer the rule whose source-note range actually contains this
-        // event. Among matching ranges, narrower ranges are more specific.
+        // 2) Source note range is a hard compatibility gate.
         val low=policy.sourceNoteLow.coerceIn(0,127)
         val high=policy.sourceNoteHigh.coerceIn(low,127)
+        if(eventNote !in low..high) return null
+
+        // Narrower matching ranges are more specific than broad ranges.
         val width=high-low
-        if(eventNote in low..high){
-            score+=5000
-            score+=(127-width)
-        }
+        score+=10_000 + (127-width)*100
 
-        // 4) Keep source-channel identity as a compatibility tie-breaker.
-        if(sourceChannel!=null && policy.sourceChannel==sourceChannel) score+=1000
+        // 3) Prefer source-channel compatibility after range specificity.
+        if(sourceChannel!=null && policy.sourceChannel==sourceChannel) score+=10
 
-        // 5) Explicit source-root/type metadata makes a rule more specific.
-        // Source root is the key of the recorded Source Pattern, so it is
-        // deliberately NOT compared to the currently played chord root.
-        if(policy.sourceChordRoot in 0..11) score+=100
-        if(policy.sourceChordType in 0..34) score+=100
+        // 4) Source-root/type are metadata specificity only. They must not
+        // be compared to the currently played chord root/type.
+        if(policy.sourceChordRoot in 0..11) score+=1
+        if(policy.sourceChordType in 0..34) score+=1
 
         return score
     }
@@ -257,16 +259,18 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         sourceChannel:Int?=null
     ):CasmPolicyModel?{
         if(policies.isEmpty())return null
-        // Never use firstOrNull() as the resolution rule. CASM may contain
-        // several policies for one source part; choose the most specific
-        // compatible rule deterministically, then fall back to the best
-        // metadata/range candidate when no mask is available.
+
+        // Every candidate must pass policyScore, including the source-note
+        // range gate. This prevents an out-of-range policy from becoming a
+        // fallback solely because it has more metadata.
         return policies.mapNotNull{policy->
             policyScore(policy,eventNote,chord,sourceChannel)?.let{score->policy to score}
         }.maxWithOrNull(
             compareBy<Pair<CasmPolicyModel,Int>>{it.second}
                 .thenByDescending{it.first.sourceNoteLow}
                 .thenBy{it.first.sourceNoteHigh}
+                .thenBy{it.first.sourceChannel}
+                .thenBy{it.first.destinationChannel}
         )?.first
     }
 
