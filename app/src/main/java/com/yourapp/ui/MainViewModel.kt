@@ -159,14 +159,15 @@ class MainViewModel @Inject constructor(
             combine(_activeBank, _activeRegSlot, _voiceAssignments) { b, r, v -> Triple(b, r, v) },
             combine(_availableSoundFonts, _sf2Presets) { files, presets -> files to presets }
         ) { voiceData, sfData -> voiceData to sfData }
-    ) { arranger, (styleName, midi), (transpose, sfName), (voiceVol, masterVol), (voiceData, sfFiles) ->
+    ) { arranger, (styleName, midi), (transpose, sfName), (voiceVol, masterVol), (voiceData, sfData) ->
         val (bank, regSlot, voices) = voiceData
         val sfFiles = sfData.first
+        val sfPresets = sfData.second
         MainUiState(styleName = styleName, tempoBpm = arranger.tempoBpm, transpose = transpose,
             isPlaying = arranger.isPlaying, activeSection = displayLabelFor(arranger.currentSection),
             detectedChordLabel = arranger.currentChordLabel, autoFill = arranger.autoFill, midiStatus = midi, midiOutEnabled = _midiOutEnabled.value,
             soundFontName = sfName, voiceVolume = voiceVol, masterVolume = masterVol,
-            sf2Presets = sfFiles.second,
+            sf2Presets = sfPresets,
             activeBank = bank, activeRegSlot = regSlot, voiceAssignments = voices, availableSoundFonts = sfFiles)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, MainUiState())
 
