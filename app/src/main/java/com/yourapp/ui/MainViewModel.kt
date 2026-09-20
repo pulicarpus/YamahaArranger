@@ -399,7 +399,10 @@ class MainViewModel @Inject constructor(
             }
             if (melodyCache != null && drumCache != null) {
                 val ok = withContext(Dispatchers.Default) {
-                    audioEngine.unloadSoundFont()
+                    // Fresh app process: the native synth has not been started yet.
+                    // Do NOT call unloadSoundFont() here; unloading before nativeStart()
+                    // can dereference an uninitialized FluidSynth instance and crash
+                    // the process during cold startup.
                     audioEngine.loadSoundFontPair(melodyCache.absolutePath, drumCache.absolutePath)
                 }
                 if (ok) {
