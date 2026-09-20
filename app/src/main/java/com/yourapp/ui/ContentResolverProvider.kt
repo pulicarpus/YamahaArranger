@@ -133,14 +133,30 @@ class ContentResolverProvider @Inject constructor(
         }
     }
 
+    @Synchronized
     fun saveSoundFont(uri: Uri, displayName: String): Uri? {
         val safeName = displayName.substringAfterLast('/').ifBlank { "font.sf2" }
             .let { if (it.lowercase().endsWith(".sf2")) it else "$it.sf2" }
 
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val resolver = context.contentResolver
-            findSoundFont(safeName)?.first?.let { existing ->
-                Timber.i("SF2 already stored, reusing: $safeName")
+            // Exact lookup + synchronized writer makes import idempotent even
+            // when the picker fires twice or startup/import work overlaps.
+            val existing = resolver.query(
+                MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                arrayOf(MediaStore.Downloads._ID),
+                MediaStore.Downloads.RELATIVE_PATH + "=? AND " +
+                    MediaStore.Downloads.DISPLAY_NAME + "=?",
+                arrayOf(sf2RelativePath, safeName),
+                null
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val id = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Downloads._ID))
+                    MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY, id)
+                } else null
+            }
+            if (existing != null) {
+                Timber.i("SF2 already stored, reusing exact row: $safeName")
                 return existing
             }
 
