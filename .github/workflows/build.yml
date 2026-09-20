@@ -1,8 +1,11 @@
 name: Build APK
 
 on:
-  # Build only when manually requested. This prevents Telegram from
-  # receiving an APK for every intermediate commit.
+  # Temporary push trigger used to verify the latest SF2 startup/loading fixes.
+  # This will be restored to manual-only after the verification build.
+  push:
+    branches:
+      - stage1/casm-policy-selection
   workflow_dispatch: {}
 
 jobs:
