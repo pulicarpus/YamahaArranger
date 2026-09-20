@@ -82,11 +82,15 @@ bool SoundFontPlayer::loadRole(const std::string& path, bool drum) {
     std::lock_guard<std::mutex> lock(g_synthMutex);
     int& targetId = drum ? drumSfId_ : melodySfId_;
     if (targetId >= 0) {
-        fluid_synth_sfunload(synth_, targetId, 1);
+        // Channel assignments are restored explicitly after the new SF2 load.
+        fluid_synth_sfunload(synth_, targetId, 0);
         targetId = -1;
     }
     LOGI("Loading %s SF2: %s", drum ? "DRUM" : "MELODY", path.c_str());
-    targetId = fluid_synth_sfload(synth_, path.c_str(), 1);
+    // Do not ask FluidSynth to reset/reassign every MIDI channel while the
+    // second SF2 is being added. We explicitly bind channels below instead.
+    // This avoids a large preset re-evaluation during the startup load.
+    targetId = fluid_synth_sfload(synth_, path.c_str(), 0);
     if (targetId == FLUID_FAILED) {
         targetId = -1;
         LOGE("fluid_synth_sfload FAILED for %s", drum ? "DRUM" : "MELODY");
@@ -124,12 +128,12 @@ void SoundFontPlayer::unload() {
     std::lock_guard<std::mutex> lock(g_synthMutex);
     for (int ch = 0; ch < 16; ++ch) fluid_synth_all_notes_off(synth_, ch);
     if (drumSfId_ >= 0) {
-        fluid_synth_sfunload(synth_, drumSfId_, 1);
+        fluid_synth_sfunload(synth_, drumSfId_, 0);
         drumSfId_ = -1;
         LOGI("DRUM SF2 unloaded");
     }
     if (melodySfId_ >= 0) {
-        fluid_synth_sfunload(synth_, melodySfId_, 1);
+        fluid_synth_sfunload(synth_, melodySfId_, 0);
         melodySfId_ = -1;
         LOGI("MELODY SF2 unloaded");
     }
