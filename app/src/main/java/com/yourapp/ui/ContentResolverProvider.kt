@@ -146,7 +146,7 @@ class ContentResolverProvider @Inject constructor(
                 MediaStore.Downloads.EXTERNAL_CONTENT_URI,
                 arrayOf(MediaStore.Downloads._ID),
                 MediaStore.Downloads.RELATIVE_PATH + "=? AND " +
-                    MediaStore.Downloads.DISPLAY_NAME + "=?",
+                    MediaStore.Downloads.DISPLAY_NAME + "=? COLLATE NOCASE",
                 arrayOf(sf2RelativePath, safeName),
                 null
             )?.use { cursor ->
