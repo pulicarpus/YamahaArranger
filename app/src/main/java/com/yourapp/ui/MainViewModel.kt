@@ -462,15 +462,31 @@ class MainViewModel @Inject constructor(
             val safeName = sourceName.substringAfterLast('/').ifBlank { "font.sf2" }
                 .let { if (it.lowercase().endsWith(".sf2")) it else "$it.sf2" }
 
-            val storedUri = withContext(Dispatchers.IO) {
-                contentResolver.saveSoundFont(uri, safeName)
+            // If the picker already returned a file from our managed SF2 folder,
+            // do NOT copy it again. Re-importing such a URI used to create
+            // MELODY (1), (2), … duplicates and could even delete the source
+            // before copying because saveSoundFont replaces an existing name.
+            val alreadyStored = withContext(Dispatchers.IO) {
+                contentResolver.isSoundFontInManagedFolder(uri)
+            }
+            val storedUri = if (alreadyStored) {
+                DebugLog.add("📂 SF2 already in managed folder; no copy needed")
+                uri
+            } else {
+                withContext(Dispatchers.IO) {
+                    contentResolver.saveSoundFont(uri, safeName)
+                }
             }
             if (storedUri == null) {
                 DebugLog.add("❌ Could not store SF2 in Download/YamahaArranger/SF2")
                 return@launch
             }
-            DebugLog.add("📂 SF2 stored: Download/YamahaArranger/SF2/$safeName")
-            DebugLog.add("🔄 Loading stored SF2 directly…")
+            DebugLog.add(if (alreadyStored) {
+                "📂 Using existing SF2: Download/YamahaArranger/SF2/$safeName"
+            } else {
+                "📂 SF2 stored: Download/YamahaArranger/SF2/$safeName"
+            })
+            DebugLog.add("🔄 Loading SF2 directly…")
             loadSoundFontUri(storedUri, safeName)
         }
     }
