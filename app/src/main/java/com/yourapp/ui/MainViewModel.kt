@@ -404,7 +404,6 @@ class MainViewModel @Inject constructor(
                 }
                 if (ok) {
                     _soundFontName.value = melody.second + " + " + drum.second
-                    _sf2Presets.value = audioEngine.loadedSoundFontPresets()
                     DebugLog.add("✅ Auto SF2 pair loaded")
                 }
             } else {
