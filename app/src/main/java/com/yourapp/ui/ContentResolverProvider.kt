@@ -139,8 +139,10 @@ class ContentResolverProvider @Inject constructor(
 
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val resolver = context.contentResolver
-            val existing = findSoundFont(safeName)?.first
-            if (existing != null) resolver.delete(existing, null, null)
+            findSoundFont(safeName)?.first?.let { existing ->
+                Timber.i("SF2 already stored, reusing: $safeName")
+                return existing
+            }
 
             val values = ContentValues().apply {
                 put(MediaStore.Downloads.DISPLAY_NAME, safeName)
