@@ -223,9 +223,13 @@ class MainViewModel @Inject constructor(
                     _availableSoundFonts.value = contentResolver.listSoundFonts()
                 }
                 autoLoadSoundFont()
-                _sf2Presets.value = withContext(Dispatchers.Default) {
-                    audioEngine.loadedSoundFontPresets()
-                }
+                // Do NOT enumerate all SF2 presets during startup. A large
+                // Yamaha SF2 can make native preset iteration expensive and
+                // may kill the process during a cold app restart. Keep startup
+                // focused on loading the synth; enumerate presets lazily when
+                // the user explicitly opens/refreshes the preset UI.
+                _sf2Presets.value = emptyList()
+                DebugLog.add("📋 Startup preset scan deferred")
             } catch (t: Throwable) {
                 DebugLog.add("❌ Startup SF2 init failed: ${t.javaClass.simpleName}: ${t.message}")
             } finally {
