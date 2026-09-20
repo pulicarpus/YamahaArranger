@@ -102,7 +102,7 @@ class AudioEngineManager @Inject constructor(
     fun loadSoundFontPair(melodyPath: String, drumPath: String): Boolean {
         val result = runBlocking { soundFontOperationMutex.withLock { withAudioStreamPausedUnsafe {
             val melodyOk = bridge.nativeLoadMelodySoundFont(melodyPath)
-            if (!melodyOk) return@withAudioStreamPaused false
+            if (!melodyOk) return@withAudioStreamPausedUnsafe false
             val drumOk = bridge.nativeLoadDrumSoundFont(drumPath)
             melodyOk && drumOk
         } } }
