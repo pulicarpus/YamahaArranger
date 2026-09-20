@@ -207,17 +207,36 @@ class MainViewModel @Inject constructor(
 
     init {
         arrangerBrain.attachScope(viewModelScope)
-        audioEngine.start()
         DebugLog.add("🎵 ViewModel init")
         DebugLog.add("📂 SF2 folder: Download/YamahaArranger/SF2")
+
+        // IMPORTANT: initialize/load SF2 before opening the Oboe stream.
+        // Loading a second SoundFont while the render stream is already
+        // running has been the crash path on the device. FluidSynth can load
+        // multiple SoundFonts, but SF2 loading is a non-realtime operation.
+        // We therefore discover/copy/load first, enumerate presets, then start
+        // the audio callback exactly once.
         viewModelScope.launch {
-            withContext(Dispatchers.IO) {
-                contentResolver.ensureSoundFontFolder()
-                _availableSoundFonts.value = contentResolver.listSoundFonts()
+            try {
+                withContext(Dispatchers.IO) {
+                    contentResolver.ensureSoundFontFolder()
+                    _availableSoundFonts.value = contentResolver.listSoundFonts()
+                }
+                autoLoadSoundFont()
+                _sf2Presets.value = withContext(Dispatchers.Default) {
+                    audioEngine.loadedSoundFontPresets()
+                }
+            } catch (t: Throwable) {
+                DebugLog.add("❌ Startup SF2 init failed: ${t.javaClass.simpleName}: ${t.message}")
+            } finally {
+                if (!audioEngine.start()) {
+                    DebugLog.add("❌ AudioEngine failed to start after SF2 init")
+                } else {
+                    DebugLog.add("✅ AudioEngine started after SF2 init")
+                }
             }
-            autoLoadSoundFont()
-            _sf2Presets.value = audioEngine.loadedSoundFontPresets()
         }
+
         midiInputManager.onNoteOn = { note, velocity -> arrangerBrain.onKeyboardNoteOn(note, velocity / 127f) }
         midiInputManager.onNoteOff = { note -> arrangerBrain.onKeyboardNoteOff(note) }
     }
