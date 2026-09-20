@@ -43,6 +43,16 @@ SoundFontPlayer::SoundFontPlayer() {
     if (!settings_) { LOGE("Failed to create settings"); return; }
     fluid_settings_setnum(settings_, "synth.sample-rate", 48000.0);
     fluid_settings_setint(settings_, "synth.polyphony", 128);
+    // Large Yamaha SF2 files can be hundreds of MB. Dynamic sample loading
+    // keeps sample data on disk and loads it on demand instead of expanding
+    // the whole SoundFont into native memory during sfload(). This is
+    // especially important on Android where a 300+ MB SF2 can otherwise
+    // terminate the process without a Kotlin exception/log.
+    const int dynamicSampleLoading = fluid_settings_setint(
+        settings_, "synth.dynamic-sample-loading", 1
+    );
+    LOGI("FluidSynth dynamic sample loading: %s",
+         dynamicSampleLoading ? "enabled" : "unsupported/failed");
     fluid_settings_setnum(settings_, "synth.gain", 1.0);
     fluid_settings_setint(settings_, "synth.reverb.active", 1);
     fluid_settings_setint(settings_, "synth.chorus.active", 1);
