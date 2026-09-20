@@ -436,8 +436,11 @@ class MainViewModel @Inject constructor(
             }
         }
         _soundFontName.value = if (ok) displayName else "Load failed"
-        if (ok) _sf2Presets.value = audioEngine.loadedSoundFontPresets()
-        DebugLog.add(if (ok) "✅ SF2 loaded: $displayName" else "❌ SF2 load failed: $displayName")
+        // Do not enumerate every preset immediately after loading a large SF2.
+        // Native preset iteration can be expensive and, on some Android builds,
+        // can kill the process before the UI can record a log. Presets will be
+        // loaded lazily by the explicit refresh/preset UI path.
+        DebugLog.add(if (ok) "✅ SF2 loaded: $displayName (preset scan deferred)" else "❌ SF2 load failed: $displayName")
     }
 
     fun refreshSoundFontList() {
