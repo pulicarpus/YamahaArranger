@@ -2,6 +2,9 @@ package com.yourapp.yamahaarranger.audio
 
 import com.yourapp.yamahaarranger.ui.DebugLog
 import javax.inject.Inject
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Singleton
 
 @Singleton
@@ -12,6 +15,9 @@ class AudioEngineManager @Inject constructor(
     private var started = false
     private var soundFontLoaded = false
     private var nextSoundFontRole = 0 // 0=melody, 1=drum
+    // Serialize SF2 operations: startup auto-load and Import must never race
+    // while stopping/restarting the native Oboe stream.
+    private val soundFontOperationMutex = Mutex()
 
     fun start() {
         if (started) return
@@ -41,7 +47,7 @@ class AudioEngineManager @Inject constructor(
         val role = if (nextSoundFontRole == 0) "MELODY" else "DRUM"
         DebugLog.add("🎼 Loading $role SF2…")
         DebugLog.traceAudio("SF2 LOAD role=$role path=$filePath")
-        val ok = withAudioStreamPaused { bridge.nativeLoadSoundFont(filePath) }
+        val ok = runBlocking { soundFontOperationMutex.withLock { withAudioStreamPausedUnsafe { bridge.nativeLoadSoundFont(filePath) } } }
         if (ok) {
             soundFontLoaded = true
             nextSoundFontRole = 1 - nextSoundFontRole
@@ -57,7 +63,7 @@ class AudioEngineManager @Inject constructor(
      * Never mutate/unload its SoundFont stack while the callback can render.
      * Pause the stream for the load, then resume it even when loading fails.
      */
-    private fun <T> withAudioStreamPaused(block: () -> T): T {
+    private fun <T> withAudioStreamPausedUnsafe(block: () -> T): T {
         val resume = started
         if (resume) {
             DebugLog.traceAudio("PAUSE for SF2 operation")
@@ -76,14 +82,14 @@ class AudioEngineManager @Inject constructor(
     }
 
     fun loadMelodySoundFont(filePath: String): Boolean {
-        val ok = withAudioStreamPaused { bridge.nativeLoadMelodySoundFont(filePath) }
+        val ok = runBlocking { soundFontOperationMutex.withLock { withAudioStreamPausedUnsafe { bridge.nativeLoadMelodySoundFont(filePath) } } }
         soundFontLoaded = soundFontLoaded || ok
         if (ok) DebugLog.add("✅ MELODY SF2 OK") else DebugLog.add("❌ MELODY SF2 FAILED")
         return ok
     }
 
     fun loadDrumSoundFont(filePath: String): Boolean {
-        val ok = withAudioStreamPaused { bridge.nativeLoadDrumSoundFont(filePath) }
+        val ok = runBlocking { soundFontOperationMutex.withLock { withAudioStreamPausedUnsafe { bridge.nativeLoadDrumSoundFont(filePath) } } }
         soundFontLoaded = soundFontLoaded || ok
         if (ok) DebugLog.add("✅ DRUM SF2 OK") else DebugLog.add("❌ DRUM SF2 FAILED")
         return ok
@@ -94,12 +100,12 @@ class AudioEngineManager @Inject constructor(
      * presets only after both native loads have completed.
      */
     fun loadSoundFontPair(melodyPath: String, drumPath: String): Boolean {
-        val result = withAudioStreamPaused {
+        val result = runBlocking { soundFontOperationMutex.withLock { withAudioStreamPausedUnsafe {
             val melodyOk = bridge.nativeLoadMelodySoundFont(melodyPath)
             if (!melodyOk) return@withAudioStreamPaused false
             val drumOk = bridge.nativeLoadDrumSoundFont(drumPath)
             melodyOk && drumOk
-        }
+        } } }
         soundFontLoaded = soundFontLoaded || result
         if (result) DebugLog.add("✅ MELODY + DRUM SF2 OK (atomic pair)")
         else DebugLog.add("❌ MELODY + DRUM SF2 FAILED")
@@ -111,7 +117,7 @@ class AudioEngineManager @Inject constructor(
 
     fun unloadSoundFont() {
         DebugLog.traceAudio("SF2 UNLOAD")
-        withAudioStreamPaused { bridge.nativeUnloadSoundFont() }
+        runBlocking { soundFontOperationMutex.withLock { withAudioStreamPausedUnsafe { bridge.nativeUnloadSoundFont() } } }
         soundFontLoaded = false
         nextSoundFontRole = 0
         DebugLog.add("🗑️ All SF2 unloaded")
