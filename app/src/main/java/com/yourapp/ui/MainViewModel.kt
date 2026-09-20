@@ -419,7 +419,7 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    private suspend fun loadSoundFontUri(uri: Uri, displayName: String, role: String? = null, replaceAll: Boolean = true) {
+    private suspend fun loadSoundFontUri(uri: Uri, displayName: String, role: String? = null, replaceAll: Boolean = false) {
         val cached = withContext(Dispatchers.IO) {
             contentResolver.copySoundFontToCache(uri, displayName)
         }
