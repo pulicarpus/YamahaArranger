@@ -229,11 +229,8 @@ class MainViewModel @Inject constructor(
             } catch (t: Throwable) {
                 DebugLog.add("❌ Startup SF2 init failed: ${t.javaClass.simpleName}: ${t.message}")
             } finally {
-                if (!audioEngine.start()) {
-                    DebugLog.add("❌ AudioEngine failed to start after SF2 init")
-                } else {
-                    DebugLog.add("✅ AudioEngine started after SF2 init")
-                }
+                audioEngine.start()
+                DebugLog.add("✅ AudioEngine started after SF2 init")
             }
         }
 
