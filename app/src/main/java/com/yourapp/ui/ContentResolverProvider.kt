@@ -70,14 +70,23 @@ class ContentResolverProvider @Inject constructor(
                     put(MediaStore.Downloads.RELATIVE_PATH, sf2RelativePath)
                     put(MediaStore.Downloads.IS_PENDING, 1)
                 }
-                resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)?.let { uri ->
-                    resolver.openOutputStream(uri)?.use {
-                        it.write("Place your SoundFont .sf2 files in this folder.\n".toByteArray())
+                try {
+                    resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)?.let { uri ->
+                        resolver.openOutputStream(uri)?.use {
+                            it.write("Place your SoundFont .sf2 files in this folder.\n".toByteArray())
+                        }
+                        val done = ContentValues().apply {
+                            put(MediaStore.Downloads.IS_PENDING, 0)
+                        }
+                        resolver.update(uri, done, null, null)
                     }
-                    val done = ContentValues().apply {
-                        put(MediaStore.Downloads.IS_PENDING, 0)
-                    }
-                    resolver.update(uri, done, null, null)
+                } catch (e: IllegalStateException) {
+                    // Some Android/MediaStore builds can report an existing
+                    // marker as absent and then reject a duplicate insert.
+                    // The marker is only informational; never abort SF2 startup.
+                    Timber.w(e, "SF2 folder marker already exists or cannot be created")
+                } catch (e: Exception) {
+                    Timber.w(e, "Could not create SF2 folder marker")
                 }
             }
         } else {
