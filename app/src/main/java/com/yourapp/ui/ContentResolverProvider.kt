@@ -92,6 +92,38 @@ class ContentResolverProvider @Inject constructor(
         }
     }
 
+    /** True when the URI already points at Download/YamahaArranger/SF2. */
+    fun isSoundFontInManagedFolder(uri: Uri): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            return try {
+                context.contentResolver.query(
+                    uri,
+                    arrayOf(MediaStore.MediaColumns.RELATIVE_PATH),
+                    null,
+                    null,
+                    null
+                )?.use { cursor ->
+                    val index = cursor.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH)
+                    cursor.moveToFirst() && index >= 0 &&
+                        cursor.getString(index)?.equals(sf2RelativePath, ignoreCase = true) == true
+                } ?: false
+            } catch (e: Exception) {
+                Timber.w(e, "Could not determine SF2 source folder")
+                false
+            }
+        }
+        val path = uri.path ?: return false
+        val managed = File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+            "YamahaArranger/SF2"
+        ).canonicalPath
+        return try {
+            File(path).canonicalPath.startsWith(managed + File.separator)
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     fun saveSoundFont(uri: Uri, displayName: String): Uri? {
         val safeName = displayName.substringAfterLast('/').ifBlank { "font.sf2" }
             .let { if (it.lowercase().endsWith(".sf2")) it else "$it.sf2" }
