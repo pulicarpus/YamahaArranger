@@ -147,6 +147,21 @@ fun MainScreen(
                 Text(if (uiState.autoFill) "AUTO FILL  •  ON" else "AUTO FILL  •  OFF", fontSize = 9.sp, fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.height(5.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                Button(
+                    onClick = viewModel::toggleAcmp,
+                    modifier = Modifier.weight(1f).height(34.dp),
+                    contentPadding = PaddingValues(0.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = if (uiState.acmpEnabled) LcdBlue else PanelMid)
+                ) { Text(if (uiState.acmpEnabled) "ACMP ON" else "ACMP OFF", fontSize = 9.sp, fontWeight = FontWeight.Bold) }
+                Button(
+                    onClick = viewModel::toggleLeftVoice,
+                    modifier = Modifier.weight(1f).height(34.dp),
+                    contentPadding = PaddingValues(0.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = if (uiState.leftVoiceEnabled) LcdBlue else PanelMid)
+                ) { Text(if (uiState.leftVoiceEnabled) "LEFT ON" else "LEFT OFF", fontSize = 9.sp, fontWeight = FontWeight.Bold) }
+            }
+            Spacer(Modifier.height(5.dp))
             SectionRow(listOf("Ending 1", "Ending 2", "Ending 3"), uiState.activeSection, viewModel::onSectionSelected)
             Spacer(Modifier.height(7.dp))
             TransportRow(uiState.isPlaying, viewModel::onSyncStart, viewModel::onStartStop, viewModel::onTapTempo)
