@@ -36,8 +36,8 @@ class StyleRepository @Inject constructor(private val bridge: NativeStyleBridge)
         DebugLog.add("🎼 Legacy voice map: $voiceMap")
 
         val ppq = bridge.nativeGetPpq()
-        val beatsPerBar = detectBeatsPerBar(rawBytes)
-        DebugLog.add("🥁 Style meter: ${beatsPerBar}/4")
+        val meter = detectStyleMeter(rawBytes, ppq)
+        DebugLog.add("🥁 Style meter: ${meter.numerator}/${meter.denominator}")
         val defaultTempoBpm = bridge.nativeGetDefaultTempoBpm()
             .toInt()
             .coerceIn(20, 280)
@@ -91,6 +91,8 @@ class StyleRepository @Inject constructor(private val bridge: NativeStyleBridge)
         }
         return StyleMeter(4, 4, ppq.coerceAtLeast(1))
     }
+
+    private data class VoiceSetup(val program: Int, val bankMsb: Int, val bankLsb: Int)
 
     private fun extractVoiceSetup(events: List<StyleNoteEvent>): VoiceSetup {
         var msb = 0
