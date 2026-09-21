@@ -241,6 +241,8 @@ class MainViewModel @Inject constructor(
             sf2Presets = sfPresets,
             activeBank = bank,
             activeRegSlot = regSlot,
+            voiceName = rightVoices.getOrNull(0)?.displayName() ?: "OFF",
+            right2Name = if (rightVoices.getOrNull(1)?.enabled == true) rightVoices.getOrNull(1)?.displayName() ?: "OFF" else "OFF",
             rightVoices = rightVoices,
             voiceAssignments = voices,
             availableSoundFonts = sfFiles
