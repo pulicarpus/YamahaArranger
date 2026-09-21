@@ -13,8 +13,10 @@ JavaVM* g_jvm=nullptr; jclass g_debugLogClass=nullptr; jmethodID g_debugLogAddMe
 static std::string sanitizeUtf8ForJni(const char* input) {
     if (!input) return {};
     const unsigned char* s = reinterpret_cast<const unsigned char*>(input);
+    const size_t len = std::strlen(input);
     std::string out;
-    for (size_t i = 0; s[i] != 0;) {
+    out.reserve(len);
+    for (size_t i = 0; i < len;) {
         const unsigned char c = s[i];
         if (c < 0x80) {
             out.push_back(static_cast<char>(c));
@@ -26,7 +28,7 @@ static std::string sanitizeUtf8ForJni(const char* input) {
         else if (c >= 0xE0 && c <= 0xEF) n = 3;
         else if (c >= 0xF0 && c <= 0xF4) n = 4;
         bool valid = n > 0;
-        if (valid) {
+        if (valid && i + n <= len) {
             for (size_t j = 1; j < n; ++j) {
                 if (s[i + j] < 0x80 || s[i + j] > 0xBF) { valid = false; break; }
             }
