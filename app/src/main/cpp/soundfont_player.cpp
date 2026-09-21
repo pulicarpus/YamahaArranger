@@ -224,20 +224,31 @@ std::string SoundFontPlayer::presetList() const {
         if (!sfont) return;
         fluid_sfont_iteration_start(sfont);
         fluid_preset_t* preset = nullptr;
+        // Preset refresh is a UI operation, not an audio operation. Large Yamaha
+        // SF2s can contain many presets, and building an unbounded Java String
+        // here can cause a native/Java memory spike immediately after import.
+        // Keep the refresh bounded; the synth itself still retains the complete SF2.
+        constexpr int kMaxPresetsPerRole = 512;
+        constexpr size_t kMaxPresetTextBytes = 128 * 1024;
+        int roleCount = 0;
         while ((preset = fluid_sfont_iteration_next(sfont)) != nullptr) {
+            if (roleCount >= kMaxPresetsPerRole || out.size() >= kMaxPresetTextBytes) {
+                LOGI("Preset enumeration capped: role=%s count=%d bytes=%zu", role, roleCount, out.size());
+                break;
+            }
             const char* name = fluid_preset_get_name(preset);
             const int bank = fluid_preset_get_banknum(preset);
             const int program = fluid_preset_get_num(preset);
             if (!name) name = "";
-            // role|bank|program|name. Names are kept verbatim from the SF2.
-            out += role;
-            out += "|";
-            out += std::to_string(bank);
-            out += "|";
-            out += std::to_string(program);
-            out += "|";
-            out += name;
-            out += "\n";
+            std::string line = std::string(role) + "|" +
+                               std::to_string(bank) + "|" +
+                               std::to_string(program) + "|" + name + "\n";
+            if (out.size() + line.size() > kMaxPresetTextBytes) {
+                LOGI("Preset enumeration text cap reached: role=%s count=%d", role, roleCount);
+                break;
+            }
+            out += line;
+            ++roleCount;
         }
     };
     appendRole(melodySfId_, "MELODY");
