@@ -68,11 +68,22 @@ data class StyleSectionModel(
     val parts: List<StylePartModel>
 )
 
+data class StyleMeter(
+    val numerator: Int,
+    val denominator: Int,
+    val ticksPerQuarter: Int
+) {
+    val ticksPerBeat: Int
+        get() = (ticksPerQuarter * 4 / denominator.coerceAtLeast(1)).coerceAtLeast(1)
+    val ticksPerBar: Int
+        get() = (numerator.coerceAtLeast(1) * ticksPerBeat).coerceAtLeast(1)
+}
+
 data class ParsedStyle(
     val fileName: String,
     val ppq: Int,
     val sections: Map<String, StyleSectionModel>,
     val voiceMap: Map<Int, String> = emptyMap(),
     val defaultTempoBpm: Int = 120,
-    val beatsPerBar: Int = 4
+    val meter: StyleMeter = StyleMeter(4, 4, ppq)
 )
