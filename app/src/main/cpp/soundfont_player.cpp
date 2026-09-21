@@ -6,6 +6,8 @@
 #include <cstdio>
 #include <cctype>
 #include <jni.h>
+#include <atomic>
+#include <chrono>
 
 #define LOG_TAG "FluidSynthPlayer"
 
@@ -38,6 +40,8 @@ static void uiLog(const char* fmt, ...) {
 #define LOGE(...) uiLog(__VA_ARGS__)
 
 static std::mutex g_synthMutex;
+static std::atomic<int64_t> g_lastNoteOnNanos{0};
+static std::atomic<bool> g_latencyProbeArmed{false};
 
 SoundFontPlayer::SoundFontPlayer() {
     LOGI("Creating FluidSynth settings...");
@@ -234,6 +238,14 @@ void SoundFontPlayer::render(float* out, int numFrames) {
     }
     const bool nonZero = peak > 0.000001f;
     ++callbackCount;
+    if (nonZero && g_latencyProbeArmed.exchange(false)) {
+        const int64_t noteNs = g_lastNoteOnNanos.load();
+        const int64_t nowNs = std::chrono::steady_clock::now().time_since_epoch().count();
+        if (noteNs > 0) {
+            const double latencyMs = static_cast<double>(nowNs - noteNs) / 1000000.0;
+            LOGI("SF NOTE->PCM latency=%.2f ms frames=%d peak=%.7f", latencyMs, numFrames, peak);
+        }
+    }
     if (nonZero != lastNonZero || (nonZero && callbackCount % 100 == 0)) {
         LOGI("SF RENDER rc=%d frames=%d peak=%.7f nonZero=%d", rc, numFrames, peak, nonZero ? 1 : 0);
         lastNonZero = nonZero;
@@ -248,6 +260,13 @@ void SoundFontPlayer::noteOn(int channel, int key, float velocity) {
     if (vel < 1) vel = 1;
     if (vel > 127) vel = 127;
     const int rc = fluid_synth_noteon(synth_, channel, key, vel);
+    if (rc == FLUID_OK) {
+        g_lastNoteOnNanos.store(
+            std::chrono::steady_clock::now().time_since_epoch().count(),
+            std::memory_order_relaxed
+        );
+        g_latencyProbeArmed.store(true, std::memory_order_release);
+    }
     fluid_preset_t* active = fluid_synth_get_channel_preset(synth_, channel);
     const char* activeName = active ? fluid_preset_get_name(active) : nullptr;
     int cc7 = -1;
