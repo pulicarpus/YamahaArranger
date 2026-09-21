@@ -78,7 +78,8 @@ extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAu
 extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeGetSoundFontPresets(JNIEnv* env,jobject){
     if(!g_engine) return env->NewStringUTF("");
     const std::string presets = g_engine->sfPresetList();
-    const std::string safePresets = sanitizeUtf8ForJni(presets.c_str());\n    return env->NewStringUTF(safePresets.c_str());
+    const std::string safePresets = sanitizeUtf8ForJni(presets.c_str());
+    return env->NewStringUTF(safePresets.c_str());
 }
 extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeParseStyle(JNIEnv* env,jobject,jbyteArray styBytes){if(styBytes==nullptr)return JNI_FALSE;jsize len=env->GetArrayLength(styBytes);std::vector<uint8_t>buf(len);env->GetByteArrayRegion(styBytes,0,len,reinterpret_cast<jbyte*>(buf.data()));g_lastParsedStyle=std::make_unique<StyleParser>();return g_lastParsedStyle->parse(buf.data(),buf.size())?JNI_TRUE:JNI_FALSE;}
 extern "C" JNIEXPORT jint JNICALL Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeGetSectionCount(JNIEnv*,jobject){return g_lastParsedStyle?static_cast<jint>(g_lastParsedStyle->sections().size()):0;}
