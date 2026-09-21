@@ -112,6 +112,9 @@ class ArrangerBrain @Inject constructor(
                 // their dedicated FluidSynth channels.
                 if (channel == 0) audioEngine.noteOn(midiNote, velocity)
                 else audioEngine.noteOnChannel(channel, midiNote, velocity)
+                // Mirror the upper-keyboard note to the external E343 when MIDI OUT is enabled.
+                // Keep the internal SF2 path above so the app can still audition the RIGHT layer.
+                midiInputManager.sendNoteOn(channel, velocity127, midiNote)
             }
             return
         }
@@ -129,6 +132,8 @@ class ArrangerBrain @Inject constructor(
             for (channel in 0..2) {
                 if (channel == 0) audioEngine.noteOff(midiNote)
                 else audioEngine.noteOffChannel(channel, midiNote)
+                // Always release the corresponding external E343 channel too.
+                midiInputManager.sendNoteOff(channel, midiNote)
             }
             return
         }
