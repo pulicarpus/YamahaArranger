@@ -156,12 +156,13 @@ data class MainUiState(
     val styleName: String = "No Style Loaded", val tempoBpm: Int = 120, val transpose: Int = 0,
     val isPlaying: Boolean = false, val activeSection: String = "Main A", val detectedChordLabel: String = "", val autoFill: Boolean = true,
     val acmpEnabled: Boolean = true,
+    val leftVoiceEnabled: Boolean = false,
     val midiStatus: String = "No MIDI device", val midiOutEnabled: Boolean = false, val soundFontName: String = "None",
     val styleVolume: Int = 100, val leftVolume: Int = 100, val right1Volume: Int = 100, val right2Volume: Int = 100, val right3Volume: Int = 100, val masterVolume: Int = 100,
     val activeBank: Int = 1, val activeRegSlot: Int = 0, val voiceName: String = "GrandPiano",
     val right2Name: String = "OFF", val splitPoint: String = "C4",
     val rightVoices: List<KeyboardVoiceSlot> = defaultKeyboardVoices(),
-    val leftVoice: KeyboardVoiceSlot = KeyboardVoiceSlot(-1, "LEFT", 0, 0, enabled = true, name = "Piano"),
+    val leftVoice: KeyboardVoiceSlot = KeyboardVoiceSlot(-1, "LEFT", 0, 0, enabled = false, name = "Piano"),
     val voiceAssignments: List<VoiceSlot> = defaultVoices(),
     val availableSoundFonts: List<Pair<Uri, String>> = emptyList(),
     val sf2Presets: List<AudioEngineManager.SfPreset> = emptyList()
@@ -192,7 +193,7 @@ class MainViewModel @Inject constructor(
     private val _activeRegSlot = MutableStateFlow(0)
     private val _voiceAssignments = MutableStateFlow(defaultVoices())
     private val _rightVoices = MutableStateFlow(defaultKeyboardVoices())
-    private val _leftVoice = MutableStateFlow(KeyboardVoiceSlot(-1, "LEFT", 0, 0, enabled = true, name = "Piano"))
+    private val _leftVoice = MutableStateFlow(KeyboardVoiceSlot(-1, "LEFT", 0, 0, enabled = false, name = "Piano"))
     private val _acmpEnabled = MutableStateFlow(true)
     private var activeChordNotes: List<Int> = emptyList()
 
@@ -206,13 +207,14 @@ class MainViewModel @Inject constructor(
     private data class KeyboardUiData(
         val rightVoices: List<KeyboardVoiceSlot>,
         val leftVoice: KeyboardVoiceSlot,
-        val acmpEnabled: Boolean
+        val acmpEnabled: Boolean,
+        val leftVoiceEnabled: Boolean
     )
 
     private val voiceAndSoundFontState = combine(
         combine(_activeBank, _activeRegSlot, _voiceAssignments) { b, r, v -> Triple(b, r, v) },
-        combine(_rightVoices, _leftVoice, _acmpEnabled) { right, left, acmp ->
-            KeyboardUiData(right, left, acmp)
+        combine(_rightVoices, _leftVoice, _acmpEnabled, arrangerBrain.state.map { it.leftVoiceEnabled }) { right, left, acmp, leftEnabled ->
+            KeyboardUiData(right, left.copy(enabled = leftEnabled), acmp, leftEnabled)
         },
         combine(_availableSoundFonts, _sf2Presets) { files, presets -> files to presets }
     ) { voiceData, keyboardData, sfData -> Triple(voiceData, keyboardData, sfData) }
@@ -231,6 +233,7 @@ class MainViewModel @Inject constructor(
         val (bank, regSlot, voices) = voiceData
         val rightVoices = keyboardData.rightVoices
         val leftVoice = keyboardData.leftVoice
+        val leftVoiceEnabled = keyboardData.leftVoiceEnabled
         val sfFiles = sfData.first
         val sfPresets = sfData.second
         MainUiState(
@@ -351,6 +354,12 @@ class MainViewModel @Inject constructor(
         for (ch in 8..15) audioEngine.setChannelExpression(ch, v)
     }
     fun onLeftVolumeChange(value: Int) { _leftVolume.value = value.coerceIn(0, 127); audioEngine.setChannelExpression(3, _leftVolume.value) }
+
+    fun toggleLeftVoice() {
+        val enabled = !_leftVoice.value.enabled
+        _leftVoice.value = _leftVoice.value.copy(enabled = enabled)
+        arrangerBrain.setLeftVoiceEnabled(enabled)
+    }
 
     fun setLeftVoice(program: Int, bank: Int) {
         val p = program.coerceIn(0, 127)
