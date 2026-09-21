@@ -1,7 +1,6 @@
 #pragma once
 
 #include <string>
-#include <deque>
 #include <mutex>
 #include <fluidsynth.h>
 
@@ -35,21 +34,9 @@ private:
     bool loadRole(const std::string& path, bool drum);
     void assignChannelToRole(int channel, bool drum, int bank, int program);
 
-    struct PendingEvent {
-        enum Type { NoteOn, NoteOff, AllNotesOff } type;
-        int channel = 0;
-        int key = 0;
-        int velocity = 0;
-    };
-
-    void enqueueEvent(PendingEvent event);
-    void processPendingEvents();
-
     fluid_settings_t* settings_ = nullptr;
     fluid_synth_t* synth_ = nullptr;
     int melodySfId_ = -1;
     int drumSfId_ = -1;
 
-    std::mutex eventMutex_;
-    std::deque<PendingEvent> pendingEvents_;
 };
