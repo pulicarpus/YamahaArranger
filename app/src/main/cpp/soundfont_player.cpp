@@ -229,7 +229,14 @@ void SoundFontPlayer::noteOn(int channel, int key, float velocity) {
     if (vel < 1) vel = 1;
     if (vel > 127) vel = 127;
     const int rc = fluid_synth_noteon(synth_, channel, key, vel);
-    LOGI("SF NOTE_ON ch=%d key=%d vel=%d rc=%d", channel, key, vel, rc);
+    fluid_preset_t* active = fluid_synth_get_channel_preset(synth_, channel);
+    const char* activeName = active ? fluid_preset_get_name(active) : nullptr;
+    int cc7 = -1;
+    int cc11 = -1;
+    fluid_synth_get_cc(synth_, channel, 7, &cc7);
+    fluid_synth_get_cc(synth_, channel, 11, &cc11);
+    LOGI("SF NOTE_ON ch=%d key=%d vel=%d rc=%d active=%s cc7=%d cc11=%d",
+         channel, key, vel, rc, activeName ? activeName : "<NULL>", cc7, cc11);
 }
 
 void SoundFontPlayer::noteOff(int channel, int key) {
@@ -276,8 +283,16 @@ void SoundFontPlayer::setChannelPreset(int channel, int bank, int program) {
     if (drum) bank = 128;
     const int sfId = drum ? (drumSfId_ >= 0 ? drumSfId_ : melodySfId_) : melodySfId_;
     if (sfId < 0) { LOGE("No SF2 loaded for channel %d", channel); return; }
-    fluid_synth_program_select(synth_, channel, sfId, bank, program);
-    LOGI("Ch %d -> %s SF2 id=%d bank=%d prog=%d", channel, drum ? "DRUM" : "MELODY", sfId, bank, program);
+    const int rc = fluid_synth_program_select(synth_, channel, sfId, bank, program);
+    fluid_preset_t* active = fluid_synth_get_channel_preset(synth_, channel);
+    const char* activeName = active ? fluid_preset_get_name(active) : nullptr;
+    int cc7 = -1;
+    int cc11 = -1;
+    fluid_synth_get_cc(synth_, channel, 7, &cc7);
+    fluid_synth_get_cc(synth_, channel, 11, &cc11);
+    LOGI("Ch %d -> %s SF2 id=%d bank=%d prog=%d rc=%d active=%s cc7=%d cc11=%d",
+         channel, drum ? "DRUM" : "MELODY", sfId, bank, program, rc,
+         activeName ? activeName : "<NULL>", cc7, cc11);
 }
 
 std::string SoundFontPlayer::presetList() const {
