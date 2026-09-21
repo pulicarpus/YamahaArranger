@@ -35,7 +35,8 @@ data class ArrangerState(
     val tempoBpm: Int = 120,
     val currentChordLabel: String = "",
     val autoFill: Boolean = true,
-    val acmpEnabled: Boolean = true
+    val acmpEnabled: Boolean = true,
+    val leftVoiceEnabled: Boolean = false
 )
 
 @Singleton
@@ -60,6 +61,7 @@ class ArrangerBrain @Inject constructor(
     // ACMP OFF: LEFT becomes a normal voice on dedicated channel 3.
     // The StyleSequencer itself is never stopped by ACMP.
     private var acmpEnabled = true
+    private var leftVoiceEnabled = false
     private val leftVoiceChannel = 3
 
     private var appliedChord: DetectedChord? = null
@@ -126,14 +128,21 @@ class ArrangerBrain @Inject constructor(
             return
         }
         if (acmpEnabled) {
-            // ACMP ON: LEFT is chord-control only.
-            DebugLog.add("🎹 LEFT IN note=$midiNote vel=$velocity127 → ACMP CHORD")
+            // ACMP ON: detect the chord, and optionally play the LEFT voice when L is ON.
+            DebugLog.add("🎹 LEFT IN note=$midiNote vel=$velocity127 → ACMP CHORD" +
+                if (leftVoiceEnabled) " + LEFT VOICE" else "")
             chordDetector.noteOn(midiNote)?.let(::onChordChanged)
-        } else {
-            // ACMP OFF: LEFT becomes an independent keyboard voice on channel 3.
+            if (leftVoiceEnabled) {
+                audioEngine.noteOnChannel(leftVoiceChannel, midiNote, velocity)
+                midiInputManager.sendNoteOn(leftVoiceChannel, midiNote, velocity127)
+            }
+        } else if (leftVoiceEnabled) {
+            // ACMP OFF: LEFT is an independent keyboard voice on channel 3.
             DebugLog.add("🎹 LEFT IN note=$midiNote vel=$velocity127 → LEFT VOICE")
             audioEngine.noteOnChannel(leftVoiceChannel, midiNote, velocity)
             midiInputManager.sendNoteOn(leftVoiceChannel, midiNote, velocity127)
+        } else {
+            DebugLog.add("🎹 LEFT IN note=$midiNote vel=$velocity127 → LEFT OFF")
         }
     }
 
@@ -151,16 +160,19 @@ class ArrangerBrain @Inject constructor(
             return
         }
         if (acmpEnabled) {
-            DebugLog.add("🎹 LEFT OFF note=$midiNote → ACMP CHORD")
+            DebugLog.add("🎹 LEFT OFF note=$midiNote → ACMP CHORD" +
+                if (leftVoiceEnabled) " + LEFT VOICE" else "")
             val chord = chordDetector.noteOff(midiNote)
             if (chord != null) {
                 onChordChanged(chord)
             } else {
-                // Releasing the last chord key is NOT the same as Synchro Stop.
-                // Keep the last detected chord active until a new chord arrives.
                 DebugLog.add("🎹 Chord release: keep last chord")
             }
-        } else {
+            if (leftVoiceEnabled) {
+                audioEngine.noteOffChannel(leftVoiceChannel, midiNote)
+                midiInputManager.sendNoteOff(leftVoiceChannel, midiNote)
+            }
+        } else if (leftVoiceEnabled) {
             DebugLog.add("🎹 LEFT OFF note=$midiNote → LEFT VOICE")
             audioEngine.noteOffChannel(leftVoiceChannel, midiNote)
             midiInputManager.sendNoteOff(leftVoiceChannel, midiNote)
@@ -183,6 +195,17 @@ class ArrangerBrain @Inject constructor(
         if (layer !in 0..2) return
         rightVoiceEnabled[layer] = enabled
         DebugLog.add("🎹 RIGHT " + (layer + 1) + ": " + if (enabled) "ON" else "OFF")
+    }
+
+    fun setLeftVoiceEnabled(enabled: Boolean) {
+        if (leftVoiceEnabled == enabled) return
+        leftVoiceEnabled = enabled
+        _state.update { it.copy(leftVoiceEnabled = enabled) }
+        if (!enabled) {
+            audioEngine.allNotesOff()
+            midiInputManager.sendNoteOff(leftVoiceChannel, 0)
+        }
+        DebugLog.add("🎹 LEFT: " + if (enabled) "ON" else "OFF")
     }
 
     /** E343-compatible default split point, exposed for future UI control. */
