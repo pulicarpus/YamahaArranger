@@ -60,7 +60,22 @@ data class VoiceSlot(
     val styleReverb: Int = 40, val styleChorus: Int = 0, val sf2Name: String? = null
 ) {
     fun displayName(): String {
-        sf2Name?.let { return it }
+        val raw = sf2Name?.trim().orEmpty()
+        if (raw.isNotEmpty()) {
+            val n = raw.lowercase().replace(Regex("\\s+"), "")
+            when {
+                n == "add-dr" || n == "adddr" -> return "Add Drums"
+                n == "main-dr" || n == "maindr" -> return "Main Drums"
+                n == "piano00" || n == "piano0" -> return "Acoustic Grand Piano"
+                n == "bass33" -> return "Finger Bass"
+                n == "guitar27" -> return "Clean Guitar"
+            }
+            val trailing = n.takeLastWhile { it.isDigit() }.toIntOrNull()
+            if (trailing != null && trailing in 0..127) {
+                GM_VOICES.firstOrNull { it.second == trailing }?.first?.let { return it }
+            }
+            return raw
+        }
         if (bank == 128) return "DRUM KIT"
         return GM_VOICES.firstOrNull { it.second == program }?.first ?: "prog$program"
     }
