@@ -219,7 +219,24 @@ void SoundFontPlayer::render(float* out, int numFrames) {
         return;
     }
     std::lock_guard<std::mutex> lock(g_synthMutex);
-    fluid_synth_write_float(synth_, numFrames, out, 0, 2, out, 1, 2);
+    const int rc = fluid_synth_write_float(synth_, numFrames, out, 0, 2, out, 1, 2);
+
+    // Lightweight A/B diagnostic: verify that FluidSynth actually produced
+    // non-zero PCM. Do not log every callback; only report transitions.
+    static bool lastNonZero = false;
+    static int callbackCount = 0;
+    static float peak = 0.0f;
+    for (int i = 0; i < numFrames * 2; ++i) {
+        const float a = out[i] < 0.0f ? -out[i] : out[i];
+        if (a > peak) peak = a;
+    }
+    const bool nonZero = peak > 0.000001f;
+    ++callbackCount;
+    if (nonZero != lastNonZero || (nonZero && callbackCount % 100 == 0)) {
+        LOGI("SF RENDER rc=%d frames=%d peak=%.7f nonZero=%d", rc, numFrames, peak, nonZero ? 1 : 0);
+        lastNonZero = nonZero;
+    }
+    peak = 0.0f;
 }
 
 void SoundFontPlayer::noteOn(int channel, int key, float velocity) {
