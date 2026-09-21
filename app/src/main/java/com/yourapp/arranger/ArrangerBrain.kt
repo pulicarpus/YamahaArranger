@@ -319,7 +319,7 @@ class ArrangerBrain @Inject constructor(
     ) {
         pendingTransitionJob?.cancel()
         val style = loadedStyle
-        val waitMs = if (style != null) sequencer.millisToNextBar(style.ppq, style.beatsPerBar) else 0L
+        val waitMs = if (style != null) sequencer.millisToNextBar(style.ppq, style.meter.numerator, style.meter.denominator) else 0L
         DebugLog.add("⏱ SECTION QUANTIZE ${section.styleName} to next bar in ${waitMs}ms")
         val scope = externalScope ?: CoroutineScope(Dispatchers.Main + SupervisorJob())
         pendingTransitionJob = scope.launch {
