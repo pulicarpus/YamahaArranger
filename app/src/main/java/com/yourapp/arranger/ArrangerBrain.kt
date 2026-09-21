@@ -34,7 +34,9 @@ data class ArrangerState(
     val currentSection: ArrangerSection = ArrangerSection.MainA,
     val tempoBpm: Int = 120,
     val currentChordLabel: String = "",
-    val autoFill: Boolean = true
+    val autoFill: Boolean = true,
+    val acmpEnabled: Boolean = true,
+    val leftVoiceEnabled: Boolean = true
 )
 
 @Singleton
@@ -54,6 +56,9 @@ class ArrangerBrain @Inject constructor(
     // Yamaha-style upper keyboard layers: RIGHT 1/2/3 use synth channels 0/1/2.
     // RIGHT 1 is on by default; RIGHT 2 and RIGHT 3 are independently switchable.
     private val rightVoiceEnabled = booleanArrayOf(true, false, false)
+    private var acmpEnabled = true
+    private var leftVoiceEnabled = true
+    private val leftVoiceChannel = 3
 
     private var appliedChord: DetectedChord? = null
     private var pendingChord: DetectedChord? = null
@@ -118,10 +123,22 @@ class ArrangerBrain @Inject constructor(
             }
             return
         }
-        // ACMP area: these notes are chord-control ONLY. They must never
-        // enter the normal keyboard voice path, regardless of velocity.
-        DebugLog.add("🎹 ACMP IN note=$midiNote vel=$velocity127 → CHORD ONLY")
-        chordDetector.noteOn(midiNote)?.let(::onChordChanged)
+        if (acmpEnabled) {
+            DebugLog.add("🎹 LEFT IN note=$midiNote vel=$velocity127 → CHORD")
+            chordDetector.noteOn(midiNote)?.let(::onChordChanged)
+        } else if (leftVoiceEnabled) {
+            DebugLog.add("🎹 LEFT IN note=$midiNote vel=$velocity127 → LEFT VOICE")
+            audioEngine.noteOnChannel(leftVoiceChannel, midiNote, velocity)
+            midiInputManager.sendNoteOn(leftVoiceChannel, midiNote, velocity127)
+        } else {
+            DebugLog.add("🎹 LEFT IN note=$midiNote vel=$velocity127 → R1/R2/R3 (LEFT OFF)")
+            for (channel in 0..2) {
+                if (!rightVoiceEnabled[channel]) continue
+                if (channel == 0) audioEngine.noteOn(midiNote, velocity)
+                else audioEngine.noteOnChannel(channel, midiNote, velocity)
+                midiInputManager.sendNoteOn(channel, midiNote, velocity127)
+            }
+        }
     }
 
     fun onKeyboardNoteOff(midiNote: Int) {
@@ -137,16 +154,46 @@ class ArrangerBrain @Inject constructor(
             }
             return
         }
-        DebugLog.add("🎹 ACMP OFF note=$midiNote → CHORD ONLY")
-        val chord = chordDetector.noteOff(midiNote)
-        if (chord != null) {
-            onChordChanged(chord)
+        if (acmpEnabled) {
+            DebugLog.add("🎹 LEFT OFF note=$midiNote → CHORD")
+            val chord = chordDetector.noteOff(midiNote)
+            if (chord != null) onChordChanged(chord)
+            else DebugLog.add("🎹 Chord release: keep last chord")
+        } else if (leftVoiceEnabled) {
+            DebugLog.add("🎹 LEFT OFF note=$midiNote → LEFT VOICE OFF")
+            audioEngine.noteOffChannel(leftVoiceChannel, midiNote)
+            midiInputManager.sendNoteOff(leftVoiceChannel, midiNote)
         } else {
-            // Releasing the last chord key is NOT the same as Synchro Stop.
-            // Keep the last detected chord active until a new chord arrives.
-            DebugLog.add("🎹 Chord release: keep last chord")
+            DebugLog.add("🎹 LEFT OFF note=$midiNote → R1/R2/R3 OFF (LEFT OFF)")
+            for (channel in 0..2) {
+                if (!rightVoiceEnabled[channel]) continue
+                if (channel == 0) audioEngine.noteOff(midiNote)
+                else audioEngine.noteOffChannel(channel, midiNote)
+                midiInputManager.sendNoteOff(channel, midiNote)
+            }
         }
     }
+
+    fun setAcmpEnabled(enabled: Boolean) {
+        acmpEnabled = enabled
+        pendingChordJob?.cancel()
+        pendingChord = null
+        if (!enabled) {
+            chordDetector.reset()
+            appliedChord = null
+            _state.update { it.copy(currentChordLabel = "", acmpEnabled = false) }
+        } else _state.update { it.copy(acmpEnabled = true) }
+        DebugLog.add(if (enabled) "🎹 ACMP: ON (LEFT = CHORD)" else "🎹 ACMP: OFF")
+    }
+
+    fun setLeftVoiceEnabled(enabled: Boolean) {
+        leftVoiceEnabled = enabled
+        _state.update { it.copy(leftVoiceEnabled = enabled) }
+        DebugLog.add(if (enabled) "🎹 LEFT VOICE: ON" else "🎹 LEFT VOICE: OFF (LEFT → RIGHT 1/2/3)")
+    }
+
+    fun toggleAcmp() = setAcmpEnabled(!acmpEnabled)
+    fun toggleLeftVoice() = setLeftVoiceEnabled(!leftVoiceEnabled)
 
     fun setRightVoiceEnabled(layer: Int, enabled: Boolean) {
         if (layer !in 0..2) return
