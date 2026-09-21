@@ -272,7 +272,7 @@ class ArrangerBrain @Inject constructor(
         _state.update { it.copy(currentSection = target) }
         if (!wasPlaying) return
         val previousWasMain = previous in mainVariations
-        val fill = fillFor(target)
+        val fill = fillForTransition(previous, target)
         if (_state.value.autoFill && previousWasMain && previous != target && fill != null && sectionExists(fill)) {
             DebugLog.add("🎼 Main→Main: queue fill $fill then $target at next bar")
             scheduleSectionChange(fill, thenPlay = target)
@@ -383,7 +383,7 @@ class ArrangerBrain @Inject constructor(
             return
         }
         if (thenPlay != null || thenStop) {
-            sequencer.play(model, style.ppq, loopLimit = 1) {
+            sequencer.playSeamless(model, style.ppq, loopLimit = 1) {
                 when {
                     thenPlay != null -> {
                         DebugLog.add("🎼 ${section.styleName} selesai → ${thenPlay.styleName}")
@@ -398,7 +398,7 @@ class ArrangerBrain @Inject constructor(
                 }
             }
         } else {
-            sequencer.play(model, style.ppq)
+            if (_state.value.isPlaying) sequencer.playSeamless(model, style.ppq) else sequencer.play(model, style.ppq)
         }
     }
     private fun sectionExists(section: ArrangerSection): Boolean =
@@ -410,6 +410,15 @@ class ArrangerBrain @Inject constructor(
         ArrangerSection.MainC -> ArrangerSection.FillCC
         ArrangerSection.MainD -> ArrangerSection.FillDD
         else -> null
+    }
+
+    /** Prefer a true directional Yamaha fill when the style contains one; otherwise use the target fill present in the file. */
+    private fun fillForTransition(from: ArrangerSection, to: ArrangerSection): ArrangerSection? {
+        if (from !in mainVariations || to !in mainVariations) return fillFor(to)
+        val name = "Fill" + from.styleName.removePrefix("Main") + to.styleName.removePrefix("Main")
+        val directional = ArrangerSection.values().firstOrNull { it.styleName == name }
+        if (directional != null && sectionExists(directional)) return directional
+        return fillFor(to)?.takeIf { sectionExists(it) }
     }
 }
 
