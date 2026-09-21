@@ -25,7 +25,10 @@ import javax.inject.Singleton
 enum class ArrangerSection(val styleName: String) {
     IntroA("IntroA"), IntroB("IntroB"), IntroC("IntroC"),
     MainA("MainA"), MainB("MainB"), MainC("MainC"), MainD("MainD"),
-    FillAA("FillAA"), FillBB("FillBB"), FillCC("FillCC"), FillDD("FillDD"),
+    FillAA("FillAA"), FillAB("FillAB"), FillAC("FillAC"), FillAD("FillAD"),
+    FillBA("FillBA"), FillBB("FillBB"), FillBC("FillBC"), FillBD("FillBD"),
+    FillCA("FillCA"), FillCB("FillCB"), FillCC("FillCC"), FillCD("FillCD"),
+    FillDA("FillDA"), FillDB("FillDB"), FillDC("FillDC"), FillDD("FillDD"),
     EndingA("EndingA"), EndingB("EndingB"), EndingC("EndingC")
 }
 
@@ -79,8 +82,10 @@ class ArrangerBrain @Inject constructor(
         ArrangerSection.MainC, ArrangerSection.MainD
     )
     private val fillVariations = setOf(
-        ArrangerSection.FillAA, ArrangerSection.FillBB,
-        ArrangerSection.FillCC, ArrangerSection.FillDD
+        ArrangerSection.FillAA, ArrangerSection.FillAB, ArrangerSection.FillAC, ArrangerSection.FillAD,
+        ArrangerSection.FillBA, ArrangerSection.FillBB, ArrangerSection.FillBC, ArrangerSection.FillBD,
+        ArrangerSection.FillCA, ArrangerSection.FillCB, ArrangerSection.FillCC, ArrangerSection.FillCD,
+        ArrangerSection.FillDA, ArrangerSection.FillDB, ArrangerSection.FillDC, ArrangerSection.FillDD
     )
 
     fun attachScope(scope: CoroutineScope) {
@@ -314,7 +319,7 @@ class ArrangerBrain @Inject constructor(
     ) {
         pendingTransitionJob?.cancel()
         val style = loadedStyle
-        val waitMs = if (style != null) sequencer.millisToNextBar(style.ppq) else 0L
+        val waitMs = if (style != null) sequencer.millisToNextBar(style.ppq, style.beatsPerBar) else 0L
         DebugLog.add("⏱ SECTION QUANTIZE ${section.styleName} to next bar in ${waitMs}ms")
         val scope = externalScope ?: CoroutineScope(Dispatchers.Main + SupervisorJob())
         pendingTransitionJob = scope.launch {
