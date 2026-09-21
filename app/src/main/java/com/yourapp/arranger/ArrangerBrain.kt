@@ -114,7 +114,7 @@ class ArrangerBrain @Inject constructor(
                 else audioEngine.noteOnChannel(channel, midiNote, velocity)
                 // Mirror the upper-keyboard note to the external E343 when MIDI OUT is enabled.
                 // Keep the internal SF2 path above so the app can still audition the RIGHT layer.
-                midiInputManager.sendNoteOn(channel, velocity127, midiNote)
+                midiInputManager.sendNoteOn(channel, midiNote, velocity127)
             }
             return
         }
