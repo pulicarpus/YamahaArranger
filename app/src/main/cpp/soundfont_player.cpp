@@ -1,7 +1,6 @@
 #include "soundfont_player.h"
 #include <android/log.h>
 #include <mutex>
-#include <deque>
 #include <cstdarg>
 #include <cstdio>
 #include <cctype>
@@ -221,12 +220,6 @@ void SoundFontPlayer::render(float* out, int numFrames) {
     }
     std::lock_guard<std::mutex> lock(g_synthMutex);
 
-    // FluidSynth makes write_float() the synthesis context. MIDI/UI callers
-    // only enqueue note events; we dispatch them here immediately before
-    // rendering so note-on/note-off and rendering are serialized on the same
-    // synthesis thread.
-    processPendingEvents();
-
     const int rc = fluid_synth_write_float(synth_, numFrames, out, 0, 2, out, 1, 2);
 
     // Lightweight A/B diagnostic: verify that FluidSynth actually produced
@@ -259,46 +252,32 @@ void SoundFontPlayer::enqueueEvent(PendingEvent event) {
 
 void SoundFontPlayer::noteOn(int channel, int key, float velocity) {
     if (!synth_) return;
+    std::lock_guard<std::mutex> lock(g_synthMutex);
     int vel = static_cast<int>(velocity * 127.0f);
     if (vel < 1) vel = 1;
     if (vel > 127) vel = 127;
-    enqueueEvent(PendingEvent{PendingEvent::NoteOn, channel, key, vel});
-    LOGI("SF QUEUE NOTE_ON ch=%d key=%d vel=%d", channel, key, vel);
+    const int rc = fluid_synth_noteon(synth_, channel, key, vel);
+    fluid_preset_t* active = fluid_synth_get_channel_preset(synth_, channel);
+    const char* activeName = active ? fluid_preset_get_name(active) : nullptr;
+    int cc7 = -1;
+    int cc11 = -1;
+    fluid_synth_get_cc(synth_, channel, 7, &cc7);
+    fluid_synth_get_cc(synth_, channel, 11, &cc11);
+    LOGI("SF NOTE_ON ch=%d key=%d vel=%d rc=%d active=%s cc7=%d cc11=%d",
+         channel, key, vel, rc, activeName ? activeName : "<NULL>", cc7, cc11);
 }
 
 void SoundFontPlayer::noteOff(int channel, int key) {
     if (!synth_) return;
-    enqueueEvent(PendingEvent{PendingEvent::NoteOff, channel, key, 0});
-    LOGI("SF QUEUE NOTE_OFF ch=%d key=%d", channel, key);
+    std::lock_guard<std::mutex> lock(g_synthMutex);
+    const int rc = fluid_synth_noteoff(synth_, channel, key);
+    LOGI("SF NOTE_OFF ch=%d key=%d rc=%d", channel, key, rc);
 }
 
 void SoundFontPlayer::allNotesOff() {
     if (!synth_) return;
-    enqueueEvent(PendingEvent{PendingEvent::AllNotesOff, 0, 0, 0});
-}
-
-void SoundFontPlayer::processPendingEvents() {
-    std::deque<PendingEvent> events;
-    {
-        std::lock_guard<std::mutex> lock(eventMutex_);
-        events.swap(pendingEvents_);
-    }
-
-    for (const PendingEvent& event : events) {
-        if (event.type == PendingEvent::NoteOn) {
-            const int rc = fluid_synth_noteon(synth_, event.channel, event.key, event.velocity);
-            const char* err = (rc == FLUID_FAILED) ? fluid_synth_error(synth_) : nullptr;
-            LOGI("SF NOTE_ON ch=%d key=%d vel=%d rc=%d%s%s",
-                 event.channel, event.key, event.velocity, rc,
-                 err ? " err=" : "", err ? err : "");
-        } else if (event.type == PendingEvent::NoteOff) {
-            const int rc = fluid_synth_noteoff(synth_, event.channel, event.key);
-            LOGI("SF NOTE_OFF ch=%d key=%d rc=%d", event.channel, event.key, rc);
-        } else {
-            for (int ch = 0; ch < 16; ++ch) fluid_synth_all_notes_off(synth_, ch);
-            LOGI("SF ALL_NOTES_OFF");
-        }
-    }
+    std::lock_guard<std::mutex> lock(g_synthMutex);
+    for (int ch = 0; ch < 16; ++ch) fluid_synth_all_notes_off(synth_, ch);
 }
 
 void SoundFontPlayer::setChannelMixer(int channel, int volume, int pan, int expression, int reverbSend, int chorusSend) {
