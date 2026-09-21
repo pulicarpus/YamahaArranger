@@ -111,14 +111,59 @@ bool SoundFontPlayer::loadRole(const std::string& path, bool drum) {
         assignChannelToRole(9, true, 128, 0);
         fluid_synth_cc(synth_, 9, 7, 127);
     } else {
+        // Keyboard RIGHT 1/2/3 must never depend on bank=0/program=0
+        // existing in the loaded Yamaha SF2. Pick a real melody preset,
+        // preferring the normal GM Piano slot when it exists, otherwise
+        // falling back to the first enumerated melody preset.
+        int defaultBank = 0;
+        int defaultProgram = 0;
+        bool foundDefault = false;
+        fluid_sfont_t* sfont = fluid_synth_get_sfont_by_id(synth_, melodySfId_);
+        if (sfont) {
+            fluid_sfont_iteration_start(sfont);
+            fluid_preset_t* preset = nullptr;
+            int firstBank = 0;
+            int firstProgram = 0;
+            bool foundFirst = false;
+            while ((preset = fluid_sfont_iteration_next(sfont)) != nullptr) {
+                const int bank = fluid_preset_get_banknum(preset);
+                const int program = fluid_preset_get_num(preset);
+                if (!foundFirst) {
+                    firstBank = bank;
+                    firstProgram = program;
+                    foundFirst = true;
+                }
+                if (bank == 0 && program == 0) {
+                    defaultBank = bank;
+                    defaultProgram = program;
+                    foundDefault = true;
+                    break;
+                }
+            }
+            if (!foundDefault && foundFirst) {
+                defaultBank = firstBank;
+                defaultProgram = firstProgram;
+            }
+        }
+        if (sfont) {
+            LOGI("MELODY keyboard default preset bank=%d prog=%d%s",
+                 defaultBank, defaultProgram,
+                 foundDefault ? " (GM Piano slot)" : " (first valid preset)");
+        } else {
+            LOGE("MELODY SF2 preset enumeration failed; keeping bank=0 prog=0");
+        }
+
         for (int ch = 0; ch < 16; ++ch) {
             if (ch == 9) continue;
-            assignChannelToRole(ch, false, 0, 0);
+            const int bank = (ch <= 2) ? defaultBank : 0;
+            const int program = (ch <= 2) ? defaultProgram : 0;
+            assignChannelToRole(ch, false, bank, program);
         }
         for (int ch = 0; ch < 16; ++ch) {
             if (ch == 9) continue;
             const int defaultVolume = (ch == 13) ? 98 : ((ch <= 2 || ch == 8) ? 127 : (ch <= 5 ? 100 : 115));
             fluid_synth_cc(synth_, ch, 7, defaultVolume);
+            if (ch <= 2) fluid_synth_cc(synth_, ch, 11, 127);
         }
     }
     LOGI("SF2 role ready: %s", drum ? "DRUM bank=128 ch9" : "MELODY bank=0 channels=1-16 except ch10");
