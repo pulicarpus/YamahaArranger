@@ -1,5 +1,6 @@
 #include "soundfont_player.h"
 #include <android/log.h>
+#include <algorithm>
 #include <mutex>
 #include <cstdarg>
 #include <cstdio>
@@ -238,16 +239,6 @@ void SoundFontPlayer::render(float* out, int numFrames) {
         lastNonZero = nonZero;
     }
     peak = 0.0f;
-}
-
-void SoundFontPlayer::enqueueEvent(PendingEvent event) {
-    std::lock_guard<std::mutex> lock(eventMutex_);
-    // Keep latency bounded if a MIDI device floods events while audio is
-    // temporarily unavailable. Dropping the oldest event is preferable to
-    // growing without bound.
-    constexpr size_t kMaxPendingEvents = 512;
-    if (pendingEvents_.size() >= kMaxPendingEvents) pendingEvents_.pop_front();
-    pendingEvents_.push_back(event);
 }
 
 void SoundFontPlayer::noteOn(int channel, int key, float velocity) {
