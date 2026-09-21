@@ -125,7 +125,7 @@ class AudioEngineManager @Inject constructor(
 
     fun noteOn(midiNote: Int, velocity01: Float) {
         DebugLog.traceAudio("NOTE_ON ch=legacy note=$midiNote vel=${"%.3f".format(java.util.Locale.US, velocity01)} sf2=$soundFontLoaded")
-        if (soundFontLoaded) bridge.nativeSfNoteOn(midiNote, velocity01)
+        if (soundFontLoaded) bridge.nativeSfNoteOnChannel(0, midiNote, velocity01)
         else {
             val sample = sampleProvider.sampleForNote(midiNote) ?: return
             bridge.nativeNoteOn(midiNote, sample.rootNote, velocity01, sample.buffer, sample.frameCount, sample.sampleRateHz)
@@ -134,7 +134,7 @@ class AudioEngineManager @Inject constructor(
 
     fun noteOff(midiNote: Int) {
         DebugLog.traceAudio("NOTE_OFF ch=legacy note=$midiNote sf2=$soundFontLoaded")
-        if (soundFontLoaded) bridge.nativeSfNoteOff(midiNote) else bridge.nativeNoteOff(midiNote)
+        if (soundFontLoaded) bridge.nativeSfNoteOffChannel(0, midiNote) else bridge.nativeNoteOff(midiNote)
     }
 
     fun noteOnChannel(channel: Int, midiNote: Int, velocity01: Float) {
@@ -192,7 +192,7 @@ class AudioEngineManager @Inject constructor(
 
     fun testTone(note: Int, velocity: Float) {
         if (soundFontLoaded) {
-            bridge.nativeSfNoteOn(note, velocity)
+            bridge.nativeSfNoteOnChannel(0, note, velocity)
             return
         }
         val sample = sampleProvider.sampleForNote(note) ?: return
