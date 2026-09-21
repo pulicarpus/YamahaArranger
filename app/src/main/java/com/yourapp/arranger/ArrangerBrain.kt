@@ -25,7 +25,10 @@ import javax.inject.Singleton
 enum class ArrangerSection(val styleName: String) {
     IntroA("IntroA"), IntroB("IntroB"), IntroC("IntroC"),
     MainA("MainA"), MainB("MainB"), MainC("MainC"), MainD("MainD"),
-    FillAA("FillAA"), FillBB("FillBB"), FillCC("FillCC"), FillDD("FillDD"),
+    FillAA("FillAA"), FillAB("FillAB"), FillAC("FillAC"), FillAD("FillAD"),
+    FillBA("FillBA"), FillBB("FillBB"), FillBC("FillBC"), FillBD("FillBD"),
+    FillCA("FillCA"), FillCB("FillCB"), FillCC("FillCC"), FillCD("FillCD"),
+    FillDA("FillDA"), FillDB("FillDB"), FillDC("FillDC"), FillDD("FillDD"),
     EndingA("EndingA"), EndingB("EndingB"), EndingC("EndingC")
 }
 
@@ -79,8 +82,10 @@ class ArrangerBrain @Inject constructor(
         ArrangerSection.MainC, ArrangerSection.MainD
     )
     private val fillVariations = setOf(
-        ArrangerSection.FillAA, ArrangerSection.FillBB,
-        ArrangerSection.FillCC, ArrangerSection.FillDD
+        ArrangerSection.FillAA, ArrangerSection.FillAB, ArrangerSection.FillAC, ArrangerSection.FillAD,
+        ArrangerSection.FillBA, ArrangerSection.FillBB, ArrangerSection.FillBC, ArrangerSection.FillBD,
+        ArrangerSection.FillCA, ArrangerSection.FillCB, ArrangerSection.FillCC, ArrangerSection.FillCD,
+        ArrangerSection.FillDA, ArrangerSection.FillDB, ArrangerSection.FillDC, ArrangerSection.FillDD
     )
 
     fun attachScope(scope: CoroutineScope) {
@@ -272,7 +277,7 @@ class ArrangerBrain @Inject constructor(
         _state.update { it.copy(currentSection = target) }
         if (!wasPlaying) return
         val previousWasMain = previous in mainVariations
-        val fill = fillFor(target)
+        val fill = fillForTransition(previous, target)
         if (_state.value.autoFill && previousWasMain && previous != target && fill != null && sectionExists(fill)) {
             DebugLog.add("🎼 Main→Main: queue fill $fill then $target at next bar")
             scheduleSectionChange(fill, thenPlay = target)
@@ -314,7 +319,7 @@ class ArrangerBrain @Inject constructor(
     ) {
         pendingTransitionJob?.cancel()
         val style = loadedStyle
-        val waitMs = if (style != null) sequencer.millisToNextBar(style.ppq) else 0L
+        val waitMs = if (style != null) sequencer.millisToNextBar(style.ppq, style.beatsPerBar) else 0L
         DebugLog.add("⏱ SECTION QUANTIZE ${section.styleName} to next bar in ${waitMs}ms")
         val scope = externalScope ?: CoroutineScope(Dispatchers.Main + SupervisorJob())
         pendingTransitionJob = scope.launch {
@@ -383,7 +388,7 @@ class ArrangerBrain @Inject constructor(
             return
         }
         if (thenPlay != null || thenStop) {
-            sequencer.play(model, style.ppq, loopLimit = 1) {
+            sequencer.playSeamless(model, style.ppq, loopLimit = 1) {
                 when {
                     thenPlay != null -> {
                         DebugLog.add("🎼 ${section.styleName} selesai → ${thenPlay.styleName}")
@@ -398,7 +403,7 @@ class ArrangerBrain @Inject constructor(
                 }
             }
         } else {
-            sequencer.play(model, style.ppq)
+            if (_state.value.isPlaying) sequencer.playSeamless(model, style.ppq) else sequencer.play(model, style.ppq)
         }
     }
     private fun sectionExists(section: ArrangerSection): Boolean =
@@ -410,6 +415,15 @@ class ArrangerBrain @Inject constructor(
         ArrangerSection.MainC -> ArrangerSection.FillCC
         ArrangerSection.MainD -> ArrangerSection.FillDD
         else -> null
+    }
+
+    /** Prefer a true directional Yamaha fill when the style contains one; otherwise use the target fill present in the file. */
+    private fun fillForTransition(from: ArrangerSection, to: ArrangerSection): ArrangerSection? {
+        if (from !in mainVariations || to !in mainVariations) return fillFor(to)
+        val name = "Fill" + from.styleName.removePrefix("Main") + to.styleName.removePrefix("Main")
+        val directional = ArrangerSection.values().firstOrNull { it.styleName == name }
+        if (directional != null && sectionExists(directional)) return directional
+        return fillFor(to)?.takeIf { sectionExists(it) }
     }
 }
 
