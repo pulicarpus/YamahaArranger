@@ -70,7 +70,7 @@ class ArrangerBrain @Inject constructor(
     private var pendingTransitionJob: Job? = null
     // MIDI keyboards commonly deliver the fingers of one chord a few
     // milliseconds apart. Settle the note-on burst before retargeting CASM.
-    private val chordSettleMs = 15L
+    private val chordSettleMs = 8L
     // Monotonic anchor for the currently playing style section. Section changes
     // are quantized from the actual section start, not from app Start/Stop time.
     private var activeSection: ArrangerSection = ArrangerSection.MainA
