@@ -159,6 +159,7 @@ data class MainUiState(
     val styleVolume: Int = 100, val leftVolume: Int = 100, val right1Volume: Int = 100, val right2Volume: Int = 100, val right3Volume: Int = 100, val masterVolume: Int = 100,
     val activeBank: Int = 1, val activeRegSlot: Int = 0, val voiceName: String = "GrandPiano",
     val right2Name: String = "OFF", val splitPoint: String = "C4",
+    val acmpEnabled: Boolean = true, val leftVoiceEnabled: Boolean = true,
     val rightVoices: List<KeyboardVoiceSlot> = defaultKeyboardVoices(),
     val voiceAssignments: List<VoiceSlot> = defaultVoices(),
     val availableSoundFonts: List<Pair<Uri, String>> = emptyList(),
@@ -229,6 +230,8 @@ class MainViewModel @Inject constructor(
             activeSection = displayLabelFor(arranger.currentSection),
             detectedChordLabel = arranger.currentChordLabel,
             autoFill = arranger.autoFill,
+            acmpEnabled = arranger.acmpEnabled,
+            leftVoiceEnabled = arranger.leftVoiceEnabled,
             midiStatus = midi,
             midiOutEnabled = _midiOutEnabled.value,
             soundFontName = sfName,
@@ -307,6 +310,10 @@ class MainViewModel @Inject constructor(
     fun onKeyboardNoteOn(midiNote: Int, velocity: Float) = arrangerBrain.onKeyboardNoteOn(midiNote, velocity)
     fun onKeyboardNoteOff(midiNote: Int) = arrangerBrain.onKeyboardNoteOff(midiNote)
     fun toggleAutoFill() = arrangerBrain.setAutoFill(!arrangerBrain.state.value.autoFill)
+    fun toggleAcmp() = arrangerBrain.toggleAcmp()
+    fun setAcmpEnabled(enabled: Boolean) = arrangerBrain.setAcmpEnabled(enabled)
+    fun toggleLeftVoice() = arrangerBrain.toggleLeftVoice()
+    fun setLeftVoiceEnabled(enabled: Boolean) = arrangerBrain.setLeftVoiceEnabled(enabled)
 
     fun onSectionSelected(sectionLabel: String) {
         val section = SECTION_BUTTON_MAP[sectionLabel] ?: return
