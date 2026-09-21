@@ -73,5 +73,6 @@ data class ParsedStyle(
     val ppq: Int,
     val sections: Map<String, StyleSectionModel>,
     val voiceMap: Map<Int, String> = emptyMap(),
-    val defaultTempoBpm: Int = 120
+    val defaultTempoBpm: Int = 120,
+    val beatsPerBar: Int = 4
 )
