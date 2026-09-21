@@ -133,11 +133,11 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         com.yourapp.yamahaarranger.ui.DebugLog.add("⏹ STOP")
     }
     fun queueNextSection(section:StyleSectionModel,ppq:Int)=play(section,ppq)
-    fun millisToNextBar(ppq: Int, beatsPerBar: Int = 4): Long {
+    fun millisToNextBar(ppq: Int, numerator: Int = 4, denominator: Int = 4): Long {
         val anchor = barClockStartedAtNanos
         if (anchor == 0L || ppq <= 0) return 0L
         val bpm = tempoBpm.coerceIn(20, 280)
-        val barMs = (beatsPerBar * 60_000.0 / bpm).toLong().coerceAtLeast(1L)
+        val barMs = (numerator.coerceAtLeast(1) * 4.0 / denominator.coerceAtLeast(1) * 60_000.0 / bpm).toLong().coerceAtLeast(1L)
         val elapsedMs = (System.nanoTime() - anchor) / 1_000_000L
         val remainder = elapsedMs % barMs
         val wait = if (remainder == 0L) 0L else barMs - remainder
