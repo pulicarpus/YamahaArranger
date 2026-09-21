@@ -62,8 +62,22 @@ bool AudioEngine::start() {
     }
     outputSampleRate_ = stream_->getSampleRate();
     LOGI("Stream opened: sr=%d ch=%d sharing=%d perf=%d api=%d", outputSampleRate_, stream_->getChannelCount(), static_cast<int>(stream_->getSharingMode()), static_cast<int>(stream_->getPerformanceMode()), static_cast<int>(stream_->getAudioApi()));
-    auto bufferResult = stream_->setBufferSizeInFrames(stream_->getFramesPerBurst() * 8);
-    if (bufferResult != oboe::Result::OK) LOGI("Buffer size adjustment skipped: %s", bufferResult.error());
+    // The previous x8 burst buffer was intentionally conservative, but it adds
+    // a large amount of output buffering on phones. For an arranger/keyboard,
+    // interactive latency matters more than maximum buffer safety.
+    // Start at 2 bursts and let Oboe round to the device-supported size.
+    const int burst = stream_->getFramesPerBurst();
+    const int targetBufferFrames = burst * 2;
+    auto bufferResult = stream_->setBufferSizeInFrames(targetBufferFrames);
+    if (bufferResult == oboe::Result::OK) {
+        const double bufferMs = (1000.0 * stream_->getBufferSizeInFrames()) /
+                                static_cast<double>(stream_->getSampleRate());
+        LOGI("Low-latency buffer: burst=%d frames=%d (~%.2f ms)",
+             burst, stream_->getBufferSizeInFrames(), bufferMs);
+    } else {
+        LOGI("Buffer size adjustment skipped: target=%d error=%s",
+             targetBufferFrames, bufferResult.error());
+    }
     result = stream_->requestStart();
     if (result != oboe::Result::OK) {
         LOGE("Failed to start stream: %s", oboe::convertToText(result));
