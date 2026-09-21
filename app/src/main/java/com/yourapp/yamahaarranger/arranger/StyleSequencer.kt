@@ -125,6 +125,33 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     }
     fun setChannelProgramOverride(channel:Int, program:Int, bank:Int){ val old=channelOverride(channel); setChannelOverride(channel, old.copy(program=program.coerceIn(0,127), bank=bank.coerceIn(0,128))) }
     fun setVoiceMap(vm:Map<Int,String>){voiceMap=vm;lastAppliedSection="";com.yourapp.yamahaarranger.ui.DebugLog.add("🎼 Legacy VoiceMap received: ${vm.size}; CASM policy takes precedence")}
+    fun playSeamless(section: StyleSectionModel, ppq: Int, loopLimit: Int = -1, onComplete: (() -> Unit)? = null) {
+        playbackJob?.cancel()
+        playbackJob = null
+        startPlayback(section, ppq, loopLimit, onComplete, seamless = true)
+    }
+
+    private fun startPlayback(section: StyleSectionModel, ppq: Int, loopLimit: Int, onComplete: (() -> Unit)?, seamless: Boolean) {
+        if (!seamless) clearStringTrace()
+        stringTrace("TRACE_SESSION section=${section.name} ppq=${ppq} loopLimit=${loopLimit} seamless=${seamless}")
+        com.yourapp.yamahaarranger.ui.DebugLog.add("🎼 SECTION ${section.name}: preserving current chord for immediate CASM retarget")
+        loopCount = 0
+        if (lastAppliedSection != section.name) {
+            applyVoicesFromCasm(section)
+            lastAppliedSection = section.name
+        }
+        val noteCount = section.parts.sumOf { part -> part.events.count { isNoteEvent(it) } }
+        com.yourapp.yamahaarranger.ui.DebugLog.add("▶ PLAY ${section.name}: parts=${section.parts.size}, events=${section.parts.sumOf { it.events.size }}, noteEvents=${noteCount}, loopLimit=${loopLimit}, seamless=${seamless}")
+        playbackJob = scope.launch(Dispatchers.Default) {
+            var loops = 0
+            while (loopLimit < 0 || loops < loopLimit) {
+                playOnce(section, ppq)
+                loops++
+            }
+            onComplete?.invoke()
+        }
+    }
+
     fun play(section:StyleSectionModel,ppq:Int,loopLimit:Int=-1,onComplete:(()->Unit)?=null){stop();clearStringTrace();stringTrace("TRACE_SESSION section=\${section.name} ppq=\${ppq} loopLimit=\${loopLimit}");com.yourapp.yamahaarranger.ui.DebugLog.add("🎼 SECTION " + section.name + ": preserving current chord for immediate CASM retarget");loopCount=0;if(lastAppliedSection!=section.name){applyVoicesFromCasm(section);lastAppliedSection=section.name};val noteCount=section.parts.sumOf{part->part.events.count{isNoteEvent(it)}};com.yourapp.yamahaarranger.ui.DebugLog.add("▶ PLAY ${section.name}: parts=${section.parts.size}, events=${section.parts.sumOf{it.events.size}}, noteEvents=$noteCount, loopLimit=$loopLimit");playbackJob=scope.launch(Dispatchers.Default){var loops=0;while(loopLimit<0||loops<loopLimit){playOnce(section,ppq);loops++};onComplete?.invoke()}}
     fun stop(){
         playbackJob?.cancel();playbackJob=null;barClockStartedAtNanos=0L
