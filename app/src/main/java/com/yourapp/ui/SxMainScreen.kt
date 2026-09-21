@@ -501,18 +501,14 @@ private fun SxCenterDisplay(
                     rv.getOrNull(0)?.let { v -> SxVoiceCard("RIGHT 1", v.displayName(), v.enabled, Modifier.weight(1f).clickable { onPickRightVoice(0) }) }
                     rv.getOrNull(1)?.let { v -> SxVoiceCard("RIGHT 2", v.displayName(), v.enabled, Modifier.weight(1f).clickable { onPickRightVoice(1) }) }
                     rv.getOrNull(2)?.let { v -> SxVoiceCard("RIGHT 3", v.displayName(), v.enabled, Modifier.weight(1f).clickable { onPickRightVoice(2) }) }
-                    // LEFT/ACMP is always a real control on the active SX screen:
-                    // tap it to toggle ACMP; when ACMP is OFF, long-press/click is not
-                    // needed to expose the LEFT voice picker because the card itself
-                    // remains the visible ACMP control.
-                    val leftModifier = Modifier
-                        .weight(1f)
-                        .clickable { vm.toggleAcmp() }
+                    // LEFT voice is independent from ACMP, just like on the Yamaha.
+                    // The card always opens the LEFT voice picker. ACMP has its own
+                    // dedicated ON/OFF control in SxStyleControls below.
                     SxVoiceCard(
-                        if (state.acmpEnabled) "ACMP" else "LEFT VOICE",
-                        if (state.acmpEnabled) "ON • STYLE CHORD" else state.leftVoice.displayName(),
-                        state.acmpEnabled,
-                        leftModifier
+                        "LEFT",
+                        state.leftVoice.displayName(),
+                        state.leftVoice.enabled,
+                        Modifier.weight(1f).clickable { onPickLeftVoice() }
                     )
                 }
                 Row(Modifier.fillMaxWidth().weight(.55f), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
