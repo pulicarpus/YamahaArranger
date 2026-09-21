@@ -340,6 +340,8 @@ class MainViewModel @Inject constructor(
             else slot
         }
         audioEngine.setChannelProgram(layer, p, b)
+        // Keep the external E343 patch in sync with the RIGHT 1/2/3 selection.
+        midiInputManager.sendProgramChange(layer, p, b)
         DebugLog.add("🎹 " + _rightVoices.value.first { it.layer == layer }.label + " → prog" + p + " bank" + b)
     }
 
