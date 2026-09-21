@@ -106,9 +106,12 @@ class ArrangerBrain @Inject constructor(
         if (midiNote > splitNote) {
             DebugLog.add("🎹 RIGHT IN note=$midiNote vel=$velocity127 → R1/R2/R3")
             for (channel in 0..2) {
-                if (rightVoiceEnabled[channel]) {
-                    audioEngine.noteOnChannel(channel, midiNote, velocity)
-                }
+                if (!rightVoiceEnabled[channel]) continue
+                // RIGHT 1 keeps the exact legacy channel-0 audio path that the
+                // on-screen keyboard already uses successfully. RIGHT 2/3 use
+                // their dedicated FluidSynth channels.
+                if (channel == 0) audioEngine.noteOn(midiNote, velocity)
+                else audioEngine.noteOnChannel(channel, midiNote, velocity)
             }
             return
         }
@@ -124,7 +127,8 @@ class ArrangerBrain @Inject constructor(
             // Send NoteOff to all three channels so a layer switched OFF while
             // a key is held cannot leave a hanging note in FluidSynth.
             for (channel in 0..2) {
-                audioEngine.noteOffChannel(channel, midiNote)
+                if (channel == 0) audioEngine.noteOff(midiNote)
+                else audioEngine.noteOffChannel(channel, midiNote)
             }
             return
         }
