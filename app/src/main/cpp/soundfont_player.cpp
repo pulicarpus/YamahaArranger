@@ -3,6 +3,7 @@
 #include <mutex>
 #include <cstdarg>
 #include <cstdio>
+#include <cctype>
 #include <jni.h>
 
 #define LOG_TAG "FluidSynthPlayer"
@@ -125,22 +126,38 @@ bool SoundFontPlayer::loadRole(const std::string& path, bool drum) {
             int firstBank = 0;
             int firstProgram = 0;
             bool foundFirst = false;
+            int pianoBank = 0;
+            int pianoProgram = 0;
+            bool foundPiano = false;
             while ((preset = fluid_sfont_iteration_next(sfont)) != nullptr) {
                 const int bank = fluid_preset_get_banknum(preset);
                 const int program = fluid_preset_get_num(preset);
+                const char* presetName = fluid_preset_get_name(preset);
+                const std::string name = presetName ? presetName : "";
                 if (!foundFirst) {
                     firstBank = bank;
                     firstProgram = program;
                     foundFirst = true;
                 }
+                if (!foundPiano) {
+                    std::string lower = name;
+                    for (char& ch : lower) ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+                    if (lower.find("piano") != std::string::npos || lower.find("grand") != std::string::npos) {
+                        pianoBank = bank;
+                        pianoProgram = program;
+                        foundPiano = true;
+                    }
+                }
                 if (bank == 0 && program == 0) {
                     defaultBank = bank;
                     defaultProgram = program;
                     foundDefault = true;
-                    break;
                 }
             }
-            if (!foundDefault && foundFirst) {
+            if (!foundDefault && foundPiano) {
+                defaultBank = pianoBank;
+                defaultProgram = pianoProgram;
+            } else if (!foundDefault && foundFirst) {
                 defaultBank = firstBank;
                 defaultProgram = firstProgram;
             }
@@ -174,8 +191,10 @@ void SoundFontPlayer::assignChannelToRole(int channel, bool drum, int bank, int 
     if (!synth_) return;
     const int sfId = drum ? (drumSfId_ >= 0 ? drumSfId_ : melodySfId_) : melodySfId_;
     if (sfId < 0) return;
-    fluid_synth_program_select(synth_, channel, sfId, bank, program);
-    LOGI("Ch %d -> %s SF2 id=%d bank=%d prog=%d", channel, drum ? "DRUM" : "MELODY", sfId, bank, program);
+    const int rc = fluid_synth_program_select(synth_, channel, sfId, bank, program);
+    fluid_preset_t* active = fluid_synth_get_channel_preset(synth_, channel);
+    const char* activeName = active ? fluid_preset_get_name(active) : nullptr;
+    LOGI("Ch %d -> %s SF2 id=%d bank=%d prog=%d rc=%d active=%s", channel, drum ? "DRUM" : "MELODY", sfId, bank, program, rc, activeName ? activeName : "<NULL>");
 }
 
 void SoundFontPlayer::unload() {
@@ -209,13 +228,15 @@ void SoundFontPlayer::noteOn(int channel, int key, float velocity) {
     int vel = static_cast<int>(velocity * 127.0f);
     if (vel < 1) vel = 1;
     if (vel > 127) vel = 127;
-    fluid_synth_noteon(synth_, channel, key, vel);
+    const int rc = fluid_synth_noteon(synth_, channel, key, vel);
+    LOGI("SF NOTE_ON ch=%d key=%d vel=%d rc=%d", channel, key, vel, rc);
 }
 
 void SoundFontPlayer::noteOff(int channel, int key) {
     if (!synth_) return;
     std::lock_guard<std::mutex> lock(g_synthMutex);
-    fluid_synth_noteoff(synth_, channel, key);
+    const int rc = fluid_synth_noteoff(synth_, channel, key);
+    LOGI("SF NOTE_OFF ch=%d key=%d rc=%d", channel, key, rc);
 }
 
 void SoundFontPlayer::allNotesOff() {
