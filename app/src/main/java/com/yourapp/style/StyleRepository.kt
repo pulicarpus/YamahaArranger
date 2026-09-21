@@ -36,6 +36,8 @@ class StyleRepository @Inject constructor(private val bridge: NativeStyleBridge)
         DebugLog.add("🎼 Legacy voice map: $voiceMap")
 
         val ppq = bridge.nativeGetPpq()
+        val beatsPerBar = detectBeatsPerBar(rawBytes)
+        DebugLog.add("🥁 Style meter: ${beatsPerBar}/4")
         val defaultTempoBpm = bridge.nativeGetDefaultTempoBpm()
             .toInt()
             .coerceIn(20, 280)
@@ -72,9 +74,18 @@ class StyleRepository @Inject constructor(private val bridge: NativeStyleBridge)
         }
 
         if (sections.isEmpty()) { Timber.w("Style parsed but yielded no sections: $fileName"); return null }
-        return ParsedStyle(fileName, ppq, sections, voiceMap, defaultTempoBpm)
+        return ParsedStyle(fileName, ppq, sections, voiceMap, defaultTempoBpm, beatsPerBar)
     }
 
+    /** Read the SMF FF 58 time-signature meta event. Yamaha style files use the numerator as the number of quarter-note beats per bar for our scheduler. */
+    private fun detectBeatsPerBar(rawBytes: ByteArray): Int {
+        for (i in 0 until rawBytes.size - 7) {
+            if ((rawBytes[i].toInt() and 0xFF) == 0xFF && (rawBytes[i + 1].toInt() and 0xFF) == 0x58 && (rawBytes[i + 2].toInt() and 0xFF) == 0x04) {
+                return (rawBytes[i + 3].toInt() and 0xFF).coerceIn(1, 16)
+            }
+        }
+        return 4
+    }
     private data class VoiceSetup(val program: Int, val bankMsb: Int, val bankLsb: Int)
 
     private fun extractVoiceSetup(events: List<StyleNoteEvent>): VoiceSetup {
