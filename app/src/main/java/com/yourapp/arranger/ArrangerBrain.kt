@@ -201,10 +201,6 @@ class ArrangerBrain @Inject constructor(
         if (leftVoiceEnabled == enabled) return
         leftVoiceEnabled = enabled
         _state.update { it.copy(leftVoiceEnabled = enabled) }
-        if (!enabled) {
-            audioEngine.allNotesOff()
-            midiInputManager.sendNoteOff(leftVoiceChannel, 0)
-        }
         DebugLog.add("🎹 LEFT: " + if (enabled) "ON" else "OFF")
     }
 
