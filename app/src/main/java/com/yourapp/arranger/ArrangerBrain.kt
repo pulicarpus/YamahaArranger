@@ -107,7 +107,7 @@ class ArrangerBrain @Inject constructor(
             DebugLog.add("🎹 RIGHT IN note=$midiNote vel=$velocity127 → R1/R2/R3")
             for (channel in 0..2) {
                 if (!rightVoiceEnabled[channel]) continue
-                // RIGHT 1 keeps the exact legacy channel-0 audio path that the
+                // RIGHT 1 deliberately keeps the exact legacy channel-0 audio path that the
                 // on-screen keyboard already uses successfully. RIGHT 2/3 use
                 // their dedicated FluidSynth channels.
                 if (channel == 0) audioEngine.noteOn(midiNote, velocity)
