@@ -155,11 +155,13 @@ fun defaultKeyboardVoices(): List<KeyboardVoiceSlot> = listOf(
 data class MainUiState(
     val styleName: String = "No Style Loaded", val tempoBpm: Int = 120, val transpose: Int = 0,
     val isPlaying: Boolean = false, val activeSection: String = "Main A", val detectedChordLabel: String = "", val autoFill: Boolean = true,
+    val acmpEnabled: Boolean = true,
     val midiStatus: String = "No MIDI device", val midiOutEnabled: Boolean = false, val soundFontName: String = "None",
     val styleVolume: Int = 100, val leftVolume: Int = 100, val right1Volume: Int = 100, val right2Volume: Int = 100, val right3Volume: Int = 100, val masterVolume: Int = 100,
     val activeBank: Int = 1, val activeRegSlot: Int = 0, val voiceName: String = "GrandPiano",
     val right2Name: String = "OFF", val splitPoint: String = "C4",
     val rightVoices: List<KeyboardVoiceSlot> = defaultKeyboardVoices(),
+    val leftVoice: KeyboardVoiceSlot = KeyboardVoiceSlot(-1, "LEFT", 0, 0, enabled = true, name = "Piano"),
     val voiceAssignments: List<VoiceSlot> = defaultVoices(),
     val availableSoundFonts: List<Pair<Uri, String>> = emptyList(),
     val sf2Presets: List<AudioEngineManager.SfPreset> = emptyList()
@@ -190,6 +192,8 @@ class MainViewModel @Inject constructor(
     private val _activeRegSlot = MutableStateFlow(0)
     private val _voiceAssignments = MutableStateFlow(defaultVoices())
     private val _rightVoices = MutableStateFlow(defaultKeyboardVoices())
+    private val _leftVoice = MutableStateFlow(KeyboardVoiceSlot(-1, "LEFT", 0, 0, enabled = true, name = "Piano"))
+    private val _acmpEnabled = MutableStateFlow(true)
     private var activeChordNotes: List<Int> = emptyList()
 
     private val volumeState = combine(
@@ -199,12 +203,19 @@ class MainViewModel @Inject constructor(
         _masterVolume
     ) { volumes, master -> volumes to master }
 
+    private data class KeyboardUiData(
+        val rightVoices: List<KeyboardVoiceSlot>,
+        val leftVoice: KeyboardVoiceSlot,
+        val acmpEnabled: Boolean
+    )
+
     private val voiceAndSoundFontState = combine(
         combine(_activeBank, _activeRegSlot, _voiceAssignments) { b, r, v -> Triple(b, r, v) },
-        combine(_rightVoices, _availableSoundFonts, _sf2Presets) { rightVoices, files, presets ->
-            Triple(rightVoices, files, presets)
-        }
-    ) { voiceData, sfData -> voiceData to sfData }
+        combine(_rightVoices, _leftVoice, _acmpEnabled) { right, left, acmp ->
+            KeyboardUiData(right, left, acmp)
+        },
+        combine(_availableSoundFonts, _sf2Presets) { files, presets -> files to presets }
+    ) { voiceData, keyboardData, sfData -> Triple(voiceData, keyboardData, sfData) }
 
     val uiState: StateFlow<MainUiState> = combine(
         arrangerBrain.state,
@@ -216,11 +227,12 @@ class MainViewModel @Inject constructor(
         val (styleName, midi) = styleMidi
         val (transpose, sfName) = transposeSf
         val (voiceVolumes, masterVol) = volumesMaster
-        val (voiceData, sfData) = voiceDataSf
+        val (voiceData, keyboardData, sfData) = voiceDataSf
         val (bank, regSlot, voices) = voiceData
-        val rightVoices = sfData.first
-        val sfFiles = sfData.second
-        val sfPresets = sfData.third
+        val rightVoices = keyboardData.rightVoices
+        val leftVoice = keyboardData.leftVoice
+        val sfFiles = sfData.first
+        val sfPresets = sfData.second
         MainUiState(
             styleName = styleName,
             tempoBpm = arranger.tempoBpm,
@@ -229,6 +241,7 @@ class MainViewModel @Inject constructor(
             activeSection = displayLabelFor(arranger.currentSection),
             detectedChordLabel = arranger.currentChordLabel,
             autoFill = arranger.autoFill,
+            acmpEnabled = arranger.acmpEnabled,
             midiStatus = midi,
             midiOutEnabled = _midiOutEnabled.value,
             soundFontName = sfName,
@@ -244,6 +257,7 @@ class MainViewModel @Inject constructor(
             voiceName = rightVoices.getOrNull(0)?.displayName() ?: "OFF",
             right2Name = if (rightVoices.getOrNull(1)?.enabled == true) rightVoices.getOrNull(1)?.displayName() ?: "OFF" else "OFF",
             rightVoices = rightVoices,
+            leftVoice = leftVoice,
             voiceAssignments = voices,
             availableSoundFonts = sfFiles
         )
@@ -306,6 +320,18 @@ class MainViewModel @Inject constructor(
 
     fun onKeyboardNoteOn(midiNote: Int, velocity: Float) = arrangerBrain.onKeyboardNoteOn(midiNote, velocity)
     fun onKeyboardNoteOff(midiNote: Int) = arrangerBrain.onKeyboardNoteOff(midiNote)
+
+    fun toggleAcmp() {
+        val enabled = !_acmpEnabled.value
+        _acmpEnabled.value = enabled
+        arrangerBrain.setAcmpEnabled(enabled)
+    }
+
+    fun setAcmpEnabled(enabled: Boolean) {
+        _acmpEnabled.value = enabled
+        arrangerBrain.setAcmpEnabled(enabled)
+    }
+
     fun toggleAutoFill() = arrangerBrain.setAutoFill(!arrangerBrain.state.value.autoFill)
 
     fun onSectionSelected(sectionLabel: String) {
@@ -325,6 +351,19 @@ class MainViewModel @Inject constructor(
         for (ch in 8..15) audioEngine.setChannelExpression(ch, v)
     }
     fun onLeftVolumeChange(value: Int) { _leftVolume.value = value.coerceIn(0, 127); audioEngine.setChannelExpression(3, _leftVolume.value) }
+
+    fun setLeftVoice(program: Int, bank: Int) {
+        val p = program.coerceIn(0, 127)
+        val b = bank.coerceIn(0, 16383)
+        val presetName = _sf2Presets.value.firstOrNull { it.bank == b && it.program == p }?.name
+        _leftVoice.value = _leftVoice.value.copy(program = p, bank = b, name = presetName ?: GM_VOICES.firstOrNull { it.second == p }?.first)
+        // Channel 3 is reserved for LEFT VOICE; RIGHT 1/2/3 remain on 0/1/2 and
+        // Style accompaniment remains on its own channels.
+        audioEngine.setChannelProgram(3, p, b)
+        midiInputManager.sendProgramChange(3, p, b)
+        DebugLog.add("🎹 LEFT VOICE → prog" + p + " bank" + b)
+    }
+
     fun onRight1VolumeChange(value: Int) { _right1Volume.value = value.coerceIn(0, 127); audioEngine.setChannelExpression(0, _right1Volume.value) }
     fun onRight2VolumeChange(value: Int) { _right2Volume.value = value.coerceIn(0, 127); audioEngine.setChannelExpression(1, _right2Volume.value) }
     fun onRight3VolumeChange(value: Int) { _right3Volume.value = value.coerceIn(0, 127); audioEngine.setChannelExpression(2, _right3Volume.value) }
