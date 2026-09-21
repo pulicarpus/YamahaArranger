@@ -50,6 +50,11 @@ class ArrangerBrain @Inject constructor(
     // PSR-E343 default split point is F#2 (MIDI 54). Keys at or below it are
     // the ACMP/chord area; keys above it are the right-hand performance area.
     private var splitNote = 54
+
+    // Yamaha-style upper keyboard layers: RIGHT 1/2/3 use synth channels 0/1/2.
+    // RIGHT 1 is on by default; RIGHT 2 and RIGHT 3 are independently switchable.
+    private val rightVoiceEnabled = booleanArrayOf(true, false, false)
+
     private var appliedChord: DetectedChord? = null
     private var pendingChord: DetectedChord? = null
     private var pendingChordJob: Job? = null
@@ -99,8 +104,12 @@ class ArrangerBrain @Inject constructor(
     fun onKeyboardNoteOn(midiNote: Int, velocity: Float) {
         val velocity127 = (velocity * 127f).toInt().coerceIn(0, 127)
         if (midiNote > splitNote) {
-            DebugLog.add("🎹 RIGHT IN note=$midiNote vel=$velocity127 → VOICE")
-            audioEngine.noteOn(midiNote, velocity)
+            DebugLog.add("🎹 RIGHT IN note=$midiNote vel=$velocity127 → R1/R2/R3")
+            for (channel in 0..2) {
+                if (rightVoiceEnabled[channel]) {
+                    audioEngine.noteOnChannel(channel, midiNote, velocity)
+                }
+            }
             return
         }
         // ACMP area: these notes are chord-control ONLY. They must never
@@ -111,8 +120,12 @@ class ArrangerBrain @Inject constructor(
 
     fun onKeyboardNoteOff(midiNote: Int) {
         if (midiNote > splitNote) {
-            DebugLog.add("🎹 RIGHT OFF note=$midiNote → VOICE OFF")
-            audioEngine.noteOff(midiNote)
+            DebugLog.add("🎹 RIGHT OFF note=$midiNote → R1/R2/R3 OFF")
+            // Send NoteOff to all three channels so a layer switched OFF while
+            // a key is held cannot leave a hanging note in FluidSynth.
+            for (channel in 0..2) {
+                audioEngine.noteOffChannel(channel, midiNote)
+            }
             return
         }
         DebugLog.add("🎹 ACMP OFF note=$midiNote → CHORD ONLY")
@@ -124,6 +137,12 @@ class ArrangerBrain @Inject constructor(
             // Keep the last detected chord active until a new chord arrives.
             DebugLog.add("🎹 Chord release: keep last chord")
         }
+    }
+
+    fun setRightVoiceEnabled(layer: Int, enabled: Boolean) {
+        if (layer !in 0..2) return
+        rightVoiceEnabled[layer] = enabled
+        DebugLog.add("🎹 RIGHT " + (layer + 1) + ": " + if (enabled) "ON" else "OFF")
     }
 
     /** E343-compatible default split point, exposed for future UI control. */
