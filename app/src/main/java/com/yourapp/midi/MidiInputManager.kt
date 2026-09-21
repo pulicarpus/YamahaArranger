@@ -145,6 +145,14 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
             i++
             pendingData1 = -1
 
+            // RAW diagnostic before channel filtering: captures every MIDI channel.
+            // This lets us distinguish E343 RIGHT traffic from ACMP traffic without
+            // changing routing behavior yet.
+            when (type) {
+                0x90 -> DebugLog.traceMidi("RAW NOTE_ON status=0x" + status.toString(16).uppercase().padStart(2, '0') + " ch=" + channel + " note=" + d1 + " vel=" + d2)
+                0x80 -> DebugLog.traceMidi("RAW NOTE_OFF status=0x" + status.toString(16).uppercase().padStart(2, '0') + " ch=" + channel + " note=" + d1 + " vel=" + d2)
+            }
+
             when (type) {
                 0x90 -> if (channel == chordInputChannel) {
                     if (d2 > 0) {
