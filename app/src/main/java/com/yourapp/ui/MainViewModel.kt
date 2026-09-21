@@ -304,6 +304,61 @@ class MainViewModel @Inject constructor(
     }
     fun onRegSlotSave(slot: Int) { Timber.i("Save reg bank=${_activeBank.value} slot=$slot") }
 
+    /** Build the mixer from channels/instruments actually present in the loaded style. */
+    private fun voiceSlotsFromStyle(style: com.yourapp.yamahaarranger.style.ParsedStyle): List<VoiceSlot> {
+        data class Candidate(val name: String, val program: Int, val bank: Int)
+        val candidates = linkedMapOf<Int, Candidate>()
+
+        style.sections.values.forEach { section ->
+            section.parts.forEach { part ->
+                val hasNoteData = part.events.any { e ->
+                    val hi = e.status and 0xF0
+                    hi == 0x90 || hi == 0x80
+                }
+                if (!hasNoteData) return@forEach
+
+                val policy = part.casmPolicies.firstOrNull() ?: part.casm
+                val channel = policy?.destinationChannel ?: part.events.firstOrNull()?.channel ?: return@forEach
+                val rawName = policy?.voiceName?.trim().orEmpty()
+                val styleName = rawName.ifBlank {
+                    style.voiceMap[channel]?.trim().orEmpty()
+                }.ifBlank {
+                    GM_VOICES.firstOrNull { it.second == part.program }?.first ?: "Ch$channel"
+                }
+                val drum = channel == 9 || rawName.lowercase().let {
+                    it.contains("drum") || it.contains("kit") || it.contains("perc") || it.startsWith("dr")
+                }
+                val program = if (part.program in 0..127) part.program else
+                    GM_VOICES.firstOrNull { it.first.equals(styleName, ignoreCase = true) }?.second ?: 0
+                val bank = if (drum) 128 else 0
+
+                // Keep the first explicit instrument for a destination. CASM can
+                // legitimately have multiple source channels feeding one destination.
+                if (channel !in candidates) candidates[channel] = Candidate(styleName, program, bank)
+            }
+        }
+
+        return candidates.toSortedMap().map { (channel, candidate) ->
+            val role = when (channel) {
+                9 -> "Drum"
+                10 -> "Bass"
+                11 -> "Chord1"
+                12 -> "Chord2"
+                13 -> "Pad"
+                14 -> "Phrase1"
+                15 -> "Phrase2"
+                else -> "Style"
+            }
+            VoiceSlot(
+                channel = channel,
+                label = "Ch$channel ($role)",
+                program = candidate.program,
+                bank = candidate.bank,
+                sf2Name = candidate.name
+            )
+        }
+    }
+
     fun setChannelVoice(channel: Int, program: Int, bank: Int) {
         val updated = _voiceAssignments.value.map { slot ->
             if (slot.channel == channel) {
@@ -374,7 +429,11 @@ class MainViewModel @Inject constructor(
             val fileName = contentResolver.fileName(uri) ?: "style.sty"
             val parsed = withContext(Dispatchers.Default) { styleRepository.loadStyle(fileName, bytes) }
             if (parsed == null) { DebugLog.add("❌ Parse fail: $fileName"); return@launch }
-            arrangerBrain.loadStyle(parsed); _styleName.value = fileName; DebugLog.add("✅ Loaded: $fileName")
+            arrangerBrain.loadStyle(parsed)
+            _voiceAssignments.value = voiceSlotsFromStyle(parsed)
+            _styleName.value = fileName
+            DebugLog.add("🎼 Mixer channels from style: ${_voiceAssignments.value.map { it.channel to it.sf2Name }.joinToString()}")
+            DebugLog.add("✅ Loaded: $fileName")
         }
     }
 
