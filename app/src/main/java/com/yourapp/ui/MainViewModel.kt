@@ -132,13 +132,35 @@ fun defaultVoices(): List<VoiceSlot> = (0..15).map { ch ->
     }
 }
 
+data class KeyboardVoiceSlot(
+    val layer: Int,
+    val label: String,
+    val program: Int,
+    val bank: Int = 0,
+    val enabled: Boolean = false,
+    val name: String? = null
+) {
+    fun displayName(): String {
+        name?.trim()?.takeIf { it.isNotEmpty() }?.let { return it }
+        return GM_VOICES.firstOrNull { it.second == program }?.first ?: "prog$program"
+    }
+}
+
+fun defaultKeyboardVoices(): List<KeyboardVoiceSlot> = listOf(
+    KeyboardVoiceSlot(0, "RIGHT 1", 0, 0, enabled = true, name = "Piano"),
+    KeyboardVoiceSlot(1, "RIGHT 2", 0, 0, enabled = false, name = "Piano"),
+    KeyboardVoiceSlot(2, "RIGHT 3", 0, 0, enabled = false, name = "Piano")
+)
+
 data class MainUiState(
     val styleName: String = "No Style Loaded", val tempoBpm: Int = 120, val transpose: Int = 0,
     val isPlaying: Boolean = false, val activeSection: String = "Main A", val detectedChordLabel: String = "", val autoFill: Boolean = true,
     val midiStatus: String = "No MIDI device", val midiOutEnabled: Boolean = false, val soundFontName: String = "None",
     val styleVolume: Int = 100, val leftVolume: Int = 100, val right1Volume: Int = 100, val right2Volume: Int = 100, val right3Volume: Int = 100, val masterVolume: Int = 100,
     val activeBank: Int = 1, val activeRegSlot: Int = 0, val voiceName: String = "GrandPiano",
-    val right2Name: String = "OFF", val splitPoint: String = "C4", val voiceAssignments: List<VoiceSlot> = defaultVoices(),
+    val right2Name: String = "OFF", val splitPoint: String = "C4",
+    val rightVoices: List<KeyboardVoiceSlot> = defaultKeyboardVoices(),
+    val voiceAssignments: List<VoiceSlot> = defaultVoices(),
     val availableSoundFonts: List<Pair<Uri, String>> = emptyList(),
     val sf2Presets: List<AudioEngineManager.SfPreset> = emptyList()
 )
@@ -167,6 +189,7 @@ class MainViewModel @Inject constructor(
     private val _activeBank = MutableStateFlow(1)
     private val _activeRegSlot = MutableStateFlow(0)
     private val _voiceAssignments = MutableStateFlow(defaultVoices())
+    private val _rightVoices = MutableStateFlow(defaultKeyboardVoices())
     private var activeChordNotes: List<Int> = emptyList()
 
     private val volumeState = combine(
@@ -178,7 +201,9 @@ class MainViewModel @Inject constructor(
 
     private val voiceAndSoundFontState = combine(
         combine(_activeBank, _activeRegSlot, _voiceAssignments) { b, r, v -> Triple(b, r, v) },
-        combine(_availableSoundFonts, _sf2Presets) { files, presets -> files to presets }
+        combine(_rightVoices, _availableSoundFonts, _sf2Presets) { rightVoices, files, presets ->
+            Triple(rightVoices, files, presets)
+        }
     ) { voiceData, sfData -> voiceData to sfData }
 
     val uiState: StateFlow<MainUiState> = combine(
@@ -193,8 +218,9 @@ class MainViewModel @Inject constructor(
         val (voiceVolumes, masterVol) = volumesMaster
         val (voiceData, sfData) = voiceDataSf
         val (bank, regSlot, voices) = voiceData
-        val sfFiles = sfData.first
-        val sfPresets = sfData.second
+        val rightVoices = sfData.first
+        val sfFiles = sfData.second
+        val sfPresets = sfData.third
         MainUiState(
             styleName = styleName,
             tempoBpm = arranger.tempoBpm,
@@ -215,6 +241,7 @@ class MainViewModel @Inject constructor(
             sf2Presets = sfPresets,
             activeBank = bank,
             activeRegSlot = regSlot,
+            rightVoices = rightVoices,
             voiceAssignments = voices,
             availableSoundFonts = sfFiles
         )
@@ -299,6 +326,31 @@ class MainViewModel @Inject constructor(
     fun onRight1VolumeChange(value: Int) { _right1Volume.value = value.coerceIn(0, 127); audioEngine.setChannelExpression(0, _right1Volume.value) }
     fun onRight2VolumeChange(value: Int) { _right2Volume.value = value.coerceIn(0, 127); audioEngine.setChannelExpression(1, _right2Volume.value) }
     fun onRight3VolumeChange(value: Int) { _right3Volume.value = value.coerceIn(0, 127); audioEngine.setChannelExpression(2, _right3Volume.value) }
+
+    /** Assign one of the three Yamaha-style upper keyboard parts. */
+    fun setRightVoice(layer: Int, program: Int, bank: Int) {
+        if (layer !in 0..2) return
+        val p = program.coerceIn(0, 127)
+        val b = bank.coerceIn(0, 16383)
+        val presetName = _sf2Presets.value.firstOrNull { it.bank == b && it.program == p }?.name
+        _rightVoices.value = _rightVoices.value.map { slot ->
+            if (slot.layer == layer) slot.copy(program = p, bank = b, name = presetName ?: GM_VOICES.firstOrNull { it.second == p }?.first)
+            else slot
+        }
+        audioEngine.setChannelProgram(layer, p, b)
+        DebugLog.add("🎹 " + _rightVoices.value.first { it.layer == layer }.label + " → prog" + p + " bank" + b)
+    }
+
+    fun toggleRightVoice(layer: Int) {
+        if (layer !in 0..2) return
+        _rightVoices.value = _rightVoices.value.map { slot ->
+            if (slot.layer == layer) slot.copy(enabled = !slot.enabled) else slot
+        }
+        val slot = _rightVoices.value.first { it.layer == layer }
+        arrangerBrain.setRightVoiceEnabled(layer, slot.enabled)
+        DebugLog.add("🎹 " + slot.label + ": " + if (slot.enabled) "ON" else "OFF")
+    }
+
     fun onMasterVolumeChange(value: Int) { _masterVolume.value = value.coerceIn(0, 127); audioEngine.setMasterVolume(_masterVolume.value) }
 
     // Temporary registration-as-chord pads for style development/testing.
