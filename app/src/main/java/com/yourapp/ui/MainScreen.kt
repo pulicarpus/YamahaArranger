@@ -50,6 +50,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -176,7 +178,7 @@ fun MainScreen(
             modifier = Modifier.fillMaxWidth().height(46.dp),
             colors = ButtonDefaults.buttonColors(containerColor = AccentOrange, contentColor = Color.White),
             shape = RoundedCornerShape(4.dp)
-        ) { Text("MIXER  •  16 CHANNEL / PART", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
+        ) { Text("MIXER  •  STYLE CHANNELS", fontWeight = FontWeight.Bold, fontSize = 12.sp) }
         Spacer(Modifier.height(8.dp))
 
         Button(
@@ -283,36 +285,69 @@ fun StyleMixerDialog(
     onMute: (Int) -> Unit,
     onVoice: (VoiceSlot) -> Unit
 ) {
-    AlertDialog(
+    Dialog(
         onDismissRequest = onDismiss,
-        title = { Text("STYLE EDITOR  •  CHANNEL MIXER") },
-        text = {
-            Column(modifier = Modifier.fillMaxWidth().heightIn(max = 560.dp).verticalScroll(rememberScrollState())) {
-                Text("Per-channel overrides apply only during style playback. The original STY/PRS file is untouched.", color = TextDim, fontSize = 10.sp)
-                Spacer(Modifier.height(8.dp))
-                voices.forEach { slot ->
-                    Surface(color = if (slot.styleMuted) PanelMid else PanelDark, shape = RoundedCornerShape(3.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 5.dp)) {
-                        Column(modifier = Modifier.padding(6.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("CH${slot.channel}", color = AccentBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(34.dp))
-                                Text(slot.displayName(), color = Color.White, fontSize = 10.sp, modifier = Modifier.weight(1f), maxLines = 1)
-                                TextButton(onClick = { onVoice(slot) }, contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)) { Text("VOICE", fontSize = 8.sp) }
-                                TextButton(onClick = { onMute(slot.channel) }, contentPadding = PaddingValues(horizontal = 5.dp, vertical = 0.dp)) { Text(if (slot.styleMuted) "MUTED" else "MUTE", fontSize = 8.sp) }
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
+    ) {
+        Surface(color = PanelBlack, modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp)) {
+                Row(modifier = Modifier.fillMaxWidth().height(42.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("STYLE MIXER  •  " + "${voices.size}" + " PARTS", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                        Text("Only instruments detected in the loaded style  •  Horizontal full-screen mixer", color = TextDim, fontSize = 9.sp, maxLines = 1)
+                    }
+                    TextButton(onClick = onDismiss) { Text("CLOSE", color = AccentBlue, fontWeight = FontWeight.Bold) }
+                }
+                Spacer(Modifier.height(6.dp))
+                if (voices.isEmpty()) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("No style instruments detected", color = TextDim, fontSize = 14.sp)
+                    }
+                } else {
+                    Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                        voices.chunked(4).forEach { rowVoices ->
+                            Row(modifier = Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                                rowVoices.forEach { slot ->
+                                    StyleMixerStrip(slot, Modifier.weight(1f).fillMaxHeight(), onMixer, onMute, onVoice)
+                                }
+                                repeat(4 - rowVoices.size) { Spacer(Modifier.weight(1f)) }
                             }
-                            MixerSlider("VOL", slot.styleVolume) { onMixer(slot.channel, it, slot.stylePan, slot.styleExpression, slot.styleReverb, slot.styleChorus) }
-                            MixerSlider("PAN", slot.stylePan) { onMixer(slot.channel, slot.styleVolume, it, slot.styleExpression, slot.styleReverb, slot.styleChorus) }
-                            MixerSlider("EXP", slot.styleExpression) { onMixer(slot.channel, slot.styleVolume, slot.stylePan, it, slot.styleReverb, slot.styleChorus) }
-                            MixerSlider("REV", slot.styleReverb) { onMixer(slot.channel, slot.styleVolume, slot.stylePan, slot.styleExpression, it, slot.styleChorus) }
-                            MixerSlider("CHO", slot.styleChorus) { onMixer(slot.channel, slot.styleVolume, slot.stylePan, slot.styleExpression, slot.styleReverb, it) }
                         }
                     }
                 }
             }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("DONE") } }
-    )
+        }
+    }
 }
 
+@Composable
+private fun StyleMixerStrip(
+    slot: VoiceSlot,
+    modifier: Modifier,
+    onMixer: (Int, Int, Int, Int, Int, Int) -> Unit,
+    onMute: (Int) -> Unit,
+    onVoice: (VoiceSlot) -> Unit
+) {
+    Surface(color = if (slot.styleMuted) PanelMid else PanelDark, shape = RoundedCornerShape(5.dp), modifier = modifier.border(1.dp, Color(0xFF30343A), RoundedCornerShape(5.dp))) {
+        Column(modifier = Modifier.padding(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("CH${slot.channel}", color = AccentBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.width(7.dp))
+                Text(slot.label.substringAfter(") ", slot.label), color = TextDim, fontSize = 8.sp, maxLines = 1)
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = { onVoice(slot) }, contentPadding = PaddingValues(horizontal = 5.dp, vertical = 0.dp)) { Text("VOICE", fontSize = 8.sp) }
+                TextButton(onClick = { onMute(slot.channel) }, contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)) { Text(if (slot.styleMuted) "UNMUTE" else "MUTE", fontSize = 8.sp) }
+            }
+            Text(slot.displayName(), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            Spacer(Modifier.height(3.dp))
+            MixerSlider("VOL", slot.styleVolume) { onMixer(slot.channel, it, slot.stylePan, slot.styleExpression, slot.styleReverb, slot.styleChorus) }
+            MixerSlider("PAN", slot.stylePan) { onMixer(slot.channel, slot.styleVolume, it, slot.styleExpression, slot.styleReverb, slot.styleChorus) }
+            MixerSlider("EXP", slot.styleExpression) { onMixer(slot.channel, slot.styleVolume, slot.stylePan, it, slot.styleReverb, slot.styleChorus) }
+            MixerSlider("REV", slot.styleReverb) { onMixer(slot.channel, slot.styleVolume, slot.stylePan, slot.styleExpression, it, slot.styleChorus) }
+            MixerSlider("CHO", slot.styleChorus) { onMixer(slot.channel, slot.styleVolume, slot.stylePan, slot.styleExpression, slot.styleReverb, it) }
+        }
+    }
+}
 @Composable
 private fun TopHeader(
     state: MainUiState,
