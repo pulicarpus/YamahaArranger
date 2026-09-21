@@ -291,28 +291,53 @@ fun StyleMixerDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
     ) {
         Surface(color = PanelBlack, modifier = Modifier.fillMaxSize()) {
-            Column(modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp)) {
-                Row(modifier = Modifier.fillMaxWidth().height(42.dp), verticalAlignment = Alignment.CenterVertically) {
+            // The mixer is deliberately a single horizontal console: every style part
+            // is side-by-side, with its own vertical fader area. No stacked channel rows.
+            Column(modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 6.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(44.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("STYLE MIXER  •  " + "${voices.size}" + " PARTS", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                        Text("Only instruments detected in the loaded style  •  Horizontal full-screen mixer", color = TextDim, fontSize = 9.sp, maxLines = 1)
+                        Text(
+                            "STYLE MIXER  •  ${voices.size} PARTS",
+                            color = Color.White,
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            "STYLE CHANNELS • FULL SCREEN • HORIZONTAL",
+                            color = TextDim,
+                            fontSize = 9.sp,
+                            maxLines = 1
+                        )
                     }
-                    TextButton(onClick = onDismiss) { Text("CLOSE", color = AccentBlue, fontWeight = FontWeight.Bold) }
+                    TextButton(onClick = onDismiss) {
+                        Text("CLOSE", color = AccentBlue, fontWeight = FontWeight.Bold)
+                    }
                 }
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(4.dp))
                 if (voices.isEmpty()) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text("No style instruments detected", color = TextDim, fontSize = 14.sp)
                     }
                 } else {
-                    Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                        voices.chunked(4).forEach { rowVoices ->
-                            Row(modifier = Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                                rowVoices.forEach { slot ->
-                                    StyleMixerStrip(slot, Modifier.weight(1f).fillMaxHeight(), onMixer, onMute, onVoice)
-                                }
-                                repeat(4 - rowVoices.size) { Spacer(Modifier.weight(1f)) }
-                            }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(7.dp)
+                    ) {
+                        voices.forEach { slot ->
+                            StyleMixerStrip(
+                                slot = slot,
+                                modifier = Modifier
+                                    .width(220.dp)
+                                    .fillMaxHeight(),
+                                onMixer = onMixer,
+                                onMute = onMute,
+                                onVoice = onVoice
+                            )
                         }
                     }
                 }
