@@ -7,6 +7,7 @@ import com.yourapp.midi.MidiInputManager
 import com.yourapp.yamahaarranger.style.CasmPolicyModel
 import com.yourapp.yamahaarranger.style.StyleNoteEvent
 import com.yourapp.yamahaarranger.style.StyleSectionModel
+import com.yourapp.yamahaarranger.style.StylePartModel
 import com.yourapp.yamahaarranger.style.StyleChannelOverride
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
