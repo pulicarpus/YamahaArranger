@@ -111,6 +111,19 @@ fun SxMainScreen(viewModel: MainViewModel = hiltViewModel()) {
         )
     }
 
+    // Preset enumeration is intentionally deferred at startup for large Yamaha SF2s.
+    // When the user actually opens RIGHT 1/2/3 voice selection, populate the SF2 list now.
+    // Without this trigger the dialog falls back to the built-in GM list even though an SF2 is loaded.
+    LaunchedEffect(rightVoicePickerLayer, state.soundFontName) {
+        if (rightVoicePickerLayer != null &&
+            state.soundFontName != "None" &&
+            state.sf2Presets.isEmpty()
+        ) {
+            DebugLog.add("🎹 Voice picker opened → loading SF2 preset list")
+            viewModel.refreshSoundFontList()
+        }
+    }
+
     rightVoicePickerLayer?.let { layer ->
         val slot = state.rightVoices.getOrNull(layer)
         if (slot != null) {
