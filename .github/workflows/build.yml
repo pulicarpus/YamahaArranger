@@ -12,7 +12,7 @@ jobs:
       ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
       BASS_ANDROID_URL: https://www.un4seen.com/stuff/bass-android.zip
       BASS_HEADER_URL: https://www.un4seen.com/stuff/bass.zip
-      BASSMIDI_URL: https://www.un4seen.com/stuff/bassmidi-android.zip
+      BASSMIDI_URL: https://www.un4seen.com/files/bassmidi24-android.zip
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
