@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <mutex>
+#include <array>
 #include <bass.h>
 #include <bassmidi.h>
 
@@ -25,10 +26,18 @@ public:
     void setMasterGain(float gain);
     std::string presetList() const;
 private:
+    struct ChannelState {
+        int bankMsb = 0;
+        int bankLsb = 0;
+        int program = 0;
+        bool drum = false;
+        bool initialized = false;
+    };
     bool ensureEngine();
     bool loadRole(const std::string& path, bool drum);
     bool applyFonts();
     void send(int channel, DWORD event, DWORD param);
+    void preloadCurrentPreset(int channel);
     HSTREAM stream_ = 0;
     HSOUNDFONT melodyFont_ = 0;
     HSOUNDFONT drumFont_ = 0;
@@ -36,5 +45,7 @@ private:
     mutable std::mutex mutex_;
     int sampleRate_ = 48000;
     int interpolation_ = 2;
-    int voices_ = 128;
+    int voices_ = 1000;
+    float soundFontVolume_ = 0.90f;
+    std::array<ChannelState, 16> channels_{};
 };
