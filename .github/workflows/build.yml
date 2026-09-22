@@ -10,8 +10,7 @@ jobs:
     env:
       ANDROID_HOME: /usr/local/lib/android/sdk
       ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
-      BASS_ANDROID_URL: https://www.un4seen.com/stuff/bass-android.zip
-      BASS_HEADER_URL: https://www.un4seen.com/stuff/bass.zip
+      BASS_ANDROID_URL: https://www.un4seen.com/files/bass24-android.zip
       BASSMIDI_URL: https://www.un4seen.com/files/bassmidi24-android.zip
     steps:
       - name: Checkout Repository
@@ -33,24 +32,22 @@ jobs:
       - name: Download BASS/BASSMIDI Android SDKs
         run: |
           set -euo pipefail
-          rm -rf /tmp/bass /tmp/bassheader /tmp/bassmidi
-          mkdir -p /tmp/bass /tmp/bassheader /tmp/bassmidi
+          rm -rf /tmp/bass /tmp/bassmidi
+          mkdir -p /tmp/bass /tmp/bassmidi
           curl -fL "$BASS_ANDROID_URL" -o /tmp/bass-android.zip
-          curl -fL "$BASS_HEADER_URL" -o /tmp/bass-header.zip
           curl -fL "$BASSMIDI_URL" -o /tmp/bassmidi.zip
           unzip -q /tmp/bass-android.zip -d /tmp/bass
-          unzip -q /tmp/bass-header.zip -d /tmp/bassheader
           unzip -q /tmp/bassmidi.zip -d /tmp/bassmidi
 
           echo "=== BASS header candidates ==="
-          find /tmp/bassheader -type f -iname 'bass.h' -print
+          find /tmp/bass -type f -iname 'bass.h' -print
           echo "=== BASSMIDI header candidates ==="
           find /tmp/bassmidi -type f \( -iname 'bassmidi.h' -o -iname 'BASSMIDI.H' \) -print
           echo "=== BASSMIDI native libraries ==="
           find /tmp/bassmidi -type f -name 'libbassmidi.so' -print
 
           mkdir -p app/src/main/cpp/basssdk
-          BASS_H="$(find /tmp/bassheader -type f -iname 'bass.h' -print -quit)"
+          BASS_H="$(find /tmp/bass -type f -iname 'bass.h' -print -quit)"
           BASSMIDI_H="$(find /tmp/bassmidi -type f -iname 'bassmidi.h' -print -quit)"
 
           # The official archive is known to contain c/bassmidi.h; keep an
@@ -63,7 +60,8 @@ jobs:
           fi
 
           if [ -z "$BASS_H" ]; then
-            echo "::error::BASS header not found"
+            echo "::error::BASS header not found in official Android SDK archive"
+            unzip -l /tmp/bass-android.zip | sed -n '1,160p'
             exit 1
           fi
           if [ -z "$BASSMIDI_H" ]; then
