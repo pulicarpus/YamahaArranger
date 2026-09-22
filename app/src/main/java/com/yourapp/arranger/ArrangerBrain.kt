@@ -95,7 +95,7 @@ class ArrangerBrain @Inject constructor(
 
     private fun onChordChanged(chord: DetectedChord) {
         ensureSequencer()
-        sequencer.currentChord = chord
+        sequencer.setCurrentChord(chord)
         _state.update { it.copy(currentChordLabel = chord.label()) }
     }
 
