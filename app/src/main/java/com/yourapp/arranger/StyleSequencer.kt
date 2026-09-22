@@ -239,8 +239,10 @@ class StyleSequencer(
             if (sched.event.isNoteOn) {
                 // Compute the transpose ONCE, here, and remember it.
                 val note = if (sched.transpose) {
-                    currentChord?.let { NoteTransposer.transpose(sched.event.note, it) }
-                        ?: sched.event.note
+                    currentChord?.let { chord ->
+                        val partPolicy = section.parts.firstOrNull { it.channel == sched.channel }?.casmPolicy
+                        NoteTransposer.transpose(sched.event.note, chord, sched.channel, partPolicy)
+                    } ?: sched.event.note
                 } else {
                     sched.event.note
                 }
