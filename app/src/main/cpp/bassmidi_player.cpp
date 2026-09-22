@@ -19,13 +19,14 @@ bool BassMidiPlayer::ensureEngine(){
         LOGI("BASS initialized on no-sound device");
     }
     if(!stream_){
-        stream_=BASS_MIDI_StreamCreate(16,BASS_STREAM_DECODE|BASS_SAMPLE_FLOAT,sampleRate_);
+        stream_=BASS_MIDI_StreamCreate(16,BASS_STREAM_DECODE|BASS_SAMPLE_FLOAT|BASS_MIDI_ASYNC,sampleRate_);
         if(!stream_){
             LOGE("BASS_MIDI_StreamCreate failed error=%d",BASS_ErrorGetCode()); return false;
         }
         BASS_ChannelSetAttribute(stream_,BASS_ATTRIB_MIDI_PPQN,1920.0f);
         BASS_ChannelSetAttribute(stream_,BASS_ATTRIB_MIDI_SRC,(float)interpolation_);
         BASS_ChannelSetAttribute(stream_,BASS_ATTRIB_MIDI_VOICES,(float)voices_);
+        BASS_ChannelSetAttribute(stream_,BASS_ATTRIB_MIDI_VOL,1.0f);
         BASS_ChannelSetAttribute(stream_,BASS_ATTRIB_BUFFER,0.0f);
         LOGI("BASSMIDI stream ready: PPQN=1920 SRC=%d voices=%d",interpolation_,voices_);
     }
@@ -34,20 +35,29 @@ bool BassMidiPlayer::ensureEngine(){
 
 bool BassMidiPlayer::applyFonts(){
     if(!stream_) return false;
-    BASS_MIDI_FONTEX2 cfg[3]{};
+    // Diagnostic path: keep melody mapping simple (all presets, bank 0).
+    // Yamaha bank/LSB routing will be restored after PCM is proven.
+    BASS_MIDI_FONT cfg[2]{};
     DWORD count=0;
     if(melodyFont_){
-        cfg[count++]={melodyFont_,-1,-1,-1,-1,0,0,9};
-        cfg[count++]={melodyFont_,-1,-1,-1,-1,0,10,6};
+        cfg[count].font=melodyFont_;
+        cfg[count].preset=-1;
+        cfg[count].bank=0;
+        ++count;
     }
-    if(drumFont_) cfg[count++]={drumFont_,-1,-1,-1,128,0,9,1};
+    if(drumFont_){
+        cfg[count].font=drumFont_;
+        cfg[count].preset=-1;
+        cfg[count].bank=128;
+        ++count;
+    }
     if(!count) return false;
-    if(!BASS_MIDI_StreamSetFonts(stream_,cfg,count|BASS_MIDI_FONT_EX2)){
-        LOGE("StreamSetFonts(EX2) failed error=%d",BASS_ErrorGetCode()); return false;
+    if(!BASS_MIDI_StreamSetFonts(stream_,cfg,count)){
+        LOGE("StreamSetFonts(simple) failed error=%d",BASS_ErrorGetCode()); return false;
     }
+    LOGI("BASSMIDI fonts applied: melody=%d drum=%d",melodyFont_!=0,drumFont_!=0);
     return true;
 }
-
 bool BassMidiPlayer::loadRole(const std::string& path,bool drum){
     std::lock_guard<std::mutex> lock(mutex_);
     if(!ensureEngine()) return false;
@@ -58,6 +68,21 @@ bool BassMidiPlayer::loadRole(const std::string& path,bool drum){
         LOGE("FontInit failed role=%s error=%d",drum?"DRUM":"MELODY",BASS_ErrorGetCode()); return false;
     }
     if(!applyFonts()){BASS_MIDI_FontFree(target);target=0;return false;}
+    BASS_MIDI_FONTINFO info{};
+    if(BASS_MIDI_FontGetInfo(target,&info)){
+        LOGI("BASSMIDI font info role=%s presets=%u samples=%u",
+             drum?"DRUM":"MELODY", info.presets, info.samples);
+    } else {
+        LOGE("BASSMIDI FontGetInfo failed role=%s error=%d",
+             drum?"DRUM":"MELODY", BASS_ErrorGetCode());
+    }
+    if(!BASS_MIDI_FontLoad(target, 0, drum ? 128 : 0)){
+        LOGE("BASSMIDI FontLoad preset0 bank%d failed role=%s error=%d",
+             drum?128:0, drum?"DRUM":"MELODY", BASS_ErrorGetCode());
+    } else {
+        LOGI("BASSMIDI FontLoad preset0 bank%d OK role=%s",
+             drum?128:0, drum?"DRUM":"MELODY");
+    }
     LOGI("BASSMIDI %s SF2 loaded: %s",drum?"DRUM":"MELODY",path.c_str());
     return true;
 }
@@ -81,6 +106,11 @@ void BassMidiPlayer::send(int channel,DWORD event,DWORD param){
 void BassMidiPlayer::noteOn(int channel,int key,float velocity){
     std::lock_guard<std::mutex> lock(mutex_); if(!ensureEngine()) return;
     int vel=std::max(1,std::min(127,(int)(velocity*127.0f)));
+    if(channel==0) {
+        send(channel,MIDI_EVENT_BANK,0);
+        send(channel,MIDI_EVENT_BANK_LSB,0);
+        send(channel,MIDI_EVENT_PROGRAM,0);
+    }
     send(channel,MIDI_EVENT_NOTE,(DWORD)(key|(vel<<8)));
 }
 void BassMidiPlayer::noteOff(int channel,int key){
@@ -118,6 +148,16 @@ void BassMidiPlayer::render(float* out,int numFrames){
     if(!stream_){std::fill(out,out+numFrames*2,0.0f);return;}
     DWORD wanted=(DWORD)(numFrames*2*sizeof(float));
     DWORD got=BASS_ChannelGetData(stream_,out,wanted|BASS_DATA_FLOAT);
+    if(got!=(DWORD)-1){
+        static int renderLogCount=0;
+        if((++renderLogCount % 200)==1){
+            float rawPeak=0.0f;
+            for(int i=0;i<(int)(got/sizeof(float));++i)
+                rawPeak=std::max(rawPeak,std::fabs(out[i]));
+            LOGI("BASSMIDI PCM bytes=%u samples=%u rawPeak=%.6f",
+                 got, got/sizeof(float), rawPeak);
+        }
+    }
     if(got==(DWORD)-1){
         LOGE("BASS_ChannelGetData failed error=%d",BASS_ErrorGetCode());
         std::fill(out,out+numFrames*2,0.0f); return;
