@@ -65,7 +65,12 @@ class StyleRepository @Inject constructor(private val bridge: NativeStyleBridge)
                     casmPolicies = policies,
                     program = setup.program,
                     bankMsb = setup.bankMsb,
-                    bankLsb = setup.bankLsb
+                    bankLsb = setup.bankLsb,
+                    volume = setup.volume,
+                    pan = setup.pan,
+                    expression = setup.expression,
+                    reverbSend = setup.reverbSend,
+                    chorusSend = setup.chorusSend
                 )
             }
             StyleSectionModel(sectionName, bridge.nativeGetSectionLengthTicks(sectionName), parts)
@@ -75,20 +80,42 @@ class StyleRepository @Inject constructor(private val bridge: NativeStyleBridge)
         return ParsedStyle(fileName, ppq, sections, voiceMap, defaultTempoBpm)
     }
 
-    private data class VoiceSetup(val program: Int, val bankMsb: Int, val bankLsb: Int)
+    private data class VoiceSetup(
+        val program: Int,
+        val bankMsb: Int,
+        val bankLsb: Int,
+        val volume: Int,
+        val pan: Int,
+        val expression: Int,
+        val reverbSend: Int,
+        val chorusSend: Int
+    )
 
     private fun extractVoiceSetup(events: List<StyleNoteEvent>): VoiceSetup {
         var msb = 0
         var lsb = 0
         var program = -1
+        var volume = -1
+        var pan = -1
+        var expression = -1
+        var reverb = -1
+        var chorus = -1
+        // Only setup events at the section boundary belong to the section
+        // voice state. Later CC automation is musical data, not a preset reset.
         events.sortedBy { it.tick }.forEach { e ->
+            if (e.tick != 0) return@forEach
             when {
                 e.isControlChange && e.note == 0 -> msb = e.velocity
                 e.isControlChange && e.note == 32 -> lsb = e.velocity
+                e.isControlChange && e.note == 7 -> volume = e.velocity
+                e.isControlChange && e.note == 10 -> pan = e.velocity
+                e.isControlChange && e.note == 11 -> expression = e.velocity
+                e.isControlChange && e.note == 91 -> reverb = e.velocity
+                e.isControlChange && e.note == 93 -> chorus = e.velocity
                 e.isProgramChange -> program = e.note
             }
         }
-        return VoiceSetup(program, msb, lsb)
+        return VoiceSetup(program, msb, lsb, volume, pan, expression, reverb, chorus)
     }
 
     private fun decodePackedEvents(flat: IntArray): List<StyleNoteEvent> {
