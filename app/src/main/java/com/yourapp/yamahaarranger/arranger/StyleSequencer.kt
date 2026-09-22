@@ -248,6 +248,17 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                     val transition = pendingTransition
                     pendingTransition = null
                     if (transition != null) {
+                        // Release only notes owned by the outgoing section. This
+                        // is deliberately NOT allNotesOff(): keyboard voices and
+                        // unrelated channels remain untouched.
+                        val outgoing = activeTransposedNotes.values.toList()
+                        outgoing.forEach { releaseActive(it) }
+                        if (outgoing.isNotEmpty()) {
+                            com.yourapp.yamahaarranger.ui.DebugLog.add(
+                                "🎼 TRANSITION: released " + outgoing.size + " outgoing style notes (no global allNotesOff)"
+                            )
+                        }
+
                         active = transition.sections.first()
                         remainingLoops = active.loopLimit
                         // The transition start is an absolute tick. Every section
