@@ -48,4 +48,5 @@ private:
     int voices_ = 1000;
     float soundFontVolume_ = 0.90f;
     std::array<ChannelState, 16> channels_{};
+    std::string melodyPath_;
 };
