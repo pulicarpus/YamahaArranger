@@ -463,7 +463,7 @@ std::string BassMidiPlayer::presetList() const {
             if (!seen.insert(key).second) continue;
             // Contract with AudioEngineManager.loadedSoundFontPresets():
             // one preset per line, role|bank|program|name.
-            out << "MELODY|" << p.bank << '|' << p.program << '|' << p.name << '\\n';
+            out << "MELODY|" << p.bank << '|' << p.program << '|' << p.name << '\n';
         }
         LOGI("SF2 phdr preset scan found %u entries from %s",
              static_cast<unsigned>(seen.size()), melodyPath_.c_str());
@@ -512,7 +512,7 @@ std::string BassMidiPlayer::presetList() const {
         const int bank = static_cast<int>(HIWORD(p));
         const char* name = BASS_MIDI_FontGetPreset(melodyFont_, program, bank);
         if (!name) name = "";
-        out << "MELODY|" << bank << '|' << program << '|' << name << '\\n';
+        out << "MELODY|" << bank << '|' << program << '|' << name << '\n';
     }
     return out.str();
 }
