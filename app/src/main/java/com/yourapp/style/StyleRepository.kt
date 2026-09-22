@@ -59,6 +59,12 @@ class StyleRepository @Inject constructor(
             .coerceIn(20, 280)
         DebugLog.add("🥁 Default style tempo: $defaultTempoBpm BPM")
 
+        // Decode Yamaha CASM policy from the actual style bytes. This is
+        // the critical layer that tells us which accompaniment channel is
+        // Bass/Chord/Phrase and how Yamaha wants it to react to chords.
+        val casm = YamahaCasmParser.parse(rawBytes)
+        DebugLog.add("🧠 CASM policies: ${casm.values.sumOf { it.size }} channel/section entries")
+
         val sections = detectedSections.associateWith { sectionName ->
             val partCount = bridge.nativeGetPartCount(sectionName)
             val parts = (0 until partCount).map { partIndex ->
@@ -77,7 +83,18 @@ class StyleRepository @Inject constructor(
                         i += 4
                     }
                 }
-                StylePartModel(name, events)
+                val channel = events.firstOrNull()?.channel ?: 0
+                val policy = casm[sectionName]?.get(channel)
+                if (policy != null) {
+                    DebugLog.add(
+                        "  CASM $sectionName ch$channel: NTR=${policy.ntr} NTT=${policy.ntt} " +
+                            "HK=${policy.highKey} NL=${policy.noteLow}-${policy.noteHigh} " +
+                            "RTR=${policy.rtr} bassOn=${policy.bassOn}"
+                    )
+                } else if (channel >= 8) {
+                    DebugLog.add("  ⚠ CASM missing for $sectionName ch$channel; using safe fallback")
+                }
+                StylePartModel(name, events, channel, policy)
             }
             StyleSectionModel(
                 name = sectionName,
