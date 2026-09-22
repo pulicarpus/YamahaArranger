@@ -32,7 +32,8 @@ jobs:
         run: $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "cmake;3.22.1" > /dev/null
       - name: Download BASS/BASSMIDI Android SDKs
         run: |
-          set -e
+          set -euo pipefail
+          rm -rf /tmp/bass /tmp/bassheader /tmp/bassmidi
           mkdir -p /tmp/bass /tmp/bassheader /tmp/bassmidi
           curl -fL "$BASS_ANDROID_URL" -o /tmp/bass-android.zip
           curl -fL "$BASS_HEADER_URL" -o /tmp/bass-header.zip
@@ -40,17 +41,56 @@ jobs:
           unzip -q /tmp/bass-android.zip -d /tmp/bass
           unzip -q /tmp/bass-header.zip -d /tmp/bassheader
           unzip -q /tmp/bassmidi.zip -d /tmp/bassmidi
+
+          echo "=== BASS header candidates ==="
+          find /tmp/bassheader -type f -iname 'bass.h' -print
+          echo "=== BASSMIDI header candidates ==="
+          find /tmp/bassmidi -type f \( -iname 'bassmidi.h' -o -iname 'BASSMIDI.H' \) -print
+          echo "=== BASSMIDI native libraries ==="
+          find /tmp/bassmidi -type f -name 'libbassmidi.so' -print
+
           mkdir -p app/src/main/cpp/basssdk
-          BASS_H="$(find /tmp/bassheader -type f -iname 'bass.h' | head -1)"
-          BASSMIDI_H="$(find /tmp/bassmidi -type f -iname 'bassmidi.h' | head -1)"
-          test -n "$BASS_H" && test -n "$BASSMIDI_H"
+          BASS_H="$(find /tmp/bassheader -type f -iname 'bass.h' -print -quit)"
+          BASSMIDI_H="$(find /tmp/bassmidi -type f -iname 'bassmidi.h' -print -quit)"
+
+          # The official archive is known to contain c/bassmidi.h; keep an
+          # explicit fallback in case find/path handling differs on the runner.
+          if [ -z "$BASSMIDI_H" ] && [ -f /tmp/bassmidi/c/bassmidi.h ]; then
+            BASSMIDI_H="/tmp/bassmidi/c/bassmidi.h"
+          fi
+          if [ -z "$BASSMIDI_H" ] && [ -f /tmp/bassmidi/C/BASSMIDI.H ]; then
+            BASSMIDI_H="/tmp/bassmidi/C/BASSMIDI.H"
+          fi
+
+          if [ -z "$BASS_H" ]; then
+            echo "::error::BASS header not found"
+            exit 1
+          fi
+          if [ -z "$BASSMIDI_H" ]; then
+            echo "::error::BASSMIDI header not found in official SDK archive"
+            unzip -l /tmp/bassmidi.zip | sed -n '1,160p'
+            exit 1
+          fi
+
           cp "$BASS_H" app/src/main/cpp/basssdk/bass.h
           cp "$BASSMIDI_H" app/src/main/cpp/basssdk/bassmidi.h
+
           for abi in arm64-v8a armeabi-v7a; do
             mkdir -p "app/src/main/jniLibs/$abi"
-            cp "/tmp/bass/$abi/libbass.so" "app/src/main/jniLibs/$abi/libbass.so"
-            cp "/tmp/bassmidi/libs/$abi/libbassmidi.so" "app/src/main/jniLibs/$abi/libbassmidi.so"
+            BASS_SO="$(find "/tmp/bass/$abi" -type f -name 'libbass.so' -print -quit)"
+            BASSMIDI_SO="$(find "/tmp/bassmidi" -type f -path "*/$abi/libbassmidi.so" -print -quit)"
+            if [ -z "$BASS_SO" ]; then
+              echo "::error::libbass.so not found for $abi"
+              exit 1
+            fi
+            if [ -z "$BASSMIDI_SO" ]; then
+              echo "::error::libbassmidi.so not found for $abi"
+              exit 1
+            fi
+            cp "$BASS_SO" "app/src/main/jniLibs/$abi/libbass.so"
+            cp "$BASSMIDI_SO" "app/src/main/jniLibs/$abi/libbassmidi.so"
           done
+
           test -s app/src/main/cpp/basssdk/bass.h
           test -s app/src/main/cpp/basssdk/bassmidi.h
           test -s app/src/main/jniLibs/arm64-v8a/libbass.so
