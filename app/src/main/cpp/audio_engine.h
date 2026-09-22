@@ -1,37 +1,40 @@
 #pragma once
-#include <oboe/Oboe.h>
-#include <array>
-#include <mutex>
 #include <string>
-#include "voice.h"
-#include "bassmidi_player.h"
+#include <mutex>
+#include <bass.h>
+#include <bassmidi.h>
 
-class AudioEngine : public oboe::AudioStreamDataCallback {
+class BassMidiPlayer {
 public:
-    static constexpr int kMaxPolyphony=64;
-    bool start(); void stop();
-    bool loadSoundFont(const std::string& path);
-    bool loadMelodySoundFont(const std::string& path);
-    bool loadDrumSoundFont(const std::string& path);
-    bool isSoundFontLoaded() const{return soundFont_.isLoaded();}
-    bool isMelodySoundFontLoaded() const{return soundFont_.isMelodyLoaded();}
-    bool isDrumSoundFontLoaded() const{return soundFont_.isDrumLoaded();}
-    void unloadSoundFont();
-    void noteOn(int midiNote,int rootNote,float velocity01,const float* sampleData,size_t sampleFrames,int sampleRateHz);
-    void noteOff(int midiNote); void allNotesOff();
-    void sfNoteOnChannel(int channel,int midiNote,float velocity01);
-    void sfNoteOffChannel(int channel,int midiNote);
-    void sfSetChannelPreset(int channel,int bank,int program);
-    void sfSetChannelMixer(int channel,int volume,int pan,int expression,int reverbSend,int chorusSend);
-    void sfSetChannelExpression(int channel,int expression);
-    void sfSetMasterGain(float gain);
-    std::string sfPresetList() const;
-    oboe::DataCallbackResult onAudioReady(oboe::AudioStream*,void*,int32_t) override;
+    BassMidiPlayer();
+    ~BassMidiPlayer();
+    bool load(const std::string& path);
+    bool loadMelody(const std::string& path);
+    bool loadDrum(const std::string& path);
+    void unload();
+    bool isLoaded() const { return stream_ != 0 && (melodyFont_ != 0 || drumFont_ != 0); }
+    bool isMelodyLoaded() const { return stream_ != 0 && melodyFont_ != 0; }
+    bool isDrumLoaded() const { return stream_ != 0 && drumFont_ != 0; }
+    void render(float* out, int numFrames);
+    void noteOn(int channel, int key, float velocity);
+    void noteOff(int channel, int key);
+    void allNotesOff();
+    void setChannelPreset(int channel, int bank, int program);
+    void setChannelMixer(int channel, int volume, int pan, int expression, int reverbSend, int chorusSend);
+    void setChannelExpression(int channel, int expression);
+    void setMasterGain(float gain);
+    std::string presetList() const;
 private:
-    std::shared_ptr<oboe::AudioStream> stream_;
-    std::array<Voice,kMaxPolyphony> voices_;
-    std::mutex voiceMutex_;
-    int outputSampleRate_=48000;
-    BassMidiPlayer soundFont_;
-    float dcLastInL_=0,dcLastOutL_=0,dcLastInR_=0,dcLastOutR_=0;
+    bool ensureEngine();
+    bool loadRole(const std::string& path, bool drum);
+    bool applyFonts();
+    void send(int channel, DWORD event, DWORD param);
+    HSTREAM stream_ = 0;
+    HSOUNDFONT melodyFont_ = 0;
+    HSOUNDFONT drumFont_ = 0;
+    bool bassInitialized_ = false;
+    mutable std::mutex mutex_;
+    int sampleRate_ = 48000;
+    int interpolation_ = 2;
+    int voices_ = 128;
 };
