@@ -367,11 +367,14 @@ class MainViewModel @Inject constructor(
     // Temporary registration-as-chord pads for style development/testing.
     fun onBankChange(bank: Int) { _activeBank.value = bank.coerceIn(1, 8) }
     fun onRegSlotTap(slot: Int) {
+        // Chord-test pads must stay inside the ACMP range (<= split note 54).
+        // Use one octave lower than the original pads so every test note is
+        // interpreted as a chord note instead of leaking its top note to RIGHT 1.
         val chords = listOf(
-            "C" to intArrayOf(48, 52, 55), "Dm" to intArrayOf(50, 53, 57),
-            "Em" to intArrayOf(52, 55, 59), "F" to intArrayOf(53, 57, 60),
-            "G" to intArrayOf(55, 59, 62), "Am" to intArrayOf(57, 60, 64),
-            "Bdim" to intArrayOf(59, 62, 65), "C7" to intArrayOf(60, 64, 67, 70)
+            "C" to intArrayOf(36, 40, 43), "Dm" to intArrayOf(38, 41, 45),
+            "Em" to intArrayOf(40, 43, 47), "F" to intArrayOf(41, 45, 48),
+            "G" to intArrayOf(43, 47, 50), "Am" to intArrayOf(45, 48, 52),
+            "Bdim" to intArrayOf(47, 50, 53), "C7" to intArrayOf(48, 52, 55, 58)
         )
         val index = slot.coerceIn(0, 7)
         activeChordNotes.forEach(arrangerBrain::onKeyboardNoteOff)
