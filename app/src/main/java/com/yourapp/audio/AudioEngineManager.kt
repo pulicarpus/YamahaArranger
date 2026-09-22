@@ -84,6 +84,11 @@ class AudioEngineManager @Inject constructor(
         DebugLog.add("🎼 Ch$channel → prog=$program bank=$bank")
     }
 
+    fun controlChange(channel: Int, controller: Int, value: Int) {
+        if (!soundFontLoaded) return
+        bridge.nativeControlChange(channel, controller, value)
+    }
+
     fun allNotesOff() = bridge.nativeAllNotesOff()
 
     fun testTone(note: Int, velocity: Float) {
