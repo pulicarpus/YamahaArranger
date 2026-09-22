@@ -704,7 +704,6 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             audioEngine.noteOnChannel(destinationChannel,note,velocity/127f)
             midiInputManager.sendNoteOn(destinationChannel,note,velocity)
         }
-    }
         val naturalEnd = startAbsoluteTick + section.lengthTicks.coerceAtLeast(0).toLong()
         return if (interruptedByTransition) {
             PlayOnceResult(lastProcessedTick, true)
