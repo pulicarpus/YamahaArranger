@@ -374,7 +374,7 @@ class MainViewModel @Inject constructor(
             "C" to intArrayOf(36, 40, 43), "Dm" to intArrayOf(38, 41, 45),
             "Em" to intArrayOf(40, 43, 47), "F" to intArrayOf(41, 45, 48),
             "G" to intArrayOf(43, 47, 50), "Am" to intArrayOf(45, 48, 52),
-            "Bdim" to intArrayOf(47, 50, 53), "C7" to intArrayOf(48, 52, 55, 58)
+            "Bdim" to intArrayOf(47, 50, 53), "C7" to intArrayOf(36, 40, 43, 46)
         )
         val index = slot.coerceIn(0, 7)
         activeChordNotes.forEach(arrangerBrain::onKeyboardNoteOff)
