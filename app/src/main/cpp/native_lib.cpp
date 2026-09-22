@@ -230,6 +230,38 @@ Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeGetPartEvents(
     return result;
 }
 
+// Return MIDI channel setup events occurring exactly at a section start.
+// Format: repeated [status, data1, data2], with data2=0 for one-byte messages.
+extern "C" JNIEXPORT jintArray JNICALL
+Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeGetSectionChannelSetup(
+    JNIEnv* env, jobject, jstring sectionName, jint channel) {
+    if (!g_lastParsedStyle) return env->NewIntArray(0);
+    const char* cstr = env->GetStringUTFChars(sectionName, nullptr);
+    StyleSection sec = styleSectionFromString(cstr);
+    env->ReleaseStringUTFChars(sectionName, cstr);
+    auto it = g_lastParsedStyle->sections().find(sec);
+    if (it == g_lastParsedStyle->sections().end()) return env->NewIntArray(0);
+
+    std::vector<jint> flat;
+    for (const auto& part : it->second.parts) {
+        if (part.midiChannel != static_cast<uint8_t>(channel)) continue;
+        for (const auto& ev : part.events) {
+            // Section parser stores events relative to the section marker.
+            // Yamaha setup events in the factory styles are emitted at tick 0.
+            if (ev.tick != 0) continue;
+            const uint8_t hi = ev.status & 0xF0;
+            if (hi == 0xB0 || hi == 0xC0 || hi == 0xD0 || hi == 0xE0) {
+                flat.push_back(ev.status);
+                flat.push_back(ev.data1);
+                flat.push_back(ev.data2);
+            }
+        }
+    }
+    jintArray result = env->NewIntArray(static_cast<jsize>(flat.size()));
+    if (!flat.empty()) env->SetIntArrayRegion(result, 0, static_cast<jsize>(flat.size()), flat.data());
+    return result;
+}
+
 // ═════════════════════════════════════════════════════
 // CASM FINDER
 // ═════════════════════════════════════════════════════
