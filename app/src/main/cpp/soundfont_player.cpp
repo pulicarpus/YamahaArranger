@@ -11,6 +11,53 @@
 
 #define LOG_TAG "FluidSynthPlayer"
 
+static std::string sanitizeUtf8ForJniLocal(const char* input) {
+    if (!input) return {};
+    const unsigned char* s = reinterpret_cast<const unsigned char*>(input);
+    const size_t len = std::strlen(input);
+    std::string out;
+    out.reserve(len);
+    for (size_t i = 0; i < len;) {
+        const unsigned char ch = s[i];
+        if (ch < 0x80) {
+            out.push_back(static_cast<char>(ch));
+            ++i;
+            continue;
+        }
+        size_t n = 0;
+        if (ch >= 0xC2 && ch <= 0xDF) n = 2;
+        else if (ch >= 0xE0 && ch <= 0xEF) n = 3;
+        else if (ch >= 0xF0 && ch <= 0xF4) n = 4;
+        bool valid = n > 0 && i + n <= len;
+        if (valid) {
+            for (size_t j = 1; j < n; ++j) {
+                if (s[i + j] < 0x80 || s[i + j] > 0xBF) {
+                    valid = false;
+                    break;
+                }
+            }
+            if (valid && n == 3 && ch == 0xE0 && s[i + 1] < 0xA0) valid = false;
+            if (valid && n == 3 && ch == 0xED && s[i + 1] >= 0xA0) valid = false;
+            if (valid && n == 4 && ch == 0xF0 && s[i + 1] < 0x90) valid = false;
+            if (valid && n == 4 && ch == 0xF4 && s[i + 1] > 0x8F) valid = false;
+        }
+        if (valid) {
+            out.append(reinterpret_cast<const char*>(s + i), n);
+            i += n;
+        } else {
+            const unsigned int cp = ch;
+            if (cp < 0x80) {
+                out.push_back(static_cast<char>(cp));
+            } else {
+                out.push_back(static_cast<char>(0xC0 | (cp >> 6)));
+                out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+            }
+            ++i;
+        }
+    }
+    return out;
+}
+
 extern JavaVM* g_jvm;
 extern jclass g_debugLogClass;
 extern jmethodID g_debugLogAddMethod;
@@ -29,7 +76,7 @@ static void uiLog(const char* fmt, ...) {
             if (g_jvm->AttachCurrentThread(&env, nullptr) == JNI_OK) attached = true;
         }
         if (env) {
-            jstring jmsg = env->NewStringUTF(buf);
+            const std::string safe = sanitizeUtf8ForJniLocal(buf);\n            jstring jmsg = env->NewStringUTF(safe.c_str());
             env->CallStaticVoidMethod(g_debugLogClass, g_debugLogAddMethod, jmsg);
             env->DeleteLocalRef(jmsg);
             if (attached) g_jvm->DetachCurrentThread();
