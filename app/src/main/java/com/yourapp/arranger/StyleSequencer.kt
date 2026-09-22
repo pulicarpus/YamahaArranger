@@ -42,7 +42,50 @@ class StyleSequencer(
     // produces the "berantakan/sumbang" (chaotic/dissonant) sound over
     // time. Fix: compute the transpose once at note-on, remember it here,
     // and reuse that exact value for the matching note-off.
-    private val activeTransposedNotes = mutableMapOf<String, Int>()
+    private data class ActiveVoice(
+        val channel: Int,
+        val sourceNote: Int,
+        var soundingNote: Int,
+        val velocity: Float,
+        val policy: com.yourapp.yamahaarranger.style.YamahaCasmPolicy?
+    )
+
+    private val activeVoices = mutableMapOf<String, ActiveVoice>()
+
+    /**
+     * Apply a live chord change to sustaining accompaniment notes.
+     * Yamaha uses CASM RTR to decide whether a note stops, pitch-shifts, or
+     * retriggers. FluidSynth pitch-bend is channel-wide, so for safety we
+     * revoice individual notes rather than bending an entire channel.
+     */
+    fun setCurrentChord(chord: DetectedChord?) {
+        val previous = currentChord
+        currentChord = chord
+        if (chord == null || previous == chord) return
+
+        val snapshot = activeVoices.toList()
+        for ((key, voice) in snapshot) {
+            val rtr = voice.policy?.rtr ?: 3
+            if (rtr == 0) {
+                audioEngine.noteOffChannel(voice.channel, voice.soundingNote)
+                activeVoices.remove(key)
+                continue
+            }
+
+            val newNote = NoteTransposer.transpose(
+                voice.sourceNote,
+                chord,
+                voice.channel,
+                voice.policy
+            )
+            if (newNote == voice.soundingNote) continue
+
+            audioEngine.noteOffChannel(voice.channel, voice.soundingNote)
+            audioEngine.noteOnChannel(voice.channel, newNote, voice.velocity)
+            activeVoices[key] = voice.copy(soundingNote = newNote)
+        }
+        DebugLog.add("🎹 CASM RTR revoice: ${activeVoices.size} active notes")
+    }
 
     fun setVoiceMap(vm: Map<Int, String>) {
         voiceMap = vm
@@ -98,7 +141,7 @@ class StyleSequencer(
         // BUGFIX: must clear alongside allNotesOff(), otherwise stale
         // entries here would make the *next* section's note-offs reuse
         // pitches from a section that's no longer playing.
-        activeTransposedNotes.clear()
+        activeVoices.clear()
         DebugLog.add("⏹ STOP")
     }
 
@@ -246,8 +289,15 @@ class StyleSequencer(
                 } else {
                     sched.event.note
                 }
-                activeTransposedNotes[key] = note
-                audioEngine.noteOnChannel(sched.channel, note, sched.event.velocity / 127f)
+                val velocity01 = sched.event.velocity / 127f
+                activeVoices[key] = ActiveVoice(
+                    channel = sched.channel,
+                    sourceNote = sched.event.note,
+                    soundingNote = note,
+                    velocity = velocity01,
+                    policy = section.parts.firstOrNull { it.channel == sched.channel }?.casmPolicy
+                )
+                audioEngine.noteOnChannel(sched.channel, note, velocity01)
                 noteOnCount++
                 if (loopCount <= 1 && noteOnCount <= 8) {
                     DebugLog.add("  ♪ ch${sched.channel} n=$note v=${sched.event.velocity}")
@@ -259,8 +309,8 @@ class StyleSequencer(
                 // event note only if we somehow never saw the matching
                 // note-on (shouldn't normally happen, but keeps this from
                 // throwing instead of silently degrading).
-                val note = activeTransposedNotes.remove(key) ?: sched.event.note
-                audioEngine.noteOffChannel(sched.channel, note)
+                val voice = activeVoices.remove(key)
+                audioEngine.noteOffChannel(sched.channel, voice?.soundingNote ?: sched.event.note)
             }
         }
         if (loopCount <= 1) DebugLog.add("✅ Loop1: $noteOnCount noteOn")
