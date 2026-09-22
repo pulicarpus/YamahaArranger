@@ -59,7 +59,12 @@ data class StylePartModel(
     /** Actual MIDI setup from the style track. */
     val program: Int = -1,
     val bankMsb: Int = 0,
-    val bankLsb: Int = 0
+    val bankLsb: Int = 0,
+    val volume: Int = -1,
+    val pan: Int = -1,
+    val expression: Int = -1,
+    val reverbSend: Int = -1,
+    val chorusSend: Int = -1
 )
 
 data class StyleSectionModel(
