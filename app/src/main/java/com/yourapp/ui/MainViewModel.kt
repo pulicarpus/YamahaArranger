@@ -50,11 +50,14 @@ data class VoiceSlot(
     val label: String,
     val program: Int,
     val bank: Int = 0,
-    val locked: Boolean = false
+    val locked: Boolean = false,
+    val styleVoiceName: String? = null
 ) {
     fun displayName(): String {
         if (bank == 128) return "DRUM KIT"
-        return GM_VOICES.firstOrNull { it.second == program }?.first ?: "prog$program"
+        return styleVoiceName?.takeIf { it.isNotBlank() }
+            ?: GM_VOICES.firstOrNull { it.second == program }?.first
+            ?: "prog$program"
     }
 
     fun isDrum(): Boolean = bank == 128
@@ -351,9 +354,65 @@ class MainViewModel @Inject constructor(
                 return@launch
             }
             arrangerBrain.loadStyle(parsed)
+
+            // Reflect the actual Yamaha style voice map in the UI.
+            val mainA = parsed.sections["MainA"]
+            val styleVoices = parsed.voiceMap
+            if (mainA != null && styleVoices.isNotEmpty()) {
+                val current = _voiceAssignments.value
+                val updated = current.map { slot ->
+                    val partIndex = mainA.parts.indexOfFirst { it.channel == slot.channel } + 1
+                    val rawName = if (partIndex > 0) styleVoices[partIndex] else null
+                    if (rawName.isNullOrBlank()) slot
+                    else {
+                        val program = guessProgramFromVoiceName(rawName)
+                        slot.copy(
+                            program = if (program >= 0) program else slot.program,
+                            bank = if (isDrumVoiceName(rawName)) 128 else slot.bank,
+                            styleVoiceName = rawName
+                        )
+                    }
+                }
+                _voiceAssignments.value = updated
+                DebugLog.add("🎼 UI voice map applied: ${updated.count { it.styleVoiceName != null }} channels")
+            }
+
             _styleName.value = fileName
             DebugLog.add("✅ Loaded: $fileName")
         }
+    }
+
+    private fun guessProgramFromVoiceName(name: String): Int {
+        val n = name.lowercase()
+        val digits = n.takeLastWhile { it.isDigit() }.toIntOrNull()
+        if (digits != null && digits in 0..127) return digits
+        return when {
+            n.contains("piano") -> 0
+            n.contains("e.piano") || n.contains("electric piano") -> 4
+            n.contains("organ") -> 16
+            n.contains("accordion") -> 21
+            n.contains("guitar") || n.contains("gtr") -> 24
+            n.contains("bass") -> 32
+            n.contains("violin") -> 40
+            n.contains("viola") -> 41
+            n.contains("cello") -> 42
+            n.contains("string") || n.contains("str") -> 48
+            n.contains("choir") -> 52
+            n.contains("trumpet") -> 56
+            n.contains("trombone") -> 57
+            n.contains("brass") -> 61
+            n.contains("sax") -> 65
+            n.contains("oboe") -> 68
+            n.contains("clarinet") -> 71
+            n.contains("flute") -> 73
+            n.contains("drum") || n.contains("kit") || n.startsWith("dr") -> 0
+            else -> -1
+        }
+    }
+
+    private fun isDrumVoiceName(name: String): Boolean {
+        val n = name.lowercase()
+        return n.contains("drum") || n.contains("kit") || n.startsWith("dr")
     }
 
     // SOUNDFONT PICKER
