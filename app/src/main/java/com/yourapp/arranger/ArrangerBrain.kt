@@ -319,8 +319,8 @@ class ArrangerBrain @Inject constructor(
         quantizeToNextBar: Boolean = true
     ) {
         pendingTransitionJob?.cancel()
-        val style = loadedStyle
-        val waitMs = if (quantizeToNextBar && style != null) {
+        val style = loadedStyle ?: return
+        val waitMs = if (quantizeToNextBar) {
             sequencer.millisToNextBar(style.ppq, style.meter.numerator, style.meter.denominator)
         } else 0L
         DebugLog.add(
