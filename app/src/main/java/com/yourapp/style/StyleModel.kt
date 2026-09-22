@@ -28,6 +28,25 @@ data class StyleNoteEvent(
     val channel: Int = 0
 )
 
+/**
+ * MIDI state explicitly written by a Yamaha style at the beginning of a
+ * section. Bank is the 14-bit MIDI bank assembled from CC0/MSB + CC32/LSB.
+ * CC values are retained because Yamaha styles use section-specific volume,
+ * pan, expression and send levels.
+ */
+data class StyleChannelSetup(
+    val channel: Int,
+    val bankMsb: Int? = null,
+    val bankLsb: Int? = null,
+    val program: Int? = null,
+    val cc: Map<Int, Int> = emptyMap()
+) {
+    val bank14: Int?
+        get() = if (bankMsb != null || bankLsb != null)
+            (bankMsb ?: 0) * 128 + (bankLsb ?: 0)
+        else null
+}
+
 data class StylePartModel(
     val name: String,
     val events: List<StyleNoteEvent>,
@@ -38,7 +57,8 @@ data class StylePartModel(
 data class StyleSectionModel(
     val name: String,
     val lengthTicks: Int,
-    val parts: List<StylePartModel>
+    val parts: List<StylePartModel>,
+    val channelSetups: Map<Int, StyleChannelSetup> = emptyMap()
 )
 
 data class ParsedStyle(
