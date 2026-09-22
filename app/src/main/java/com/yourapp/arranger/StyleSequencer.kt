@@ -116,7 +116,8 @@ class StyleSequencer(
 
         // Apply CASM voice per part saat ganti section
         if (lastAppliedSection != section.name) {
-            applyVoicesFromCasm(section)
+            applySectionMidiSetup(section)
+            applyVoicesFromCasmFallback(section)
             lastAppliedSection = section.name
         }
 
@@ -148,92 +149,63 @@ class StyleSequencer(
     fun queueNextSection(section: StyleSectionModel, ppq: Int) = play(section, ppq)
 
     /**
-     * Apply CASM voice per part.
-     * Pakai channel ASLI dari file (tidak remap).
+     * Apply the actual MIDI setup embedded in this Yamaha section.
+     *
+     * This takes precedence over the old voice-name heuristic. Factory
+     * styles can change bank/program/volume/pan/reverb/chorus per section;
+     * ignoring those events makes an otherwise correct SF2 sound like the
+     * wrong instrument.
      */
-    private fun applyVoicesFromCasm(section: StyleSectionModel) {
-        if (voiceMap.isEmpty()) {
-            DebugLog.add("⚠ No voice map available, using SF2 defaults")
-            return
-        }
+    private fun applySectionMidiSetup(section: StyleSectionModel) {
+        if (section.channelSetups.isEmpty()) return
+        DebugLog.add("🎛 Apply MIDI setup for " + section.name)
+        for ((ch, setup) in section.channelSetups) {
+            if (ch in lockedChannels) {
+                DebugLog.add("  · ch$ch: SKIP setup (locked by user)")
+                continue
+            }
 
-        DebugLog.add("🎼 Apply CASM voices for ${section.name}:")
+            val bank = setup.bank14
+            val program = setup.program
+            if (program != null) {
+                audioEngine.setChannelProgram(ch, program, bank ?: 0)
+                DebugLog.add(
+                    "  · ch$ch SELECT bank=" + (bank ?: 0) + " prog=$program"
+                )
+            } else if (bank != null) {
+                DebugLog.add("  · ch$ch bank=$bank (no program change in section)")
+            }
+
+            for ((controller, value) in setup.cc) {
+                audioEngine.controlChange(ch, controller, value)
+            }
+        }
+    }
+
+    /**
+     * Compatibility fallback for styles that do not carry usable section
+     * program-change data. It is deliberately never allowed to overwrite an
+     * explicit section setup.
+     */
+    private fun applyVoicesFromCasmFallback(section: StyleSectionModel) {
+        if (voiceMap.isEmpty()) return
+
         section.parts.forEachIndexed { idx, part ->
             val partNum = idx + 1
             val voiceName = voiceMap[partNum] ?: return@forEachIndexed
-
-            // Ambil channel asli dari file
             val ch = part.events.firstOrNull()?.channel ?: return@forEachIndexed
+            if (ch in lockedChannels) return@forEachIndexed
 
-            // FIX: channel yang di-lock user tidak boleh ditimpa CASM.
-            if (ch in lockedChannels) {
-                DebugLog.add("  · part$partNum ch$ch: SKIP (locked by user)")
-                return@forEachIndexed
-            }
+            // If Yamaha explicitly selected a program for this section, that
+            // selection is authoritative.
+            if (section.channelSetups[ch]?.program != null) return@forEachIndexed
 
             val prog = guessProgramFromVoiceName(voiceName)
-            if (prog < 0) {
-                DebugLog.add("  · part$partNum ch$ch: $voiceName (unknown)")
-                return@forEachIndexed
-            }
-
+            if (prog < 0) return@forEachIndexed
             val bank = if (isDrumVoice(voiceName)) 128 else 0
             audioEngine.setChannelProgram(ch, prog, bank)
-            DebugLog.add("  · part$partNum ch$ch: $voiceName → prog$prog (bank$bank)")
+            DebugLog.add("  · fallback ch$ch: $voiceName → prog$prog bank$bank")
         }
-    }
-
-    /** Extract GM program dari nama voice CASM.
-     *
-     * KNOWN LIMITATION (not fixed here — separate from the note-off bug):
-     * the trailing-digit shortcut below assumes a voice name's trailing
-     * number IS a GM program number. In real CASM data that number is
-     * usually Yamaha's own internal voice ID, which does not line up with
-     * GM program numbers except by coincidence. This can pick the wrong
-     * *timbre* (e.g. wrong kind of bass/guitar), but does not affect
-     * pitch/timing the way the note-off bug did. Worth revisiting once
-     * you're chasing "wrong instrument sound" rather than "wrong pitch".
-     */
-    private fun guessProgramFromVoiceName(name: String): Int {
-        val n = name.lowercase()
-
-        // 1) Coba extract digit di akhir (misal "bass33" → 33)
-        val trailingDigits = n.takeLastWhile { it.isDigit() }
-        if (trailingDigits.isNotEmpty()) {
-            val num = trailingDigits.toIntOrNull()
-            if (num != null && num in 0..127) return num
-        }
-
-        // 2) Keyword-based fallback
-        return when {
-            n.contains("piano") -> 0
-            n.contains("e.piano") || n.contains("ep") -> 4
-            n.contains("organ") -> 16
-            n.contains("accordion") -> 21
-            n.contains("guitar") || n.contains("gtr") -> 24
-            n.contains("bass") -> 33
-            n.contains("violin") -> 40
-            n.contains("cello") -> 42
-            n.contains("strg") || n.contains("str") -> 48
-            n.contains("choir") -> 52
-            n.contains("trumpet") -> 56
-            n.contains("trombone") -> 57
-            n.contains("brass") -> 61
-            n.contains("sax") -> 65
-            n.contains("oboe") -> 68
-            n.contains("clarinet") -> 71
-            n.contains("flute") -> 73
-            n.contains("dr") || n.contains("kit") || n.contains("drum") -> 0
-            else -> -1
-        }
-    }
-
-    private fun isDrumVoice(name: String): Boolean {
-        val n = name.lowercase()
-        return n.contains("add-dr") ||
-               n.contains("drum") ||
-               n.contains("kit") ||
-               n.startsWith("dr")
     }
 
     private suspend fun playOnce(section: StyleSectionModel, ppq: Int) {
