@@ -77,7 +77,8 @@ static void uiLog(const char* fmt, ...) {
             if (g_jvm->AttachCurrentThread(&env, nullptr) == JNI_OK) attached = true;
         }
         if (env) {
-            const std::string safe = sanitizeUtf8ForJniLocal(buf);\n            jstring jmsg = env->NewStringUTF(safe.c_str());
+            const std::string safe = sanitizeUtf8ForJniLocal(buf);
+            jstring jmsg = env->NewStringUTF(safe.c_str());
             env->CallStaticVoidMethod(g_debugLogClass, g_debugLogAddMethod, jmsg);
             env->DeleteLocalRef(jmsg);
             if (attached) g_jvm->DetachCurrentThread();
