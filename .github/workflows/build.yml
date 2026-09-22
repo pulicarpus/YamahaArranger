@@ -5,7 +5,7 @@ on:
   # This will be restored to manual-only after the verification build.
   push:
     branches:
-      - stage1/casm-policy-selection
+      - fix/style-midi-expression-parity-build443
   workflow_dispatch: {}
 
 jobs:
