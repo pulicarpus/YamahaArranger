@@ -389,13 +389,41 @@ std::string BassMidiPlayer::presetList() const {
     if (!melodyFont_) return {};
 
     BASS_MIDI_FONTINFO info{};
-    if (!BASS_MIDI_FontGetInfo(melodyFont_, &info) || info.presets == 0) {
-        return {};
+    const bool infoOk = BASS_MIDI_FontGetInfo(melodyFont_, &info);
+    LOGI("BASSMIDI preset scan: infoOk=%d presets=%u name=%s",
+         infoOk ? 1 : 0,
+         infoOk ? static_cast<unsigned>(info.presets) : 0u,
+         (infoOk && info.name) ? info.name : "");
+
+    std::vector<DWORD> presets;
+    if (infoOk && info.presets > 0) {
+        presets.resize(info.presets);
+        if (!BASS_MIDI_FontGetPresets(melodyFont_, presets.data())) {
+            LOGE("BASS_MIDI_FontGetPresets failed error=%d", BASS_ErrorGetCode());
+            presets.clear();
+        }
     }
 
-    std::vector<DWORD> presets(info.presets);
-    if (!BASS_MIDI_FontGetPresets(melodyFont_, presets.data())) {
-        return {};
+    // Normal SF2 files expose their preset count through FONTINFO. Some
+    // Yamaha/custom SF2s used by arrangers can nevertheless report 0 while
+    // FontGetPreset can still resolve the actual preset metadata. Do not let
+    // that make the Voice browser empty. Fall back to the legal SF2
+    // program/bank range and keep only entries that actually exist.
+    if (presets.empty()) {
+        LOGI("BASSMIDI preset scan: using FontGetPreset fallback scan");
+        presets.reserve(256);
+        for (int bank = 0; bank <= 128; ++bank) {
+            for (int program = 0; program < 128; ++program) {
+                const char* name = BASS_MIDI_FontGetPreset(
+                    melodyFont_, program, bank);
+                if (name) {
+                    presets.push_back(
+                        static_cast<DWORD>((bank << 16) | (program & 0xffff)));
+                }
+            }
+        }
+        LOGI("BASSMIDI preset fallback found %u entries",
+             static_cast<unsigned>(presets.size()));
     }
 
     std::ostringstream out;
