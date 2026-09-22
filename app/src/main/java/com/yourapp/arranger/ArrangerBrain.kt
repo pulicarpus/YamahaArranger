@@ -280,7 +280,7 @@ class ArrangerBrain @Inject constructor(
         val fill = fillForTransition(previous, target)
         if (_state.value.autoFill && previousWasMain && previous != target && fill != null && sectionExists(fill)) {
             DebugLog.add("🎼 Main→Main: queue fill $fill then $target at next bar")
-            scheduleSectionChange(fill, thenPlay = target, quantizeToNextBar = false)
+            scheduleSectionChange(fill, thenPlay = target, quantizeToNextBar = true)
         } else {
             scheduleSectionChange(target)
         }
