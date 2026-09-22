@@ -10,7 +10,8 @@ jobs:
     env:
       ANDROID_HOME: /usr/local/lib/android/sdk
       ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
-      BASS_URL: https://www.un4seen.com/stuff/bass-android.zip
+      BASS_ANDROID_URL: https://www.un4seen.com/stuff/bass-android.zip
+      BASS_HEADER_URL: https://www.un4seen.com/stuff/bass.zip
       BASSMIDI_URL: https://www.un4seen.com/stuff/bassmidi24-android.zip
     steps:
       - name: Checkout Repository
@@ -32,17 +33,22 @@ jobs:
       - name: Download BASS/BASSMIDI Android SDKs
         run: |
           set -e
-          mkdir -p /tmp/bass /tmp/bassmidi
-          curl -fL "$BASS_URL" -o /tmp/bass.zip
+          mkdir -p /tmp/bass /tmp/bassheader /tmp/bassmidi
+          curl -fL "$BASS_ANDROID_URL" -o /tmp/bass-android.zip
+          curl -fL "$BASS_HEADER_URL" -o /tmp/bass-header.zip
           curl -fL "$BASSMIDI_URL" -o /tmp/bassmidi.zip
-          unzip -q /tmp/bass.zip -d /tmp/bass
+          unzip -q /tmp/bass-android.zip -d /tmp/bass
+          unzip -q /tmp/bass-header.zip -d /tmp/bassheader
           unzip -q /tmp/bassmidi.zip -d /tmp/bassmidi
           mkdir -p app/src/main/cpp/basssdk
-          cp /tmp/bass/C/bass.h app/src/main/cpp/basssdk/bass.h
-          cp /tmp/bassmidi/C/bassmidi.h app/src/main/cpp/basssdk/bassmidi.h
+          BASS_H="$(find /tmp/bassheader -type f -iname 'bass.h' | head -1)"
+          BASSMIDI_H="$(find /tmp/bassmidi -type f -iname 'bassmidi.h' | head -1)"
+          test -n "$BASS_H" && test -n "$BASSMIDI_H"
+          cp "$BASS_H" app/src/main/cpp/basssdk/bass.h
+          cp "$BASSMIDI_H" app/src/main/cpp/basssdk/bassmidi.h
           for abi in arm64-v8a armeabi-v7a; do
             mkdir -p "app/src/main/jniLibs/$abi"
-            cp "/tmp/bass/libs/$abi/libbass.so" "app/src/main/jniLibs/$abi/libbass.so"
+            cp "/tmp/bass/$abi/libbass.so" "app/src/main/jniLibs/$abi/libbass.so"
             cp "/tmp/bassmidi/libs/$abi/libbassmidi.so" "app/src/main/jniLibs/$abi/libbassmidi.so"
           done
           test -s app/src/main/cpp/basssdk/bass.h
