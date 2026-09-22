@@ -4,6 +4,10 @@ import android.Manifest
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Build
+import android.os.Environment
+import android.provider.Settings
+import android.content.Intent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -30,6 +34,15 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission()
     ) { granted -> if (!granted) Timber.w("Audio permission denied") }
 
+    private val requestAllFilesAccess = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager()) {
+            Timber.i("YamahaArranger storage access granted")
+        } else {
+            Timber.w("YamahaArranger storage access not granted")
+        }
+    }
     private val pickStyleFile = registerForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri -> uri?.let(viewModel::onStyleFilePicked) }
@@ -46,6 +59,15 @@ class MainActivity : ComponentActivity() {
             != PackageManager.PERMISSION_GRANTED
         ) {
             requestAudioPermission.launch(Manifest.permission.RECORD_AUDIO)
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
+            Timber.i("Opening Android All files access for /storage/emulated/0/YamahaArranger")
+            requestAllFilesAccess.launch(
+                Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                    data = android.net.Uri.parse("package:" + packageName)
+                }
+            )
         }
 
         setContent {
