@@ -127,6 +127,12 @@ Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetChannelPreset(
     if (g_engine) g_engine->sfSetChannelPreset(channel, bank, program);
 }
 
+extern "C" JNIEXPORT void JNICALL
+Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeControlChange(
+    JNIEnv*, jobject, jint channel, jint controller, jint value) {
+    if (g_engine) g_engine->sfControlChange(channel, controller, value);
+}
+
 // ═════════════════════════════════════════════════════
 // STYLE PARSER
 // ═════════════════════════════════════════════════════
