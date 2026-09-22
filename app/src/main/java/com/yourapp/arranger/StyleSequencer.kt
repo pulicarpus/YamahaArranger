@@ -16,7 +16,7 @@ class StyleSequencer(
 ) {
     private var playbackJob: Job? = null
     var tempoBpm: Int = 120
-    var currentChord: DetectedChord? = null
+    private var currentChordState: DetectedChord? = null
     private var loopCount = 0
 
     private var voiceMap: Map<Int, String> = emptyMap()
@@ -59,8 +59,8 @@ class StyleSequencer(
      * revoice individual notes rather than bending an entire channel.
      */
     fun setCurrentChord(chord: DetectedChord?) {
-        val previous = currentChord
-        currentChord = chord
+        val previous = currentChordState
+        currentChordState = chord
         if (chord == null || previous == chord) return
 
         val snapshot = activeVoices.toList()
@@ -282,7 +282,7 @@ class StyleSequencer(
             if (sched.event.isNoteOn) {
                 // Compute the transpose ONCE, here, and remember it.
                 val note = if (sched.transpose) {
-                    currentChord?.let { chord ->
+                    currentChordState?.let { chord ->
                         val partPolicy = section.parts.firstOrNull { it.channel == sched.channel }?.casmPolicy
                         NoteTransposer.transpose(sched.event.note, chord, sched.channel, partPolicy)
                     } ?: sched.event.note
