@@ -96,10 +96,52 @@ class StyleRepository @Inject constructor(
                 }
                 StylePartModel(name, events, channel, policy)
             }
+            val setupChannels = parts.map { it.channel }.distinct()
+            val channelSetups = setupChannels.associateWith { ch ->
+                val flat = bridge.nativeGetSectionChannelSetup(sectionName, ch)
+                var bankMsb: Int? = null
+                var bankLsb: Int? = null
+                var program: Int? = null
+                val cc = mutableMapOf<Int, Int>()
+                var i = 0
+                while (i + 2 < flat.size) {
+                    val status = flat[i]
+                    val d1 = flat[i + 1]
+                    val d2 = flat[i + 2]
+                    when (status and 0xF0) {
+                        0xB0 -> {
+                            when (d1) {
+                                0 -> bankMsb = d2
+                                32 -> bankLsb = d2
+                                else -> cc[d1] = d2
+                            }
+                        }
+                        0xC0 -> program = d1
+                    }
+                    i += 3
+                }
+                StyleChannelSetup(
+                    channel = ch,
+                    bankMsb = bankMsb,
+                    bankLsb = bankLsb,
+                    program = program,
+                    cc = cc
+                ).also {
+                    if (bankMsb != null || bankLsb != null || program != null || cc.isNotEmpty()) {
+                        DebugLog.add(
+                            "  🎛 SETUP " + sectionName + " ch" + ch +
+                                " bank=" + (it.bankMsb ?: "-") + ":" + (it.bankLsb ?: "-") +
+                                " prog=" + (it.program ?: "-") + " cc=" + it.cc
+                        )
+                    }
+                }
+            }
+
             StyleSectionModel(
                 name = sectionName,
                 lengthTicks = bridge.nativeGetSectionLengthTicks(sectionName),
-                parts = parts
+                parts = parts,
+                channelSetups = channelSetups
             )
         }
 
