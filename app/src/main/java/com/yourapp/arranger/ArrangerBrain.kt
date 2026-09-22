@@ -326,7 +326,33 @@ class ArrangerBrain @Inject constructor(
             if (waitMs > 0) delay(waitMs)
             if (!_state.value.isPlaying) return@launch
             pendingTransitionJob = null
-            playSection(section, thenPlay, thenStop)
+
+            if (thenPlay != null) {
+                val firstModel = style.sections[section.styleName]
+                val targetModel = style.sections[thenPlay.styleName]
+                if (firstModel != null && targetModel != null) {
+                    // Auto Fill is one musical sequence on one clock:
+                    // current Main continues to the next bar boundary,
+                    // Fill starts on that exact tick, then target Main starts
+                    // immediately after the Fill. No playback job is cancelled.
+                    DebugLog.add(
+                        "🎼 MASTER TRANSITION " + section.styleName + " → " + thenPlay.styleName + " (same clock)"
+                    )
+                    sequencer.queueSeamlessTransition(
+                        listOf(firstModel to 1, targetModel to -1),
+                        style.ppq,
+                        style.meter.numerator,
+                        style.meter.denominator
+                    )
+                    activeSection = thenPlay
+                } else {
+                    DebugLog.add(
+                        "⚠ Transition section missing: " + section.styleName + " / " + thenPlay.styleName
+                    )
+                }
+            } else {
+                playSection(section, null, thenStop)
+            }
         }
     }
     fun setAutoFill(enabled: Boolean) {
