@@ -208,6 +208,44 @@ class StyleSequencer(
         }
     }
 
+    private fun guessProgramFromVoiceName(name: String): Int {
+        val n = name.lowercase()
+        val trailingDigits = n.takeLastWhile { it.isDigit() }
+        if (trailingDigits.isNotEmpty()) {
+            val num = trailingDigits.toIntOrNull()
+            if (num != null && num in 0..127) return num
+        }
+        return when {
+            n.contains("piano") -> 0
+            n.contains("e.piano") || n.contains("ep") -> 4
+            n.contains("organ") -> 16
+            n.contains("accordion") -> 21
+            n.contains("guitar") || n.contains("gtr") -> 24
+            n.contains("bass") -> 33
+            n.contains("violin") -> 40
+            n.contains("cello") -> 42
+            n.contains("strg") || n.contains("str") -> 48
+            n.contains("choir") -> 52
+            n.contains("trumpet") -> 56
+            n.contains("trombone") -> 57
+            n.contains("brass") -> 61
+            n.contains("sax") -> 65
+            n.contains("oboe") -> 68
+            n.contains("clarinet") -> 71
+            n.contains("flute") -> 73
+            n.contains("dr") || n.contains("kit") || n.contains("drum") -> 0
+            else -> -1
+        }
+    }
+
+    private fun isDrumVoice(name: String): Boolean {
+        val n = name.lowercase()
+        return n.contains("add-dr") ||
+            n.contains("drum") ||
+            n.contains("kit") ||
+            n.startsWith("dr")
+    }
+
     private suspend fun playOnce(section: StyleSectionModel, ppq: Int) {
         loopCount++
         if (section.lengthTicks <= 0) {
