@@ -181,6 +181,10 @@ void AudioEngine::sfSetChannelPreset(int channel, int bank, int program) {
     soundFont_.setChannelPreset(channel, bank, program);
 }
 
+void AudioEngine::sfControlChange(int channel, int controller, int value) {
+    soundFont_.controlChange(channel, controller, value);
+}
+
 void AudioEngine::noteOn(int midiNote, int rootNote, float velocity01,
                           const float* sampleData, size_t sampleFrames, int sampleRateHz) {
     std::lock_guard<std::mutex> lock(voiceMutex_);
