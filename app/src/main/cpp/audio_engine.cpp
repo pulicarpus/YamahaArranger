@@ -126,6 +126,11 @@ oboe::DataCallbackResult AudioEngine::onAudioReady(oboe::AudioStream* stream, vo
     std::memset(out, 0, sizeof(float) * stereoFrames);
     if (soundFont_.isLoaded()) {
         soundFont_.render(out, numFrames);
+        if (logNow) {
+            float rawPeak = 0.0f;
+            for (int i = 0; i < stereoFrames; ++i) rawPeak = std::max(rawPeak, std::fabs(out[i]));
+            LOGI("BASSMIDI raw PCM before output DSP: frames=%d peak=%.6f notes=%d voices=%d", numFrames, rawPeak, soundFont_.activeNotes(0), soundFont_.activeVoices(0));
+        }
         for (int i = 0; i < stereoFrames; ++i) {
             float x = out[i] * 0.7f;
             if (x > 0.95f) x = 0.95f + (x - 0.95f) * 0.05f;
@@ -154,7 +159,10 @@ oboe::DataCallbackResult AudioEngine::onAudioReady(oboe::AudioStream* stream, vo
     return oboe::DataCallbackResult::Continue;
 }
 
-void AudioEngine::sfNoteOnChannel(int channel, int midiNote, float velocity01) { soundFont_.noteOn(channel, midiNote, velocity01); }
+void AudioEngine::sfNoteOnChannel(int channel, int midiNote, float velocity01) {
+    soundFont_.noteOn(channel, midiNote, velocity01);
+    LOGI("BASSMIDI state after NOTE_ON ch=%d note=%d notes=%d voices=%d", channel, midiNote, soundFont_.activeNotes(channel), soundFont_.activeVoices(channel));
+}
 void AudioEngine::sfNoteOffChannel(int channel, int midiNote) { soundFont_.noteOff(channel, midiNote); }
 void AudioEngine::sfSetChannelPreset(int channel, int bank, int program) { soundFont_.setChannelPreset(channel, bank, program); }
 void AudioEngine::sfSetChannelMixer(int channel, int volume, int pan, int expression, int reverbSend, int chorusSend) { soundFont_.setChannelMixer(channel, volume, pan, expression, reverbSend, chorusSend); }
@@ -177,3 +185,5 @@ void AudioEngine::allNotesOff() {
     for (auto& v : voices_) v.release();
     soundFont_.allNotesOff();
 }
+int AudioEngine::sfActiveNotes(int channel) const { return soundFont_.activeNotes(channel); }
+int AudioEngine::sfActiveVoices(int channel) const { return soundFont_.activeVoices(channel); }
