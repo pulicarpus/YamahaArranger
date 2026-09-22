@@ -132,7 +132,13 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         val onComplete: (() -> Unit)?
     )
 
+    private data class PendingTransition(
+        val sections: List<PendingSection>,
+        val startTick: Long
+    )
+
     @Volatile private var pendingSection: PendingSection? = null
+    @Volatile private var pendingTransition: PendingTransition? = null
     @Volatile private var masterClockStartedAtNanos: Long = 0L
     @Volatile private var masterTimelineTick: Long = 0L
 
@@ -143,6 +149,57 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
      * the current playback coroutine. The same musical clock therefore spans
      * Main -> Fill -> Main without an all-notes-off or clock reset.
      */
+    /**
+     * Queue a musical transition without stopping the current section.
+     *
+     * The transition starts on the next bar of the SAME master clock.
+     * The current Main is allowed to finish exactly at that bar boundary,
+     * then Fill and the target Main are consumed consecutively.
+     */
+    fun queueSeamlessTransition(
+        sections: List<Pair<StyleSectionModel, Int>>,
+        ppq: Int,
+        numerator: Int,
+        denominator: Int
+    ) {
+        if (sections.isEmpty()) return
+        if (playbackJob?.isActive != true) {
+            val first = sections.first()
+            startPlayback(first.first, ppq, first.second, null, seamless = true)
+            if (sections.size > 1) {
+                pendingTransition = PendingTransition(
+                    sections.drop(1).map { PendingSection(it.first, ppq, it.second, null) },
+                    startTick = first.first.lengthTicks.toLong().coerceAtLeast(0L)
+                )
+            }
+            return
+        }
+
+        val currentTick = currentMasterTick(ppq)
+        val ticksPerBeat = (ppq * 4.0 / denominator.coerceAtLeast(1)).toLong().coerceAtLeast(1L)
+        val ticksPerBar = (numerator.coerceAtLeast(1) * ticksPerBeat).coerceAtLeast(1L)
+        val nextBarTick = ((currentTick / ticksPerBar) + 1L) * ticksPerBar
+
+        val queue = sections.map { PendingSection(it.first, ppq, it.second, null) }
+        pendingTransition = PendingTransition(queue, nextBarTick)
+        pendingSection = null
+
+        com.yourapp.yamahaarranger.ui.DebugLog.add(
+            "🎼 TRANSITION QUEUED: " +
+                queue.joinToString(" → ") { it.section.name } +
+                " at masterTick=$nextBarTick currentTick=$currentTick barTicks=$ticksPerBar"
+        )
+    }
+
+    private fun currentMasterTick(ppq: Int): Long {
+        val anchor = masterClockStartedAtNanos
+        if (anchor == 0L || ppq <= 0) return masterTimelineTick
+        val nanosPerTick =
+            60_000_000_000.0 /
+                (tempoBpm.coerceIn(20, 280).toDouble() * ppq.toDouble())
+        return ((System.nanoTime() - anchor) / nanosPerTick).toLong().coerceAtLeast(masterTimelineTick)
+    }
+
     fun playSeamless(section: StyleSectionModel, ppq: Int, loopLimit: Int = -1, onComplete: (() -> Unit)? = null) {
         if (playbackJob?.isActive == true) {
             pendingSection = PendingSection(section, ppq, loopLimit, onComplete)
@@ -163,6 +220,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     ) {
         if (!seamless) clearStringTrace()
         pendingSection = null
+        pendingTransition = null
         masterClockStartedAtNanos = System.nanoTime()
         masterTimelineTick = 0L
         barClockStartedAtNanos = masterClockStartedAtNanos
@@ -182,13 +240,41 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             var active = PendingSection(section, ppq, loopLimit, onComplete)
             var remainingLoops = loopLimit
             while (true) {
-                playOnce(active.section, active.ppq, masterTimelineTick)
-                masterTimelineTick += active.section.lengthTicks.coerceAtLeast(0).toLong()
+                val result = playOnce(active.section, active.ppq, masterTimelineTick)
+                masterTimelineTick = result.endTick
                 barClockStartedAtNanos = masterClockStartedAtNanos
 
+                if (result.interruptedByTransition) {
+                    val transition = pendingTransition
+                    pendingTransition = null
+                    if (transition != null) {
+                        active = transition.sections.first()
+                        remainingLoops = active.loopLimit
+                        // The transition start is an absolute tick. Every section
+                        // in the sequence is placed immediately after the previous
+                        // one; no clock reset and no global note-off.
+                        val rest = transition.sections.drop(1)
+                        if (rest.isNotEmpty()) {
+                            pendingSection = rest.first()
+                            if (rest.size > 1) {
+                                pendingTransition = PendingTransition(rest.drop(1), 0L)
+                            }
+                        }
+                        loopCount = 0
+                        if (lastAppliedSection != active.section.name) {
+                            applyVoicesFromCasm(active.section)
+                            lastAppliedSection = active.section.name
+                        }
+                        com.yourapp.yamahaarranger.ui.DebugLog.add(
+                            "🎼 MASTER CLOCK → " + active.section.name + " at tick=" + masterTimelineTick
+                        )
+                        continue
+                    }
+                }
+
+                masterTimelineTick += active.section.lengthTicks.coerceAtLeast(0).toLong()
                 if (remainingLoops > 0) remainingLoops--
 
-                // Completion may enqueue the next section before we inspect the queue.
                 if (remainingLoops == 0) active.onComplete?.invoke()
 
                 val queued = pendingSection
@@ -221,6 +307,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
 
     fun stop(){
         pendingSection = null
+        pendingTransition = null
         playbackJob?.cancel()
         playbackJob=null
         masterClockStartedAtNanos=0L
@@ -501,9 +588,14 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     private fun isUnsupportedArticulation(policy:CasmPolicyModel?):Boolean =
         policy?.voiceName?.lowercase()?.contains("strumfx") == true
 
-    private suspend fun playOnce(section:StyleSectionModel,ppq:Int,startAbsoluteTick:Long){
+    private data class PlayOnceResult(
+        val endTick: Long,
+        val interruptedByTransition: Boolean
+    )
+
+    private suspend fun playOnce(section:StyleSectionModel,ppq:Int,startAbsoluteTick:Long): PlayOnceResult {
         loopCount++
-        if(section.lengthTicks<=0) return
+        if(section.lengthTicks<=0) return PlayOnceResult(startAbsoluteTick, false)
 
         data class Scheduled(
             val tick:Int,
@@ -514,13 +606,23 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         val merged=section.parts
             .flatMap{part->part.events.filter(::isNoteEvent).map{e->Scheduled(e.tick,e,part)}}
             .sortedWith(compareBy<Scheduled>{it.tick}.thenBy{it.event.isNoteOn.not()})
-        if(merged.isEmpty()) return
+        if(merged.isEmpty()) return PlayOnceResult(startAbsoluteTick + section.lengthTicks.coerceAtLeast(0).toLong(), false)
 
         val timelineStartNanos=masterClockStartedAtNanos
         val nanosPerTick=60_000_000_000.0/(tempoBpm.coerceIn(20,280).toDouble()*ppq.coerceAtLeast(1).toDouble())
 
+        var interruptedByTransition = false
+        var lastProcessedTick = startAbsoluteTick
+
         for(s in merged){
             val absoluteTick=startAbsoluteTick+s.tick.toLong()
+            val transition = pendingTransition
+            if (transition != null && transition.startTick > 0L && absoluteTick >= transition.startTick) {
+                interruptedByTransition = true
+                lastProcessedTick = transition.startTick
+                break
+            }
+            lastProcessedTick = absoluteTick
             val targetNanos=timelineStartNanos+(absoluteTick*nanosPerTick).toLong()
             val waitNanos=targetNanos-System.nanoTime()
             if(waitNanos>0L){
@@ -585,5 +687,13 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             midiInputManager.sendNoteOn(destinationChannel,note,velocity)
         }
     }
+        val naturalEnd = startAbsoluteTick + section.lengthTicks.coerceAtLeast(0).toLong()
+        return if (interruptedByTransition) {
+            PlayOnceResult(lastProcessedTick, true)
+        } else {
+            PlayOnceResult(naturalEnd, false)
+        }
+    }
+
     private fun ticksToMillis(ticks:Int,ppq:Int,bpm:Int):Long=if(ppq<=0||bpm<=0)0 else((ticks*(60000.0/bpm))/ppq).toLong().coerceAtLeast(0)
 }
