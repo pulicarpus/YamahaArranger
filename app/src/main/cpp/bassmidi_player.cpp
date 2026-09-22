@@ -1,6 +1,8 @@
 #include "bassmidi_player.h"
 #include <android/log.h>
 #include <algorithm>
+#include <fstream>
+#include <unordered_set>
 #include <cmath>
 #include <sstream>
 #include <vector>
@@ -208,6 +210,8 @@ bool BassMidiPlayer::loadRole(const std::string& path, bool drum) {
         }
     }
 
+    if (!drum) melodyPath_ = path;
+
     LOGI("BASSMIDI %s SF2 loaded: %s",
          drum ? "DRUM" : "MELODY", path.c_str());
     return true;
@@ -386,8 +390,89 @@ void BassMidiPlayer::setMasterGain(float gain) {
 
 std::string BassMidiPlayer::presetList() const {
     std::lock_guard<std::mutex> lock(mutex_);
+
+    // BASSMIDI can report FONTINFO.presets=0 for some large/legacy Yamaha
+    // SF2s even though the RIFF SoundFont contains a valid pdta/phdr table.
+    // The Voice Browser must not depend on BASSMIDI's optional enumeration
+    // metadata. Read the SF2 preset headers directly from the loaded file.
+    struct Preset {
+        int bank = 0;
+        int program = 0;
+        std::string name;
+    };
+    std::vector<Preset> found;
+
+    if (!melodyPath_.empty()) {
+        std::ifstream file(melodyPath_, std::ios::binary);
+        if (file) {
+            std::vector<unsigned char> data(
+                (std::istreambuf_iterator<char>(file)),
+                std::istreambuf_iterator<char>());
+
+            // SF2 is RIFF/LIST based. Locate the pdta/phdr chunk. Each
+            // preset header is 38 bytes and the final record is the terminal
+            // EOP marker, which is not a selectable preset.
+            const char phdr[] = {'p','h','d','r'};
+            for (size_t i = 0; i + 8 <= data.size(); ++i) {
+                if (std::memcmp(data.data() + i, phdr, 4) != 0) continue;
+                const uint32_t size =
+                    static_cast<uint32_t>(data[i + 4]) |
+                    (static_cast<uint32_t>(data[i + 5]) << 8) |
+                    (static_cast<uint32_t>(data[i + 6]) << 16) |
+                    (static_cast<uint32_t>(data[i + 7]) << 24);
+                if (size < 38 || size % 38 != 0 || i + 8 + size > data.size())
+                    continue;
+
+                const size_t count = size / 38;
+                for (size_t n = 0; n + 1 < count; ++n) {
+                    const unsigned char* rec = data.data() + i + 8 + n * 38;
+                    size_t nameLen = 0;
+                    while (nameLen < 20 && rec[nameLen] != 0) ++nameLen;
+                    std::string name(
+                        reinterpret_cast<const char*>(rec), nameLen);
+                    const int program = static_cast<int>(rec[20]) |
+                        (static_cast<int>(rec[21]) << 8);
+                    const int bank = static_cast<int>(rec[22]) |
+                        (static_cast<int>(rec[23]) << 8);
+
+                    // Ignore malformed/empty headers, but retain program 0
+                    // because it is a legitimate piano/GM preset.
+                    if (name.empty()) name = "Preset " +
+                        std::to_string(bank) + ":" + std::to_string(program);
+
+                    found.push_back({bank, program, name});
+                }
+                if (!found.empty()) break;
+            }
+        }
+    }
+
+    if (!found.empty()) {
+        std::sort(found.begin(), found.end(),
+                  [](const Preset& a, const Preset& b) {
+                      if (a.bank != b.bank) return a.bank < b.bank;
+                      if (a.program != b.program) return a.program < b.program;
+                      return a.name < b.name;
+                  });
+
+        std::unordered_set<std::string> seen;
+        std::ostringstream out;
+        for (const auto& p : found) {
+            const std::string key = std::to_string(p.bank) + ":" +
+                                    std::to_string(p.program);
+            if (!seen.insert(key).second) continue;
+            if (out.tellp() > 0) out << ';';
+            out << p.bank << ':' << p.program << ':' << p.name;
+        }
+        LOGI("SF2 phdr preset scan found %u entries from %s",
+             static_cast<unsigned>(seen.size()), melodyPath_.c_str());
+        return out.str();
+    }
+
     if (!melodyFont_) return {};
 
+    // Last-resort BASSMIDI enumeration for SF2/SFZ formats where direct
+    // SoundFont headers are unavailable.
     BASS_MIDI_FONTINFO info{};
     const bool infoOk = BASS_MIDI_FontGetInfo(melodyFont_, &info);
     LOGI("BASSMIDI preset scan: infoOk=%d presets=%u name=%s",
@@ -403,12 +488,6 @@ std::string BassMidiPlayer::presetList() const {
             presets.clear();
         }
     }
-
-    // Normal SF2 files expose their preset count through FONTINFO. Some
-    // Yamaha/custom SF2s used by arrangers can nevertheless report 0 while
-    // FontGetPreset can still resolve the actual preset metadata. Do not let
-    // that make the Voice browser empty. Fall back to the legal SF2
-    // program/bank range and keep only entries that actually exist.
     if (presets.empty()) {
         LOGI("BASSMIDI preset scan: using FontGetPreset fallback scan");
         presets.reserve(256);
@@ -430,8 +509,7 @@ std::string BassMidiPlayer::presetList() const {
     for (DWORD p : presets) {
         const int program = static_cast<int>(LOWORD(p));
         const int bank = static_cast<int>(HIWORD(p));
-        const char* name = BASS_MIDI_FontGetPreset(
-            melodyFont_, program, bank);
+        const char* name = BASS_MIDI_FontGetPreset(melodyFont_, program, bank);
         if (!name) name = "";
         if (out.tellp() > 0) out << ';';
         out << bank << ':' << program << ':' << name;
