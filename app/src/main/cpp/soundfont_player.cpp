@@ -5,6 +5,7 @@
 #include <cstdarg>
 #include <cstdio>
 #include <cctype>
+#include <cstring>
 #include <jni.h>
 #include <atomic>
 #include <chrono>
