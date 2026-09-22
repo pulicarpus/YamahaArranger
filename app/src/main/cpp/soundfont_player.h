@@ -19,6 +19,7 @@ public:
     void allNotesOff();
 
     void setChannelPreset(int channel, int bank, int program);
+    void controlChange(int channel, int controller, int value);
     int presetCount() const;
 
 private:
