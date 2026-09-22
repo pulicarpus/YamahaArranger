@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - stage1/casm-policy-selection
+      - integration/stage1-section-timeline
   workflow_dispatch: {}
 
 jobs:
