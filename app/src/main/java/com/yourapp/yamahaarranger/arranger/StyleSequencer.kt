@@ -272,7 +272,6 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                     }
                 }
 
-                masterTimelineTick += active.section.lengthTicks.coerceAtLeast(0).toLong()
                 if (remainingLoops > 0) remainingLoops--
 
                 if (remainingLoops == 0) active.onComplete?.invoke()
