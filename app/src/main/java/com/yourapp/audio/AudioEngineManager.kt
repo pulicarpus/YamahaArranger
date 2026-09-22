@@ -174,10 +174,29 @@ class AudioEngineManager @Inject constructor(
                 withAudioStreamPausedUnsafe { bridge.nativeGetSoundFontPresets() }
             }
         }
+        // Native contract is one preset per line:
+        // ROLE|BANK|PROGRAM|NAME
+        // Keep a legacy parser too so older native builds cannot silently
+        // make the Voice Browser fall back to the GM list.
         return raw.lineSequence()
-            .mapNotNull { line ->
-                val p = line.split('|', limit = 4)
-                if (p.size == 4) p[1].toIntOrNull()?.let { bank -> p[2].toIntOrNull()?.let { program -> SfPreset(p[0], bank, program, p[3]) } } else null
+            .flatMap { line ->
+                if (line.contains('|')) sequenceOf(line)
+                else line.split(';').asSequence()
+            }
+            .mapNotNull { entry ->
+                val p = entry.split('|', limit = 4)
+                if (p.size == 4) {
+                    val bank = p[1].toIntOrNull()
+                    val program = p[2].toIntOrNull()
+                    if (bank != null && program != null) SfPreset(p[0], bank, program, p[3]) else null
+                } else {
+                    val legacy = entry.split(':', limit = 3)
+                    if (legacy.size == 3) {
+                        val bank = legacy[0].toIntOrNull()
+                        val program = legacy[1].toIntOrNull()
+                        if (bank != null && program != null) SfPreset("MELODY", bank, program, legacy[2]) else null
+                    } else null
+                }
             }
             .toList()
     }
