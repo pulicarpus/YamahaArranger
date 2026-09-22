@@ -190,11 +190,12 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
         catch (e: Exception) { DebugLog.traceError("MIDI NOTE_OFF failed ch=$ch note=$n: ${e.message}"); Timber.w(e, "sendNoteOff failed") }
     }
 
-    fun sendProgramChange(channel: Int, program: Int, bank: Int = 0) {
+    fun sendProgramChange(channel: Int, program: Int, bankMsb: Int = 0, bankLsb: Int = 0) {
         val port = inputPort ?: return
         val ch = channel.coerceIn(0, 15)
         try {
-            port.send(byteArrayOf((0xB0 or ch).toByte(), 0, bank.coerceIn(0, 127).toByte()), 0, 3)
+            port.send(byteArrayOf((0xB0 or ch).toByte(), 0, bankMsb.coerceIn(0, 127).toByte()), 0, 3)
+            port.send(byteArrayOf((0xB0 or ch).toByte(), 32, bankLsb.coerceIn(0, 127).toByte()), 0, 3)
             port.send(byteArrayOf((0xC0 or ch).toByte(), program.coerceIn(0, 127).toByte()), 0, 2)
         } catch (e: Exception) { Timber.w(e, "sendProgramChange failed") }
     }
