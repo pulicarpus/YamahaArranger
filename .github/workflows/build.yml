@@ -75,7 +75,7 @@ jobs:
 
           for abi in arm64-v8a armeabi-v7a; do
             mkdir -p "app/src/main/jniLibs/$abi"
-            BASS_SO="$(find "/tmp/bass/$abi" -type f -name 'libbass.so' -print -quit)"
+            BASS_SO="$(find /tmp/bass -type f -path "*/$abi/libbass.so" -print -quit)"
             BASSMIDI_SO="$(find "/tmp/bassmidi" -type f -path "*/$abi/libbassmidi.so" -print -quit)"
             if [ -z "$BASS_SO" ]; then
               echo "::error::libbass.so not found for $abi"
