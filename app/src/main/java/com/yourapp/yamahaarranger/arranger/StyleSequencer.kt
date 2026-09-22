@@ -240,7 +240,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             var active = PendingSection(section, ppq, loopLimit, onComplete)
             var remainingLoops = loopLimit
             while (true) {
-                val result = playOnce(active.section, active.ppq, masterTimelineTick, masterTimelineTick % active.section.lengthTicks.coerceAtLeast(1).toLong())
+                val result = playOnce(active.section, active.ppq, masterTimelineTick, 0L)
                 masterTimelineTick = result.endTick
                 barClockStartedAtNanos = masterClockStartedAtNanos
 
