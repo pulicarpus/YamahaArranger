@@ -255,7 +255,7 @@ class MainViewModel @Inject constructor(
     init {
         arrangerBrain.attachScope(viewModelScope)
         DebugLog.add("🎵 ViewModel init")
-        DebugLog.add("📂 SF2 folder: Download/YamahaArranger/SF2")
+        DebugLog.add("📂 SF2 folder: /storage/emulated/0/YamahaArranger/SF2")
 
         // IMPORTANT: initialize/load SF2 before opening the Oboe stream.
         // Loading a second SoundFont while the render stream is already
@@ -518,7 +518,7 @@ class MainViewModel @Inject constructor(
     private suspend fun autoLoadSoundFont() {
         val files = withContext(Dispatchers.IO) { contentResolver.listSoundFonts() }
         if (files.isEmpty()) {
-            DebugLog.add("📂 SF2 folder ready: Download/YamahaArranger/SF2")
+            DebugLog.add("📂 SF2 folder ready: /storage/emulated/0/YamahaArranger/SF2")
             return
         }
         val drum = files.firstOrNull { (_, name) ->
@@ -624,13 +624,13 @@ class MainViewModel @Inject constructor(
                 }
             }
             if (storedUri == null) {
-                DebugLog.add("❌ Could not store SF2 in Download/YamahaArranger/SF2")
+                DebugLog.add("❌ Could not store SF2 in /storage/emulated/0/YamahaArranger/SF2")
                 return@launch
             }
             DebugLog.add(if (alreadyStored) {
-                "📂 Using existing SF2: Download/YamahaArranger/SF2/$safeName"
+                "📂 Using existing SF2: /storage/emulated/0/YamahaArranger/SF2/$safeName"
             } else {
-                "📂 SF2 stored: Download/YamahaArranger/SF2/$safeName"
+                "📂 SF2 stored: /storage/emulated/0/YamahaArranger/SF2/$safeName"
             })
             DebugLog.add("🔄 Loading SF2 directly…")
             loadSoundFontUri(storedUri, safeName)
