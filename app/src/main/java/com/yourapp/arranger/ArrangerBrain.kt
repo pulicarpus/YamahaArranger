@@ -280,7 +280,7 @@ class ArrangerBrain @Inject constructor(
         val fill = fillForTransition(previous, target)
         if (_state.value.autoFill && previousWasMain && previous != target && fill != null && sectionExists(fill)) {
             DebugLog.add("🎼 Main→Main: queue fill $fill then $target at next bar")
-            scheduleSectionChange(fill, thenPlay = target)
+            scheduleSectionChange(fill, thenPlay = target, quantizeToNextBar = false)
         } else {
             scheduleSectionChange(target)
         }
@@ -315,12 +315,20 @@ class ArrangerBrain @Inject constructor(
     private fun scheduleSectionChange(
         section: ArrangerSection,
         thenPlay: ArrangerSection? = null,
-        thenStop: Boolean = false
+        thenStop: Boolean = false,
+        quantizeToNextBar: Boolean = true
     ) {
         pendingTransitionJob?.cancel()
         val style = loadedStyle
-        val waitMs = if (style != null) sequencer.millisToNextBar(style.ppq, style.meter.numerator, style.meter.denominator) else 0L
-        DebugLog.add("⏱ SECTION QUANTIZE ${section.styleName} to next bar in ${waitMs}ms")
+        val waitMs = if (quantizeToNextBar && style != null) {
+            sequencer.millisToNextBar(style.ppq, style.meter.numerator, style.meter.denominator)
+        } else 0L
+        DebugLog.add(
+            if (quantizeToNextBar)
+                "⏱ SECTION QUANTIZE " + section.styleName + " to next bar in " + waitMs + "ms"
+            else
+                "⏱ SECTION IMMEDIATE " + section.styleName + " at current master beat"
+        )
         val scope = externalScope ?: CoroutineScope(Dispatchers.Main + SupervisorJob())
         pendingTransitionJob = scope.launch {
             if (waitMs > 0) delay(waitMs)
