@@ -44,7 +44,7 @@ class ContentResolverProvider @Inject constructor(
     fun getFilesDir(): File = context.filesDir
 
     fun getSoundFontLocation(): String =
-        "Download/YamahaArranger/SF2"
+        "/storage/emulated/0/YamahaArranger/SF2"
 
     /**
      * Shared, user-visible SF2 storage.
@@ -80,8 +80,8 @@ class ContentResolverProvider @Inject constructor(
     }
     @Synchronized
     fun saveSoundFont(uri: Uri, displayName: String): Uri? {
-NaN
-            .let { if (it.lowercase().endsWith(".sf2")) it else "$it.sf2" }
+        val safeName = displayName.substringAfterLast('/').ifBlank { "font.sf2" }
+            .let { if (it.lowercase().endsWith(".sf2")) it else it + ".sf2" }
         return try {
             ensureSoundFontFolder()
             if (!sf2RootDir.exists()) return null
