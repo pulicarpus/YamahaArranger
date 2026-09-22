@@ -1,6 +1,7 @@
 #include "bassmidi_player.h"
 #include <android/log.h>
 #include <algorithm>
+#include <cmath>
 #include <sstream>
 #define LOG_TAG "BassMidiPlayer"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -19,7 +20,8 @@ bool BassMidiPlayer::ensureEngine(){
         LOGI("BASS initialized on no-sound device");
     }
     if(!stream_){
-        stream_=BASS_MIDI_StreamCreate(16,BASS_STREAM_DECODE|BASS_SAMPLE_FLOAT|BASS_MIDI_ASYNC,sampleRate_);
+        // Diagnostic build: synchronous events make NOTE_ON state immediately observable.
+        stream_=BASS_MIDI_StreamCreate(16,BASS_STREAM_DECODE|BASS_SAMPLE_FLOAT,sampleRate_);
         if(!stream_){
             LOGE("BASS_MIDI_StreamCreate failed error=%d",BASS_ErrorGetCode()); return false;
         }
@@ -35,8 +37,7 @@ bool BassMidiPlayer::ensureEngine(){
 
 bool BassMidiPlayer::applyFonts(){
     if(!stream_) return false;
-    // Diagnostic path: keep melody mapping simple (all presets, bank 0).
-    // Yamaha bank/LSB routing will be restored after PCM is proven.
+    // Diagnostic path: simple mapping only. Yamaha bank/LSB routing comes later.
     BASS_MIDI_FONT cfg[2]{};
     DWORD count=0;
     if(melodyFont_){
@@ -58,6 +59,7 @@ bool BassMidiPlayer::applyFonts(){
     LOGI("BASSMIDI fonts applied: melody=%d drum=%d",melodyFont_!=0,drumFont_!=0);
     return true;
 }
+
 bool BassMidiPlayer::loadRole(const std::string& path,bool drum){
     std::lock_guard<std::mutex> lock(mutex_);
     if(!ensureEngine()) return false;
@@ -67,25 +69,24 @@ bool BassMidiPlayer::loadRole(const std::string& path,bool drum){
     if(!target){
         LOGE("FontInit failed role=%s error=%d",drum?"DRUM":"MELODY",BASS_ErrorGetCode()); return false;
     }
-    if(!applyFonts()){BASS_MIDI_FontFree(target);target=0;return false;}
     BASS_MIDI_FONTINFO info{};
     if(BASS_MIDI_FontGetInfo(target,&info)){
-        LOGI("BASSMIDI font info role=%s presets=%u samples=%u",
-             drum?"DRUM":"MELODY", info.presets, info.samples);
+        LOGI("BASSMIDI font info role=%s presets=%u samsize=%llu samload=%llu samtype=%u name=%s",
+             drum?"DRUM":"MELODY",
+             (unsigned)info.presets,
+             (unsigned long long)info.samsize,
+             (unsigned long long)info.samload,
+             (unsigned)info.samtype,
+             info.name ? info.name : "");
     } else {
-        LOGE("BASSMIDI FontGetInfo failed role=%s error=%d",
-             drum?"DRUM":"MELODY", BASS_ErrorGetCode());
+        LOGE("BASSMIDI FontGetInfo failed role=%s error=%d",drum?"DRUM":"MELODY",BASS_ErrorGetCode());
     }
-    if(!BASS_MIDI_FontLoad(target, 0, drum ? 128 : 0)){
-        LOGE("BASSMIDI FontLoad preset0 bank%d failed role=%s error=%d",
-             drum?128:0, drum?"DRUM":"MELODY", BASS_ErrorGetCode());
-    } else {
-        LOGI("BASSMIDI FontLoad preset0 bank%d OK role=%s",
-             drum?128:0, drum?"DRUM":"MELODY");
-    }
+    if(!applyFonts()){BASS_MIDI_FontFree(target);target=0;return false;}
+    // FontLoad is intentionally omitted: BASSMIDI loads samples as needed during rendering.
     LOGI("BASSMIDI %s SF2 loaded: %s",drum?"DRUM":"MELODY",path.c_str());
     return true;
 }
+
 bool BassMidiPlayer::load(const std::string& path){return !isMelodyLoaded()?loadMelody(path):loadDrum(path);}
 bool BassMidiPlayer::loadMelody(const std::string& path){return loadRole(path,false);}
 bool BassMidiPlayer::loadDrum(const std::string& path){return loadRole(path,true);}
@@ -106,7 +107,8 @@ void BassMidiPlayer::send(int channel,DWORD event,DWORD param){
 void BassMidiPlayer::noteOn(int channel,int key,float velocity){
     std::lock_guard<std::mutex> lock(mutex_); if(!ensureEngine()) return;
     int vel=std::max(1,std::min(127,(int)(velocity*127.0f)));
-    if(channel==0) {
+    if(channel==0){
+        // Known GM control case for the diagnostic test only.
         send(channel,MIDI_EVENT_BANK,0);
         send(channel,MIDI_EVENT_BANK_LSB,0);
         send(channel,MIDI_EVENT_PROGRAM,0);
@@ -114,7 +116,8 @@ void BassMidiPlayer::noteOn(int channel,int key,float velocity){
     send(channel,MIDI_EVENT_NOTE,(DWORD)(key|(vel<<8)));
 }
 void BassMidiPlayer::noteOff(int channel,int key){
-    std::lock_guard<std::mutex> lock(mutex_); if(!stream_) return; send(channel,MIDI_EVENT_NOTE,(DWORD)key);
+    std::lock_guard<std::mutex> lock(mutex_); if(!stream_) return;
+    send(channel,MIDI_EVENT_NOTE,(DWORD)key);
 }
 void BassMidiPlayer::allNotesOff(){
     std::lock_guard<std::mutex> lock(mutex_); if(!stream_) return;
@@ -141,23 +144,22 @@ void BassMidiPlayer::setMasterGain(float gain){
     std::lock_guard<std::mutex> lock(mutex_); if(!stream_) return;
     BASS_ChannelSetAttribute(stream_,BASS_ATTRIB_MIDI_VOL,std::max(0.0f,std::min(2.0f,gain)));
 }
+int BassMidiPlayer::activeNotes(int channel) const{
+    std::lock_guard<std::mutex> lock(mutex_);
+    if(!stream_) return -1;
+    return (int)BASS_MIDI_StreamGetEvent(stream_,(DWORD)std::clamp(channel,0,15),MIDI_EVENT_NOTES);
+}
+int BassMidiPlayer::activeVoices(int channel) const{
+    std::lock_guard<std::mutex> lock(mutex_);
+    if(!stream_) return -1;
+    return (int)BASS_MIDI_StreamGetEvent(stream_,(DWORD)std::clamp(channel,0,15),MIDI_EVENT_VOICES);
+}
 std::string BassMidiPlayer::presetList() const{return {};}
-
 void BassMidiPlayer::render(float* out,int numFrames){
     std::lock_guard<std::mutex> lock(mutex_);
     if(!stream_){std::fill(out,out+numFrames*2,0.0f);return;}
     DWORD wanted=(DWORD)(numFrames*2*sizeof(float));
     DWORD got=BASS_ChannelGetData(stream_,out,wanted|BASS_DATA_FLOAT);
-    if(got!=(DWORD)-1){
-        static int renderLogCount=0;
-        if((++renderLogCount % 200)==1){
-            float rawPeak=0.0f;
-            for(int i=0;i<(int)(got/sizeof(float));++i)
-                rawPeak=std::max(rawPeak,std::fabs(out[i]));
-            LOGI("BASSMIDI PCM bytes=%u samples=%u rawPeak=%.6f",
-                 got, got/sizeof(float), rawPeak);
-        }
-    }
     if(got==(DWORD)-1){
         LOGE("BASS_ChannelGetData failed error=%d",BASS_ErrorGetCode());
         std::fill(out,out+numFrames*2,0.0f); return;
