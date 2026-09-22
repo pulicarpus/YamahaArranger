@@ -7,6 +7,7 @@ import com.yourapp.midi.MidiInputManager
 import com.yourapp.yamahaarranger.style.CasmPolicyModel
 import com.yourapp.yamahaarranger.style.StyleNoteEvent
 import com.yourapp.yamahaarranger.style.StyleSectionModel
+import com.yourapp.yamahaarranger.style.StylePartModel
 import com.yourapp.yamahaarranger.style.StyleChannelOverride
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -420,25 +421,16 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         activeTransposedNotes.remove(key)
     }
 
-    private fun applyVoicesFromCasm(section:StyleSectionModel) {
-        // Channels 0..2 are reserved for RIGHT 1/2/3 and channel 3 for LEFT.
-        // Style accompaniment must never program or steal these keyboard voices.
-        // Current Yamaha style playback is expected on the accompaniment channels.
-        // Several CASM source parts can share one destination MIDI channel.
-        // A source without its own Program Change must never overwrite the
-        // program already established by another source on that destination.
-        val explicitByDestination = linkedMapOf<Int, Triple<Int, Int, Int>>()
+    private fun applyVoicesFromCasm(section: StyleSectionModel) {
+        val explicitByDestination = linkedMapOf<Int, StylePartModel>()
         section.parts.forEach { part ->
             val policies = part.casmPolicies.ifEmpty { listOfNotNull(part.casm) }
             val c = policies.firstOrNull() ?: return@forEach
             val destination = c.destinationChannel
-            if (destination in 0..3) {
-                com.yourapp.yamahaarranger.ui.DebugLog.add("  · style dst$destination: SKIP (reserved for keyboard voices)")
-                return@forEach
-            }
+            if (destination in 0..3) return@forEach
             if (destination in lockedChannels) return@forEach
             if (part.program in 0..127 && !explicitByDestination.containsKey(destination)) {
-                explicitByDestination[destination] = Triple(part.program, part.bankMsb, part.bankLsb)
+                explicitByDestination[destination] = part
             }
         }
 
@@ -451,33 +443,58 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
 
             val drum = destination == 9 || isDrumVoice(c.voiceName)
             val override = channelOverrides[destination]
-            if (override?.muted == true) { applied += destination; com.yourapp.yamahaarranger.ui.DebugLog.add("🔇 dst$destination muted by style editor"); return@forEach }
-            val explicit = explicitByDestination[destination]
-            val prog = override?.program ?: explicit?.first ?: guessProgramFromVoiceName(c.voiceName)
-            if (prog !in 0..127) {
-                com.yourapp.yamahaarranger.ui.DebugLog.add("⚠ src${c.sourceChannel}→dst$destination: no usable program for '${c.voiceName}'")
+            if (override?.muted == true) {
+                applied += destination
                 return@forEach
             }
-            val midiMsb = override?.bank ?: explicit?.second ?: part.bankMsb
-            val audioBank = if (drum) 128 else 0
-            val midiBank = if (drum) 127 else midiMsb.coerceIn(0, 127)
+
+            val explicit = explicitByDestination[destination]
+            val sourcePart = explicit ?: part
+            val prog = override?.program
+                ?: explicit?.program?.takeIf { it in 0..127 }
+                ?: guessProgramFromVoiceName(c.voiceName)
+            if (prog !in 0..127) return@forEach
+
+            // Preserve both Yamaha Bank Select bytes. FluidSynth program_select
+            // accepts the resulting 14-bit bank directly.
+            val styleBank = sourcePart.bankMsb.coerceIn(0, 127) * 128 +
+                sourcePart.bankLsb.coerceIn(0, 127)
+            val audioBank = if (drum) 128 else styleBank
+            val midiMsb = if (drum) 127 else sourcePart.bankMsb.coerceIn(0, 127)
+            val midiLsb = if (drum) 0 else sourcePart.bankLsb.coerceIn(0, 127)
+
             audioEngine.setChannelProgram(destination, prog, audioBank)
-            if (override != null) {
+
+            val volume = override?.volume ?: sourcePart.volume
+            val pan = override?.pan ?: sourcePart.pan
+            val expression = override?.expression ?: sourcePart.expression
+            val reverb = override?.reverbSend ?: sourcePart.reverbSend
+            val chorus = override?.chorusSend ?: sourcePart.chorusSend
+            if (volume >= 0 || pan >= 0 || expression >= 0 || reverb >= 0 || chorus >= 0) {
                 audioEngine.setChannelMixer(
                     destination,
-                    volume = if (override.muted) 0 else override.volume,
-                    pan = override.pan,
-                    expression = override.expression,
-                    reverbSend = override.reverbSend,
-                    chorusSend = override.chorusSend
+                    volume = if (volume >= 0) volume else 127,
+                    pan = if (pan >= 0) pan else 64,
+                    expression = if (expression >= 0) expression else 127,
+                    reverbSend = if (reverb >= 0) reverb else 0,
+                    chorusSend = if (chorus >= 0) chorus else 0
                 )
             }
-            midiInputManager.sendProgramChange(destination, prog, midiBank)
+
+            midiInputManager.sendProgramChange(destination, prog, midiMsb, midiLsb)
             applied += destination
-            val source = if (override?.program != null) "STYLE OVERRIDE" else if (explicit != null) "actual MIDI setup" else "fallback name"
-            com.yourapp.yamahaarranger.ui.DebugLog.add("🎼 dst$destination: ${c.voiceName} → PC=$prog MIDIbank=$midiBank SFbank=$audioBank ($source)")
+            val source = if (override?.program != null) "STYLE OVERRIDE"
+                else if (explicit != null) "actual MIDI setup"
+                else "fallback name"
+            com.yourapp.yamahaarranger.ui.DebugLog.add(
+                "🎼 dst" + destination + ": " + c.voiceName + " → PC=" + prog +
+                    " MIDIbank=" + midiMsb + ":" + midiLsb + " SFbank=" + audioBank +
+                    " mix=" + volume + "/" + pan + "/" + expression + "/" + reverb + "/" + chorus +
+                    " (" + source + ")"
+            )
         }
     }
+
     private fun guessProgramFromVoiceName(name:String):Int{val n=name.lowercase();val numeric=Regex("(?:^|\\D)(\\d{1,3})\\s*$").find(n)?.groupValues?.getOrNull(1)?.toIntOrNull();if(numeric!=null&&numeric in 0..127)return numeric;return when{n.contains("piano")->0;n.contains("e.piano")||n.contains("ep")->4;n.contains("organ")->16;n.contains("accordion")->21;n.contains("guitar")||n.contains("gtr")->24;n.contains("bass")->33;n.contains("violin")->40;n.contains("cello")->42;n.contains("strg")||n.contains("str")->48;n.contains("choir")->52;n.contains("trumpet")->56;n.contains("trombone")->57;n.contains("brass")->61;n.contains("sax")->65;n.contains("oboe")->68;n.contains("clarinet")->71;n.contains("flute")->73;n.contains("crash")||n.contains("cymbal")||n.contains("perc")||n.contains("dr")||n.contains("kit")||n.contains("drum")->0;n.contains("pad")->89;else->-1}}
     private fun isDrumVoice(name:String)=name.lowercase().let{it.contains("crash")||it.contains("cymbal")||it.contains("perc")||it.contains("add-dr")||it.contains("drum")||it.contains("kit")||it.startsWith("dr")}
     private fun yamahaChordType(chord:DetectedChord):Int = when(chord.quality){
