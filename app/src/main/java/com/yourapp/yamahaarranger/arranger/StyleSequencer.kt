@@ -176,18 +176,18 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         }
 
         val currentTick = currentMasterTick(ppq)
-        val ticksPerBeat = (ppq * 4.0 / denominator.coerceAtLeast(1)).toLong().coerceAtLeast(1L)
-        val ticksPerBar = (numerator.coerceAtLeast(1) * ticksPerBeat).coerceAtLeast(1L)
-        val nextBarTick = ((currentTick / ticksPerBar) + 1L) * ticksPerBar
 
+        // Immediate/phase-continuous mode: the button press becomes the
+        // transition point on the SAME master clock. The fill is not restarted
+        // from tick 0; it is phase-aligned to the beat where the request lands.
         val queue = sections.map { PendingSection(it.first, ppq, it.second, null) }
-        pendingTransition = PendingTransition(queue, nextBarTick)
+        pendingTransition = PendingTransition(queue, currentTick)
         pendingSection = null
 
         com.yourapp.yamahaarranger.ui.DebugLog.add(
             "🎼 TRANSITION QUEUED: " +
-                queue.joinToString(" → ") { it.section.name } +
-                " at masterTick=$nextBarTick currentTick=$currentTick barTicks=$ticksPerBar"
+                queue.joinToString(" → ") +
+                " at current masterTick=$currentTick (phase continuous)"
         )
     }
 
@@ -240,7 +240,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             var active = PendingSection(section, ppq, loopLimit, onComplete)
             var remainingLoops = loopLimit
             while (true) {
-                val result = playOnce(active.section, active.ppq, masterTimelineTick)
+                val result = playOnce(active.section, active.ppq, masterTimelineTick, masterTimelineTick % active.section.lengthTicks.coerceAtLeast(1).toLong())
                 masterTimelineTick = result.endTick
                 barClockStartedAtNanos = masterClockStartedAtNanos
 
@@ -592,7 +592,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         val interruptedByTransition: Boolean
     )
 
-    private suspend fun playOnce(section:StyleSectionModel,ppq:Int,startAbsoluteTick:Long): PlayOnceResult {
+    private suspend fun playOnce(section:StyleSectionModel,ppq:Int,startAbsoluteTick:Long,phaseStartTick:Long): PlayOnceResult {
         loopCount++
         if(section.lengthTicks<=0) return PlayOnceResult(startAbsoluteTick, false)
 
@@ -602,10 +602,18 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             val part:com.yourapp.yamahaarranger.style.StylePartModel
         )
 
+        val sectionLength = section.lengthTicks.coerceAtLeast(1).toLong()
+        val phase = phaseStartTick.mod(sectionLength)
         val merged=section.parts
-            .flatMap{part->part.events.filter(::isNoteEvent).map{e->Scheduled(e.tick,e,part)}}
+            .flatMap{part->
+                part.events.filter(::isNoteEvent).map{e->
+                    val raw = e.tick.toLong().coerceAtLeast(0L)
+                    val relative = (raw - phase + sectionLength) % sectionLength
+                    Scheduled(relative.toInt(), e, part)
+                }
+            }
             .sortedWith(compareBy<Scheduled>{it.tick}.thenBy{it.event.isNoteOn.not()})
-        if(merged.isEmpty()) return PlayOnceResult(startAbsoluteTick + section.lengthTicks.coerceAtLeast(0).toLong(), false)
+        if(merged.isEmpty()) return PlayOnceResult(startAbsoluteTick + sectionLength, false)
 
         val timelineStartNanos=masterClockStartedAtNanos
         val nanosPerTick=60_000_000_000.0/(tempoBpm.coerceIn(20,280).toDouble()*ppq.coerceAtLeast(1).toDouble())
