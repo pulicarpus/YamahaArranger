@@ -3,6 +3,7 @@
 #include <mutex>
 #include <cstdarg>
 #include <cstdio>
+#include <algorithm>
 #include <jni.h>
 
 #define LOG_TAG "FluidSynthPlayer"
@@ -53,6 +54,9 @@ SoundFontPlayer::SoundFontPlayer() {
     fluid_settings_setnum(settings_, "synth.sample-rate", 48000.0);
     fluid_settings_setint(settings_, "synth.polyphony", 128);
     fluid_settings_setnum(settings_, "synth.gain", 1.0);
+    // Yamaha styles carry both CC0 and CC32 bank information. MMA mode keeps
+    // the full 14-bit bank (MSB*128+LSB) available when we apply section setup.
+    fluid_settings_setstr(settings_, "synth.midi-bank-select", "mma");
     fluid_settings_setint(settings_, "synth.reverb.active", 1);
     fluid_settings_setint(settings_, "synth.chorus.active", 1);
     fluid_settings_setstr(settings_, "audio.driver", "null");
@@ -170,6 +174,14 @@ void SoundFontPlayer::setChannelPreset(int channel, int bank, int program) {
     fluid_synth_bank_select(synth_, channel, bank);
     fluid_synth_program_change(synth_, channel, program);
     LOGI("Ch %d to bank=%d prog=%d", channel, bank, program);
+}
+
+void SoundFontPlayer::controlChange(int channel, int controller, int value) {
+    if (!synth_) return;
+    std::lock_guard<std::mutex> lock(g_synthMutex);
+    value = std::max(0, std::min(127, value));
+    fluid_synth_cc(synth_, channel, controller, value);
+    LOGI("Ch %d CC%d=%d", channel, controller, value);
 }
 
 int SoundFontPlayer::presetCount() const {
