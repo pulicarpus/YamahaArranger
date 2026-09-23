@@ -422,7 +422,7 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             DebugLog.add("📂 SF2 picker…")
             val fileName = contentResolver.fileName(uri) ?: "font.sf2"
-            val slot = if (soundFontLoaded) "user_sf2_${Date().time}.sf2" else "user.sf2"
+            val slot = if (soundFontLoaded) "user_sf2_${System.currentTimeMillis()}.sf2" else "user.sf2"
             val destFile = File(contentResolver.getFilesDir(), slot)
 
             val copied = withContext(Dispatchers.IO) {
