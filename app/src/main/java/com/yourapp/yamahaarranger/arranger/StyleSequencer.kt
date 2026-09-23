@@ -716,7 +716,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                 activeTransposedNotes.remove(key)
             }
 
-            val isDrumPart=destinationChannel==9||(policy!=null&&isDrumVoice(policy.voiceName))
+            val isDrumPart=destinationChannel==8||destinationChannel==9||(policy!=null&&isDrumVoice(policy.voiceName))
             val transformed=if(policy!=null&&!isDrumPart){
                 chord?.let{CasmNoteTransformer.transform(s.event.note,it,policy)}?:s.event.note.coerceIn(0,127)
             }else s.event.note.coerceIn(0,127)
