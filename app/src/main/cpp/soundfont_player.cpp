@@ -127,7 +127,12 @@ bool SoundFontPlayer::addSoundFont(const std::string& path) {
 
 int SoundFontPlayer::findDrumFontIdLocked() const {
     if (!synth_) return -1;
-    for (int id : sfIds_) {
+
+    // Prefer the most recently loaded SF2 that actually contains a
+    // bank-128 preset. This lets a dedicated drum SF2 override a melody
+    // SF2 that happens to contain a smaller set of drum presets.
+    for (auto it = sfIds_.rbegin(); it != sfIds_.rend(); ++it) {
+        const int id = *it;
         fluid_sfont_t* sfont = fluid_synth_get_sfont_by_id(synth_, id);
         if (!sfont) continue;
         fluid_sfont_iteration_start(sfont);
