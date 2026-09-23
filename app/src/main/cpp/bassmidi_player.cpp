@@ -171,6 +171,8 @@ bool BassMidiPlayer::loadRole(const std::string& path, bool drum) {
     if (!ensureEngine()) return false;
 
     HSOUNDFONT& target = drum ? drumFont_ : melodyFont_;
+    if (drum) drumPath_.clear();
+    else melodyPath_.clear();
     if (target) {
         BASS_MIDI_FontFree(target);
         target = 0;
@@ -253,6 +255,8 @@ void BassMidiPlayer::unload() {
     }
 
     for (auto& ch : channels_) ch = ChannelState{};
+    melodyPath_.clear();
+    drumPath_.clear();
 }
 
 void BassMidiPlayer::send(int channel, DWORD event, DWORD param) {
