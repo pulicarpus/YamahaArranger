@@ -95,36 +95,44 @@ bool BassMidiPlayer::applyFonts() {
     // destination drum bank, then the general melodic font handles normal
     // banks. BASSMIDI searches these mappings when a program/bank is first
     // used.
-    BASS_MIDI_FONTEX2 cfg[5]{};
-    DWORD count = 0;
+    // FONTEX2 carries the bank LSB separately from the bank MSB. A single
+    // melodic mapping with dbanklsb=0 would silently hide every Yamaha
+    // preset selected with a non-zero Bank LSB. Install one mapping per LSB
+    // so the same melody SF2 remains available across the full 14-bit
+    // Yamaha bank space while the actual SF2 bank remains the MSB-sized
+    // 0..127 bank.
+    std::vector<BASS_MIDI_FONTEX2> cfg;
+    cfg.reserve((drumFont_ ? 1 : 0) + (melodyFont_ ? 128 : 0));
 
     if (drumFont_) {
-        // A dedicated drum SF2 may store its kit in bank 0, 127, 128, or
-        // another bank. Restrict the mapping by channel instead of guessing
-        // the source bank. The destination remains the standard drum bank.
-        cfg[count].font = drumFont_;
-        cfg[count].spreset = -1;
-        cfg[count].sbank = -1;
-        cfg[count].dpreset = -1;
-        cfg[count].dbank = 128;
-        cfg[count].dbanklsb = 0;
-        cfg[count].minchan = 9;
-        cfg[count].numchan = 1;
-        ++count;
+        BASS_MIDI_FONTEX2 drum{};
+        drum.font = drumFont_;
+        drum.spreset = -1;
+        drum.sbank = -1;
+        drum.dpreset = -1;
+        drum.dbank = 128;
+        drum.dbanklsb = 0;
+        drum.minchan = 9;
+        drum.numchan = 1;
+        cfg.push_back(drum);
     }
 
     if (melodyFont_) {
-        cfg[count].font = melodyFont_;
-        cfg[count].spreset = -1;
-        cfg[count].sbank = -1;
-        cfg[count].dpreset = -1;
-        cfg[count].dbank = 0;
-        cfg[count].dbanklsb = 0;
-        cfg[count].minchan = 0;
-        cfg[count].numchan = 0;
-        ++count;
+        for (int lsb = 0; lsb < 128; ++lsb) {
+            BASS_MIDI_FONTEX2 melody{};
+            melody.font = melodyFont_;
+            melody.spreset = -1;
+            melody.sbank = -1;
+            melody.dpreset = -1;
+            melody.dbank = 0;
+            melody.dbanklsb = lsb;
+            melody.minchan = 0;
+            melody.numchan = 0;
+            cfg.push_back(melody);
+        }
     }
 
+    const DWORD count = static_cast<DWORD>(cfg.size());
     if (!count) return false;
 
     if (!BASS_MIDI_StreamSetFonts(stream_, cfg, count)) {
@@ -260,6 +268,8 @@ void BassMidiPlayer::preloadCurrentPreset(int channel) {
     // currently loaded MIDI file. For the realtime arranger we know the
     // active program at each style setup event, so preload that exact preset
     // when it is selected instead of loading the whole SF2.
+    // SF2 source banks are still the MSB-sized bank; the LSB selects the
+    // destination mapping via FONTEX2 and is not part of BASS_MIDI_FontLoad.
     int sourceBank = state.drum ? 128 : state.bankMsb;
     if (state.drum) {
         if (!BASS_MIDI_FontLoad(font, state.program, sourceBank)) {
@@ -325,20 +335,20 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program) {
     const int requestedBank = bank;
     program = std::max(0, std::min(65535, program));
 
-    // StyleSequencer deliberately uses bank 128 for the drum destination.
-    // BASSMIDI's MIDI_EVENT_DRUMS event resets bank/program to 0 when its
-    // state changes, so it MUST be sent before bank/program. Do not clamp
-    // the drum destination to 127: the FONTEX2 mapping targets dbank=128.
+    // The Kotlin side represents Yamaha bank select as one 14-bit value:
+    // MSB * 128 + LSB. BASSMIDI keeps the two MIDI controllers separate,
+    // so split the value here instead of collapsing every melodic bank to
+    // LSB 0.
     const bool wantDrum = (channel == 9 || bank >= 128);
     if (wantDrum) {
         bank = 128;
     } else {
-        bank = std::max(0, std::min(127, bank));
+        bank = std::max(0, std::min(16383, bank));
     }
 
     ChannelState& state = channels_[channel];
-    state.bankMsb = bank;
-    state.bankLsb = 0;
+    state.bankMsb = bank >= 128 ? 128 : bank / 128;
+    state.bankLsb = bank >= 128 ? 0 : bank % 128;
     state.program = program;
     state.drum = wantDrum;
     state.initialized = true;
