@@ -124,7 +124,19 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         setChannelOverride(channel,next)
         audioEngine.setChannelMixer(channel, volume=if(next.muted) 0 else v, pan=p, expression=e, reverbSend=r, chorusSend=ch)
     }
-    fun setChannelProgramOverride(channel:Int, program:Int, bank:Int){ val old=channelOverride(channel); setChannelOverride(channel, old.copy(program=program.coerceIn(0,127), bank=bank.coerceIn(0,128))) }
+    fun setChannelProgramOverride(channel:Int, program:Int, bank:Int){
+        val old=channelOverride(channel)
+        // Style/UI bank values use Yamaha's 14-bit MSB*128+LSB form.
+        // Keep the full range here; BassMidiPlayer splits it back into the
+        // two MIDI Bank Select bytes at the native boundary.
+        setChannelOverride(
+            channel,
+            old.copy(
+                program=program.coerceIn(0,127),
+                bank=bank.coerceIn(0,16383)
+            )
+        )
+    }
     fun setVoiceMap(vm:Map<Int,String>){voiceMap=vm;lastAppliedSection="";com.yourapp.yamahaarranger.ui.DebugLog.add("🎼 Legacy VoiceMap received: ${vm.size}; CASM policy takes precedence")}
     private data class PendingSection(
         val section: StyleSectionModel,
