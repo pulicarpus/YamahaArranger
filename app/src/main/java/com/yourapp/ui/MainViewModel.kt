@@ -552,16 +552,18 @@ class MainViewModel @Inject constructor(
             } else {
                 DebugLog.add("❌ Auto SF2 pair cache failed")
             }
+        } else if (files.size == 1) {
+            // A style-specific SF2 is often shipped as a single file. Keep the
+            // same font available to both melodic and Yamaha rhythm channels.
+            val single = files.first()
+            DebugLog.add("🔄 Auto-loading SINGLE SF2: " + single.second)
+            loadSoundFontUri(single.first, single.second, role = null, replaceAll = false)
         } else if (melody != null) {
             DebugLog.add("🔄 Auto-loading MELODY SF2: " + melody.second)
             loadSoundFontUri(melody.first, melody.second, role = "MELODY", replaceAll = false)
         } else if (drum != null) {
             DebugLog.add("🥁 Auto-loading DRUM SF2: " + drum.second)
             loadSoundFontUri(drum.first, drum.second, role = "DRUM", replaceAll = false)
-        }
-        if (melody == null && drum == null) {
-            val first = files.first()
-            loadSoundFontUri(first.first, first.second, role = "MELODY", replaceAll = false)
         }
     }
 
@@ -578,7 +580,7 @@ class MainViewModel @Inject constructor(
             when (role) {
                 "DRUM" -> audioEngine.loadDrumSoundFont(cached.absolutePath)
                 "MELODY" -> audioEngine.loadMelodySoundFont(cached.absolutePath)
-                else -> audioEngine.loadSoundFont(cached.absolutePath)
+                else -> audioEngine.loadSingleSoundFont(cached.absolutePath)
             }
         }
         _soundFontName.value = if (ok) displayName else "Load failed"
