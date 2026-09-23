@@ -453,7 +453,10 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             val destination = c.destinationChannel
             if (destination in lockedChannels || destination in applied) return@forEach
 
-            val drum = destination == 9 || isDrumVoice(c.voiceName)
+            // Yamaha Rhythm 1/2 are destination channels 8 and 9
+            // (zero-based). Treat both as percussion regardless of whether
+            // the CASM voice name explicitly says "Drum".
+            val drum = destination == 8 || destination == 9 || isDrumVoice(c.voiceName)
             val override = channelOverrides[destination]
             if (override?.muted == true) {
                 applied += destination
