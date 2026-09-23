@@ -38,6 +38,8 @@ private:
     bool applyFonts();
     void send(int channel, DWORD event, DWORD param);
     void preloadCurrentPreset(int channel);
+    bool findDrumPreset(const std::string& path, int requestedProgram,
+                        int& sourceBank, int& sourceProgram) const;
     HSTREAM stream_ = 0;
     HSOUNDFONT melodyFont_ = 0;
     HSOUNDFONT drumFont_ = 0;

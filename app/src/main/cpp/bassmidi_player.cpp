@@ -103,36 +103,34 @@ bool BassMidiPlayer::applyFonts() {
     // Yamaha bank space while the actual SF2 bank remains the MSB-sized
     // 0..127 bank.
     std::vector<BASS_MIDI_FONTEX2> cfg;
-    cfg.reserve((drumFont_ ? 1 : 0) + (melodyFont_ ? 256 : 0));
+    // Voyager treats both SF2 banks 127 and 128 as drum banks. Keep those
+    // source banks explicit instead of restricting the drum mapping to 128.
+    cfg.reserve((drumFont_ ? 2 : 0) + (!drumFont_ && melodyFont_ ? 2 : 0) +
+                (melodyFont_ ? 256 : 0));
 
-    if (drumFont_) {
+    auto addDrumMapping = [&](HSOUNDFONT font, int sourceBank) {
         BASS_MIDI_FONTEX2 drum{};
-        drum.font = drumFont_;
+        drum.font = font;
         drum.spreset = -1;
-        drum.sbank = -1;
+        drum.sbank = sourceBank;
         drum.dpreset = -1;
         drum.dbank = 128;
         drum.dbanklsb = 0;
         drum.minchan = 8;
         drum.numchan = 2;
         cfg.push_back(drum);
+    };
+
+    if (drumFont_) {
+        addDrumMapping(drumFont_, 127);
+        addDrumMapping(drumFont_, 128);
     }
 
     if (!drumFont_ && melodyFont_) {
-        // Single-SF2 mode: use the same SF2's percussion bank for both
-        // Yamaha Rhythm channels 9/10 (zero-based 8/9). Without this
-        // mapping, those channels are intentionally excluded from the
-        // melodic mappings below and therefore render silently.
-        BASS_MIDI_FONTEX2 selfDrum{};
-        selfDrum.font = melodyFont_;
-        selfDrum.spreset = -1;
-        selfDrum.sbank = 128;
-        selfDrum.dpreset = -1;
-        selfDrum.dbank = 128;
-        selfDrum.dbanklsb = 0;
-        selfDrum.minchan = 8;
-        selfDrum.numchan = 2;
-        cfg.push_back(selfDrum);
+        // Single-SF2 mode: Voyager treats banks 127 and 128 as drum banks.
+        // Expose both source banks from the same SF2 on Yamaha Rhythm 1/2.
+        addDrumMapping(melodyFont_, 127);
+        addDrumMapping(melodyFont_, 128);
     }
 
     if (melodyFont_) {
@@ -224,10 +222,13 @@ bool BassMidiPlayer::loadRole(const std::string& path, bool drum) {
         return false;
     }
 
-    // Restore channel routing after a font replacement. This matters when a
-    // style was already running and a user swaps SF2 files.
+    // Restore the complete channel routing after a font replacement.
+    // Voyager's drum-channel fix relies on percussion state surviving a
+    // soundfont reload; restoring only bank/program can silently turn a
+    // rhythm channel back into a melodic channel.
     for (int ch = 0; ch < 16; ++ch) {
         if (channels_[ch].initialized) {
+            send(ch, MIDI_EVENT_DRUMS, channels_[ch].drum ? 1 : 0);
             send(ch, MIDI_EVENT_BANK, static_cast<DWORD>(channels_[ch].bankMsb));
             send(ch, MIDI_EVENT_BANK_LSB, static_cast<DWORD>(channels_[ch].bankLsb));
             send(ch, MIDI_EVENT_PROGRAM, static_cast<DWORD>(channels_[ch].program));
@@ -292,30 +293,81 @@ void BassMidiPlayer::send(int channel, DWORD event, DWORD param) {
     }
 }
 
+bool BassMidiPlayer::findDrumPreset(const std::string& path,
+                                     int requestedProgram,
+                                     int& sourceBank, int& sourceProgram) const {
+    if (path.empty()) return false;
+    std::ifstream file(path, std::ios::binary);
+    if (!file) return false;
+    std::vector<unsigned char> data(
+        (std::istreambuf_iterator<char>(file)),
+        std::istreambuf_iterator<char>());
+
+    const char phdr[] = {'p','h','d','r'};
+    for (size_t i = 0; i + 8 <= data.size(); ++i) {
+        if (std::memcmp(data.data() + i, phdr, 4) != 0) continue;
+        const uint32_t size =
+            static_cast<uint32_t>(data[i + 4]) |
+            (static_cast<uint32_t>(data[i + 5]) << 8) |
+            (static_cast<uint32_t>(data[i + 6]) << 16) |
+            (static_cast<uint32_t>(data[i + 7]) << 24);
+        if (size < 38 || size % 38 != 0 || i + 8 + size > data.size())
+            continue;
+
+        int firstBank = -1, firstProgram = -1;
+        const size_t count = size / 38;
+        for (size_t n = 0; n + 1 < count; ++n) {
+            const unsigned char* rec = data.data() + i + 8 + n * 38;
+            const int program = static_cast<int>(rec[20]) |
+                                (static_cast<int>(rec[21]) << 8);
+            const int bank = static_cast<int>(rec[22]) |
+                             (static_cast<int>(rec[23]) << 8);
+            if (bank != 127 && bank != 128) continue;
+            if (firstBank < 0) {
+                firstBank = bank;
+                firstProgram = program;
+            }
+            if (program == requestedProgram) {
+                sourceBank = bank;
+                sourceProgram = program;
+                return true;
+            }
+        }
+        if (firstBank >= 0) {
+            sourceBank = firstBank;
+            sourceProgram = firstProgram;
+            return true;
+        }
+        return false;
+    }
+    return false;
+}
+
 void BassMidiPlayer::preloadCurrentPreset(int channel) {
     if (!stream_ || channel < 0 || channel >= 16) return;
 
     const ChannelState& state = channels_[channel];
     HSOUNDFONT font = state.drum ? drumFont_ : melodyFont_;
+    const std::string& path = state.drum
+        ? (drumFont_ ? drumPath_ : melodyPath_)
+        : melodyPath_;
     if (!font) return;
 
-    // MIDI Voyager normally preloads only the samples required by the
-    // currently loaded MIDI file. For the realtime arranger we know the
-    // active program at each style setup event, so preload that exact preset
-    // when it is selected instead of loading the whole SF2.
-    // SF2 source banks are still the MSB-sized bank; the LSB selects the
-    // destination mapping via FONTEX2 and is not part of BASS_MIDI_FontLoad.
+    // Resolve drum program against the actual SF2 drum banks before loading.
+    // This mirrors Voyager's default-drumkit fallback instead of attempting
+    // to preload a drum program that is not present.
     int sourceBank = state.drum ? 128 : state.bankMsb;
+    int sourceProgram = state.program;
     if (state.drum) {
-        if (!BASS_MIDI_FontLoad(font, state.program, sourceBank)) {
-            const int err = BASS_ErrorGetCode();
-            if (!BASS_MIDI_FontLoad(font, state.program, 127)) {
-                if (!BASS_MIDI_FontLoad(font, state.program, 0)) {
-                    LOGI("BASSMIDI preload skipped ch=%d bank=%d prog=%d err=%d",
-                         channel, sourceBank, state.program, err);
-                    return;
-                }
-            }
+        if (!findDrumPreset(path, state.program, sourceBank, sourceProgram)) {
+            LOGI("BASSMIDI no drum preset found ch=%d requested=%d",
+                 channel, state.program);
+            return;
+        }
+        if (!BASS_MIDI_FontLoad(font, sourceProgram, sourceBank)) {
+            LOGI("BASSMIDI drum preload skipped ch=%d bank=%d prog=%d err=%d",
+                 channel, sourceBank, sourceProgram, BASS_ErrorGetCode());
+            return;
         }
     } else {
         if (!BASS_MIDI_FontLoad(font, state.program, sourceBank)) {
@@ -390,6 +442,23 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program) {
     state.program = program;
     state.drum = wantDrum;
     state.initialized = true;
+
+    if (state.drum) {
+        // Voyager keeps drum program numbers intact when they exist, but
+        // allows a default drumkit when the requested kit is unavailable.
+        // Resolve that against the actual loaded SF2 before sending the
+        // program change.
+        int sourceBank = 128;
+        int sourceProgram = program;
+        const std::string& path = drumFont_ ? drumPath_ : melodyPath_;
+        if (findDrumPreset(path, program, sourceBank, sourceProgram)) {
+            state.bankMsb = 128;
+            state.bankLsb = 0;
+            state.program = sourceProgram;
+            LOGI("DRUM PRESET RESOLVE ch=%d requested=%d -> bank=%d prog=%d",
+                 channel, program, sourceBank, sourceProgram);
+        }
+    }
 
     LOGI("SET PRESET ch=%d requestedBank=%d effectiveBank=%d prog=%d drum=%d",
          channel, requestedBank, state.bankMsb, state.program, state.drum ? 1 : 0);
