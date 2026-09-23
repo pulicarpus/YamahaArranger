@@ -166,35 +166,47 @@ class AudioEngineManager @Inject constructor(
     data class SfPreset(val role: String, val bank: Int, val program: Int, val name: String)
 
     fun loadedSoundFontPresets(): List<SfPreset> {
-        // Preset enumeration touches FluidSynth's live SoundFont objects.
-        // Never do this while Oboe can call render(); pause the stream and
-        // serialize the operation just like SF2 load/unload.
         val raw = runBlocking {
             soundFontOperationMutex.withLock {
                 withAudioStreamPausedUnsafe { bridge.nativeGetSoundFontPresets() }
             }
         }
-        // Native contract is one preset per line:
-        // ROLE|BANK|PROGRAM|NAME
-        // Keep a legacy parser too so older native builds cannot silently
-        // make the Voice Browser fall back to the GM list.
-        return raw.lineSequence()
-            .flatMap { line ->
-                if (line.contains('|')) sequenceOf(line)
-                else line.split(';').asSequence()
+
+        // Current native contract uses ASCII control separators:
+        // RECORD=0x1E, FIELD=0x1F. Keep newline/semicolon/pipe parsing for
+        // older APKs so a mixed native/Java deployment cannot lose presets.
+        return raw
+            .split('\u001e')
+            .asSequence()
+            .flatMap { record ->
+                if (record.contains('\u001f')) sequenceOf(record)
+                else record.lineSequence().flatMap { line ->
+                    if (line.contains('|')) sequenceOf(line)
+                    else line.split(';').asSequence()
+                }
             }
             .mapNotNull { entry ->
-                val p = entry.split('|', limit = 4)
+                val p = if (entry.contains('\u001f')) {
+                    entry.split('\u001f', limit = 4)
+                } else {
+                    entry.split('|', limit = 4)
+                }
+
                 if (p.size == 4) {
-                    val bank = p[1].toIntOrNull()
-                    val program = p[2].toIntOrNull()
-                    if (bank != null && program != null) SfPreset(p[0], bank, program, p[3]) else null
+                    val role = p[0].trim()
+                    val bank = p[1].trim().toIntOrNull()
+                    val program = p[2].trim().toIntOrNull()
+                    if (bank != null && program != null && role.isNotEmpty()) {
+                        SfPreset(role, bank, program, p[3].trim())
+                    } else null
                 } else {
                     val legacy = entry.split(':', limit = 3)
                     if (legacy.size == 3) {
-                        val bank = legacy[0].toIntOrNull()
-                        val program = legacy[1].toIntOrNull()
-                        if (bank != null && program != null) SfPreset("MELODY", bank, program, legacy[2]) else null
+                        val bank = legacy[0].trim().toIntOrNull()
+                        val program = legacy[1].trim().toIntOrNull()
+                        if (bank != null && program != null) {
+                            SfPreset("MELODY", bank, program, legacy[2].trim())
+                        } else null
                     } else null
                 }
             }
