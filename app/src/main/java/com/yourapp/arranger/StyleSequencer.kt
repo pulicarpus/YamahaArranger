@@ -233,6 +233,7 @@ class StyleSequencer(
         return n.contains("add-dr") ||
                n.contains("drum") ||
                n.contains("kit") ||
+               n.contains("rhythm") ||
                n.startsWith("dr")
     }
 
