@@ -12,7 +12,7 @@ public:
     bool load(const std::string& path);
     bool addSoundFont(const std::string& path);
     void unload();
-    bool isLoaded() const { return synth_ != nullptr && sfId_ >= 0; }
+    bool isLoaded() const { return synth_ != nullptr && !sfIds_.empty(); }
 
     void render(float* out, int numFrames);
 
