@@ -412,16 +412,19 @@ class MainViewModel @Inject constructor(
 
     private fun isDrumVoiceName(name: String): Boolean {
         val n = name.lowercase()
-        return n.contains("drum") || n.contains("kit") || n.startsWith("dr")
+        return n.contains("drum") || n.contains("kit") || n.contains("rhythm") || n.startsWith("dr")
     }
 
     // SOUNDFONT PICKER
+    // First pick replaces the current SF2 (legacy behaviour).
+    // Subsequent picks are stacked as additional SF2 files.
     fun onSoundFontFilePicked(uri: Uri) {
         viewModelScope.launch {
             DebugLog.add("📂 SF2 picker…")
             val fileName = contentResolver.fileName(uri) ?: "font.sf2"
+            val slot = if (soundFontLoaded) "user_sf2_${Date().time}.sf2" else "user.sf2"
+            val destFile = File(contentResolver.getFilesDir(), slot)
 
-            val destFile = File(contentResolver.getFilesDir(), "user.sf2")
             val copied = withContext(Dispatchers.IO) {
                 try {
                     val input = contentResolver.openInputStream(uri) ?: return@withContext false
@@ -439,11 +442,17 @@ class MainViewModel @Inject constructor(
             }
             DebugLog.add("📂 SF2 copied: ${destFile.length() / 1024 / 1024} MB")
 
+            val wasLoaded = soundFontLoaded
             val ok = withContext(Dispatchers.Default) {
-                audioEngine.loadSoundFont(destFile.absolutePath)
+                if (wasLoaded) audioEngine.addSoundFont(destFile.absolutePath)
+                else audioEngine.loadSoundFont(destFile.absolutePath)
             }
-            _soundFontName.value = if (ok) fileName else "Load failed"
-            DebugLog.add(if (ok) "✅ SF2: $fileName" else "❌ SF2 load failed")
+            if (ok) {
+                _soundFontName.value = if (wasLoaded) "Multiple SF2 (added: $fileName)" else fileName
+                DebugLog.add(if (wasLoaded) "✅ Additional SF2: $fileName" else "✅ SF2: $fileName")
+            } else {
+                DebugLog.add("❌ SF2 load failed: $fileName")
+            }
         }
     }
 
