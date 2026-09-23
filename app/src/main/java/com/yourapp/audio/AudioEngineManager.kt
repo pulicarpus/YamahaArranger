@@ -113,6 +113,33 @@ class AudioEngineManager @Inject constructor(
     }
 
 
+    /**
+     * Load one SF2 as the shared source for both melodic and drum channels.
+     * This is the correct mode for a style that ships with one custom SF2:
+     * the same font remains available on normal channels and on Yamaha rhythm
+     * channels 8/9. The operation is atomic with respect to the live audio
+     * stream so the render callback never sees a half-updated font stack.
+     */
+    fun loadSingleSoundFont(filePath: String): Boolean {
+        val result = runBlocking { soundFontOperationMutex.withLock { withAudioStreamPausedUnsafe {
+            val melodyOk = bridge.nativeLoadMelodySoundFont(filePath)
+            if (!melodyOk) return@withAudioStreamPausedUnsafe false
+            val drumOk = bridge.nativeLoadDrumSoundFont(filePath)
+            if (!drumOk) {
+                // Roll back the partial dual-role load rather than leaving an
+                // apparently successful but incomplete single-font state.
+                bridge.nativeUnloadSoundFont()
+                false
+            } else {
+                true
+            }
+        } } }
+        soundFontLoaded = soundFontLoaded || result
+        if (result) DebugLog.add("✅ SINGLE SF2 loaded as MELODY + DRUM")
+        else DebugLog.add("❌ SINGLE SF2 load failed")
+        return result
+    }
+
     fun isSoundFontLoaded(): Boolean = soundFontLoaded
 
     fun unloadSoundFont() {
