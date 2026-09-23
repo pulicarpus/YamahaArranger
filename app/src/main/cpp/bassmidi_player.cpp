@@ -102,7 +102,7 @@ bool BassMidiPlayer::applyFonts() {
     // Yamaha bank space while the actual SF2 bank remains the MSB-sized
     // 0..127 bank.
     std::vector<BASS_MIDI_FONTEX2> cfg;
-    cfg.reserve((drumFont_ ? 1 : 0) + (melodyFont_ ? 128 : 0));
+    cfg.reserve((drumFont_ ? 1 : 0) + (melodyFont_ ? 256 : 0));
 
     if (drumFont_) {
         BASS_MIDI_FONTEX2 drum{};
@@ -118,17 +118,32 @@ bool BassMidiPlayer::applyFonts() {
     }
 
     if (melodyFont_) {
+        // Keep the melody mappings off MIDI channel 10 (zero-based 9).
+        // numchan=0 means "all channels" in BASSMIDI, which can overlap the
+        // dedicated drum mapping above and cause a loaded drum SF2 to be
+        // bypassed. Cover melodic channels as two ranges: 0..8 and 10..15.
         for (int lsb = 0; lsb < 128; ++lsb) {
-            BASS_MIDI_FONTEX2 melody{};
-            melody.font = melodyFont_;
-            melody.spreset = -1;
-            melody.sbank = -1;
-            melody.dpreset = -1;
-            melody.dbank = 0;
-            melody.dbanklsb = lsb;
-            melody.minchan = 0;
-            melody.numchan = 0;
-            cfg.push_back(melody);
+            BASS_MIDI_FONTEX2 melodyA{};
+            melodyA.font = melodyFont_;
+            melodyA.spreset = -1;
+            melodyA.sbank = -1;
+            melodyA.dpreset = -1;
+            melodyA.dbank = 0;
+            melodyA.dbanklsb = lsb;
+            melodyA.minchan = 0;
+            melodyA.numchan = 9;
+            cfg.push_back(melodyA);
+
+            BASS_MIDI_FONTEX2 melodyB{};
+            melodyB.font = melodyFont_;
+            melodyB.spreset = -1;
+            melodyB.sbank = -1;
+            melodyB.dpreset = -1;
+            melodyB.dbank = 0;
+            melodyB.dbanklsb = lsb;
+            melodyB.minchan = 10;
+            melodyB.numchan = 6;
+            cfg.push_back(melodyB);
         }
     }
 
