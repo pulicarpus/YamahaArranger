@@ -88,22 +88,19 @@ bool SoundFontPlayer::load(const std::string& path) {
     std::lock_guard<std::mutex> lock(g_synthMutex);
 
     LOGI("Loading SF2: %s", path.c_str());
-    sfId_ = fluid_synth_sfload(synth_, path.c_str(), 1);
-    if (sfId_ == FLUID_FAILED) {
+    for (int id : sfIds_) fluid_synth_sfunload(synth_, id, 0);
+    sfIds_.clear();
+
+    const int sfId = fluid_synth_sfload(synth_, path.c_str(), 1);
+    if (sfId == FLUID_FAILED) {
         LOGE("fluid_synth_sfload FAILED");
         return false;
     }
 
-    LOGI("SF2 loaded, id=%d", sfId_);
+    sfIds_.push_back(sfId);
+    LOGI("SF2 loaded, id=%d, total=%d", sfId, (int)sfIds_.size());
 
-    fluid_synth_bank_select(synth_, 9, 128);
-    fluid_synth_program_change(synth_, 9, 0);
-
-    for (int ch = 0; ch < 16; ++ch) {
-        if (ch == 9) continue;
-        fluid_synth_bank_select(synth_, ch, 0);
-        fluid_synth_program_change(synth_, ch, 0);
-    }
+    applyDefaultChannelPresetsLocked();
 
     fluid_synth_cc(synth_, 0, 7, 127);
     fluid_synth_cc(synth_, 1, 7, 127);
@@ -123,12 +120,83 @@ bool SoundFontPlayer::load(const std::string& path) {
     return true;
 }
 
+bool SoundFontPlayer::addSoundFont(const std::string& path) {
+    if (!synth_) {
+        LOGE("Cannot add SF2 - synth null");
+        return false;
+    }
+    std::lock_guard<std::mutex> lock(g_synthMutex);
+
+    LOGI("Adding SF2: %s", path.c_str());
+    const int sfId = fluid_synth_sfload(synth_, path.c_str(), 0);
+    if (sfId == FLUID_FAILED) {
+        LOGE("fluid_synth_sfload (add) FAILED");
+        return false;
+    }
+
+    sfIds_.push_back(sfId);
+    applyDefaultChannelPresetsLocked();
+    LOGI("Additional SF2 loaded, id=%d, total=%d", sfId, (int)sfIds_.size());
+    return true;
+}
+
+int SoundFontPlayer::findDrumFontIdLocked() const {
+    if (!synth_) return -1;
+    for (int id : sfIds_) {
+        fluid_sfont_t* sfont = fluid_synth_get_sfont_by_id(synth_, id);
+        if (!sfont) continue;
+        fluid_sfont_iteration_start(sfont);
+        while (fluid_preset_t* preset = fluid_sfont_iteration_next(sfont)) {
+            const int bank = fluid_preset_get_banknum(preset);
+            if (bank == 128) return id;
+        }
+    }
+    return -1;
+}
+
+void SoundFontPlayer::applyDefaultChannelPresetsLocked() {
+    if (!synth_ || sfIds_.empty()) return;
+
+    const int melodyId = sfIds_.front();
+    const int drumId = findDrumFontIdLocked();
+
+    if (drumId >= 0) {
+        const int rc = fluid_synth_program_select(synth_, 9, drumId, 128, 0);
+        LOGI("Default drum routing: ch9 sfid=%d bank=128 prog=0 rc=%d", drumId, rc);
+    } else {
+        fluid_synth_bank_select(synth_, 9, 128);
+        fluid_synth_program_change(synth_, 9, 0);
+        LOGI("Default drum routing: no bank-128 preset found; fallback stack selection");
+    }
+
+    for (int ch = 0; ch < 16; ++ch) {
+        if (ch == 9) continue;
+        fluid_synth_program_select(synth_, ch, melodyId, 0, 0);
+    }
+
+    fluid_synth_cc(synth_, 0, 7, 127);
+    fluid_synth_cc(synth_, 1, 7, 127);
+    fluid_synth_cc(synth_, 2, 7, 127);
+    fluid_synth_cc(synth_, 3, 7, 100);
+    fluid_synth_cc(synth_, 4, 7, 100);
+    fluid_synth_cc(synth_, 5, 7, 95);
+    fluid_synth_cc(synth_, 6, 7, 115);
+    fluid_synth_cc(synth_, 7, 7, 115);
+    fluid_synth_cc(synth_, 8, 7, 127);
+    fluid_synth_cc(synth_, 9, 7, 127);
+    for (int ch = 10; ch < 16; ++ch) {
+        fluid_synth_cc(synth_, ch, 7, 110);
+    }
+
+    LOGI("Channels assigned + volumes set (fonts=%d)", (int)sfIds_.size());
+}
+
 void SoundFontPlayer::unload() {
-    if (synth_ && sfId_ >= 0) {
+    if (synth_) {
         std::lock_guard<std::mutex> lock(g_synthMutex);
-        fluid_synth_sfunload(synth_, sfId_, 1);
-        sfId_ = -1;
-        LOGI("SF2 unloaded");
+        for (int id : sfIds_) fluid_synth_sfunload(synth_, id, 1);
+        sfIds_.clear();
+        LOGI("All SF2 unloaded");
     }
 }
 
@@ -167,17 +235,25 @@ void SoundFontPlayer::allNotesOff() {
 void SoundFontPlayer::setChannelPreset(int channel, int bank, int program) {
     if (!synth_) return;
     std::lock_guard<std::mutex> lock(g_synthMutex);
-    fluid_synth_bank_select(synth_, channel, bank);
-    fluid_synth_program_change(synth_, channel, program);
-    LOGI("Ch %d to bank=%d prog=%d", channel, bank, program);
+    const int targetFont = (channel == 9 && bank == 128) ? findDrumFontIdLocked() : (sfIds_.empty() ? -1 : sfIds_.front());
+    int rc = FLUID_FAILED;
+    if (targetFont >= 0) {
+        rc = fluid_synth_program_select(synth_, channel, targetFont, bank, program);
+    } else {
+        fluid_synth_bank_select(synth_, channel, bank);
+        rc = fluid_synth_program_change(synth_, channel, program);
+    }
+    LOGI("Ch %d to bank=%d prog=%d sfid=%d rc=%d", channel, bank, program, targetFont, rc);
 }
 
 int SoundFontPlayer::presetCount() const {
-    if (!synth_ || sfId_ < 0) return 0;
-    fluid_sfont_t* sfont = fluid_synth_get_sfont_by_id(synth_, sfId_);
-    if (!sfont) return 0;
+    if (!synth_ || sfIds_.empty()) return 0;
     int count = 0;
-    fluid_sfont_iteration_start(sfont);
-    while (fluid_sfont_iteration_next(sfont)) count++;
+    for (int id : sfIds_) {
+        fluid_sfont_t* sfont = fluid_synth_get_sfont_by_id(synth_, id);
+        if (!sfont) continue;
+        fluid_sfont_iteration_start(sfont);
+        while (fluid_sfont_iteration_next(sfont)) count++;
+    }
     return count;
 }
