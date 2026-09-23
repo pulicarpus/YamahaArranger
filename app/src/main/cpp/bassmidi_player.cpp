@@ -135,7 +135,7 @@ bool BassMidiPlayer::applyFonts() {
     const DWORD count = static_cast<DWORD>(cfg.size());
     if (!count) return false;
 
-    if (!BASS_MIDI_StreamSetFonts(stream_, cfg, count)) {
+    if (!BASS_MIDI_StreamSetFonts(stream_, cfg.data(), count)) {
         LOGE("StreamSetFonts(FONTEX2) failed error=%d", BASS_ErrorGetCode());
         return false;
     }
