@@ -99,33 +99,12 @@ bool BassMidiPlayer::applyFonts() {
     DWORD count = 0;
 
     if (drumFont_) {
-        // Standard SF2 drum bank 128 -> MIDI drum bank 128.
+        // A dedicated drum SF2 may store its kit in bank 0, 127, 128, or
+        // another bank. Restrict the mapping by channel instead of guessing
+        // the source bank. The destination remains the standard drum bank.
         cfg[count].font = drumFont_;
         cfg[count].spreset = -1;
-        cfg[count].sbank = 128;
-        cfg[count].dpreset = -1;
-        cfg[count].dbank = 128;
-        cfg[count].dbanklsb = 0;
-        cfg[count].minchan = 9;
-        cfg[count].numchan = 1;
-        ++count;
-
-        // Yamaha/XG drum fonts are commonly stored in bank 127.
-        cfg[count].font = drumFont_;
-        cfg[count].spreset = -1;
-        cfg[count].sbank = 127;
-        cfg[count].dpreset = -1;
-        cfg[count].dbank = 128;
-        cfg[count].dbanklsb = 0;
-        cfg[count].minchan = 9;
-        cfg[count].numchan = 1;
-        ++count;
-
-        // Some single-kit SF2 files use bank 0. Expose that kit as the
-        // standard drum destination without affecting melodic channels.
-        cfg[count].font = drumFont_;
-        cfg[count].spreset = -1;
-        cfg[count].sbank = 0;
+        cfg[count].sbank = -1;
         cfg[count].dpreset = -1;
         cfg[count].dbank = 128;
         cfg[count].dbanklsb = 0;
