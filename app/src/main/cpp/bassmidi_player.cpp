@@ -211,6 +211,7 @@ bool BassMidiPlayer::loadRole(const std::string& path, bool drum) {
     }
 
     if (!drum) melodyPath_ = path;
+    else drumPath_ = path;
 
     LOGI("BASSMIDI %s SF2 loaded: %s",
          drum ? "DRUM" : "MELODY", path.c_str());
@@ -391,65 +392,90 @@ void BassMidiPlayer::setMasterGain(float gain) {
 std::string BassMidiPlayer::presetList() const {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    // BASSMIDI can report FONTINFO.presets=0 for some large/legacy Yamaha
-    // SF2s even though the RIFF SoundFont contains a valid pdta/phdr table.
-    // The Voice Browser must not depend on BASSMIDI's optional enumeration
-    // metadata. Read the SF2 preset headers directly from the loaded file.
     struct Preset {
+        std::string role;
         int bank = 0;
         int program = 0;
         std::string name;
     };
     std::vector<Preset> found;
 
-    if (!melodyPath_.empty()) {
-        std::ifstream file(melodyPath_, std::ios::binary);
-        if (file) {
-            std::vector<unsigned char> data(
-                (std::istreambuf_iterator<char>(file)),
-                std::istreambuf_iterator<char>());
+    auto scanSf2 = [&](const std::string& path, const char* role) {
+        if (path.empty()) return;
 
-            // SF2 is RIFF/LIST based. Locate the pdta/phdr chunk. Each
-            // preset header is 38 bytes and the final record is the terminal
-            // EOP marker, which is not a selectable preset.
-            const char phdr[] = {'p','h','d','r'};
-            for (size_t i = 0; i + 8 <= data.size(); ++i) {
-                if (std::memcmp(data.data() + i, phdr, 4) != 0) continue;
-                const uint32_t size =
-                    static_cast<uint32_t>(data[i + 4]) |
-                    (static_cast<uint32_t>(data[i + 5]) << 8) |
-                    (static_cast<uint32_t>(data[i + 6]) << 16) |
-                    (static_cast<uint32_t>(data[i + 7]) << 24);
-                if (size < 38 || size % 38 != 0 || i + 8 + size > data.size())
-                    continue;
+        std::ifstream file(path, std::ios::binary);
+        if (!file) {
+            LOGI("SF2 %s preset scan: cannot open %s", role, path.c_str());
+            return;
+        }
 
-                const size_t count = size / 38;
-                for (size_t n = 0; n + 1 < count; ++n) {
-                    const unsigned char* rec = data.data() + i + 8 + n * 38;
-                    size_t nameLen = 0;
-                    while (nameLen < 20 && rec[nameLen] != 0) ++nameLen;
-                    std::string name(
-                        reinterpret_cast<const char*>(rec), nameLen);
-                    const int program = static_cast<int>(rec[20]) |
-                        (static_cast<int>(rec[21]) << 8);
-                    const int bank = static_cast<int>(rec[22]) |
-                        (static_cast<int>(rec[23]) << 8);
+        std::vector<unsigned char> data(
+            (std::istreambuf_iterator<char>(file)),
+            std::istreambuf_iterator<char>());
 
-                    // Ignore malformed/empty headers, but retain program 0
-                    // because it is a legitimate piano/GM preset.
-                    if (name.empty()) name = "Preset " +
-                        std::to_string(bank) + ":" + std::to_string(program);
+        const char phdr[] = {'p','h','d','r'};
+        for (size_t i = 0; i + 8 <= data.size(); ++i) {
+            if (std::memcmp(data.data() + i, phdr, 4) != 0) continue;
 
-                    found.push_back({bank, program, name});
+            const uint32_t size =
+                static_cast<uint32_t>(data[i + 4]) |
+                (static_cast<uint32_t>(data[i + 5]) << 8) |
+                (static_cast<uint32_t>(data[i + 6]) << 16) |
+                (static_cast<uint32_t>(data[i + 7]) << 24);
+
+            if (size < 38 || size % 38 != 0 || i + 8 + size > data.size())
+                continue;
+
+            const size_t count = size / 38;
+            size_t added = 0;
+            for (size_t n = 0; n + 1 < count; ++n) {
+                const unsigned char* rec = data.data() + i + 8 + n * 38;
+                size_t nameLen = 0;
+                while (nameLen < 20 && rec[nameLen] != 0) ++nameLen;
+
+                std::string name(reinterpret_cast<const char*>(rec), nameLen);
+                const int program = static_cast<int>(rec[20]) |
+                    (static_cast<int>(rec[21]) << 8);
+                const int bank = static_cast<int>(rec[22]) |
+                    (static_cast<int>(rec[23]) << 8);
+
+                // The separators are part of the native/Kotlin contract.
+                // Sanitize control characters so a broken SF2 name can never
+                // corrupt the record framing.
+                for (char& ch : name) {
+                    if (ch == '\r' || ch == '\n' || ch == '\x1e' || ch == '\x1f')
+                        ch = ' ';
                 }
-                if (!found.empty()) break;
+                if (name.empty()) {
+                    name = "Preset " + std::to_string(bank) + ":" +
+                           std::to_string(program);
+                }
+
+                found.push_back({role, bank, program, name});
+                ++added;
+            }
+
+            if (added > 0) {
+                LOGI("SF2 %s phdr scan found %u entries from %s",
+                     role, static_cast<unsigned>(added), path.c_str());
+                return;
             }
         }
-    }
+
+        LOGI("SF2 %s phdr scan found no selectable presets from %s",
+             role, path.c_str());
+    };
+
+    // Enumerate both loaded fonts. Melody and drum SF2s are separate assets,
+    // so the Voice Browser can show the real drum kits on CH9 instead of the
+    // GM fallback list.
+    scanSf2(melodyPath_, "MELODY");
+    scanSf2(drumPath_, "DRUM");
 
     if (!found.empty()) {
         std::sort(found.begin(), found.end(),
                   [](const Preset& a, const Preset& b) {
+                      if (a.role != b.role) return a.role < b.role;
                       if (a.bank != b.bank) return a.bank < b.bank;
                       if (a.program != b.program) return a.program < b.program;
                       return a.name < b.name;
@@ -457,23 +483,33 @@ std::string BassMidiPlayer::presetList() const {
 
         std::unordered_set<std::string> seen;
         std::ostringstream out;
+
+        // Use ASCII record/field separators rather than newline/pipe framing.
+        // This survives JNI/UI transport even if a native layer normalizes
+        // line endings, and names are sanitized above.
+        constexpr char FIELD = '\x1f';
+        constexpr char RECORD = '\x1e';
+
         for (const auto& p : found) {
-            const std::string key = std::to_string(p.bank) + ":" +
-                                    std::to_string(p.program);
+            const std::string key = p.role + ":" + std::to_string(p.bank) +
+                                    ":" + std::to_string(p.program);
             if (!seen.insert(key).second) continue;
-            // Contract with AudioEngineManager.loadedSoundFontPresets():
-            // one preset per line, role|bank|program|name.
-            out << "MELODY|" << p.bank << '|' << p.program << '|' << p.name << '\n';
+
+            out << p.role << FIELD << p.bank << FIELD << p.program
+                << FIELD << p.name << RECORD;
         }
-        LOGI("SF2 phdr preset scan found %u entries from %s",
-             static_cast<unsigned>(seen.size()), melodyPath_.c_str());
+
+        LOGI("SF2 preset scan total=%u melodyPath=%s drumPath=%s",
+             static_cast<unsigned>(seen.size()),
+             melodyPath_.c_str(), drumPath_.c_str());
         return out.str();
     }
 
+    // Last-resort BASSMIDI enumeration. This path is melody-only because
+    // direct SF2 header scanning is the reliable path for the Yamaha fonts
+    // used by the arranger.
     if (!melodyFont_) return {};
 
-    // Last-resort BASSMIDI enumeration for SF2/SFZ formats where direct
-    // SoundFont headers are unavailable.
     BASS_MIDI_FONTINFO info{};
     const bool infoOk = BASS_MIDI_FontGetInfo(melodyFont_, &info);
     LOGI("BASSMIDI preset scan: infoOk=%d presets=%u name=%s",
@@ -489,8 +525,8 @@ std::string BassMidiPlayer::presetList() const {
             presets.clear();
         }
     }
+
     if (presets.empty()) {
-        LOGI("BASSMIDI preset scan: using FontGetPreset fallback scan");
         presets.reserve(256);
         for (int bank = 0; bank <= 128; ++bank) {
             for (int program = 0; program < 128; ++program) {
@@ -502,8 +538,6 @@ std::string BassMidiPlayer::presetList() const {
                 }
             }
         }
-        LOGI("BASSMIDI preset fallback found %u entries",
-             static_cast<unsigned>(presets.size()));
     }
 
     std::ostringstream out;
@@ -512,7 +546,8 @@ std::string BassMidiPlayer::presetList() const {
         const int bank = static_cast<int>(HIWORD(p));
         const char* name = BASS_MIDI_FontGetPreset(melodyFont_, program, bank);
         if (!name) name = "";
-        out << "MELODY|" << bank << '|' << program << '|' << name << '\n';
+        out << "MELODY\x1f" << bank << '\x1f' << program
+            << '\x1f' << name << '\x1e';
     }
     return out.str();
 }
