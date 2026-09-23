@@ -97,6 +97,13 @@ bool AudioEngine::loadSoundFont(const std::string& path) {
     return ok;
 }
 
+bool AudioEngine::addSoundFont(const std::string& path) {
+    LOGI("addSoundFont: %s", path.c_str());
+    bool ok = soundFont_.addSoundFont(path);
+    LOGI("addSoundFont result: %s", ok ? "OK" : "FAILED");
+    return ok;
+}
+
 void AudioEngine::unloadSoundFont() {
     soundFont_.unload();
 }
