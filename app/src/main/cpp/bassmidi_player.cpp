@@ -73,8 +73,9 @@ bool BassMidiPlayer::ensureEngine() {
         BASS_ChannelSetAttribute(stream_, BASS_ATTRIB_MIDI_VOL, 1.0f);
         BASS_ChannelSetAttribute(stream_, BASS_ATTRIB_BUFFER, 0.0f);
 
-        // Channel 10 is the standard percussion channel for a 16-channel
-        // BASSMIDI realtime stream.
+        // Yamaha styles can use both Rhythm channels 9 and 10
+        // (zero-based MIDI channels 8 and 9). Keep both as percussion.
+        BASS_MIDI_StreamEvent(stream_, 8, MIDI_EVENT_DRUMS, 1);
         BASS_MIDI_StreamEvent(stream_, 9, MIDI_EVENT_DRUMS, 1);
 
         LOGI("BASSMIDI stream ready: PPQN=1920 SRC=%d voices=%d",
@@ -112,8 +113,8 @@ bool BassMidiPlayer::applyFonts() {
         drum.dpreset = -1;
         drum.dbank = 128;
         drum.dbanklsb = 0;
-        drum.minchan = 9;
-        drum.numchan = 1;
+        drum.minchan = 8;
+        drum.numchan = 2;
         cfg.push_back(drum);
     }
 
