@@ -16,6 +16,7 @@ public:
     void stop();
 
     bool loadSoundFont(const std::string& path);
+    bool addSoundFont(const std::string& path);
     bool isSoundFontLoaded() const { return soundFont_.isLoaded(); }
     void unloadSoundFont();
 
