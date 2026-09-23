@@ -118,6 +118,23 @@ bool BassMidiPlayer::applyFonts() {
         cfg.push_back(drum);
     }
 
+    if (!drumFont_ && melodyFont_) {
+        // Single-SF2 mode: use the same SF2's percussion bank for both
+        // Yamaha Rhythm channels 9/10 (zero-based 8/9). Without this
+        // mapping, those channels are intentionally excluded from the
+        // melodic mappings below and therefore render silently.
+        BASS_MIDI_FONTEX2 selfDrum{};
+        selfDrum.font = melodyFont_;
+        selfDrum.spreset = -1;
+        selfDrum.sbank = 128;
+        selfDrum.dpreset = -1;
+        selfDrum.dbank = 128;
+        selfDrum.dbanklsb = 0;
+        selfDrum.minchan = 8;
+        selfDrum.numchan = 2;
+        cfg.push_back(selfDrum);
+    }
+
     if (melodyFont_) {
         // Keep the melody mappings off MIDI channel 10 (zero-based 9).
         // numchan=0 means "all channels" in BASSMIDI, which can overlap the
@@ -357,7 +374,10 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program) {
     // MSB * 128 + LSB. BASSMIDI keeps the two MIDI controllers separate,
     // so split the value here instead of collapsing every melodic bank to
     // LSB 0.
-    const bool wantDrum = (channel == 9 || bank >= 128);
+    // Yamaha Rhythm 1/2 are MIDI channels 9/10 (zero-based 8/9).
+    // Keep both channels in percussion mode even when a style omits an
+    // explicit Bank Select event.
+    const bool wantDrum = (channel == 8 || channel == 9 || bank >= 128);
     if (wantDrum) {
         bank = 128;
     } else {
