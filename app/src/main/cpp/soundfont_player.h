@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 #include <fluidsynth.h>
 
 class SoundFontPlayer {
@@ -9,6 +10,7 @@ public:
     ~SoundFontPlayer();
 
     bool load(const std::string& path);
+    bool addSoundFont(const std::string& path);
     void unload();
     bool isLoaded() const { return synth_ != nullptr && sfId_ >= 0; }
 
@@ -20,9 +22,13 @@ public:
 
     void setChannelPreset(int channel, int bank, int program);
     int presetCount() const;
+    int soundFontCount() const { return static_cast<int>(sfIds_.size()); }
 
 private:
     fluid_settings_t* settings_ = nullptr;
     fluid_synth_t* synth_ = nullptr;
-    int sfId_ = -1;
+    std::vector<int> sfIds_;
+
+    int findDrumFontIdLocked() const;
+    void applyDefaultChannelPresetsLocked();
 };
