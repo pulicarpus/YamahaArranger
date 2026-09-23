@@ -131,8 +131,10 @@ bool BassMidiPlayer::applyFonts() {
             melodyA.dpreset = -1;
             melodyA.dbank = 0;
             melodyA.dbanklsb = lsb;
+            // Keep the melody mapping off both Yamaha rhythm channels:
+            // zero-based 8 and 9 are reserved for the dedicated drum mapping.
             melodyA.minchan = 0;
-            melodyA.numchan = 9;
+            melodyA.numchan = 8;
             cfg.push_back(melodyA);
 
             BASS_MIDI_FONTEX2 melodyB{};
