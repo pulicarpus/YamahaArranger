@@ -102,21 +102,6 @@ bool SoundFontPlayer::load(const std::string& path) {
 
     applyDefaultChannelPresetsLocked();
 
-    fluid_synth_cc(synth_, 0, 7, 127);
-    fluid_synth_cc(synth_, 1, 7, 127);
-    fluid_synth_cc(synth_, 2, 7, 127);
-    fluid_synth_cc(synth_, 3, 7, 100);
-    fluid_synth_cc(synth_, 4, 7, 100);
-    fluid_synth_cc(synth_, 5, 7, 95);
-    fluid_synth_cc(synth_, 6, 7, 115);
-    fluid_synth_cc(synth_, 7, 7, 115);
-    fluid_synth_cc(synth_, 8, 7, 127);
-    fluid_synth_cc(synth_, 9, 7, 127);
-    for (int ch = 10; ch < 16; ++ch) {
-        fluid_synth_cc(synth_, ch, 7, 110);
-    }
-
-    LOGI("Channels assigned + volumes set");
     return true;
 }
 
