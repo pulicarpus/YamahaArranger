@@ -322,25 +322,43 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program) {
     if (!ensureEngine()) return;
 
     channel = std::max(0, std::min(15, channel));
-    bank = std::max(0, std::min(127, bank));
+    const int requestedBank = bank;
     program = std::max(0, std::min(65535, program));
+
+    // StyleSequencer deliberately uses bank 128 for the drum destination.
+    // BASSMIDI's MIDI_EVENT_DRUMS event resets bank/program to 0 when its
+    // state changes, so it MUST be sent before bank/program. Do not clamp
+    // the drum destination to 127: the FONTEX2 mapping targets dbank=128.
+    const bool wantDrum = (channel == 9 || bank >= 128);
+    if (wantDrum) {
+        bank = 128;
+    } else {
+        bank = std::max(0, std::min(127, bank));
+    }
 
     ChannelState& state = channels_[channel];
     state.bankMsb = bank;
     state.bankLsb = 0;
     state.program = program;
-    state.drum = (channel == 9 || bank >= 127);
+    state.drum = wantDrum;
     state.initialized = true;
 
-    send(channel, MIDI_EVENT_BANK, static_cast<DWORD>(state.bankMsb));
-    send(channel, MIDI_EVENT_BANK_LSB, static_cast<DWORD>(state.bankLsb));
-    send(channel, MIDI_EVENT_PROGRAM, static_cast<DWORD>(state.program));
+    LOGI("SET PRESET ch=%d requestedBank=%d effectiveBank=%d prog=%d drum=%d",
+         channel, requestedBank, state.bankMsb, state.program, state.drum ? 1 : 0);
 
     if (state.drum) {
         send(channel, MIDI_EVENT_DRUMS, 1);
     } else {
         send(channel, MIDI_EVENT_DRUMS, 0);
     }
+
+    send(channel, MIDI_EVENT_BANK, static_cast<DWORD>(state.bankMsb));
+    send(channel, MIDI_EVENT_BANK_LSB, static_cast<DWORD>(state.bankLsb));
+    send(channel, MIDI_EVENT_PROGRAM, static_cast<DWORD>(state.program));
+
+    LOGI("SET PRESET APPLIED ch=%d bank=%d lsb=%d prog=%d drum=%d",
+         channel, state.bankMsb, state.bankLsb, state.program,
+         state.drum ? 1 : 0);
 
     preloadCurrentPreset(channel);
 }
