@@ -59,10 +59,19 @@ bool BassMidiPlayer::ensureEngine() {
             return false;
         }
 
-        // Yamaha style timing is PPQ 1920. This is mostly relevant if later
-        // we feed tick-timed event batches; realtime note events remain
-        // immediate because BASS_MIDI_ASYNC is deliberately not enabled.
+        // Yamaha style timing is PPQ 1920.
         BASS_ChannelSetAttribute(stream_, BASS_ATTRIB_MIDI_PPQN, 1920.0f);
+
+        // Decouple live MIDI event submission from BASSMIDI's synth/render
+        // processing. Without BASS_MIDI_ASYNC, BASS_MIDI_StreamEvent() can
+        // apply an event immediately, so style/MIDI threads can contend with
+        // the audio callback while a voice/program change is being processed.
+        // The async queue lets BASSMIDI consume those events on its update
+        // cycle instead. 4096 events is deliberately finite but large enough
+        // for dense arranger passages without reallocating the queue during
+        // normal playback.
+        BASS_ChannelFlags(stream_, BASS_MIDI_ASYNC, BASS_MIDI_ASYNC);
+        BASS_ChannelSetAttribute(stream_, BASS_ATTRIB_MIDI_QUEUE_ASYNC, 4096.0f);
 
         // 16-point sinc is the highest BASSMIDI SRC quality available on
         // ARM/NEON and is the quality path we want for an arranger.
@@ -479,7 +488,16 @@ void BassMidiPlayer::allNotesOff() {
 }
 
 void BassMidiPlayer::setChannelPreset(int channel, int bank, int program) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    const auto lockWaitStart = std::chrono::steady_clock::now();
+    std::unique_lock<std::mutex> lock(mutex_);
+    const auto lockWaitUs =
+        std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - lockWaitStart).count();
+    const auto bodyStart = std::chrono::steady_clock::now();
+    if (lockWaitUs > 100) {
+        LOGI("PRESET MUTEX WAIT ch=%d duration_us=%lld",
+             channel, static_cast<long long>(lockWaitUs));
+    }
     if (!ensureEngine()) return;
 
     channel = std::max(0, std::min(15, channel));
@@ -556,14 +574,38 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program) {
     // chopped or disappear. BASSMIDI can resolve/load the selected preset on
     // demand when the first note arrives; keep the program/bank event cheap.
     if (!state.drum) {
+        const auto preloadStart = std::chrono::steady_clock::now();
         preloadCurrentPreset(channel);
+        const auto preloadUs =
+            std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::steady_clock::now() - preloadStart).count();
+        if (preloadUs > 100) {
+            LOGI("PRESET PRELOAD COST ch=%d duration_us=%lld",
+                 channel, static_cast<long long>(preloadUs));
+        }
     }
+
+    const auto bodyUs =
+        std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - bodyStart).count();
+    LOGI("PRESET NATIVE COST ch=%d duration_us=%lld wait_us=%lld",
+         channel, static_cast<long long>(bodyUs),
+         static_cast<long long>(lockWaitUs));
 }
 
 void BassMidiPlayer::setChannelMixer(int channel, int volume, int pan,
                                      int expression, int reverbSend,
                                      int chorusSend) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    const auto lockWaitStart = std::chrono::steady_clock::now();
+    std::unique_lock<std::mutex> lock(mutex_);
+    const auto lockWaitUs =
+        std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - lockWaitStart).count();
+    const auto bodyStart = std::chrono::steady_clock::now();
+    if (lockWaitUs > 100) {
+        LOGI("MIXER MUTEX WAIT ch=%d duration_us=%lld",
+             channel, static_cast<long long>(lockWaitUs));
+    }
     if (!ensureEngine()) return;
 
     channel = std::max(0, std::min(15, channel));
@@ -572,6 +614,13 @@ void BassMidiPlayer::setChannelMixer(int channel, int volume, int pan,
     send(channel, MIDI_EVENT_EXPRESSION, std::clamp(expression, 0, 127));
     send(channel, MIDI_EVENT_REVERB, std::clamp(reverbSend, 0, 127));
     send(channel, MIDI_EVENT_CHORUS, std::clamp(chorusSend, 0, 127));
+
+    const auto bodyUs =
+        std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - bodyStart).count();
+    LOGI("MIXER NATIVE COST ch=%d duration_us=%lld wait_us=%lld",
+         channel, static_cast<long long>(bodyUs),
+         static_cast<long long>(lockWaitUs));
 }
 
 void BassMidiPlayer::setChannelExpression(int channel, int expression) {
