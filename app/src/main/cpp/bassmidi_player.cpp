@@ -408,20 +408,34 @@ void BassMidiPlayer::preloadCurrentPreset(int channel) {
     // to preload a drum program that is not present.
     int sourceBank = state.drum ? 128 : state.bankMsb;
     int sourceProgram = state.program;
+    // Preload asynchronously. BASSMIDI normally loads samples on demand,
+    // which can cause a CPU spike exactly when a new voice is first heard.
+    // The synchronous BASS_MIDI_FontLoad() path is unsafe for this arranger:
+    // setChannelPreset() is called while the Oboe callback is rendering, and
+    // the old synchronous preload could hold mutex_ long enough to starve the
+    // realtime callback and produce a chopped/missing fill or section.
+    //
+    // NOWAIT lets BASSMIDI prepare the preset in its own loading path while
+    // playback continues. The first notes can still render from samples that
+    // are already ready, while any remainder is loaded as needed.
     if (state.drum) {
         if (!findDrumPreset(path, state.program, sourceBank, sourceProgram)) {
             LOGI("BASSMIDI no drum preset found ch=%d requested=%d",
                  channel, state.program);
             return;
         }
-        if (!BASS_MIDI_FontLoad(font, sourceProgram, sourceBank)) {
-            LOGI("BASSMIDI drum preload skipped ch=%d bank=%d prog=%d err=%d",
+        if (!BASS_MIDI_FontLoadEx(
+                font, sourceProgram, sourceBank, 0,
+                BASS_MIDI_FONTLOAD_NOWAIT)) {
+            LOGI("BASSMIDI async drum preload skipped ch=%d bank=%d prog=%d err=%d",
                  channel, sourceBank, sourceProgram, BASS_ErrorGetCode());
             return;
         }
     } else {
-        if (!BASS_MIDI_FontLoad(font, state.program, sourceBank)) {
-            LOGI("BASSMIDI preload skipped ch=%d bank=%d prog=%d err=%d",
+        if (!BASS_MIDI_FontLoadEx(
+                font, state.program, sourceBank, 0,
+                BASS_MIDI_FONTLOAD_NOWAIT)) {
+            LOGI("BASSMIDI async preload skipped ch=%d bank=%d prog=%d err=%d",
                  channel, sourceBank, state.program, BASS_ErrorGetCode());
             return;
         }
