@@ -3,7 +3,7 @@ on:
   push:
     branches:
       - feat/bassmidi-engine-build448
-    - fix/audio-transition-preset-cache
+      - fix/audio-transition-preset-cache
   workflow_dispatch: {}
 jobs:
   build:
