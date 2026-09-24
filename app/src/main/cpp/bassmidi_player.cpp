@@ -462,12 +462,32 @@ void BassMidiPlayer::noteOn(int channel, int key, float velocity) {
 }
 
 void BassMidiPlayer::noteOff(int channel, int key) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    const auto waitStart = std::chrono::steady_clock::now();
+    std::unique_lock<std::mutex> lock(mutex_);
+    const auto lockAcquired = std::chrono::steady_clock::now();
+
     if (!stream_) return;
 
     channel = std::max(0, std::min(15, channel));
     key = std::max(0, std::min(127, key));
+
     send(channel, MIDI_EVENT_NOTE, static_cast<DWORD>(key));
+
+    const auto finished = std::chrono::steady_clock::now();
+    const auto waitUs = std::chrono::duration_cast<std::chrono::microseconds>(
+        lockAcquired - waitStart).count();
+    const auto nativeUs = std::chrono::duration_cast<std::chrono::microseconds>(
+        finished - lockAcquired).count();
+
+    // Diagnostic only: keep normal note-off behavior unchanged and avoid
+    // flooding the log for the common sub-100us path.
+    if (waitUs >= 100 || nativeUs >= 100) {
+        LOGI("NOTE_OFF NATIVE COST ch=%d note=%d wait_us=%lld native_us=%lld total_us=%lld",
+             channel, key,
+             static_cast<long long>(waitUs),
+             static_cast<long long>(nativeUs),
+             static_cast<long long>(waitUs + nativeUs));
+    }
 }
 
 void BassMidiPlayer::allNotesOff() {
