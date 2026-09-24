@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - feat/bassmidi-engine-build448
+      - research/audio-mutex-costs
       - research/audio-realtime-isolation
       - research/audio-realtime-isolation-async
       - research/audio-transition-timing
