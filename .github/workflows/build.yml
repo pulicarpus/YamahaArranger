@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - feat/bassmidi-engine-build448
+      - research/audio-realtime-isolation
   workflow_dispatch: {}
 jobs:
   build:
