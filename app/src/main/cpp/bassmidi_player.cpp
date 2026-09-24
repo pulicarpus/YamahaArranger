@@ -4,6 +4,7 @@
 #include <fstream>
 #include <unordered_set>
 #include <cmath>
+#include <chrono>
 #include <sstream>
 #include <vector>
 
@@ -191,8 +192,13 @@ bool BassMidiPlayer::loadRole(const std::string& path, bool drum) {
     if (!ensureEngine()) return false;
 
     HSOUNDFONT& target = drum ? drumFont_ : melodyFont_;
-    if (drum) drumPath_.clear();
-    else melodyPath_.clear();
+    if (drum) {
+        drumPath_.clear();
+        drumDrumPresetCache_.clear();
+    } else {
+        melodyPath_.clear();
+        melodyDrumPresetCache_.clear();
+    }
     if (target) {
         BASS_MIDI_FontFree(target);
         target = 0;
@@ -235,8 +241,13 @@ bool BassMidiPlayer::loadRole(const std::string& path, bool drum) {
         }
     }
 
-    if (!drum) melodyPath_ = path;
-    else drumPath_ = path;
+    if (!drum) {
+        melodyPath_ = path;
+        rebuildDrumPresetCache(melodyPath_, melodyDrumPresetCache_);
+    } else {
+        drumPath_ = path;
+        rebuildDrumPresetCache(drumPath_, drumDrumPresetCache_);
+    }
 
     LOGI("BASSMIDI %s SF2 loaded: %s",
          drum ? "DRUM" : "MELODY", path.c_str());
@@ -293,12 +304,18 @@ void BassMidiPlayer::send(int channel, DWORD event, DWORD param) {
     }
 }
 
-bool BassMidiPlayer::findDrumPreset(const std::string& path,
-                                     int requestedProgram,
-                                     int& sourceBank, int& sourceProgram) const {
-    if (path.empty()) return false;
+void BassMidiPlayer::rebuildDrumPresetCache(
+    const std::string& path,
+    std::vector<DrumPresetEntry>& cache) {
+    cache.clear();
+    if (path.empty()) return;
+
     std::ifstream file(path, std::ios::binary);
-    if (!file) return false;
+    if (!file) {
+        LOGI("SF2 drum preset cache: cannot open %s", path.c_str());
+        return;
+    }
+
     std::vector<unsigned char> data(
         (std::istreambuf_iterator<char>(file)),
         std::istreambuf_iterator<char>());
@@ -306,15 +323,16 @@ bool BassMidiPlayer::findDrumPreset(const std::string& path,
     const char phdr[] = {'p','h','d','r'};
     for (size_t i = 0; i + 8 <= data.size(); ++i) {
         if (std::memcmp(data.data() + i, phdr, 4) != 0) continue;
+
         const uint32_t size =
             static_cast<uint32_t>(data[i + 4]) |
             (static_cast<uint32_t>(data[i + 5]) << 8) |
             (static_cast<uint32_t>(data[i + 6]) << 16) |
             (static_cast<uint32_t>(data[i + 7]) << 24);
+
         if (size < 38 || size % 38 != 0 || i + 8 + size > data.size())
             continue;
 
-        int firstBank = -1, firstProgram = -1;
         const size_t count = size / 38;
         for (size_t n = 0; n + 1 < count; ++n) {
             const unsigned char* rec = data.data() + i + 8 + n * 38;
@@ -323,22 +341,54 @@ bool BassMidiPlayer::findDrumPreset(const std::string& path,
             const int bank = static_cast<int>(rec[22]) |
                              (static_cast<int>(rec[23]) << 8);
             if (bank != 127 && bank != 128) continue;
-            if (firstBank < 0) {
-                firstBank = bank;
-                firstProgram = program;
-            }
-            if (program == requestedProgram) {
-                sourceBank = bank;
-                sourceProgram = program;
-                return true;
-            }
+
+            cache.push_back({bank, program});
         }
-        if (firstBank >= 0) {
-            sourceBank = firstBank;
-            sourceProgram = firstProgram;
+
+        if (!cache.empty()) {
+            LOGI("SF2 drum preset cache built: entries=%u path=%s",
+                 static_cast<unsigned>(cache.size()), path.c_str());
+        } else {
+            LOGI("SF2 drum preset cache built: no bank 127/128 presets path=%s",
+                 path.c_str());
+        }
+        return;
+    }
+
+    LOGI("SF2 drum preset cache: phdr not found path=%s", path.c_str());
+}
+
+bool BassMidiPlayer::findDrumPreset(const std::string& path,
+                                     int requestedProgram,
+                                     int& sourceBank, int& sourceProgram) const {
+    if (path.empty()) return false;
+
+    const std::vector<DrumPresetEntry>* cache = nullptr;
+    if (!drumPath_.empty() && path == drumPath_) {
+        cache = &drumDrumPresetCache_;
+    } else if (!melodyPath_.empty() && path == melodyPath_) {
+        cache = &melodyDrumPresetCache_;
+    }
+    if (!cache) return false;
+
+    int firstBank = -1;
+    int firstProgram = -1;
+    for (const auto& preset : *cache) {
+        if (firstBank < 0) {
+            firstBank = preset.bank;
+            firstProgram = preset.program;
+        }
+        if (preset.program == requestedProgram) {
+            sourceBank = preset.bank;
+            sourceProgram = preset.program;
             return true;
         }
-        return false;
+    }
+
+    if (firstBank >= 0) {
+        sourceBank = firstBank;
+        sourceProgram = firstProgram;
+        return true;
     }
     return false;
 }
@@ -451,7 +501,15 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program) {
         int sourceBank = 128;
         int sourceProgram = program;
         const std::string& path = drumFont_ ? drumPath_ : melodyPath_;
-        if (findDrumPreset(path, program, sourceBank, sourceProgram)) {
+        const auto resolveStart = std::chrono::steady_clock::now();
+        const bool resolved =
+            findDrumPreset(path, program, sourceBank, sourceProgram);
+        const auto resolveUs = std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - resolveStart).count();
+        LOGI("DRUM PRESET RESOLVE TIMING ch=%d requested=%d duration_us=%lld cache=%d",
+             channel, program, static_cast<long long>(resolveUs),
+             resolved ? 1 : 0);
+        if (resolved) {
             state.bankMsb = 128;
             state.bankLsb = 0;
             state.program = sourceProgram;

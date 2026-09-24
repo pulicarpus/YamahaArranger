@@ -434,6 +434,10 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     }
 
     private fun applyVoicesFromCasm(section: StyleSectionModel) {
+        val startedAtNanos = System.nanoTime()
+        com.yourapp.yamahaarranger.ui.DebugLog.add(
+            "⏱ CASM VOICE APPLY START section=${section.name}"
+        )
         val explicitByDestination = linkedMapOf<Int, StylePartModel>()
         section.parts.forEach { part ->
             val policies = part.casmPolicies.ifEmpty { listOfNotNull(part.casm) }
@@ -508,6 +512,10 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                     " (" + source + ")"
             )
         }
+        val durationUs = (System.nanoTime() - startedAtNanos) / 1_000L
+        com.yourapp.yamahaarranger.ui.DebugLog.add(
+            "⏱ CASM VOICE APPLY END section=${section.name} duration_us=$durationUs"
+        )
     }
 
     private fun guessProgramFromVoiceName(name:String):Int{val n=name.lowercase();val numeric=Regex("(?:^|\\D)(\\d{1,3})\\s*$").find(n)?.groupValues?.getOrNull(1)?.toIntOrNull();if(numeric!=null&&numeric in 0..127)return numeric;return when{n.contains("piano")->0;n.contains("e.piano")||n.contains("ep")->4;n.contains("organ")->16;n.contains("accordion")->21;n.contains("guitar")||n.contains("gtr")->24;n.contains("bass")->33;n.contains("violin")->40;n.contains("cello")->42;n.contains("strg")||n.contains("str")->48;n.contains("choir")->52;n.contains("trumpet")->56;n.contains("trombone")->57;n.contains("brass")->61;n.contains("sax")->65;n.contains("oboe")->68;n.contains("clarinet")->71;n.contains("flute")->73;n.contains("crash")||n.contains("cymbal")||n.contains("perc")||n.contains("dr")||n.contains("kit")||n.contains("drum")->0;n.contains("pad")->89;else->-1}}
