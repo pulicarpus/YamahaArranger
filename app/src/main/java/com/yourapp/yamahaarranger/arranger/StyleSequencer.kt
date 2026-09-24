@@ -502,7 +502,12 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             val midiMsb = if (drum) 127 else sourcePart.bankMsb.coerceIn(0, 127)
             val midiLsb = if (drum) 0 else sourcePart.bankLsb.coerceIn(0, 127)
 
+            // Diagnostic only: measure each native voice operation separately.
+            // No scheduling or CASM behavior is changed.
+            val programStartedAtNanos = System.nanoTime()
             audioEngine.setChannelProgram(destination, prog, audioBank)
+            val programDurationUs = (System.nanoTime() - programStartedAtNanos) / 1_000L
+            com.yourapp.yamahaarranger.ui.DebugLog.add(`⏱ VOICE PROGRAM COST section=\${section.name} ch=\${destination} bank=\${audioBank} prog=\${prog} duration_us=\${programDurationUs}`)
 
             val volume = override?.volume ?: sourcePart.volume
             val pan = override?.pan ?: sourcePart.pan
@@ -510,6 +515,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             val reverb = override?.reverbSend ?: sourcePart.reverbSend
             val chorus = override?.chorusSend ?: sourcePart.chorusSend
             if (volume >= 0 || pan >= 0 || expression >= 0 || reverb >= 0 || chorus >= 0) {
+                val mixerStartedAtNanos = System.nanoTime()
                 audioEngine.setChannelMixer(
                     destination,
                     volume = if (volume >= 0) volume else 127,
@@ -518,6 +524,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                     reverbSend = if (reverb >= 0) reverb else 0,
                     chorusSend = if (chorus >= 0) chorus else 0
                 )
+                val mixerDurationUs = (System.nanoTime() - mixerStartedAtNanos) / 1_000L
+                com.yourapp.yamahaarranger.ui.DebugLog.add(`⏱ VOICE MIXER COST section=\${section.name} ch=\${destination} duration_us=\${mixerDurationUs}`)
             }
 
             midiInputManager.sendProgramChange(destination, prog, midiMsb, midiLsb)
