@@ -602,7 +602,51 @@ class MainViewModel @Inject constructor(
     fun selectSoundFont(uri: Uri, name: String) {
         viewModelScope.launch {
             DebugLog.add("🔄 Selecting SF2: $name")
-            loadSoundFontUri(uri, name)
+
+            // The SF2 Manager lists individual files, but when the managed
+            // folder contains a MELODY + DRUM pair they must remain loaded
+            // simultaneously. The old code called loadSoundFontUri() with
+            // role=null here, which invokes loadSingleSoundFont() and replaces
+            // both roles with the selected file. That made selecting the drum
+            // font remove the melody font, and vice versa.
+            val files = withContext(Dispatchers.IO) { contentResolver.listSoundFonts() }
+            val drum = files.firstOrNull { (_, fileName) ->
+                val n = fileName.lowercase()
+                n.contains("drum") || n.contains("drumkit") || n.contains("percussion")
+            }
+            val melody = files.firstOrNull { it != drum }
+
+            if (melody != null && drum != null) {
+                val melodyCache = withContext(Dispatchers.IO) {
+                    contentResolver.copySoundFontToCache(melody.first, melody.second)
+                }
+                val drumCache = withContext(Dispatchers.IO) {
+                    contentResolver.copySoundFontToCache(drum.first, drum.second)
+                }
+
+                if (melodyCache != null && drumCache != null) {
+                    val ok = withContext(Dispatchers.Default) {
+                        audioEngine.loadSoundFontPair(
+                            melodyCache.absolutePath,
+                            drumCache.absolutePath
+                        )
+                    }
+                    _soundFontName.value = if (ok) name else "Load failed"
+                    DebugLog.add(
+                        if (ok) "✅ MELODY + DRUM SF2 reloaded; selected=$name"
+                        else "❌ MELODY + DRUM SF2 reload failed"
+                    )
+                    return@launch
+                }
+
+                DebugLog.add("❌ MELODY + DRUM SF2 cache failed")
+                _soundFontName.value = "Load failed"
+                return@launch
+            }
+
+            // Only one managed SF2 exists: use it for both melodic and
+            // Yamaha rhythm channels.
+            loadSoundFontUri(uri, name, role = null, replaceAll = true)
         }
     }
 
