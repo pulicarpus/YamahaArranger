@@ -41,6 +41,22 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     private var lastAppliedSection=""
     private var lockedChannels:Set<Int> = emptySet()
     private val channelOverrides = mutableMapOf<Int, StyleChannelOverride>()
+
+    // Cache the complete native voice state already applied to each destination.
+    // Fill→Main often uses the same voices as the Fill. Re-sending identical
+    // BASSMIDI program/mixer changes at the section boundary can contend with
+    // the realtime render path and create an audible hole. MIDI OUT is still
+    // sent on every section; only redundant native audio mutations are skipped.
+    private data class AppliedChannelState(
+        val program: Int,
+        val bank: Int,
+        val volume: Int,
+        val pan: Int,
+        val expression: Int,
+        val reverbSend: Int,
+        val chorusSend: Int
+    )
+    private val appliedChannelStates = mutableMapOf<Int, AppliedChannelState>()
     private data class ActiveTransposedNote(
         val sourceChannel:Int,
         val sourceNote:Int,
@@ -100,7 +116,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
 
 
     fun setLockedChannels(channels:Set<Int>){lockedChannels=channels;com.yourapp.yamahaarranger.ui.DebugLog.add("🔒 Locked channels updated: $channels")}
-    fun setChannelOverride(channel:Int, override:StyleChannelOverride){channelOverrides[channel]=override;com.yourapp.yamahaarranger.ui.DebugLog.add("🎚 STYLE CH$channel: vol=${override.volume} prog=${override.program ?: "AUTO"} bank=${override.bank ?: "AUTO"} tr=${override.transpose} mute=${override.muted}")}
+    fun setChannelOverride(channel:Int, override:StyleChannelOverride){channelOverrides[channel]=override; appliedChannelStates.remove(channel);com.yourapp.yamahaarranger.ui.DebugLog.add("🎚 STYLE CH$channel: vol=${override.volume} prog=${override.program ?: "AUTO"} bank=${override.bank ?: "AUTO"} tr=${override.transpose} mute=${override.muted}")}
     fun channelOverride(channel:Int):StyleChannelOverride = channelOverrides[channel] ?: StyleChannelOverride()
     fun setChannelVolume(channel:Int, volume:Int){
         val v=volume.coerceIn(0,127)
@@ -490,24 +506,44 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             val midiMsb = if (drum) 127 else sourcePart.bankMsb.coerceIn(0, 127)
             val midiLsb = if (drum) 0 else sourcePart.bankLsb.coerceIn(0, 127)
 
-            audioEngine.setChannelProgram(destination, prog, audioBank)
-
             val volume = override?.volume ?: sourcePart.volume
             val pan = override?.pan ?: sourcePart.pan
             val expression = override?.expression ?: sourcePart.expression
             val reverb = override?.reverbSend ?: sourcePart.reverbSend
             val chorus = override?.chorusSend ?: sourcePart.chorusSend
-            if (volume >= 0 || pan >= 0 || expression >= 0 || reverb >= 0 || chorus >= 0) {
-                audioEngine.setChannelMixer(
-                    destination,
-                    volume = if (volume >= 0) volume else 127,
-                    pan = if (pan >= 0) pan else 64,
-                    expression = if (expression >= 0) expression else 127,
-                    reverbSend = if (reverb >= 0) reverb else 0,
-                    chorusSend = if (chorus >= 0) chorus else 0
+
+            val nativeState = AppliedChannelState(
+                program = prog,
+                bank = audioBank,
+                volume = if (volume >= 0) volume else 127,
+                pan = if (pan >= 0) pan else 64,
+                expression = if (expression >= 0) expression else 127,
+                reverbSend = if (reverb >= 0) reverb else 0,
+                chorusSend = if (chorus >= 0) chorus else 0
+            )
+            val previousNativeState = appliedChannelStates[destination]
+            if (previousNativeState == nativeState) {
+                com.yourapp.yamahaarranger.ui.DebugLog.add(
+                    "🎚 CASM AUDIO CACHE HIT dst" + destination +
+                        " pc=" + prog + " bank=" + audioBank + " (native preset/mixer unchanged)"
                 )
+            } else {
+                audioEngine.setChannelProgram(destination, prog, audioBank)
+                if (volume >= 0 || pan >= 0 || expression >= 0 || reverb >= 0 || chorus >= 0) {
+                    audioEngine.setChannelMixer(
+                        destination,
+                        volume = nativeState.volume,
+                        pan = nativeState.pan,
+                        expression = nativeState.expression,
+                        reverbSend = nativeState.reverbSend,
+                        chorusSend = nativeState.chorusSend
+                    )
+                }
+                appliedChannelStates[destination] = nativeState
             }
 
+            // Keep the external MIDI device synchronized even when the local
+            // BASSMIDI state did not need to change.
             midiInputManager.sendProgramChange(destination, prog, midiMsb, midiLsb)
             applied += destination
             val source = if (override?.program != null) "STYLE OVERRIDE"
