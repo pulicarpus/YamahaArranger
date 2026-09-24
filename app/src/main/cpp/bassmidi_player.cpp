@@ -414,13 +414,33 @@ void BassMidiPlayer::preloadCurrentPreset(int channel) {
                  channel, state.program);
             return;
         }
-        if (!BASS_MIDI_FontLoad(font, sourceProgram, sourceBank)) {
+        const auto fontLoadStart = std::chrono::steady_clock::now();
+        const bool loaded = BASS_MIDI_FontLoad(font, sourceProgram, sourceBank);
+        const auto fontLoadUs =
+            std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::steady_clock::now() - fontLoadStart).count();
+        if (fontLoadUs >= 1000) {
+            LOGI("BASSMIDI FONTLOAD TIME ch=%d duration_us=%lld drum=1 bank=%d prog=%d",
+                 channel, static_cast<long long>(fontLoadUs),
+                 sourceBank, sourceProgram);
+        }
+        if (!loaded) {
             LOGI("BASSMIDI drum preload skipped ch=%d bank=%d prog=%d err=%d",
                  channel, sourceBank, sourceProgram, BASS_ErrorGetCode());
             return;
         }
     } else {
-        if (!BASS_MIDI_FontLoad(font, state.program, sourceBank)) {
+        const auto fontLoadStart = std::chrono::steady_clock::now();
+        const bool loaded = BASS_MIDI_FontLoad(font, state.program, sourceBank);
+        const auto fontLoadUs =
+            std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::steady_clock::now() - fontLoadStart).count();
+        if (fontLoadUs >= 1000) {
+            LOGI("BASSMIDI FONTLOAD TIME ch=%d duration_us=%lld drum=0 bank=%d prog=%d",
+                 channel, static_cast<long long>(fontLoadUs),
+                 sourceBank, state.program);
+        }
+        if (!loaded) {
             LOGI("BASSMIDI preload skipped ch=%d bank=%d prog=%d err=%d",
                  channel, sourceBank, state.program, BASS_ErrorGetCode());
             return;
@@ -542,7 +562,16 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program) {
     // chopped or disappear. BASSMIDI can resolve/load the selected preset on
     // demand when the first note arrives; keep the program/bank event cheap.
     if (!state.drum) {
+        const auto presetStart = std::chrono::steady_clock::now();
         preloadCurrentPreset(channel);
+        const auto presetUs =
+            std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::steady_clock::now() - presetStart).count();
+        if (presetUs >= 1000) {
+            LOGI("PRESET OP TIME ch=%d duration_us=%lld drum=%d bank=%d lsb=%d prog=%d",
+                 channel, static_cast<long long>(presetUs),
+                 state.drum ? 1 : 0, state.bankMsb, state.bankLsb, state.program);
+        }
     }
 }
 
@@ -737,7 +766,16 @@ std::string BassMidiPlayer::presetList() const {
 }
 
 void BassMidiPlayer::render(float* out, int numFrames) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    const auto lockStart = std::chrono::steady_clock::now();
+    std::unique_lock<std::mutex> lock(mutex_);
+    const auto lockWaitUs =
+        std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - lockStart).count();
+    if (lockWaitUs >= 1000) {
+        LOGI("AUDIO RENDER LOCK WAIT duration_us=%lld frames=%d",
+             static_cast<long long>(lockWaitUs), numFrames);
+    }
+
     if (!stream_) {
         std::fill(out, out + numFrames * 2, 0.0f);
         return;
@@ -745,8 +783,16 @@ void BassMidiPlayer::render(float* out, int numFrames) {
 
     const DWORD wanted =
         static_cast<DWORD>(numFrames * 2 * sizeof(float));
+    const auto renderStart = std::chrono::steady_clock::now();
     const DWORD got = BASS_ChannelGetData(
         stream_, out, wanted | BASS_DATA_FLOAT);
+    const auto renderUs =
+        std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - renderStart).count();
+    if (renderUs >= 1000) {
+        LOGI("AUDIO RENDER TIME duration_us=%lld frames=%d",
+             static_cast<long long>(renderUs), numFrames);
+    }
 
     if (got == static_cast<DWORD>(-1)) {
         LOGE("BASS_ChannelGetData failed error=%d", BASS_ErrorGetCode());
