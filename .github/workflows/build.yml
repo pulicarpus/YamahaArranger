@@ -4,6 +4,7 @@ on:
     branches:
       - feat/bassmidi-engine-build448
       - research/audio-noteoff-costs
+      - research/audio-noteoff-native-costs
   workflow_dispatch: {}
 jobs:
   build:
