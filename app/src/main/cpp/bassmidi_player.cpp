@@ -59,10 +59,19 @@ bool BassMidiPlayer::ensureEngine() {
             return false;
         }
 
-        // Yamaha style timing is PPQ 1920. This is mostly relevant if later
-        // we feed tick-timed event batches; realtime note events remain
-        // immediate because BASS_MIDI_ASYNC is deliberately not enabled.
+        // Yamaha style timing is PPQ 1920.
         BASS_ChannelSetAttribute(stream_, BASS_ATTRIB_MIDI_PPQN, 1920.0f);
+
+        // Decouple live MIDI event submission from BASSMIDI's synth/render
+        // processing. Without BASS_MIDI_ASYNC, BASS_MIDI_StreamEvent() can
+        // apply an event immediately, so style/MIDI threads can contend with
+        // the audio callback while a voice/program change is being processed.
+        // The async queue lets BASSMIDI consume those events on its update
+        // cycle instead. 4096 events is deliberately finite but large enough
+        // for dense arranger passages without reallocating the queue during
+        // normal playback.
+        BASS_ChannelFlags(stream_, BASS_MIDI_ASYNC, BASS_MIDI_ASYNC);
+        BASS_ChannelSetAttribute(stream_, BASS_ATTRIB_MIDI_QUEUE_ASYNC, 4096.0f);
 
         // 16-point sinc is the highest BASSMIDI SRC quality available on
         // ARM/NEON and is the quality path we want for an arranger.
