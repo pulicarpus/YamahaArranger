@@ -507,7 +507,9 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             val programStartedAtNanos = System.nanoTime()
             audioEngine.setChannelProgram(destination, prog, audioBank)
             val programDurationUs = (System.nanoTime() - programStartedAtNanos) / 1_000L
-            com.yourapp.yamahaarranger.ui.DebugLog.add(`⏱ VOICE PROGRAM COST section=\${section.name} ch=\${destination} bank=\${audioBank} prog=\${prog} duration_us=\${programDurationUs}`)
+            com.yourapp.yamahaarranger.ui.DebugLog.add(
+                "⏱ VOICE PROGRAM COST section=${section.name} ch=${destination} bank=${audioBank} prog=${prog} duration_us=${programDurationUs}"
+            )
 
             val volume = override?.volume ?: sourcePart.volume
             val pan = override?.pan ?: sourcePart.pan
@@ -525,7 +527,9 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                     chorusSend = if (chorus >= 0) chorus else 0
                 )
                 val mixerDurationUs = (System.nanoTime() - mixerStartedAtNanos) / 1_000L
-                com.yourapp.yamahaarranger.ui.DebugLog.add(`⏱ VOICE MIXER COST section=\${section.name} ch=\${destination} duration_us=\${mixerDurationUs}`)
+                com.yourapp.yamahaarranger.ui.DebugLog.add(
+                    "⏱ VOICE MIXER COST section=${section.name} ch=${destination} duration_us=${mixerDurationUs}"
+                )
             }
 
             midiInputManager.sendProgramChange(destination, prog, midiMsb, midiLsb)
