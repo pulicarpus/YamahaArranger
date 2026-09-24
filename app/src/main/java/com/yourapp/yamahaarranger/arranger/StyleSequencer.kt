@@ -154,6 +154,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     @Volatile private var pendingTransition: PendingTransition? = null
     @Volatile private var masterClockStartedAtNanos: Long = 0L
     @Volatile private var masterTimelineTick: Long = 0L
+    // Diagnostic only: marks the next section whose first NoteOn should be timestamped.
+    @Volatile private var traceFirstNoteAfterTransition: String? = null
 
     /**
      * Seamless section request.
@@ -195,6 +197,14 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         }
 
         val currentTick = currentMasterTick(ppq)
+        val queueTimestamp = System.nanoTime()
+
+        // Diagnostic only: capture the exact queue point without changing scheduling.
+        com.yourapp.yamahaarranger.ui.DebugLog.add(
+            "⏱ TRANSITION QUEUED section=" + sections.first().first.name +
+                " tick=" + currentTick +
+                " rel_ms=" + ((queueTimestamp - masterClockStartedAtNanos) / 1_000_000.0)
+        )
 
         // Immediate/phase-continuous mode: the button press becomes the
         // transition point on the SAME master clock. The fill is not restarted
@@ -294,11 +304,13 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                         }
                         loopCount = 0
                         if (lastAppliedSection != active.section.name) {
+                            traceFirstNoteAfterTransition = active.section.name
                             applyVoicesFromCasm(active.section)
                             lastAppliedSection = active.section.name
                         }
                         com.yourapp.yamahaarranger.ui.DebugLog.add(
-                            "🎼 MASTER CLOCK → " + active.section.name + " at tick=" + masterTimelineTick
+                            "🎼 MASTER CLOCK → " + active.section.name + " at tick=" + masterTimelineTick +
+                                " rel_ms=" + ((System.nanoTime() - masterClockStartedAtNanos) / 1_000_000.0)
                         )
                         continue
                     }
@@ -490,7 +502,14 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             val midiMsb = if (drum) 127 else sourcePart.bankMsb.coerceIn(0, 127)
             val midiLsb = if (drum) 0 else sourcePart.bankLsb.coerceIn(0, 127)
 
+            // Diagnostic only: measure each native voice operation separately.
+            // No scheduling or CASM behavior is changed.
+            val programStartedAtNanos = System.nanoTime()
             audioEngine.setChannelProgram(destination, prog, audioBank)
+            val programDurationUs = (System.nanoTime() - programStartedAtNanos) / 1_000L
+            com.yourapp.yamahaarranger.ui.DebugLog.add(
+                "⏱ VOICE PROGRAM COST section=${section.name} ch=${destination} bank=${audioBank} prog=${prog} duration_us=${programDurationUs}"
+            )
 
             val volume = override?.volume ?: sourcePart.volume
             val pan = override?.pan ?: sourcePart.pan
@@ -498,6 +517,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             val reverb = override?.reverbSend ?: sourcePart.reverbSend
             val chorus = override?.chorusSend ?: sourcePart.chorusSend
             if (volume >= 0 || pan >= 0 || expression >= 0 || reverb >= 0 || chorus >= 0) {
+                val mixerStartedAtNanos = System.nanoTime()
                 audioEngine.setChannelMixer(
                     destination,
                     volume = if (volume >= 0) volume else 127,
@@ -505,6 +525,10 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                     expression = if (expression >= 0) expression else 127,
                     reverbSend = if (reverb >= 0) reverb else 0,
                     chorusSend = if (chorus >= 0) chorus else 0
+                )
+                val mixerDurationUs = (System.nanoTime() - mixerStartedAtNanos) / 1_000L
+                com.yourapp.yamahaarranger.ui.DebugLog.add(
+                    "⏱ VOICE MIXER COST section=${section.name} ch=${destination} duration_us=${mixerDurationUs}"
                 )
             }
 
@@ -686,6 +710,14 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             if (transition != null && transition.startTick > 0L && absoluteTick >= transition.startTick) {
                 interruptedByTransition = true
                 lastProcessedTick = transition.startTick
+                val now = System.nanoTime()
+                com.yourapp.yamahaarranger.ui.DebugLog.add(
+                    "⏱ TRANSITION INTERRUPT section=" + section.name +
+                        " event_tick=" + absoluteTick +
+                        " target_tick=" + transition.startTick +
+                        " delta_ticks=" + (absoluteTick - transition.startTick) +
+                        " rel_ms=" + ((now - masterClockStartedAtNanos) / 1_000_000.0)
+                )
                 break
             }
             lastProcessedTick = absoluteTick
@@ -749,6 +781,17 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                 if(destinationChannel==13)com.yourapp.yamahaarranger.ui.DebugLog.add("🎼 CASM SELECT src"+sourceChannel+":"+s.event.note+" chord="+chord?.rootNote+"/"+chord?.quality+" → dst"+destinationChannel+" NTR="+(policy.ntr and 0x7f)+" NTT="+(policy.ntt and 0x7f)+" SRC="+policy.sourceChordRoot+"/"+policy.sourceChordType+" range="+policy.sourceNoteLow+"-"+policy.sourceNoteHigh+" RTR="+(policy.rtr and 0x7f))
             }
 
+            val traceTarget = traceFirstNoteAfterTransition
+            if (traceTarget != null) {
+                traceFirstNoteAfterTransition = null
+                val now = System.nanoTime()
+                com.yourapp.yamahaarranger.ui.DebugLog.add(
+                    "⏱ FIRST NOTE AFTER TRANSITION section=" + traceTarget +
+                        " src=" + sourceChannel + ":" + s.event.note +
+                        " dst=" + destinationChannel + ":" + note +
+                        " rel_ms=" + ((now - masterClockStartedAtNanos) / 1_000_000.0)
+                )
+            }
             audioEngine.noteOnChannel(destinationChannel,note,velocity/127f)
             midiInputManager.sendNoteOn(destinationChannel,note,velocity)
         }
