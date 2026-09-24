@@ -2,6 +2,7 @@
 #include <string>
 #include <mutex>
 #include <array>
+#include <vector>
 #include <bass.h>
 #include <bassmidi.h>
 
@@ -33,11 +34,17 @@ private:
         bool drum = false;
         bool initialized = false;
     };
+    struct DrumPresetEntry {
+        int bank = 0;
+        int program = 0;
+    };
     bool ensureEngine();
     bool loadRole(const std::string& path, bool drum);
     bool applyFonts();
     void send(int channel, DWORD event, DWORD param);
     void preloadCurrentPreset(int channel);
+    void rebuildDrumPresetCache(const std::string& path,
+                                std::vector<DrumPresetEntry>& cache);
     bool findDrumPreset(const std::string& path, int requestedProgram,
                         int& sourceBank, int& sourceProgram) const;
     HSTREAM stream_ = 0;
@@ -50,6 +57,8 @@ private:
     int voices_ = 1000;
     float soundFontVolume_ = 0.90f;
     std::array<ChannelState, 16> channels_{};
+    std::vector<DrumPresetEntry> melodyDrumPresetCache_;
+    std::vector<DrumPresetEntry> drumDrumPresetCache_;
     std::string melodyPath_;
     std::string drumPath_;
 };
