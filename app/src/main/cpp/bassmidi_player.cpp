@@ -549,15 +549,12 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program) {
          channel, state.bankMsb, state.bankLsb, state.program,
          state.drum ? 1 : 0);
 
-    // Do not synchronously preload drum kits here. BASS_MIDI_FontLoad() can
-    // block for a large drum SF2 while sample data is prepared. This method is
-    // called from the style transition/program-change path, so blocking here
-    // starves the Oboe render callback and makes fills/section changes sound
-    // chopped or disappear. BASSMIDI can resolve/load the selected preset on
-    // demand when the first note arrives; keep the program/bank event cheap.
-    if (!state.drum) {
-        preloadCurrentPreset(channel);
-    }
+    // Preload both melody and drum presets asynchronously. Drum kits use
+    // BASS_MIDI_FontLoadEx(..., BASS_MIDI_FONTLOAD_NOWAIT) inside
+    // preloadCurrentPreset(), so this does not synchronously block the
+    // transition/program-change path. This gives BASSMIDI a head start on
+    // drum sample preparation before the first target-section note arrives.
+    preloadCurrentPreset(channel);
 }
 
 void BassMidiPlayer::setChannelMixer(int channel, int volume, int pan,
