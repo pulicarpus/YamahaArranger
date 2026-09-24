@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - feat/bassmidi-engine-build448
+      - research/audio-noteoff-costs
   workflow_dispatch: {}
 jobs:
   build:

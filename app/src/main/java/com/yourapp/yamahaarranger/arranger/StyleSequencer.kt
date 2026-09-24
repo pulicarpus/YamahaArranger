@@ -273,10 +273,27 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                         // is deliberately NOT allNotesOff(): keyboard voices and
                         // unrelated channels remain untouched.
                         val outgoing = activeTransposedNotes.values.toList()
-                        outgoing.forEach { releaseActive(it) }
+                        var releaseTotalUs = 0L
+                        var releaseMaxUs = 0L
+                        var releaseCount = 0
+                        outgoing.forEach {
+                            val releaseStartedAtNanos = System.nanoTime()
+                            releaseActive(it)
+                            val releaseUs = (System.nanoTime() - releaseStartedAtNanos) / 1_000L
+                            releaseTotalUs += releaseUs
+                            if (releaseUs > releaseMaxUs) releaseMaxUs = releaseUs
+                            releaseCount++
+                        }
                         if (outgoing.isNotEmpty()) {
                             com.yourapp.yamahaarranger.ui.DebugLog.add(
                                 "🎼 TRANSITION: released " + outgoing.size + " outgoing style notes (no global allNotesOff)"
+                            )
+                            com.yourapp.yamahaarranger.ui.DebugLog.add(
+                                "⏱ TRANSITION NOTEOFF COST section=" + active.section.name +
+                                    " count=" + releaseCount +
+                                    " total_us=" + releaseTotalUs +
+                                    " max_us=" + releaseMaxUs +
+                                    " avg_us=" + (if (releaseCount > 0) releaseTotalUs / releaseCount else 0)
                             )
                         }
 
