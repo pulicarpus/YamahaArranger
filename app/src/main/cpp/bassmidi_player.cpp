@@ -446,7 +446,9 @@ void BassMidiPlayer::preloadCurrentPreset(int channel) {
 }
 
 void BassMidiPlayer::noteOn(int channel, int key, float velocity) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    const auto waitStart = std::chrono::steady_clock::now();
+    std::unique_lock<std::mutex> lock(mutex_);
+    const auto lockAcquired = std::chrono::steady_clock::now();
     if (!ensureEngine()) return;
 
     channel = std::max(0, std::min(15, channel));
@@ -454,20 +456,44 @@ void BassMidiPlayer::noteOn(int channel, int key, float velocity) {
     const int vel = std::max(1, std::min(127,
         static_cast<int>(std::lround(velocity * 127.0f))));
 
-    // Never overwrite the channel's program/bank here. MIDI Voyager keeps
-    // instrument state separate from note events; doing a forced Program 0
-    // on every note was one of the diagnostic build's major correctness bugs.
+    // Never overwrite the channel's program/bank here.
     send(channel, MIDI_EVENT_NOTE,
          static_cast<DWORD>(key | (vel << 8)));
+
+    const auto finished = std::chrono::steady_clock::now();
+    const auto waitUs = std::chrono::duration_cast<std::chrono::microseconds>(
+        lockAcquired - waitStart).count();
+    const auto nativeUs = std::chrono::duration_cast<std::chrono::microseconds>(
+        finished - lockAcquired).count();
+    if (waitUs >= 100 || nativeUs >= 100) {
+        LOGI("NOTE_ON NATIVE COST ch=%d note=%d wait_us=%lld native_us=%lld total_us=%lld",
+             channel, key, static_cast<long long>(waitUs),
+             static_cast<long long>(nativeUs),
+             static_cast<long long>(waitUs + nativeUs));
+    }
 }
 
 void BassMidiPlayer::noteOff(int channel, int key) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    const auto waitStart = std::chrono::steady_clock::now();
+    std::unique_lock<std::mutex> lock(mutex_);
+    const auto lockAcquired = std::chrono::steady_clock::now();
     if (!stream_) return;
 
     channel = std::max(0, std::min(15, channel));
     key = std::max(0, std::min(127, key));
     send(channel, MIDI_EVENT_NOTE, static_cast<DWORD>(key));
+
+    const auto finished = std::chrono::steady_clock::now();
+    const auto waitUs = std::chrono::duration_cast<std::chrono::microseconds>(
+        lockAcquired - waitStart).count();
+    const auto nativeUs = std::chrono::duration_cast<std::chrono::microseconds>(
+        finished - lockAcquired).count();
+    if (waitUs >= 100 || nativeUs >= 100) {
+        LOGI("NOTE_OFF NATIVE COST ch=%d note=%d wait_us=%lld native_us=%lld total_us=%lld",
+             channel, key, static_cast<long long>(waitUs),
+             static_cast<long long>(nativeUs),
+             static_cast<long long>(waitUs + nativeUs));
+    }
 }
 
 void BassMidiPlayer::allNotesOff() {
@@ -751,7 +777,9 @@ std::string BassMidiPlayer::presetList() const {
 }
 
 void BassMidiPlayer::render(float* out, int numFrames) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    const auto waitStart = std::chrono::steady_clock::now();
+    std::unique_lock<std::mutex> lock(mutex_);
+    const auto lockAcquired = std::chrono::steady_clock::now();
     if (!stream_) {
         std::fill(out, out + numFrames * 2, 0.0f);
         return;
@@ -759,8 +787,10 @@ void BassMidiPlayer::render(float* out, int numFrames) {
 
     const DWORD wanted =
         static_cast<DWORD>(numFrames * 2 * sizeof(float));
+    const auto dataStart = std::chrono::steady_clock::now();
     const DWORD got = BASS_ChannelGetData(
         stream_, out, wanted | BASS_DATA_FLOAT);
+    const auto dataFinished = std::chrono::steady_clock::now();
 
     if (got == static_cast<DWORD>(-1)) {
         LOGE("BASS_ChannelGetData failed error=%d", BASS_ErrorGetCode());
@@ -771,5 +801,20 @@ void BassMidiPlayer::render(float* out, int numFrames) {
     const int samples = static_cast<int>(got / sizeof(float));
     if (samples < numFrames * 2) {
         std::fill(out + samples, out + numFrames * 2, 0.0f);
+    }
+
+    const auto finished = std::chrono::steady_clock::now();
+    const auto waitUs = std::chrono::duration_cast<std::chrono::microseconds>(
+        lockAcquired - waitStart).count();
+    const auto getDataUs = std::chrono::duration_cast<std::chrono::microseconds>(
+        dataFinished - dataStart).count();
+    const auto totalUs = std::chrono::duration_cast<std::chrono::microseconds>(
+        finished - waitStart).count();
+
+    if (waitUs >= 100 || getDataUs >= 100 || totalUs >= 1000) {
+        LOGI("RENDER NATIVE COST frames=%d wait_us=%lld getdata_us=%lld total_us=%lld",
+             numFrames, static_cast<long long>(waitUs),
+             static_cast<long long>(getDataUs),
+             static_cast<long long>(totalUs));
     }
 }
