@@ -4,6 +4,7 @@ on:
     branches:
       - feat/bassmidi-engine-build448
       - research/audio-realtime-isolation
+      - research/audio-realtime-isolation-async
   workflow_dispatch: {}
 jobs:
   build:
