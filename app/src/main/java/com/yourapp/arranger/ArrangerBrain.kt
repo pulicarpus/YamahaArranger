@@ -323,16 +323,23 @@ class ArrangerBrain @Inject constructor(
         val waitMs = if (quantizeToNextBar) {
             sequencer.millisToNextBar(style.ppq, style.meter.numerator, style.meter.denominator)
         } else 0L
+        val requestNanos = System.nanoTime()
         DebugLog.add(
             if (quantizeToNextBar)
-                "⏱ SECTION QUANTIZE " + section.styleName + " to next bar in " + waitMs + "ms"
+                "⏱ SECTION QUANTIZE " + section.styleName + " to next bar in " + waitMs + "ms request_ns=" + requestNanos
             else
-                "⏱ SECTION IMMEDIATE " + section.styleName + " at current master beat"
+                "⏱ SECTION IMMEDIATE " + section.styleName + " at current master beat request_ns=" + requestNanos
         )
         val scope = externalScope ?: CoroutineScope(Dispatchers.Main + SupervisorJob())
         pendingTransitionJob = scope.launch {
             if (waitMs > 0) delay(waitMs)
             if (!_state.value.isPlaying) return@launch
+            val wakeNanos = System.nanoTime()
+            DebugLog.add(
+                "⏱ SECTION QUANTIZE WAKE " + section.styleName +
+                    " waited_ms=" + ((wakeNanos - requestNanos) / 1_000_000.0) +
+                    " wake_ns=" + wakeNanos
+            )
             pendingTransitionJob = null
 
             if (thenPlay != null) {
