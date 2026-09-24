@@ -173,7 +173,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         sections: List<Pair<StyleSectionModel, Int>>,
         ppq: Int,
         numerator: Int,
-        denominator: Int
+        denominator: Int,
+        finalOnComplete: (() -> Unit)? = null
     ) {
         if (sections.isEmpty()) return
         if (playbackJob?.isActive != true) {
@@ -181,9 +182,14 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             startPlayback(first.first, ppq, first.second, null, seamless = true)
             if (sections.size > 1) {
                 pendingTransition = PendingTransition(
-                    sections.drop(1).map { PendingSection(it.first, ppq, it.second, null) },
+                    sections.drop(1).mapIndexed { index, item ->
+                        val isLast = index == sections.size - 2
+                        PendingSection(item.first, ppq, item.second, if (isLast) finalOnComplete else null)
+                    },
                     startTick = first.first.lengthTicks.toLong().coerceAtLeast(0L)
                 )
+            } else if (finalOnComplete != null) {
+                startPlayback(first.first, ppq, first.second, finalOnComplete, seamless = true)
             }
             return
         }
@@ -193,7 +199,9 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         // Immediate/phase-continuous mode: the button press becomes the
         // transition point on the SAME master clock. The fill is not restarted
         // from tick 0; it is phase-aligned to the beat where the request lands.
-        val queue = sections.map { PendingSection(it.first, ppq, it.second, null) }
+        val queue = sections.mapIndexed { index, item ->
+            PendingSection(item.first, ppq, item.second, if (index == sections.lastIndex) finalOnComplete else null)
+        }
         pendingTransition = PendingTransition(queue, currentTick)
         pendingSection = null
 

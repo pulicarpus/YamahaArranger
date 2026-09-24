@@ -358,8 +358,26 @@ class ArrangerBrain @Inject constructor(
                         "⚠ Transition section missing: " + section.styleName + " / " + thenPlay.styleName
                     )
                 }
+            } else if (thenStop) {
+                val endingModel = style.sections[section.styleName]
+                if (endingModel != null) {
+                    DebugLog.add("🎼 MASTER TRANSITION " + section.styleName + " → STOP (same clock)")
+                    sequencer.queueSeamlessTransition(
+                        listOf(endingModel to 1),
+                        style.ppq,
+                        style.meter.numerator,
+                        style.meter.denominator
+                    ) {
+                        DebugLog.add("🎼 " + section.styleName + " selesai → STOP")
+                        sequencer.stop()
+                        _state.update { it.copy(isPlaying = false) }
+                    }
+                    activeSection = section
+                } else {
+                    DebugLog.add("⚠ Transition section missing: " + section.styleName)
+                }
             } else {
-                playSection(section, null, thenStop)
+                playSection(section, null, false)
             }
         }
     }
