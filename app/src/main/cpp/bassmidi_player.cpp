@@ -488,7 +488,16 @@ void BassMidiPlayer::allNotesOff() {
 }
 
 void BassMidiPlayer::setChannelPreset(int channel, int bank, int program) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    const auto lockWaitStart = std::chrono::steady_clock::now();
+    std::unique_lock<std::mutex> lock(mutex_);
+    const auto lockWaitUs =
+        std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - lockWaitStart).count();
+    const auto bodyStart = std::chrono::steady_clock::now();
+    if (lockWaitUs > 100) {
+        LOGI("PRESET MUTEX WAIT ch=%d duration_us=%lld",
+             channel, static_cast<long long>(lockWaitUs));
+    }
     if (!ensureEngine()) return;
 
     channel = std::max(0, std::min(15, channel));
@@ -565,14 +574,38 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program) {
     // chopped or disappear. BASSMIDI can resolve/load the selected preset on
     // demand when the first note arrives; keep the program/bank event cheap.
     if (!state.drum) {
+        const auto preloadStart = std::chrono::steady_clock::now();
         preloadCurrentPreset(channel);
+        const auto preloadUs =
+            std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::steady_clock::now() - preloadStart).count();
+        if (preloadUs > 100) {
+            LOGI("PRESET PRELOAD COST ch=%d duration_us=%lld",
+                 channel, static_cast<long long>(preloadUs));
+        }
     }
+
+    const auto bodyUs =
+        std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - bodyStart).count();
+    LOGI("PRESET NATIVE COST ch=%d duration_us=%lld wait_us=%lld",
+         channel, static_cast<long long>(bodyUs),
+         static_cast<long long>(lockWaitUs));
 }
 
 void BassMidiPlayer::setChannelMixer(int channel, int volume, int pan,
                                      int expression, int reverbSend,
                                      int chorusSend) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    const auto lockWaitStart = std::chrono::steady_clock::now();
+    std::unique_lock<std::mutex> lock(mutex_);
+    const auto lockWaitUs =
+        std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - lockWaitStart).count();
+    const auto bodyStart = std::chrono::steady_clock::now();
+    if (lockWaitUs > 100) {
+        LOGI("MIXER MUTEX WAIT ch=%d duration_us=%lld",
+             channel, static_cast<long long>(lockWaitUs));
+    }
     if (!ensureEngine()) return;
 
     channel = std::max(0, std::min(15, channel));
@@ -581,6 +614,13 @@ void BassMidiPlayer::setChannelMixer(int channel, int volume, int pan,
     send(channel, MIDI_EVENT_EXPRESSION, std::clamp(expression, 0, 127));
     send(channel, MIDI_EVENT_REVERB, std::clamp(reverbSend, 0, 127));
     send(channel, MIDI_EVENT_CHORUS, std::clamp(chorusSend, 0, 127));
+
+    const auto bodyUs =
+        std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - bodyStart).count();
+    LOGI("MIXER NATIVE COST ch=%d duration_us=%lld wait_us=%lld",
+         channel, static_cast<long long>(bodyUs),
+         static_cast<long long>(lockWaitUs));
 }
 
 void BassMidiPlayer::setChannelExpression(int channel, int expression) {
