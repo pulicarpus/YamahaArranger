@@ -5,6 +5,7 @@ on:
       - feat/bassmidi-engine-build448
       - research/audio-realtime-isolation
       - research/audio-realtime-isolation-async
+      - research/audio-transition-timing
   workflow_dispatch: {}
 jobs:
   build:
