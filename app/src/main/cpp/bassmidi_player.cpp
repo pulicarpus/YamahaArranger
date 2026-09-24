@@ -762,8 +762,13 @@ std::string BassMidiPlayer::presetList() const {
 }
 
 void BassMidiPlayer::render(float* out, int numFrames) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (!stream_) {
+    // This function runs on Oboe's realtime callback thread. Never wait for
+    // the control-side mutex here: a font reload, preset operation, or other
+    // BASSMIDI call can temporarily hold it for much longer than one audio
+    // burst. If the stream state is being changed right now, output silence
+    // for this burst instead of blocking the realtime callback.
+    std::unique_lock<std::mutex> lock(mutex_, std::try_to_lock);
+    if (!lock.owns_lock() || !stream_) {
         std::fill(out, out + numFrames * 2, 0.0f);
         return;
     }
