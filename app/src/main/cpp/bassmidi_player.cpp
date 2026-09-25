@@ -11,10 +11,42 @@
 #include <vector>
 #include <cctype>
 #include <cstring>
+#include <cstdarg>
+#include <cstdio>
+#include <jni.h>
 
 #define LOG_TAG "BassMidiPlayer"
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+
+// BassMidiPlayer is the layer that knows the real SF2/BASSMIDI mapping.
+// Route its diagnostics through the same DebugLog bridge as AudioEngine so
+// the in-app exported log can prove what BASSMIDI actually loaded/applied.
+extern JavaVM* g_jvm;
+extern jclass g_debugLogClass;
+extern jmethodID g_debugLogAddMethod;
+
+static void uiLog(const char* fmt, ...) {
+    char buf[1024];
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+    __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "%s", buf);
+    if (g_jvm && g_debugLogClass && g_debugLogAddMethod) {
+        JNIEnv* env = nullptr;
+        bool attached = false;
+        if (g_jvm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK) {
+            if (g_jvm->AttachCurrentThread(&env, nullptr) == JNI_OK) attached = true;
+        }
+        if (env) {
+            jstring jmsg = env->NewStringUTF(buf);
+            env->CallStaticVoidMethod(g_debugLogClass, g_debugLogAddMethod, jmsg);
+            env->DeleteLocalRef(jmsg);
+            if (attached) g_jvm->DetachCurrentThread();
+        }
+    }
+}
+#define LOGI(...) uiLog(__VA_ARGS__)
+#define LOGE(...) uiLog(__VA_ARGS__)
 
 BassMidiPlayer::BassMidiPlayer() {
     ensureEngine();
