@@ -486,7 +486,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             val override = channelOverrides[destination]
             if (override?.muted == true) { applied += destination; return@forEach }
             val explicit = explicitByDestination[destination]
-            val sourcePart = explicit ?: part            val prog = override?.program ?: explicit?.program?.takeIf { it in 0..127 } ?: guessProgramFromVoiceName(c.voiceName)
+            val sourcePart = explicit ?: part
+            val prog = override?.program ?: explicit?.program?.takeIf { it in 0..127 } ?: guessProgramFromVoiceName(c.voiceName)
             if (prog !in 0..127) return@forEach
             val state = mixerStates[destination]
             sourcePart.events.filter { it.tick == 0 && it.isControlChange }.forEach { e ->
