@@ -5,6 +5,7 @@ on:
       - feat/bassmidi-engine-build448
       - fix/audio-transition-preset-cache
       - integration/bassmidi-casm-sx720
+      - feat/sf2-style-inspector
   workflow_dispatch: {}
 jobs:
   build:
@@ -44,7 +45,7 @@ jobs:
           echo "=== BASS header candidates ==="
           find /tmp/bass -type f -iname 'bass.h' -print
           echo "=== BASSMIDI header candidates ==="
-          find /tmp/bassmidi -type f \( -iname 'bassmidi.h' -o -iname 'BASSMIDI.H' \) -print
+          find /tmp/bassmidi -type f ( -iname 'bassmidi.h' -o -iname 'BASSMIDI.H' ) -print
           echo "=== BASSMIDI native libraries ==="
           find /tmp/bassmidi -type f -name 'libbassmidi.so' -print
 
@@ -52,8 +53,6 @@ jobs:
           BASS_H="$(find /tmp/bass -type f -iname 'bass.h' -print -quit)"
           BASSMIDI_H="$(find /tmp/bassmidi -type f -iname 'bassmidi.h' -print -quit)"
 
-          # The official archive is known to contain c/bassmidi.h; keep an
-          # explicit fallback in case find/path handling differs on the runner.
           if [ -z "$BASSMIDI_H" ] && [ -f /tmp/bassmidi/c/bassmidi.h ]; then
             BASSMIDI_H="/tmp/bassmidi/c/bassmidi.h"
           fi
