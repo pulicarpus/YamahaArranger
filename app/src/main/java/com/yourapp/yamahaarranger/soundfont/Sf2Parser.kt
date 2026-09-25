@@ -120,8 +120,8 @@ class Sf2Parser {
 
         val bags = readBags(pbag)
         val gens = readGenerators(pgen)
-        return headers.dropLast(1).map { header ->
-            val next = headers[headers.indexOf(header) + 1]
+        return headers.dropLast(1).mapIndexed { index, header ->
+            val next = headers[index + 1]
             val zones = zoneRange(header.bagIndex, next.bagIndex, bags).map { (start, end) ->
                 val map = generatorMap(gens, start, end)
                 Sf2PresetZone(
@@ -209,7 +209,7 @@ class Sf2Parser {
         end: Int,
         bags: List<Pair<Int, Int>>
     ): List<Pair<Int, Int>> {
-        require(start in 0 until bags.size && end in start + 1..bags.size) {
+        require(start >= 0 && start < bags.size && end > start && end < bags.size) {
             "Bag range out of bounds: $start..$end"
         }
         return (start until end).map { i ->
