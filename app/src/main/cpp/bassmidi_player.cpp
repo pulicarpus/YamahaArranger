@@ -166,10 +166,20 @@ bool BassMidiPlayer::applyFonts() {
     const DWORD count = static_cast<DWORD>(cfg.size());
     if (!count) return false;
 
-    if (!BASS_MIDI_StreamSetFonts(stream_, cfg.data(), count)) {
-        LOGE("StreamSetFonts(FONTEX2) failed error=%d", BASS_ErrorGetCode());
+    // IMPORTANT: cfg contains BASS_MIDI_FONTEX2 records. The EX2 flag is
+    // part of the numfonts argument; without it BASSMIDI interprets the
+    // array as the older BASS_MIDI_FONT layout and silently ignores
+    // dbanklsb/minchan/numchan. That would make Yamaha 8:1 (1025), 8:2
+    // (1026), etc. fall back to the virtual source bank number instead of
+    // the intended Yamaha destination bank.
+    const DWORD flags = count | BASS_MIDI_FONT_EX2;
+    if (!BASS_MIDI_StreamSetFonts(stream_, cfg.data(), flags)) {
+        LOGE("StreamSetFonts(FONTEX2) failed flags=%u error=%d",
+             static_cast<unsigned>(flags), BASS_ErrorGetCode());
         return false;
     }
+    LOGI("BASSMIDI FONTEX2 applied: entries=%u flags=%u",
+         static_cast<unsigned>(count), static_cast<unsigned>(flags));
 
     if (melodyFont_) {
         BASS_MIDI_FontSetVolume(melodyFont_, soundFontVolume_);
