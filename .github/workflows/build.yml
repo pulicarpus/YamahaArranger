@@ -45,7 +45,7 @@ jobs:
           echo "=== BASS header candidates ==="
           find /tmp/bass -type f -iname 'bass.h' -print
           echo "=== BASSMIDI header candidates ==="
-          find /tmp/bassmidi -type f ( -iname 'bassmidi.h' -o -iname 'BASSMIDI.H' ) -print
+          find /tmp/bassmidi -type f \( -iname 'bassmidi.h' -o -iname 'BASSMIDI.H' \) -print
           echo "=== BASSMIDI native libraries ==="
           find /tmp/bassmidi -type f -name 'libbassmidi.so' -print
 
