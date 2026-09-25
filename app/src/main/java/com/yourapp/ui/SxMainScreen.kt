@@ -100,6 +100,13 @@ fun SxMainScreen(viewModel: MainViewModel = hiltViewModel()) {
         }
     }
 
+    LaunchedEffect(showMixer, state.soundFontName) {
+        if (showMixer && state.soundFontName != "None" && state.sf2Presets.isEmpty()) {
+            DebugLog.add("🎛 Mixer opened → loading MELODY + DRUM SF2 preset list")
+            viewModel.refreshSoundFontList()
+        }
+    }
+
     if (showMixer) {
         SxStyleMixerDialog(
             voices = state.voiceAssignments,
@@ -246,8 +253,14 @@ private fun SxStyleMixerDialog(voices: List<VoiceSlot>, presets: List<AudioEngin
                                             fontWeight = FontWeight.Bold
                                         )
                                         Spacer(Modifier.width(7.dp))
+                                        val resolvedName = presets
+                                            .firstOrNull { it.bank == slot.bank && it.program == slot.program && (if (slot.isDrum()) it.role == "DRUM" else it.role == "MELODY") }
+                                            ?.name
+                                            ?: presets
+                                                .firstOrNull { it.program == slot.program && (if (slot.isDrum()) it.role == "DRUM" else it.role == "MELODY") }
+                                                ?.name
                                         Text(
-                                            slot.displayName(),
+                                            resolvedName ?: slot.displayName(),
                                             color = Color.White,
                                             fontSize = 10.sp,
                                             modifier = Modifier.weight(1f),
