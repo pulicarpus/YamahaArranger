@@ -854,7 +854,12 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program, const 
     // Yamaha Rhythm 1/2 are MIDI channels 9/10 (zero-based 8/9).
     // Keep both channels in percussion mode even when a style omits an
     // explicit Bank Select event.
-    const bool wantDrum = (channel == 8 || channel == 9 || bank >= 128);
+    // Bank 128+ is NOT sufficient to classify a Yamaha melodic variation
+    // bank as percussion. Yamaha packed variation banks such as 1025 (8:1),
+    // 1026 (8:2), and 1029 (8:5) are normal melodic banks. Percussion is
+    // determined by the actual Rhythm channels (9/10 in MIDI numbering,
+    // zero-based 8/9), not by the packed 14-bit bank value.
+    const bool wantDrum = (channel == 8 || channel == 9);
     if (wantDrum) {
         bank = 128;
     } else {
