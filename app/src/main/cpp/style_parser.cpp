@@ -163,15 +163,23 @@ bool StyleParser::parse(const uint8_t* rawStyBytes,size_t size){if(!smf_.parse(r
 std::map<uint8_t,std::vector<MidiEvent>> setupByChannel;
 for(const auto&ev:track.events){
     if(ev.tick<boundaries.front().tick&&ev.status>=0x80&&ev.status<0xF0){
-        MidiEvent setup=ev;
-        setup.tick=0;
-        setupByChannel[ev.channel].push_back(std::move(setup));
+        // Keep the original event data. It will be retimed to the start of
+        // each section when copied below. Setting tick=0 here would underflow
+        // when the section's startTick is later subtracted from every event.
+        setupByChannel[ev.channel].push_back(ev);
     }
 }
 for(size_t i=0;i<boundaries.size();++i){uint32_t startTick=boundaries[i].tick;uint32_t endTick=(i+1<boundaries.size())?boundaries[i+1].tick:track.events.back().tick+1;auto&secData=sections_[boundaries[i].section];secData.section=boundaries[i].section;secData.lengthTicks=std::max(secData.lengthTicks,endTick-startTick);std::map<uint8_t,std::vector<MidiEvent>>byChannel;for(const auto&ev:track.events){if(ev.tick<startTick||ev.tick>=endTick)continue;if(ev.status==0xFF&&(ev.metaType==0x06||ev.metaType==0x01))continue;if(ev.status==0xFF&&ev.metaType==0x2F)continue;if(ev.status<0x80)continue;byChannel[ev.channel].push_back(ev);}for(auto&[channel,events]:byChannel){
     auto setupIt=setupByChannel.find(channel);
     if(setupIt!=setupByChannel.end()){
-        events.insert(events.begin(),setupIt->second.begin(),setupIt->second.end());
+        std::vector<MidiEvent> normalizedSetup;
+        normalizedSetup.reserve(setupIt->second.size());
+        for (const auto& setup : setupIt->second) {
+            MidiEvent copy = setup;
+            copy.tick = startTick;
+            normalizedSetup.push_back(std::move(copy));
+        }
+        events.insert(events.begin(), normalizedSetup.begin(), normalizedSetup.end());
     }
     StylePart part;part.midiChannel=channel;part.name=track.name.empty()?("Ch"+std::to_string(channel)):track.name;for(auto&ev:events)ev.tick-=startTick;part.events=std::move(events);for(const auto&ev:part.events){const uint8_t hi=ev.status&0xF0;if(hi==0xB0&&ev.data1==0)part.bankMsb=ev.data2;else if(hi==0xB0&&ev.data1==32)part.bankLsb=ev.data2;else if(hi==0xC0)part.program=ev.data1;else if(hi==0x90&&ev.data2>0)break;}secData.parts.push_back(std::move(part));}}}parseCasm(rawStyBytes,size);return !sections_.empty();}
 std::string styleSectionToString(StyleSection s){switch(s){case StyleSection::IntroA:return"IntroA";case StyleSection::IntroB:return"IntroB";case StyleSection::IntroC:return"IntroC";case StyleSection::MainA:return"MainA";case StyleSection::MainB:return"MainB";case StyleSection::MainC:return"MainC";case StyleSection::MainD:return"MainD";case StyleSection::FillAA:return"FillAA";case StyleSection::FillBB:return"FillBB";case StyleSection::FillCC:return"FillCC";case StyleSection::FillDD:return"FillDD";case StyleSection::BreakDown:return"BreakDown";case StyleSection::EndingA:return"EndingA";case StyleSection::EndingB:return"EndingB";case StyleSection::EndingC:return"EndingC";default:return"Unknown";}}
