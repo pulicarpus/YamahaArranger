@@ -74,7 +74,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAu
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetChannelPresetWithName(JNIEnv* env,jobject,jint channel,jint bank,jint program,jstring voiceName){
     if(!g_engine) return;
     const char* name = voiceName ? env->GetStringUTFChars(voiceName, nullptr) : nullptr;
-    g_engine->sfSetChannelPreset(channel, bank, program, name ? std::string(name) : std::string());
+    g_engine->sfSetChannelPresetWithName(channel, bank, program, name ? std::string(name) : std::string());
     if(name) env->ReleaseStringUTFChars(voiceName, name);
 }
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetChannelMixer(JNIEnv*,jobject,jint channel,jint volume,jint pan,jint expression,jint reverbSend,jint chorusSend){if(g_engine)g_engine->sfSetChannelMixer(channel,volume,pan,expression,reverbSend,chorusSend);}
