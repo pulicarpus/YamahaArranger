@@ -406,12 +406,12 @@ class MainViewModel @Inject constructor(
                 }.ifBlank {
                     GM_VOICES.firstOrNull { it.second == part.program }?.first ?: "Ch$channel"
                 }
-                val drum = channel == 9 || rawName.lowercase().let {
+                val drum = channel == 8 || channel == 9 || rawName.lowercase().let {
                     it.contains("drum") || it.contains("kit") || it.contains("perc") || it.startsWith("dr")
                 }
                 val program = if (part.program in 0..127) part.program else
                     GM_VOICES.firstOrNull { it.first.equals(styleName, ignoreCase = true) }?.second ?: 0
-                val bank = if (drum) 128 else 0
+                val bank = if (drum) 128 else (part.bankMsb.coerceIn(0, 127) * 128 + part.bankLsb.coerceIn(0, 127))
 
                 // Keep the first explicit instrument for a destination. CASM can
                 // legitimately have multiple source channels feeding one destination.
@@ -513,7 +513,7 @@ class MainViewModel @Inject constructor(
             arrangerBrain.loadStyle(parsed)
             _voiceAssignments.value = voiceSlotsFromStyle(parsed)
             _styleName.value = fileName
-            DebugLog.add("🎼 Mixer channels from style: ${_voiceAssignments.value.map { it.channel to it.sf2Name }.joinToString()}")
+            DebugLog.add("🎼 Mixer channels from style: ${_voiceAssignments.value.map { "${it.channel}:${it.sf2Name}@${it.bank}/${it.program}" }.joinToString()}")
             DebugLog.add("✅ Loaded: $fileName")
         }
     }

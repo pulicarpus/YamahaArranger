@@ -70,9 +70,13 @@ class ArrangerBrain @Inject constructor(
     // MIDI keyboards commonly deliver the fingers of one chord a few
     // milliseconds apart. Settle the note-on burst before retargeting CASM.
     private val chordSettleMs = 15L
-    // Monotonic anchor for the currently playing style section. Section changes
-    // are quantized from the actual section start, not from app Start/Stop time.
+    // UI/transition target and the section that is actually sounding are
+    // deliberately separate. During Auto Fill, activeSection must not be used
+    // as the "currently playing" section because it already points at the
+    // future Main target.
     private var activeSection: ArrangerSection = ArrangerSection.MainA
+    private var currentPlayingSection: ArrangerSection = ArrangerSection.MainA
+    private var pendingMainTarget: ArrangerSection? = null
 
     private val _state = MutableStateFlow(ArrangerState())
     val state: StateFlow<ArrangerState> = _state.asStateFlow()
@@ -265,6 +269,8 @@ class ArrangerBrain @Inject constructor(
             pendingChordJob?.cancel()
             pendingChord = null
             activeSection = _state.value.currentSection
+            currentPlayingSection = activeSection
+            pendingMainTarget = null
             playSection(activeSection)
             _state.update { it.copy(isPlaying = true) }
         }
@@ -273,15 +279,49 @@ class ArrangerBrain @Inject constructor(
     fun selectMainVariation(target: ArrangerSection) {
         ensureSequencer()
         val wasPlaying = _state.value.isPlaying
-        val previous = activeSection
         _state.update { it.copy(currentSection = target) }
         if (!wasPlaying) return
+
+        // If a Fill is already sounding, do NOT create a new transition job.
+        // Keep the current Fill intact; replace only the pending tail with the
+        // newest requested directional Fill + final Main target.
+        if (currentPlayingSection in fillVariations && pendingMainTarget != null) {
+            val fromMain = pendingMainTarget!!
+            val nextFill = fillForTransition(fromMain, target)
+            val style = loadedStyle
+            val fillModel = nextFill?.let { style?.sections?.get(it.styleName) }
+            val targetModel = style?.sections?.get(target.styleName)
+            if (_state.value.autoFill && nextFill != null && fillModel != null && targetModel != null) {
+                pendingMainTarget = target
+                pendingTransitionJob?.cancel()
+                pendingTransitionJob = null
+                DebugLog.add(
+                    "🎼 ACTIVE FILL RETARGET: " +
+                        currentPlayingSection.styleName + " → " +
+                        nextFill.styleName + " → " + target.styleName
+                )
+                sequencer.queueAfterCurrentSection(
+                    listOf(fillModel to 1, targetModel to -1),
+                    style!!.ppq
+                ) {
+                    currentPlayingSection = target
+                    activeSection = target
+                    pendingMainTarget = null
+                    DebugLog.add("🎼 FINAL MAIN STARTED: ${target.styleName}")
+                }
+                return
+            }
+        }
+
+        val previous = currentPlayingSection
         val previousWasMain = previous in mainVariations
         val fill = fillForTransition(previous, target)
         if (_state.value.autoFill && previousWasMain && previous != target && fill != null && sectionExists(fill)) {
+            pendingMainTarget = target
             DebugLog.add("🎼 Main→Main: queue fill $fill then $target at next bar")
             scheduleSectionChange(fill, thenPlay = target, quantizeToNextBar = true)
         } else {
+            pendingMainTarget = null
             scheduleSectionChange(target)
         }
     }
@@ -346,38 +386,26 @@ class ArrangerBrain @Inject constructor(
                     DebugLog.add(
                         "🎼 MASTER TRANSITION " + section.styleName + " → " + thenPlay.styleName + " (same clock)"
                     )
+                    currentPlayingSection = section
                     sequencer.queueSeamlessTransition(
                         listOf(firstModel to 1, targetModel to -1),
                         style.ppq,
                         style.meter.numerator,
                         style.meter.denominator
-                    )
+                    ) {
+                        currentPlayingSection = thenPlay
+                        activeSection = thenPlay
+                        pendingMainTarget = null
+                        DebugLog.add("🎼 FINAL MAIN STARTED: ${thenPlay.styleName}")
+                    }
                     activeSection = thenPlay
                 } else {
                     DebugLog.add(
                         "⚠ Transition section missing: " + section.styleName + " / " + thenPlay.styleName
                     )
                 }
-            } else if (thenStop) {
-                val endingModel = style.sections[section.styleName]
-                if (endingModel != null) {
-                    DebugLog.add("🎼 MASTER TRANSITION " + section.styleName + " → STOP (same clock)")
-                    sequencer.queueSeamlessTransition(
-                        listOf(endingModel to 1),
-                        style.ppq,
-                        style.meter.numerator,
-                        style.meter.denominator
-                    ) {
-                        DebugLog.add("🎼 " + section.styleName + " selesai → STOP")
-                        sequencer.stop()
-                        _state.update { it.copy(isPlaying = false) }
-                    }
-                    activeSection = section
-                } else {
-                    DebugLog.add("⚠ Transition section missing: " + section.styleName)
-                }
             } else {
-                playSection(section, null, false)
+                playSection(section, null, thenStop)
             }
         }
     }
@@ -432,7 +460,9 @@ class ArrangerBrain @Inject constructor(
 
     private fun playSection(section: ArrangerSection, thenPlay: ArrangerSection? = null, thenStop: Boolean = false) {
         ensureSequencer()
+        currentPlayingSection = section
         activeSection = section
+        if (section in mainVariations) pendingMainTarget = null
         val style = loadedStyle ?: return
         val model = style.sections[section.styleName]
         if (model == null) {

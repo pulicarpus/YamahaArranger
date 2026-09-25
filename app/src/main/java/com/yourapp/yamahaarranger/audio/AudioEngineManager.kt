@@ -240,10 +240,15 @@ class AudioEngineManager @Inject constructor(
             .toList()
     }
 
-    fun setChannelProgram(channel: Int, program: Int, bank: Int = 0) {
-        DebugLog.traceAudio("PROGRAM ch=$channel bank=$bank program=$program")
-        bridge.nativeSetChannelPreset(channel, bank, program)
-        DebugLog.add("🎼 Ch$channel → prog=$program bank=$bank")
+    // Named overload carries the Yamaha/CASM voice identity into BASSMIDI resolution.
+    fun setChannelProgram(channel: Int, program: Int, bank: Int = 0, voiceName: String? = null) {
+        DebugLog.traceAudio("PROGRAM ch=$channel bank=$bank program=$program voice=${voiceName ?: ""}")
+        if (voiceName.isNullOrBlank()) {
+            bridge.nativeSetChannelPreset(channel, bank, program)
+        } else {
+            bridge.nativeSetChannelPresetWithName(channel, bank, program, voiceName)
+        }
+        DebugLog.add("🎼 Ch$channel → prog=$program bank=$bank voice=${voiceName ?: "AUTO"}")
     }
 
     fun allNotesOff() { DebugLog.traceAudio("ALL_NOTES_OFF"); bridge.nativeAllNotesOff() }

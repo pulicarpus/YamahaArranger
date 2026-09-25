@@ -57,9 +57,12 @@ class StyleRepository @Inject constructor(private val bridge: NativeStyleBridge)
                     DebugLog.add("🎛 $sectionName src=${policies.first().sourceChannel} policies=${policies.size} ranges=${policies.joinToString { "${it.sourceNoteLow}-${it.sourceNoteHigh}:NTR${it.ntr}/NTT${it.ntt}/MASK${it.chordMuteMask.toString(16)}${if (it.bassOn) "+BASS" else ""}" }}")
                 }
                 val setup = extractVoiceSetup(events)
-                if (setup.program >= 0 || setup.bankMsb != 0 || setup.bankLsb != 0) {
-                    DebugLog.add("🎚 $sectionName part=$partIndex ch=${events.firstOrNull()?.channel ?: -1}: bank=${setup.bankMsb}/${setup.bankLsb} pc=${setup.program}")
-                }
+                val sourceCh = events.firstOrNull()?.channel ?: -1
+                DebugLog.add(
+                    "🎚 SETUP $sectionName part=$partIndex srcCh=$sourceCh bank=${setup.bankMsb}/${setup.bankLsb} pc=${setup.program} " +
+                        "mix=${setup.volume}/${setup.pan}/${setup.expression}/${setup.reverbSend}/${setup.chorusSend} " +
+                        "tick0=${events.count { it.tick == 0 && (it.isControlChange || it.isProgramChange) }}"
+                )
                 StylePartModel(
                     name = bridge.nativeGetPartName(sectionName, partIndex),
                     events = events,

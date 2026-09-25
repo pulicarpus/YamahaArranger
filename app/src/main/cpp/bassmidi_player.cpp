@@ -3,14 +3,50 @@
 #include <algorithm>
 #include <fstream>
 #include <unordered_set>
+#include <unordered_map>
+#include <set>
 #include <cmath>
 #include <chrono>
 #include <sstream>
 #include <vector>
+#include <cctype>
+#include <cstring>
+#include <cstdarg>
+#include <cstdio>
+#include <jni.h>
 
 #define LOG_TAG "BassMidiPlayer"
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+
+// BassMidiPlayer is the layer that knows the real SF2/BASSMIDI mapping.
+// Route its diagnostics through the same DebugLog bridge as AudioEngine so
+// the in-app exported log can prove what BASSMIDI actually loaded/applied.
+extern JavaVM* g_jvm;
+extern jclass g_debugLogClass;
+extern jmethodID g_debugLogAddMethod;
+
+static void uiLog(const char* fmt, ...) {
+    char buf[1024];
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, args);
+    va_end(args);
+    __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "%s", buf);
+    if (g_jvm && g_debugLogClass && g_debugLogAddMethod) {
+        JNIEnv* env = nullptr;
+        bool attached = false;
+        if (g_jvm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) != JNI_OK) {
+            if (g_jvm->AttachCurrentThread(&env, nullptr) == JNI_OK) attached = true;
+        }
+        if (env) {
+            jstring jmsg = env->NewStringUTF(buf);
+            env->CallStaticVoidMethod(g_debugLogClass, g_debugLogAddMethod, jmsg);
+            env->DeleteLocalRef(jmsg);
+            if (attached) g_jvm->DetachCurrentThread();
+        }
+    }
+}
+#define LOGI(...) uiLog(__VA_ARGS__)
+#define LOGE(...) uiLog(__VA_ARGS__)
 
 BassMidiPlayer::BassMidiPlayer() {
     ensureEngine();
@@ -135,44 +171,47 @@ bool BassMidiPlayer::applyFonts() {
     }
 
     if (melodyFont_) {
-        // Keep the melody mappings off MIDI channel 10 (zero-based 9).
-        // numchan=0 means "all channels" in BASSMIDI, which can overlap the
-        // dedicated drum mapping above and cause a loaded drum SF2 to be
-        // bypassed. Cover melodic channels as two ranges: 0..8 and 10..15.
-        for (int lsb = 0; lsb < 128; ++lsb) {
-            BASS_MIDI_FONTEX2 melodyA{};
-            melodyA.font = melodyFont_;
-            melodyA.spreset = -1;
-            melodyA.sbank = -1;
-            melodyA.dpreset = -1;
-            melodyA.dbank = 0;
-            melodyA.dbanklsb = lsb;
-            // Keep the melody mapping off both Yamaha rhythm channels:
-            // zero-based 8 and 9 are reserved for the dedicated drum mapping.
-            melodyA.minchan = 0;
-            melodyA.numchan = 8;
-            cfg.push_back(melodyA);
+        // The melody SF2 has been normalized so every original Yamaha bank
+        // occupies one legal BASSMIDI source bank. Map each virtual source
+        // bank back to its Yamaha MSB/LSB destination.
+        for (const auto& m : normalizedBanks_) {
+            BASS_MIDI_FONTEX2 melody{};
+            melody.font = melodyFont_;
+            melody.spreset = -1;
+            melody.sbank = m.virtualBank;
+            melody.dpreset = -1;
+            melody.dbank = m.midiMsb;
+            melody.dbanklsb = m.midiLsb;
+            melody.minchan = 0;
+            melody.numchan = 8;
+            cfg.push_back(melody);
 
-            BASS_MIDI_FONTEX2 melodyB{};
-            melodyB.font = melodyFont_;
-            melodyB.spreset = -1;
-            melodyB.sbank = -1;
-            melodyB.dpreset = -1;
-            melodyB.dbank = 0;
-            melodyB.dbanklsb = lsb;
+            BASS_MIDI_FONTEX2 melodyB = melody;
             melodyB.minchan = 10;
             melodyB.numchan = 6;
             cfg.push_back(melodyB);
         }
+        LOGI("BASSMIDI normalized melody FONTEX2 mappings=%u",
+             static_cast<unsigned>(normalizedBanks_.size()));
     }
 
     const DWORD count = static_cast<DWORD>(cfg.size());
     if (!count) return false;
 
-    if (!BASS_MIDI_StreamSetFonts(stream_, cfg.data(), count)) {
-        LOGE("StreamSetFonts(FONTEX2) failed error=%d", BASS_ErrorGetCode());
+    // IMPORTANT: cfg contains BASS_MIDI_FONTEX2 records. The EX2 flag is
+    // part of the numfonts argument; without it BASSMIDI interprets the
+    // array as the older BASS_MIDI_FONT layout and silently ignores
+    // dbanklsb/minchan/numchan. That would make Yamaha 8:1 (1025), 8:2
+    // (1026), etc. fall back to the virtual source bank number instead of
+    // the intended Yamaha destination bank.
+    const DWORD flags = count | BASS_MIDI_FONT_EX2;
+    if (!BASS_MIDI_StreamSetFonts(stream_, cfg.data(), flags)) {
+        LOGE("StreamSetFonts(FONTEX2) failed flags=%u error=%d",
+             static_cast<unsigned>(flags), BASS_ErrorGetCode());
         return false;
     }
+    LOGI("BASSMIDI FONTEX2 applied: entries=%u flags=%u",
+         static_cast<unsigned>(count), static_cast<unsigned>(flags));
 
     if (melodyFont_) {
         BASS_MIDI_FontSetVolume(melodyFont_, soundFontVolume_);
@@ -198,13 +237,25 @@ bool BassMidiPlayer::loadRole(const std::string& path, bool drum) {
     } else {
         melodyPath_.clear();
         melodyDrumPresetCache_.clear();
+        melodyPresetCache_.clear();
     }
     if (target) {
         BASS_MIDI_FontFree(target);
         target = 0;
     }
 
-    target = BASS_MIDI_FontInit(path.c_str(), 0);
+    std::string fontPath = path;
+    if (!drum) {
+        melodyBassPath_ = path + ".bassmidi-normalized.sf2";
+        if (!normalizeMelodySf2(path, melodyBassPath_)) {
+            LOGE("BASSMIDI melody normalization failed; refusing packed Yamaha banks");
+            melodyBassPath_.clear();
+            return false;
+        }
+        fontPath = melodyBassPath_;
+    }
+
+    target = BASS_MIDI_FontInit(fontPath.c_str(), 0);
     if (!target) {
         LOGE("FontInit failed role=%s error=%d",
              drum ? "DRUM" : "MELODY", BASS_ErrorGetCode());
@@ -220,6 +271,15 @@ bool BassMidiPlayer::loadRole(const std::string& path, bool drum) {
              static_cast<unsigned long long>(info.samload),
              static_cast<unsigned>(info.samtype),
              info.name ? info.name : "");
+    }
+
+    if (!drum) {
+        melodyPath_ = path;
+        rebuildMelodyPresetCache(melodyPath_);
+        rebuildDrumPresetCache(melodyPath_, melodyDrumPresetCache_);
+    } else {
+        drumPath_ = path;
+        rebuildDrumPresetCache(drumPath_, drumDrumPresetCache_);
     }
 
     if (!applyFonts()) {
@@ -239,14 +299,6 @@ bool BassMidiPlayer::loadRole(const std::string& path, bool drum) {
             send(ch, MIDI_EVENT_BANK_LSB, static_cast<DWORD>(channels_[ch].bankLsb));
             send(ch, MIDI_EVENT_PROGRAM, static_cast<DWORD>(channels_[ch].program));
         }
-    }
-
-    if (!drum) {
-        melodyPath_ = path;
-        rebuildDrumPresetCache(melodyPath_, melodyDrumPresetCache_);
-    } else {
-        drumPath_ = path;
-        rebuildDrumPresetCache(drumPath_, drumDrumPresetCache_);
     }
 
     LOGI("BASSMIDI %s SF2 loaded: %s",
@@ -290,7 +342,12 @@ void BassMidiPlayer::unload() {
 
     for (auto& ch : channels_) ch = ChannelState{};
     melodyPath_.clear();
+    melodyBassPath_.clear();
     drumPath_.clear();
+    melodyPresetCache_.clear();
+    melodyDrumPresetCache_.clear();
+    normalizedBanks_.clear();
+    drumDrumPresetCache_.clear();
 }
 
 void BassMidiPlayer::send(int channel, DWORD event, DWORD param) {
@@ -302,6 +359,166 @@ void BassMidiPlayer::send(int channel, DWORD event, DWORD param) {
              channel, static_cast<unsigned>(event),
              static_cast<unsigned>(param), BASS_ErrorGetCode());
     }
+}
+
+namespace {
+
+// Walk the SF2 RIFF structure to locate the real preset-header chunk.
+// Never scan raw sample data byte-by-byte: the PCM in "sdta" can contain
+// the four ASCII bytes "phdr" by coincidence.  The preset table is the
+// "phdr" sub-chunk of the "pdta" LIST.
+bool findPhdrChunk(const std::vector<unsigned char>& data,
+                   const unsigned char*& phdrData, uint32_t& phdrSize) {
+    phdrData = nullptr;
+    phdrSize = 0;
+    if (data.size() < 12) return false;
+    if (std::memcmp(data.data(), "RIFF", 4) != 0) return false;
+    if (std::memcmp(data.data() + 8, "sfbk", 4) != 0) return false;
+
+    size_t pos = 12;
+    while (pos + 8 <= data.size()) {
+        const uint32_t chunkSize =
+            static_cast<uint32_t>(data[pos + 4]) |
+            (static_cast<uint32_t>(data[pos + 5]) << 8) |
+            (static_cast<uint32_t>(data[pos + 6]) << 16) |
+            (static_cast<uint32_t>(data[pos + 7]) << 24);
+        const size_t chunkDataStart = pos + 8;
+        if (chunkDataStart > data.size() ||
+            chunkSize > data.size() - chunkDataStart) {
+            return false;
+        }
+
+        if (std::memcmp(data.data() + pos, "LIST", 4) == 0 &&
+            chunkSize >= 4 &&
+            std::memcmp(data.data() + chunkDataStart, "pdta", 4) == 0) {
+            const size_t listEnd = chunkDataStart + chunkSize;
+            size_t subPos = chunkDataStart + 4;
+            while (subPos + 8 <= listEnd) {
+                const uint32_t subSize =
+                    static_cast<uint32_t>(data[subPos + 4]) |
+                    (static_cast<uint32_t>(data[subPos + 5]) << 8) |
+                    (static_cast<uint32_t>(data[subPos + 6]) << 16) |
+                    (static_cast<uint32_t>(data[subPos + 7]) << 24);
+                const size_t subDataStart = subPos + 8;
+                if (subDataStart > listEnd ||
+                    subSize > listEnd - subDataStart) {
+                    return false;
+                }
+                if (std::memcmp(data.data() + subPos, "phdr", 4) == 0) {
+                    phdrData = data.data() + subDataStart;
+                    phdrSize = subSize;
+                    return true;
+                }
+                subPos = subDataStart + subSize + (subSize & 1u);
+            }
+            return false;
+        }
+
+        pos = chunkDataStart + chunkSize + (chunkSize & 1u);
+    }
+    return false;
+}
+
+} // namespace
+
+// BASSMIDI's FONTEX source bank is limited to the 128 SF2 banks. Yamaha
+// variation banks such as 1025 (= MSB 8, LSB 1) therefore cannot be passed
+// directly as sbank.  SF2 itself has no Bank-LSB field either.  Normalize the
+// preset-header bank numbers into unique legal SF2 banks while retaining a
+// side-table that maps each normalized bank back to Yamaha MSB/LSB.
+bool BassMidiPlayer::normalizeMelodySf2(const std::string& sourcePath,
+                                        const std::string& outputPath) {
+    std::ifstream file(sourcePath, std::ios::binary);
+    if (!file) {
+        LOGE("SF2 normalize: cannot open %s", sourcePath.c_str());
+        return false;
+    }
+    std::vector<unsigned char> data(
+        (std::istreambuf_iterator<char>(file)),
+        std::istreambuf_iterator<char>());
+
+    const unsigned char* phdrData = nullptr;
+    uint32_t phdrSize = 0;
+    if (!findPhdrChunk(data, phdrData, phdrSize) ||
+        phdrSize < 38 || phdrSize % 38 != 0) {
+        LOGE("SF2 normalize: invalid phdr in %s", sourcePath.c_str());
+        return false;
+    }
+
+    // Collect every melodic source bank. Bank 127/128 are reserved for drums.
+    std::set<int> rawBanks;
+    const size_t count = phdrSize / 38;
+    for (size_t n = 0; n + 1 < count; ++n) {
+        const unsigned char* rec = phdrData + n * 38;
+        const int bank = static_cast<int>(rec[22]) |
+                         (static_cast<int>(rec[23]) << 8);
+        if (bank != 127 && bank != 128) rawBanks.insert(bank);
+    }
+
+    if (rawBanks.size() > 127) {
+        LOGE("SF2 normalize: %u melodic banks exceed BASSMIDI's 127 usable source banks",
+             static_cast<unsigned>(rawBanks.size()));
+        return false;
+    }
+
+    normalizedBanks_.clear();
+    int nextVirtual = 0;
+    std::unordered_map<int, int> rawToVirtual;
+    for (int rawBank : rawBanks) {
+        // Reserve 0 for the first bank, then use 1..126. This avoids bank
+        // 127/128 which BASSMIDI treats specially for percussion/XG.
+        if (nextVirtual == 127) ++nextVirtual;
+        if (nextVirtual > 126) {
+            LOGE("SF2 normalize: no legal virtual source bank for raw=%d", rawBank);
+            normalizedBanks_.clear();
+            return false;
+        }
+        rawToVirtual[rawBank] = nextVirtual;
+        normalizedBanks_.push_back({rawBank, nextVirtual,
+                                    rawBank >= 128 ? rawBank / 128 : rawBank,
+                                    rawBank >= 128 ? rawBank % 128 : 0});
+        ++nextVirtual;
+    }
+
+    // Rewrite only phdr bank fields. All preset bags, instruments, samples,
+    // modulators, generators and sample data remain byte-for-byte unchanged.
+    // Because every raw bank gets its own virtual bank, programs from
+    // different Yamaha LSB banks can never collide.
+    const uintptr_t phdrOffset =
+        static_cast<uintptr_t>(phdrData - data.data());
+    unsigned char* mutablePhdr = data.data() + phdrOffset;
+    for (size_t n = 0; n + 1 < count; ++n) {
+        unsigned char* rec = mutablePhdr + n * 38;
+        const int rawBank = static_cast<int>(rec[22]) |
+                            (static_cast<int>(rec[23]) << 8);
+        if (rawBank == 127 || rawBank == 128) continue;
+        const auto it = rawToVirtual.find(rawBank);
+        if (it == rawToVirtual.end()) return false;
+        const int virtualBank = it->second;
+        rec[22] = static_cast<unsigned char>(virtualBank & 0xff);
+        rec[23] = static_cast<unsigned char>((virtualBank >> 8) & 0xff);
+    }
+
+    std::ofstream out(outputPath, std::ios::binary | std::ios::trunc);
+    if (!out) {
+        LOGE("SF2 normalize: cannot create %s", outputPath.c_str());
+        return false;
+    }
+    out.write(reinterpret_cast<const char*>(data.data()),
+              static_cast<std::streamsize>(data.size()));
+    if (!out.good()) {
+        LOGE("SF2 normalize: write failed %s", outputPath.c_str());
+        return false;
+    }
+
+    LOGI("SF2 normalize OK: %s -> %s melodicBanks=%u",
+         sourcePath.c_str(), outputPath.c_str(),
+         static_cast<unsigned>(normalizedBanks_.size()));
+    for (const auto& m : normalizedBanks_) {
+        LOGI("SF2 bank map raw=%d -> virtual=%d -> MIDI=%d:%d",
+             m.rawBank, m.virtualBank, m.midiMsb, m.midiLsb);
+    }
+    return true;
 }
 
 void BassMidiPlayer::rebuildDrumPresetCache(
@@ -320,42 +537,32 @@ void BassMidiPlayer::rebuildDrumPresetCache(
         (std::istreambuf_iterator<char>(file)),
         std::istreambuf_iterator<char>());
 
-    const char phdr[] = {'p','h','d','r'};
-    for (size_t i = 0; i + 8 <= data.size(); ++i) {
-        if (std::memcmp(data.data() + i, phdr, 4) != 0) continue;
-
-        const uint32_t size =
-            static_cast<uint32_t>(data[i + 4]) |
-            (static_cast<uint32_t>(data[i + 5]) << 8) |
-            (static_cast<uint32_t>(data[i + 6]) << 16) |
-            (static_cast<uint32_t>(data[i + 7]) << 24);
-
-        if (size < 38 || size % 38 != 0 || i + 8 + size > data.size())
-            continue;
-
-        const size_t count = size / 38;
-        for (size_t n = 0; n + 1 < count; ++n) {
-            const unsigned char* rec = data.data() + i + 8 + n * 38;
-            const int program = static_cast<int>(rec[20]) |
-                                (static_cast<int>(rec[21]) << 8);
-            const int bank = static_cast<int>(rec[22]) |
-                             (static_cast<int>(rec[23]) << 8);
-            if (bank != 127 && bank != 128) continue;
-
-            cache.push_back({bank, program});
-        }
-
-        if (!cache.empty()) {
-            LOGI("SF2 drum preset cache built: entries=%u path=%s",
-                 static_cast<unsigned>(cache.size()), path.c_str());
-        } else {
-            LOGI("SF2 drum preset cache built: no bank 127/128 presets path=%s",
-                 path.c_str());
-        }
+    const unsigned char* phdrData = nullptr;
+    uint32_t phdrSize = 0;
+    if (!findPhdrChunk(data, phdrData, phdrSize) ||
+        phdrSize < 38 || phdrSize % 38 != 0) {
+        LOGI("SF2 drum preset cache: phdr not found path=%s", path.c_str());
         return;
     }
 
-    LOGI("SF2 drum preset cache: phdr not found path=%s", path.c_str());
+    const size_t count = phdrSize / 38;
+    for (size_t n = 0; n + 1 < count; ++n) {
+        const unsigned char* rec = phdrData + n * 38;
+        const int program = static_cast<int>(rec[20]) |
+                            (static_cast<int>(rec[21]) << 8);
+        const int bank = static_cast<int>(rec[22]) |
+                         (static_cast<int>(rec[23]) << 8);
+        if (bank != 127 && bank != 128) continue;
+        cache.push_back({bank, program});
+    }
+
+    if (!cache.empty()) {
+        LOGI("SF2 drum preset cache built: entries=%u path=%s",
+             static_cast<unsigned>(cache.size()), path.c_str());
+    } else {
+        LOGI("SF2 drum preset cache built: no bank 127/128 presets path=%s",
+             path.c_str());
+    }
 }
 
 bool BassMidiPlayer::findDrumPreset(const std::string& path,
@@ -393,6 +600,138 @@ bool BassMidiPlayer::findDrumPreset(const std::string& path,
     return false;
 }
 
+void BassMidiPlayer::rebuildMelodyPresetCache(const std::string& path) {
+    melodyPresetCache_.clear();
+    if (path.empty()) return;
+    std::ifstream file(path, std::ios::binary);
+    if (!file) {
+        LOGI("SF2 melodic preset cache: cannot open %s", path.c_str());
+        return;
+    }
+    std::vector<unsigned char> data(
+        (std::istreambuf_iterator<char>(file)),
+        std::istreambuf_iterator<char>());
+
+    const unsigned char* phdrData = nullptr;
+    uint32_t phdrSize = 0;
+    if (!findPhdrChunk(data, phdrData, phdrSize) ||
+        phdrSize < 38 || phdrSize % 38 != 0) {
+        LOGI("SF2 melodic preset cache: phdr not found path=%s", path.c_str());
+        return;
+    }
+
+    const size_t count = phdrSize / 38;
+    for (size_t n = 0; n + 1 < count; ++n) {
+        const unsigned char* rec = phdrData + n * 38;
+        size_t nameLen = 0;
+        while (nameLen < 20 && rec[nameLen] != 0) ++nameLen;
+        std::string name(reinterpret_cast<const char*>(rec), nameLen);
+        const int program = static_cast<int>(rec[20]) |
+                            (static_cast<int>(rec[21]) << 8);
+        const int sourceBank = static_cast<int>(rec[22]) |
+                               (static_cast<int>(rec[23]) << 8);
+        if (sourceBank == 127 || sourceBank == 128) continue;
+        melodyPresetCache_.push_back({sourceBank, program, name});
+    }
+    LOGI("SF2 melodic preset cache built: entries=%u path=%s",
+         static_cast<unsigned>(melodyPresetCache_.size()), path.c_str());
+}
+
+bool BassMidiPlayer::findMelodicPreset(
+    const std::string& path, int requestedBank, int requestedProgram,
+    const std::string& voiceName, int& sourceBank, int& sourceProgram,
+    std::string& matchedName) const {
+    if (path.empty() || melodyPresetCache_.empty()) return false;
+
+    // Prefer an exact SF2 bank match first. Some Yamaha/XG SF2s store
+    // bank MSB+LSB packed as 1025 (= 8:1), while others store only the MSB
+    // (8) and rely on MIDI_EVENT_BANK_LSB. The requested value from Kotlin
+    // is the packed Yamaha 14-bit bank, so both forms must be accepted.
+    const int requestedSourceBank =
+        (requestedBank >= 128) ? (requestedBank / 128) : requestedBank;
+
+    for (const auto& p : melodyPresetCache_) {
+        if (p.bank == requestedBank && p.program == requestedProgram) {
+            sourceBank = p.bank;
+            sourceProgram = p.program;
+            matchedName = p.name;
+            return true;
+        }
+    }
+
+    for (const auto& p : melodyPresetCache_) {
+        if (p.bank == requestedSourceBank && p.program == requestedProgram) {
+            sourceBank = p.bank;
+            sourceProgram = p.program;
+            matchedName = p.name;
+            return true;
+        }
+    }
+
+    std::string lower = voiceName;
+    std::transform(lower.begin(), lower.end(), lower.begin(),
+                   [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+
+    auto category = [](const std::string& n) -> int {
+        if (n.find("string") != std::string::npos || n.find("strg") != std::string::npos ||
+            n.find("str") != std::string::npos || n.find("orch") != std::string::npos ||
+            n.find("violin") != std::string::npos || n.find("viola") != std::string::npos ||
+            n.find("cello") != std::string::npos || n.find("ensemble") != std::string::npos ||
+            n.find("ens") != std::string::npos || n.find("sforz") != std::string::npos) return 1;
+        if (n.find("bass") != std::string::npos) return 2;
+        if (n.find("guitar") != std::string::npos || n.find("gtr") != std::string::npos) return 3;
+        if (n.find("piano") != std::string::npos || n.find("grand") != std::string::npos) return 4;
+        if (n.find("organ") != std::string::npos) return 5;
+        if (n.find("accordion") != std::string::npos) return 6;
+        if (n.find("brass") != std::string::npos || n.find("trumpet") != std::string::npos ||
+            n.find("trombone") != std::string::npos) return 7;
+        if (n.find("sax") != std::string::npos || n.find("clarinet") != std::string::npos) return 8;
+        if (n.find("flute") != std::string::npos || n.find("oboe") != std::string::npos) return 9;
+        if (n.find("choir") != std::string::npos || n.find("voice") != std::string::npos) return 10;
+        if (n.find("pad") != std::string::npos) return 11;
+        if (n.find("synth") != std::string::npos) return 12;
+        return 0;
+    };
+    auto gmCategory = [](int p) -> int {
+        if (p <= 7) return 4; if (p <= 15) return 5; if (p <= 23) return 5;
+        if (p <= 31) return 3; if (p <= 39) return 2; if (p <= 55) return 1;
+        if (p <= 63) return 7; if (p <= 71) return 8; if (p <= 79) return 9;
+        if (p <= 95) return 12; if (p <= 103) return 11; if (p <= 111) return 10;
+        return 12;
+    };
+
+    const int wantedCategory = category(lower) != 0 ? category(lower) : gmCategory(requestedProgram);
+    int bestScore = -1;
+    const MelodicPresetEntry* best = nullptr;
+    for (const auto& p : melodyPresetCache_) {
+        std::string pn = p.name;
+        std::transform(pn.begin(), pn.end(), pn.begin(),
+                       [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+        int score = 0;
+        if (wantedCategory != 0 && category(pn) == wantedCategory) score += 1000;
+        if (p.bank == requestedSourceBank) score += 120;
+        if (!lower.empty() && pn.find(lower) != std::string::npos) score += 80;
+        score += std::max(0, 32 - std::abs(p.program - requestedProgram));
+        if (score > bestScore) { bestScore = score; best = &p; }
+    }
+
+    // Voyager-style final melodic fallback: same-bank Piano/Program 0,
+    // then any Program 0, then the first selectable melodic preset.
+    if (!best || bestScore < 1000) {
+        best = nullptr;
+        for (const auto& p : melodyPresetCache_) {
+            if (p.bank == requestedSourceBank && p.program == 0) { best = &p; break; }
+        }
+        if (!best) for (const auto& p : melodyPresetCache_) {
+            if (p.program == 0) { best = &p; break; }
+        }
+        if (!best) best = &melodyPresetCache_.front();
+    }
+
+    sourceBank = best->bank; sourceProgram = best->program; matchedName = best->name;
+    return true;
+}
+
 void BassMidiPlayer::preloadCurrentPreset(int channel) {
     if (!stream_ || channel < 0 || channel >= 16) return;
 
@@ -406,7 +745,27 @@ void BassMidiPlayer::preloadCurrentPreset(int channel) {
     // Resolve drum program against the actual SF2 drum banks before loading.
     // This mirrors Voyager's default-drumkit fallback instead of attempting
     // to preload a drum program that is not present.
+    // Use the actual SF2 source bank when it is available. Yamaha/XG fonts
+    // may store 8:1 as packed SF2 bank 1025, while other fonts store bank 8
+    // and let MIDI_EVENT_BANK_LSB select the variation through FONTEX2.
     int sourceBank = state.drum ? 128 : state.bankMsb;
+    if (!state.drum && !melodyPresetCache_.empty()) {
+        for (const auto& p : melodyPresetCache_) {
+            if (p.program == state.program &&
+                (p.bank == state.bankMsb * 128 + state.bankLsb ||
+                 p.bank == state.bankMsb)) {
+                sourceBank = p.bank;
+                break;
+            }
+        }
+        const int rawSourceBank = sourceBank;
+        for (const auto& m : normalizedBanks_) {
+            if (m.rawBank == rawSourceBank) {
+                sourceBank = m.virtualBank;
+                break;
+            }
+        }
+    }
     int sourceProgram = state.program;
     // Preload asynchronously. BASSMIDI normally loads samples on demand,
     // which can cause a CPU spike exactly when a new voice is first heard.
@@ -441,8 +800,10 @@ void BassMidiPlayer::preloadCurrentPreset(int channel) {
         }
     }
 
-    LOGI("BASSMIDI preload ch=%d bank=%d lsb=%d prog=%d",
-         channel, state.bankMsb, state.bankLsb, state.program);
+    LOGI("BASSMIDI preload ch=%d sf2bank=%d rawYamahaBank=%d midi=%d:%d prog=%d",
+         channel, sourceBank,
+         state.drum ? 128 : (state.bankMsb * 128 + state.bankLsb),
+         state.bankMsb, state.bankLsb, sourceProgram);
 }
 
 void BassMidiPlayer::noteOn(int channel, int key, float velocity) {
@@ -478,7 +839,7 @@ void BassMidiPlayer::allNotesOff() {
     }
 }
 
-void BassMidiPlayer::setChannelPreset(int channel, int bank, int program) {
+void BassMidiPlayer::setChannelPreset(int channel, int bank, int program, const std::string& voiceName) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (!ensureEngine()) return;
 
@@ -493,7 +854,12 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program) {
     // Yamaha Rhythm 1/2 are MIDI channels 9/10 (zero-based 8/9).
     // Keep both channels in percussion mode even when a style omits an
     // explicit Bank Select event.
-    const bool wantDrum = (channel == 8 || channel == 9 || bank >= 128);
+    // Bank 128+ is NOT sufficient to classify a Yamaha melodic variation
+    // bank as percussion. Yamaha packed variation banks such as 1025 (8:1),
+    // 1026 (8:2), and 1029 (8:5) are normal melodic banks. Percussion is
+    // determined by the actual Rhythm channels (9/10 in MIDI numbering,
+    // zero-based 8/9), not by the packed 14-bit bank value.
+    const bool wantDrum = (channel == 8 || channel == 9);
     if (wantDrum) {
         bank = 128;
     } else {
@@ -508,39 +874,49 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program) {
     state.initialized = true;
 
     if (state.drum) {
-        // Voyager keeps drum program numbers intact when they exist, but
-        // allows a default drumkit when the requested kit is unavailable.
-        // Resolve that against the actual loaded SF2 before sending the
-        // program change.
         int sourceBank = 128;
         int sourceProgram = program;
         const std::string& path = drumFont_ ? drumPath_ : melodyPath_;
-        const auto resolveStart = std::chrono::steady_clock::now();
-        const bool resolved =
-            findDrumPreset(path, program, sourceBank, sourceProgram);
-        const auto resolveUs = std::chrono::duration_cast<std::chrono::microseconds>(
-            std::chrono::steady_clock::now() - resolveStart).count();
-        LOGI("DRUM PRESET RESOLVE TIMING ch=%d requested=%d duration_us=%lld cache=%d",
-             channel, program, static_cast<long long>(resolveUs),
-             resolved ? 1 : 0);
+        const bool resolved = findDrumPreset(path, program, sourceBank, sourceProgram);
+        LOGI("DRUM PRESET RESOLVE ch=%d requested=%d -> bank=%d prog=%d found=%d",
+             channel, program, sourceBank, sourceProgram, resolved ? 1 : 0);
         if (resolved) {
-            state.bankMsb = 128;
-            state.bankLsb = 0;
+            state.bankMsb = 128; state.bankLsb = 0; state.program = sourceProgram;
+        }
+    } else {
+        const int requestedProgram = program;
+        const int requestedBank14 = bank;
+        const int requestedSourceBank =
+            (requestedBank14 >= 128) ? (requestedBank14 / 128) : requestedBank14;
+        int sourceBank = state.bankMsb;
+        int sourceProgram = requestedProgram;
+        std::string matchedName;
+        if (findMelodicPreset(melodyPath_, requestedBank14, requestedProgram, voiceName,
+                               sourceBank, sourceProgram, matchedName)) {
+            if (sourceBank != requestedSourceBank || sourceProgram != requestedProgram) {
+                LOGI("VOICE RESOLVE ch=%d requested bank=%d prog=%d name='%s' -> SF2 bank=%d prog=%d '%s'",
+                     channel, requestedBank14, requestedProgram, voiceName.c_str(),
+                     sourceBank, sourceProgram, matchedName.c_str());
+            } else {
+                LOGI("VOICE RESOLVE ch=%d exact bank=%d prog=%d '%s'",
+                     channel, requestedBank14, requestedProgram, matchedName.c_str());
+            }
+            // Keep the requested Yamaha MSB/LSB as the destination.
+            // sourceBank is the original SF2/Yamaha bank and is converted to
+            // a legal virtual BASSMIDI source bank during preload.
             state.program = sourceProgram;
-            LOGI("DRUM PRESET RESOLVE ch=%d requested=%d -> bank=%d prog=%d",
-                 channel, program, sourceBank, sourceProgram);
+        } else {
+            LOGI("VOICE RESOLVE ch=%d no melodic preset cache; keeping requested bank=%d prog=%d name='%s'",
+                 channel, requestedBank14, requestedProgram, voiceName.c_str());
         }
     }
 
-    LOGI("SET PRESET ch=%d requestedBank=%d effectiveBank=%d prog=%d drum=%d",
-         channel, requestedBank, state.bankMsb, state.program, state.drum ? 1 : 0);
+    LOGI("SET PRESET ch=%d requestedBank=%d effectiveBank=%d lsb=%d prog=%d drum=%d voice='%s'",
+         channel, requestedBank, state.bankMsb, state.bankLsb, state.program,
+         state.drum ? 1 : 0, voiceName.c_str());
 
-    if (state.drum) {
-        send(channel, MIDI_EVENT_DRUMS, 1);
-    } else {
-        send(channel, MIDI_EVENT_DRUMS, 0);
-    }
-
+    if (state.drum) send(channel, MIDI_EVENT_DRUMS, 1);
+    else send(channel, MIDI_EVENT_DRUMS, 0);
     send(channel, MIDI_EVENT_BANK, static_cast<DWORD>(state.bankMsb));
     send(channel, MIDI_EVENT_BANK_LSB, static_cast<DWORD>(state.bankLsb));
     send(channel, MIDI_EVENT_PROGRAM, static_cast<DWORD>(state.program));
@@ -549,15 +925,14 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program) {
          channel, state.bankMsb, state.bankLsb, state.program,
          state.drum ? 1 : 0);
 
-    // Do not synchronously preload drum kits here. BASS_MIDI_FontLoad() can
-    // block for a large drum SF2 while sample data is prepared. This method is
-    // called from the style transition/program-change path, so blocking here
-    // starves the Oboe render callback and makes fills/section changes sound
-    // chopped or disappear. BASSMIDI can resolve/load the selected preset on
-    // demand when the first note arrives; keep the program/bank event cheap.
-    if (!state.drum) {
-        preloadCurrentPreset(channel);
-    }
+    // Apply the proven neighbor fix: preload BOTH melodic and drum presets.
+    // The drum path used to be skipped here, leaving a newly selected kit
+    // dependent on lazy first-note loading. That can make style transitions
+    // (especially Fill -> Main / section changes) sound empty even though the
+    // MIDI NOTE events are already correct. preloadCurrentPreset() uses the
+    // non-blocking BASS_MIDI_FONTLOAD_NOWAIT path, so enabling it for drums
+    // does not reintroduce the old synchronous render-thread stall.
+    preloadCurrentPreset(channel);
 }
 
 void BassMidiPlayer::setChannelMixer(int channel, int volume, int pan,

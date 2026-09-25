@@ -184,6 +184,10 @@ void AudioEngine::sfSetChannelPreset(int channel, int bank, int program) {
     soundFont_.setChannelPreset(channel, bank, program);
 }
 
+void AudioEngine::sfSetChannelPresetWithName(int channel, int bank, int program, const std::string& voiceName) {
+    soundFont_.setChannelPreset(channel, bank, program, voiceName);
+}
+
 void AudioEngine::sfSetChannelMixer(int channel, int volume, int pan,
                                     int expression, int reverbSend,
                                     int chorusSend) {
