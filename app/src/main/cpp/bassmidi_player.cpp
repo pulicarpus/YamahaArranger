@@ -496,7 +496,7 @@ bool BassMidiPlayer::findMelodicPreset(
                        [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
         int score = 0;
         if (wantedCategory != 0 && category(pn) == wantedCategory) score += 1000;
-        if (p.bank == requestedBank) score += 120;
+        if (p.bank == requestedSourceBank) score += 120;
         if (!lower.empty() && pn.find(lower) != std::string::npos) score += 80;
         score += std::max(0, 32 - std::abs(p.program - requestedProgram));
         if (score > bestScore) { bestScore = score; best = &p; }
@@ -507,7 +507,7 @@ bool BassMidiPlayer::findMelodicPreset(
     if (!best || bestScore < 1000) {
         best = nullptr;
         for (const auto& p : melodyPresetCache_) {
-            if (p.bank == requestedBank && p.program == 0) { best = &p; break; }
+            if (p.bank == requestedSourceBank && p.program == 0) { best = &p; break; }
         }
         if (!best) for (const auto& p : melodyPresetCache_) {
             if (p.program == 0) { best = &p; break; }
@@ -665,8 +665,14 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program, const 
                 LOGI("VOICE RESOLVE ch=%d exact bank=%d prog=%d '%s'",
                      channel, requestedBank14, requestedProgram, matchedName.c_str());
             }
-            state.bankMsb = std::clamp(sourceBank / 128, 0, 127);
-            state.bankLsb = std::clamp(sourceBank % 128, 0, 127);
+            // sourceBank is the SF2 bank, not the Yamaha destination bank.
+            // Keep the original Yamaha MSB/LSB for an exact match so
+            // FONTEX2 can select the mapping by the requested Bank LSB.
+            // Only move the destination MSB when fallback selected a
+            // different SF2 bank.
+            if (sourceBank != requestedSourceBank) {
+                state.bankMsb = std::clamp(sourceBank, 0, 127);
+            }
             state.program = sourceProgram;
         } else {
             LOGI("VOICE RESOLVE ch=%d no melodic preset cache; keeping requested bank=%d prog=%d name='%s'",
