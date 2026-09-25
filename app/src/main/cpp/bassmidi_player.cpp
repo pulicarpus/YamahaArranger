@@ -198,6 +198,7 @@ bool BassMidiPlayer::loadRole(const std::string& path, bool drum) {
     } else {
         melodyPath_.clear();
         melodyDrumPresetCache_.clear();
+        melodyPresetCache_.clear();
     }
     if (target) {
         BASS_MIDI_FontFree(target);
@@ -292,6 +293,9 @@ void BassMidiPlayer::unload() {
     for (auto& ch : channels_) ch = ChannelState{};
     melodyPath_.clear();
     drumPath_.clear();
+    melodyPresetCache_.clear();
+    melodyDrumPresetCache_.clear();
+    drumDrumPresetCache_.clear();
 }
 
 void BassMidiPlayer::send(int channel, DWORD event, DWORD param) {
