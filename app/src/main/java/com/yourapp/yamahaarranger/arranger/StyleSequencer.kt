@@ -704,6 +704,17 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         var interruptedByTransition = false
         var lastProcessedTick = startAbsoluteTick
 
+        // Yamaha styles can issue bank-select + program changes inside a
+        // section (T547 does this on the A.Guitar part). Keep a bank state per
+        // source part so a later Program Change does not silently fall back to
+        // bank 0 and replace the intended SF2 preset.
+        val dynamicBankBySource = mutableMapOf<Int, Int>()
+        section.parts.forEach { part ->
+            val msb = part.bankMsb.coerceIn(0, 127)
+            val lsb = part.bankLsb.coerceIn(0, 127)
+            dynamicBankBySource[part.midiChannel] = msb * 128 + lsb
+        }
+
         for(s in merged){
             val absoluteTick=startAbsoluteTick+s.tick.toLong()
             val transition = pendingTransition
@@ -736,12 +747,38 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                 val destination = policy?.destinationChannel ?: s.event.channel
                 if (destination !in 0..3 && destination !in lockedChannels) {
                     if (s.event.isControlChange) {
-                        applyStyleController(destination, s.event)
+                        // CC0/32 are part of Yamaha's 14-bit bank selection.
+                        // They are consumed here and applied together with the
+                        // following Program Change instead of being discarded.
+                        when (s.event.note) {
+                            0 -> {
+                                val oldBank = dynamicBankBySource[s.event.channel] ?: 0
+                                dynamicBankBySource[s.event.channel] =
+                                    s.event.velocity.coerceIn(0, 127) * 128 + (oldBank and 0x7f)
+                            }
+                            32 -> {
+                                val oldBank = dynamicBankBySource[s.event.channel] ?: 0
+                                dynamicBankBySource[s.event.channel] =
+                                    ((oldBank ushr 7) and 0x7f) * 128 + s.event.velocity.coerceIn(0, 127)
+                            }
+                            else -> applyStyleController(destination, s.event)
+                        }
                     } else if (s.event.isProgramChange) {
-                        val drum = destination == 9 || (policy != null && isDrumVoice(policy.voiceName))
-                        val bank = if (drum) 128 else 0
-                        audioEngine.setChannelProgram(destination, s.event.note.coerceIn(0,127), bank)
-                        midiInputManager.sendProgramChange(destination, s.event.note.coerceIn(0,127), if (drum) 127 else 0)
+                        val drum = destination == 8 || destination == 9 ||
+                            (policy != null && isDrumVoice(policy.voiceName))
+                        val styleBank = dynamicBankBySource[s.event.channel]
+                            ?: ((s.part.bankMsb.coerceIn(0, 127) * 128) +
+                                s.part.bankLsb.coerceIn(0, 127))
+                        val bank = if (drum) 128 else styleBank
+                        val msb = if (drum) 127 else (bank ushr 7).coerceIn(0, 127)
+                        val lsb = if (drum) 0 else (bank and 0x7f)
+                        val program = s.event.note.coerceIn(0, 127)
+                        audioEngine.setChannelProgram(destination, program, bank)
+                        midiInputManager.sendProgramChange(destination, program, msb, lsb)
+                        com.yourapp.yamahaarranger.ui.DebugLog.add(
+                            "DYNAMIC PC src" + s.event.channel + " -> dst" + destination +
+                                " PC=" + program + " bank=" + msb + ":" + lsb + " SFbank=" + bank
+                        )
                     }
                 }
                 continue
