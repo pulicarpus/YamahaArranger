@@ -4,6 +4,7 @@ on:
     branches:
       - feat/bassmidi-engine-build448
       - fix/audio-transition-preset-cache
+      - integration/bassmidi-casm-sx720
   workflow_dispatch: {}
 jobs:
   build:
