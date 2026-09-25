@@ -438,9 +438,20 @@ bool BassMidiPlayer::findMelodicPreset(
     std::string& matchedName) const {
     if (path.empty() || melodyPresetCache_.empty()) return false;
 
+    // Yamaha melodic bank values are represented by the app as one 14-bit
+    // number (MSB * 128 + LSB), while an SF2 preset header stores only the
+    // 7-bit bank number. Match the actual SF2 bank (the MSB) here instead of
+    // comparing an SF2 bank such as 8 against a Yamaha composite value such
+    // as 1026. The Bank LSB is handled separately by FONTEX2 in applyFonts().
+    const int requestedSourceBank =
+        (requestedBank >= 128) ? (requestedBank / 128) : requestedBank;
+
     for (const auto& p : melodyPresetCache_) {
-        if (p.bank == requestedBank && p.program == requestedProgram) {
-            sourceBank = p.bank; sourceProgram = p.program; matchedName = p.name; return true;
+        if (p.bank == requestedSourceBank && p.program == requestedProgram) {
+            sourceBank = p.bank;
+            sourceProgram = p.program;
+            matchedName = p.name;
+            return true;
         }
     }
 
@@ -524,9 +535,10 @@ void BassMidiPlayer::preloadCurrentPreset(int channel) {
     // Melodic Yamaha banks are 14-bit: MSB * 128 + LSB.
     // Do not drop the LSB here. For example, bank 8:1 must be preloaded
     // as SF2 bank 1025, not bank 8.
-    int sourceBank = state.drum
-        ? 128
-        : (state.bankMsb * 128 + state.bankLsb);
+    // BASS_MIDI_FontLoadEx() addresses the actual SF2 bank, not the
+    // Yamaha 14-bit destination bank. FONTEX2 carries the destination LSB
+    // separately, so a Yamaha bank 8:2 must preload source bank 8.
+    int sourceBank = state.drum ? 128 : state.bankMsb;
     int sourceProgram = state.program;
     // Preload asynchronously. BASSMIDI normally loads samples on demand,
     // which can cause a CPU spike exactly when a new voice is first heard.
