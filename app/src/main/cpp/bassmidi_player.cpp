@@ -652,12 +652,14 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program, const 
     } else {
         const int requestedProgram = program;
         const int requestedBank14 = bank;
+        const int requestedSourceBank =
+            (requestedBank14 >= 128) ? (requestedBank14 / 128) : requestedBank14;
         int sourceBank = state.bankMsb;
         int sourceProgram = requestedProgram;
         std::string matchedName;
         if (findMelodicPreset(melodyPath_, requestedBank14, requestedProgram, voiceName,
                                sourceBank, sourceProgram, matchedName)) {
-            if (sourceBank != requestedBank14 || sourceProgram != requestedProgram) {
+            if (sourceBank != requestedSourceBank || sourceProgram != requestedProgram) {
                 LOGI("VOICE RESOLVE ch=%d requested bank=%d prog=%d name='%s' -> SF2 bank=%d prog=%d '%s'",
                      channel, requestedBank14, requestedProgram, voiceName.c_str(),
                      sourceBank, sourceProgram, matchedName.c_str());
