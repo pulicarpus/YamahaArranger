@@ -511,7 +511,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             val nativeState = AppliedChannelState(prog, audioBank, volume.coerceIn(0,127), pan.coerceIn(0,127),
                 expression.coerceIn(0,127), reverb.coerceIn(0,127), chorus.coerceIn(0,127))
             if (appliedChannelStates[destination] != nativeState) {
-                audioEngine.setChannelProgram(destination, prog, audioBank)
+                audioEngine.setChannelProgram(destination, prog, audioBank, c.voiceName)
                 audioEngine.setChannelMixer(destination, nativeState.volume, nativeState.pan, nativeState.expression,
                     nativeState.reverbSend, nativeState.chorusSend)
                 appliedChannelStates[destination] = nativeState
