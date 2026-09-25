@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <mutex>
 #include <fluidsynth.h>
 
 class SoundFontPlayer {
@@ -23,7 +24,11 @@ public:
     void allNotesOff();
 
     void setChannelPreset(int channel, int bank, int program);
+    void setChannelMixer(int channel, int volume, int pan, int expression, int reverbSend, int chorusSend);
+    void setChannelExpression(int channel, int expression);
+    void setMasterGain(float gain);
     int presetCount() const;
+    std::string presetList() const;
 
 private:
     bool loadRole(const std::string& path, bool drum);
@@ -33,4 +38,5 @@ private:
     fluid_synth_t* synth_ = nullptr;
     int melodySfId_ = -1;
     int drumSfId_ = -1;
+
 };

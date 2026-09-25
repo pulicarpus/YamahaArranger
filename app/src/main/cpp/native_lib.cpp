@@ -10,6 +10,50 @@
 #include "style_parser.h"
 namespace { std::unique_ptr<AudioEngine> g_engine; std::unique_ptr<StyleParser> g_lastParsedStyle; }
 JavaVM* g_jvm=nullptr; jclass g_debugLogClass=nullptr; jmethodID g_debugLogAddMethod=nullptr;
+static std::string sanitizeUtf8ForJni(const char* input) {
+    if (!input) return {};
+    const unsigned char* s = reinterpret_cast<const unsigned char*>(input);
+    const size_t len = std::strlen(input);
+    std::string out;
+    out.reserve(len);
+    for (size_t i = 0; i < len;) {
+        const unsigned char c = s[i];
+        if (c < 0x80) {
+            out.push_back(static_cast<char>(c));
+            ++i;
+            continue;
+        }
+        size_t n = 0;
+        if (c >= 0xC2 && c <= 0xDF) n = 2;
+        else if (c >= 0xE0 && c <= 0xEF) n = 3;
+        else if (c >= 0xF0 && c <= 0xF4) n = 4;
+        bool valid = n > 0;
+        if (valid && i + n <= len) {
+            for (size_t j = 1; j < n; ++j) {
+                if (s[i + j] < 0x80 || s[i + j] > 0xBF) { valid = false; break; }
+            }
+            if (valid && n == 3 && c == 0xE0 && s[i + 1] < 0xA0) valid = false;
+            if (valid && n == 3 && c == 0xED && s[i + 1] >= 0xA0) valid = false;
+            if (valid && n == 4 && c == 0xF0 && s[i + 1] < 0x90) valid = false;
+            if (valid && n == 4 && c == 0xF4 && s[i + 1] > 0x8F) valid = false;
+        }
+        if (valid) {
+            out.append(reinterpret_cast<const char*>(s + i), n);
+            i += n;
+        } else {
+            // Yamaha SF2 metadata is sometimes Latin-1/Windows-1252 rather
+            // than UTF-8 (for example a raw 0xDC byte). Convert that byte to
+            // its UTF-8 U+00xx representation instead of feeding invalid
+            // bytes into JNI NewStringUTF/CheckJNI.
+            const unsigned int cp = c;
+            out.push_back(static_cast<char>(0xC0 | (cp >> 6)));
+            out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+            ++i;
+        }
+    }
+    return out;
+}
+
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeInitLogger(JNIEnv* env,jobject){env->GetJavaVM(&g_jvm);jclass localClass=env->FindClass("com/yourapp/yamahaarranger/ui/DebugLog");if(localClass==nullptr)return;g_debugLogClass=static_cast<jclass>(env->NewGlobalRef(localClass));g_debugLogAddMethod=env->GetStaticMethodID(g_debugLogClass,"add","(Ljava/lang/String;)V");}
 extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeStart(JNIEnv*,jobject){if(!g_engine)g_engine=std::make_unique<AudioEngine>();return g_engine->start();}
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeStop(JNIEnv*,jobject){if(g_engine)g_engine->stop();}
@@ -17,6 +61,9 @@ extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAu
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeNoteOff(JNIEnv*,jobject,jint midiNote){if(g_engine)g_engine->noteOff(midiNote);}
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeAllNotesOff(JNIEnv*,jobject){if(g_engine)g_engine->allNotesOff();}
 extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeLoadSoundFont(JNIEnv* env,jobject,jstring path){if(!g_engine)g_engine=std::make_unique<AudioEngine>();const char*cpath=env->GetStringUTFChars(path,nullptr);bool ok=g_engine->loadSoundFont(std::string(cpath));env->ReleaseStringUTFChars(path,cpath);return ok?JNI_TRUE:JNI_FALSE;}
+
+extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeLoadMelodySoundFont(JNIEnv* env,jobject,jstring path){if(!g_engine)g_engine=std::make_unique<AudioEngine>();const char*cpath=env->GetStringUTFChars(path,nullptr);bool ok=g_engine->loadMelodySoundFont(std::string(cpath));env->ReleaseStringUTFChars(path,cpath);return ok?JNI_TRUE:JNI_FALSE;}
+extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeLoadDrumSoundFont(JNIEnv* env,jobject,jstring path){if(!g_engine)g_engine=std::make_unique<AudioEngine>();const char*cpath=env->GetStringUTFChars(path,nullptr);bool ok=g_engine->loadDrumSoundFont(std::string(cpath));env->ReleaseStringUTFChars(path,cpath);return ok?JNI_TRUE:JNI_FALSE;}
 extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeIsSoundFontLoaded(JNIEnv*,jobject){return(g_engine&&g_engine->isSoundFontLoaded())?JNI_TRUE:JNI_FALSE;}
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeUnloadSoundFont(JNIEnv*,jobject){if(g_engine)g_engine->unloadSoundFont();}
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSfNoteOn(JNIEnv*,jobject,jint midiNote,jfloat velocity){if(g_engine)g_engine->sfNoteOnChannel(0,midiNote,velocity);}
@@ -24,6 +71,16 @@ extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAu
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSfNoteOnChannel(JNIEnv*,jobject,jint channel,jint midiNote,jfloat velocity){if(g_engine)g_engine->sfNoteOnChannel(channel,midiNote,velocity);}
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSfNoteOffChannel(JNIEnv*,jobject,jint channel,jint midiNote){if(g_engine)g_engine->sfNoteOffChannel(channel,midiNote);}
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetChannelPreset(JNIEnv*,jobject,jint channel,jint bank,jint program){if(g_engine)g_engine->sfSetChannelPreset(channel,bank,program);}
+extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetChannelMixer(JNIEnv*,jobject,jint channel,jint volume,jint pan,jint expression,jint reverbSend,jint chorusSend){if(g_engine)g_engine->sfSetChannelMixer(channel,volume,pan,expression,reverbSend,chorusSend);}
+
+extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetChannelExpression(JNIEnv*,jobject,jint channel,jint expression){if(g_engine)g_engine->sfSetChannelExpression(channel,expression);}
+extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetMasterGain(JNIEnv*,jobject,jfloat gain){if(g_engine)g_engine->sfSetMasterGain(gain);}
+extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeGetSoundFontPresets(JNIEnv* env,jobject){
+    if(!g_engine) return env->NewStringUTF("");
+    const std::string presets = g_engine->sfPresetList();
+    const std::string safePresets = sanitizeUtf8ForJni(presets.c_str());
+    return env->NewStringUTF(safePresets.c_str());
+}
 extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeParseStyle(JNIEnv* env,jobject,jbyteArray styBytes){if(styBytes==nullptr)return JNI_FALSE;jsize len=env->GetArrayLength(styBytes);std::vector<uint8_t>buf(len);env->GetByteArrayRegion(styBytes,0,len,reinterpret_cast<jbyte*>(buf.data()));g_lastParsedStyle=std::make_unique<StyleParser>();return g_lastParsedStyle->parse(buf.data(),buf.size())?JNI_TRUE:JNI_FALSE;}
 extern "C" JNIEXPORT jint JNICALL Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeGetSectionCount(JNIEnv*,jobject){return g_lastParsedStyle?static_cast<jint>(g_lastParsedStyle->sections().size()):0;}
 extern "C" JNIEXPORT jint JNICALL Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeGetPpq(JNIEnv*,jobject){return g_lastParsedStyle?g_lastParsedStyle->ppq():480;}

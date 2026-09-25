@@ -44,7 +44,11 @@ data class StyleChannelOverride(
     val program: Int? = null,
     val bank: Int? = null,
     val transpose: Int = 0,
-    val muted: Boolean = false
+    val muted: Boolean = false,
+    val pan: Int = 64,
+    val expression: Int = 127,
+    val reverbSend: Int = 40,
+    val chorusSend: Int = 0
 )
 
 data class StylePartModel(
@@ -64,10 +68,22 @@ data class StyleSectionModel(
     val parts: List<StylePartModel>
 )
 
+data class StyleMeter(
+    val numerator: Int,
+    val denominator: Int,
+    val ticksPerQuarter: Int
+) {
+    val ticksPerBeat: Int
+        get() = (ticksPerQuarter * 4 / denominator.coerceAtLeast(1)).coerceAtLeast(1)
+    val ticksPerBar: Int
+        get() = (numerator.coerceAtLeast(1) * ticksPerBeat).coerceAtLeast(1)
+}
+
 data class ParsedStyle(
     val fileName: String,
     val ppq: Int,
     val sections: Map<String, StyleSectionModel>,
     val voiceMap: Map<Int, String> = emptyMap(),
-    val defaultTempoBpm: Int = 120
+    val defaultTempoBpm: Int = 120,
+    val meter: StyleMeter = StyleMeter(4, 4, ppq)
 )

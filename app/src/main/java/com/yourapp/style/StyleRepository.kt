@@ -36,6 +36,8 @@ class StyleRepository @Inject constructor(private val bridge: NativeStyleBridge)
         DebugLog.add("🎼 Legacy voice map: $voiceMap")
 
         val ppq = bridge.nativeGetPpq()
+        val meter = detectStyleMeter(rawBytes, ppq)
+        DebugLog.add("🥁 Style meter: ${meter.numerator}/${meter.denominator}")
         val defaultTempoBpm = bridge.nativeGetDefaultTempoBpm()
             .toInt()
             .coerceIn(20, 280)
@@ -72,7 +74,22 @@ class StyleRepository @Inject constructor(private val bridge: NativeStyleBridge)
         }
 
         if (sections.isEmpty()) { Timber.w("Style parsed but yielded no sections: $fileName"); return null }
-        return ParsedStyle(fileName, ppq, sections, voiceMap, defaultTempoBpm)
+        return ParsedStyle(fileName, ppq, sections, voiceMap, defaultTempoBpm, meter)
+    }
+
+    /** Read MIDI time-signature meta FF 58 04 nn dd cc bb. */
+    private fun detectStyleMeter(rawBytes: ByteArray, ppq: Int): StyleMeter {
+        for (i in 0 until rawBytes.size - 7) {
+            if ((rawBytes[i].toInt() and 0xFF) == 0xFF &&
+                (rawBytes[i + 1].toInt() and 0xFF) == 0x58 &&
+                (rawBytes[i + 2].toInt() and 0xFF) == 0x04) {
+                val numerator = (rawBytes[i + 3].toInt() and 0xFF).coerceIn(1, 32)
+                val denominatorPower = (rawBytes[i + 4].toInt() and 0xFF).coerceIn(0, 5)
+                val denominator = 1 shl denominatorPower
+                return StyleMeter(numerator, denominator, ppq.coerceAtLeast(1))
+            }
+        }
+        return StyleMeter(4, 4, ppq.coerceAtLeast(1))
     }
 
     private data class VoiceSetup(val program: Int, val bankMsb: Int, val bankLsb: Int)
