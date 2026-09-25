@@ -304,6 +304,7 @@ void BassMidiPlayer::unload() {
     drumPath_.clear();
     melodyPresetCache_.clear();
     melodyDrumPresetCache_.clear();
+    normalizedBanks_.clear();
     drumDrumPresetCache_.clear();
 }
 
