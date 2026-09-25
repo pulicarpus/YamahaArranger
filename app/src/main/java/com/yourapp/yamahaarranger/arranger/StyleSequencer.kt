@@ -137,7 +137,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         val startTick: Long
     )
 
-    @Volatile private var pendingSection: PendingSection? = null
+    private val pendingSectionQueue = java.util.ArrayDeque<PendingSection>()
     @Volatile private var pendingTransition: PendingTransition? = null
     @Volatile private var masterClockStartedAtNanos: Long = 0L
     @Volatile private var masterTimelineTick: Long = 0L
@@ -182,7 +182,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         // from tick 0; it is phase-aligned to the beat where the request lands.
         val queue = sections.map { PendingSection(it.first, ppq, it.second, null) }
         pendingTransition = PendingTransition(queue, currentTick)
-        pendingSection = null
+        pendingSectionQueue.clear()
 
         com.yourapp.yamahaarranger.ui.DebugLog.add(
             "🎼 TRANSITION QUEUED: " +
@@ -200,9 +200,29 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         return ((System.nanoTime() - anchor) / nanosPerTick).toLong().coerceAtLeast(masterTimelineTick)
     }
 
+    /** Queue sections after the currently playing section finishes naturally. */
+    fun queueAfterCurrentSection(
+        sections: List<Pair<StyleSectionModel, Int>>,
+        ppq: Int
+    ) {
+        if (sections.isEmpty()) return
+        pendingTransition = null
+        pendingSectionQueue.clear()
+        sections.forEach { (section, loopLimit) ->
+            pendingSectionQueue.addLast(PendingSection(section, ppq, loopLimit, null))
+        }
+        com.yourapp.yamahaarranger.ui.DebugLog.add(
+            "🎼 QUEUE AFTER CURRENT: " +
+                sections.joinToString(" → ") { it.first.name } +
+                " (active section is preserved)"
+        )
+    }
+
     fun playSeamless(section: StyleSectionModel, ppq: Int, loopLimit: Int = -1, onComplete: (() -> Unit)? = null) {
         if (playbackJob?.isActive == true) {
-            pendingSection = PendingSection(section, ppq, loopLimit, onComplete)
+            pendingTransition = null
+            pendingSectionQueue.clear()
+            pendingSectionQueue.addLast(PendingSection(section, ppq, loopLimit, onComplete))
             com.yourapp.yamahaarranger.ui.DebugLog.add(
                 "🎼 QUEUE seamless " + section.name + " (no cancel/no allNotesOff)"
             )
@@ -219,7 +239,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         seamless: Boolean
     ) {
         if (!seamless) clearStringTrace()
-        pendingSection = null
+        pendingSectionQueue.clear()
         pendingTransition = null
         masterClockStartedAtNanos = System.nanoTime()
         masterTimelineTick = 0L
@@ -265,12 +285,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                         // in the sequence is placed immediately after the previous
                         // one; no clock reset and no global note-off.
                         val rest = transition.sections.drop(1)
-                        if (rest.isNotEmpty()) {
-                            pendingSection = rest.first()
-                            if (rest.size > 1) {
-                                pendingTransition = PendingTransition(rest.drop(1), 0L)
-                            }
-                        }
+                        pendingSectionQueue.clear()
+                        rest.forEach { pendingSectionQueue.addLast(it) }
                         loopCount = 0
                         if (lastAppliedSection != active.section.name) {
                             applyVoicesFromCasm(active.section)
@@ -287,9 +303,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
 
                 if (remainingLoops == 0) active.onComplete?.invoke()
 
-                val queued = pendingSection
+                val queued = if (pendingSectionQueue.isEmpty()) null else pendingSectionQueue.removeFirst()
                 if (queued != null) {
-                    pendingSection = null
                     active = queued
                     remainingLoops = queued.loopLimit
                     loopCount = 0
@@ -316,7 +331,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     }
 
     fun stop(){
-        pendingSection = null
+        pendingSectionQueue.clear()
         pendingTransition = null
         playbackJob?.cancel()
         playbackJob=null
