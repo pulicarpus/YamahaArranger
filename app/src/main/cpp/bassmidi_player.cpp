@@ -137,35 +137,45 @@ bool BassMidiPlayer::applyFonts() {
     }
 
     if (melodyFont_) {
-        // Keep the melody mappings off MIDI channel 10 (zero-based 9).
-        // numchan=0 means "all channels" in BASSMIDI, which can overlap the
-        // dedicated drum mapping above and cause a loaded drum SF2 to be
-        // bypassed. Cover melodic channels as two ranges: 0..8 and 10..15.
-        for (int lsb = 0; lsb < 128; ++lsb) {
-            BASS_MIDI_FONTEX2 melodyA{};
-            melodyA.font = melodyFont_;
-            melodyA.spreset = -1;
-            melodyA.sbank = -1;
-            melodyA.dpreset = -1;
-            melodyA.dbank = 0;
-            melodyA.dbanklsb = lsb;
-            // Keep the melody mapping off both Yamaha rhythm channels:
-            // zero-based 8 and 9 are reserved for the dedicated drum mapping.
-            melodyA.minchan = 0;
-            melodyA.numchan = 8;
-            cfg.push_back(melodyA);
-
-            BASS_MIDI_FONTEX2 melodyB{};
-            melodyB.font = melodyFont_;
-            melodyB.spreset = -1;
-            melodyB.sbank = -1;
-            melodyB.dpreset = -1;
-            melodyB.dbank = 0;
-            melodyB.dbanklsb = lsb;
-            melodyB.minchan = 10;
-            melodyB.numchan = 6;
-            cfg.push_back(melodyB);
+        // Map each real SF2 source bank to the same Yamaha destination MSB.
+        // The Bank LSB remains the Yamaha variation selector. Mapping all
+        // melody presets to destination MSB=0 makes Yamaha banks such as 8:2
+        // unreachable even when the resolver correctly finds SF2 bank 8.
+        std::unordered_set<int> sourceBanks;
+        for (const auto& preset : melodyPresetCache_) {
+            if (preset.bank >= 0 && preset.bank < 127) {
+                sourceBanks.insert(preset.bank);
+            }
         }
+        sourceBanks.insert(0);
+
+        for (const int sourceBank : sourceBanks) {
+            for (int lsb = 0; lsb < 128; ++lsb) {
+                BASS_MIDI_FONTEX2 melodyA{};
+                melodyA.font = melodyFont_;
+                melodyA.spreset = -1;
+                melodyA.sbank = sourceBank;
+                melodyA.dpreset = -1;
+                melodyA.dbank = sourceBank;
+                melodyA.dbanklsb = lsb;
+                melodyA.minchan = 0;
+                melodyA.numchan = 8;
+                cfg.push_back(melodyA);
+
+                BASS_MIDI_FONTEX2 melodyB{};
+                melodyB.font = melodyFont_;
+                melodyB.spreset = -1;
+                melodyB.sbank = sourceBank;
+                melodyB.dpreset = -1;
+                melodyB.dbank = sourceBank;
+                melodyB.dbanklsb = lsb;
+                melodyB.minchan = 10;
+                melodyB.numchan = 6;
+                cfg.push_back(melodyB);
+            }
+        }
+        LOGI("BASSMIDI melody FONTEX2 source banks=%u",
+             static_cast<unsigned>(sourceBanks.size()));
     }
 
     const DWORD count = static_cast<DWORD>(cfg.size());
@@ -225,6 +235,15 @@ bool BassMidiPlayer::loadRole(const std::string& path, bool drum) {
              info.name ? info.name : "");
     }
 
+    if (!drum) {
+        melodyPath_ = path;
+        rebuildMelodyPresetCache(melodyPath_);
+        rebuildDrumPresetCache(melodyPath_, melodyDrumPresetCache_);
+    } else {
+        drumPath_ = path;
+        rebuildDrumPresetCache(drumPath_, drumDrumPresetCache_);
+    }
+
     if (!applyFonts()) {
         BASS_MIDI_FontFree(target);
         target = 0;
@@ -242,15 +261,6 @@ bool BassMidiPlayer::loadRole(const std::string& path, bool drum) {
             send(ch, MIDI_EVENT_BANK_LSB, static_cast<DWORD>(channels_[ch].bankLsb));
             send(ch, MIDI_EVENT_PROGRAM, static_cast<DWORD>(channels_[ch].program));
         }
-    }
-
-    if (!drum) {
-        melodyPath_ = path;
-        rebuildMelodyPresetCache(melodyPath_);
-        rebuildDrumPresetCache(melodyPath_, melodyDrumPresetCache_);
-    } else {
-        drumPath_ = path;
-        rebuildDrumPresetCache(drumPath_, drumDrumPresetCache_);
     }
 
     LOGI("BASSMIDI %s SF2 loaded: %s",
