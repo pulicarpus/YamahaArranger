@@ -503,9 +503,27 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             val audioBank = if (drum) 128 else styleBank
             val midiMsb = if (drum) 127 else sourcePart.bankMsb.coerceIn(0,127)
             val midiLsb = if (drum) 0 else sourcePart.bankLsb.coerceIn(0,127)
-            val volume = override?.volume ?: state.volume
+            // The Yamaha LoveSong style stores String1/2 at relatively low
+            // CC7/CC11 levels (54/51 and 127/83). With this SF2 that makes
+            // the string layer audibly disappear behind the other parts.
+            // Keep explicit mixer overrides authoritative, but give the
+            // native String fallback a useful floor so the arranger mix is
+            // not empty on first load.
+            val volume = if (override?.volume != null) {
+                override.volume
+            } else if (stringVoice && destination in 13..14) {
+                maxOf(state.volume, 100)
+            } else {
+                state.volume
+            }
             val pan = override?.pan ?: state.pan
-            val expression = override?.expression ?: state.expression
+            val expression = if (override?.expression != null) {
+                override.expression
+            } else if (stringVoice && destination in 13..14) {
+                maxOf(state.expression, 100)
+            } else {
+                state.expression
+            }
             val reverb = override?.reverbSend ?: state.reverbSend
             val chorus = override?.chorusSend ?: state.chorusSend
             val nativeState = AppliedChannelState(prog, audioBank, volume.coerceIn(0,127), pan.coerceIn(0,127),
@@ -798,69 +816,3 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                         )
                     }
                 }
-                continue
-            }
-
-            if(policy==null&&chord!=null&&s.event.isNoteOn&&!isRhythmSource(s.event.channel))continue
-            if(s.event.isNoteOn&&isUnsupportedArticulation(policy)){
-                com.yourapp.yamahaarranger.ui.DebugLog.add("🔇 SUPPRESS " + (policy?.voiceName ?: "unknown") + " src" + s.event.channel + ":" + s.event.note + " (MegaVoice articulation unsupported by SF2)")
-                continue
-            }
-
-            if(!s.event.isNoteOn){
-                val key=s.event.channel.toString()+":"+s.event.note
-                val active=activeTransposedNotes.remove(key)
-                if(active!=null){
-                    if(active.destinationChannel==13)com.yourapp.yamahaarranger.ui.DebugLog.add("🎻 STRING NOTEOFF src"+active.sourceChannel+":"+active.sourceNote+" dst13 note="+active.outputNote)
-                    audioEngine.noteOffChannel(active.destinationChannel,active.outputNote)
-                    midiInputManager.sendNoteOff(active.destinationChannel,active.outputNote)
-                }
-                continue
-            }
-
-            val sourceChannel=s.event.channel
-            val destinationChannel=policy?.destinationChannel?:sourceChannel
-            if(destinationChannel in 0..3){
-                com.yourapp.yamahaarranger.ui.DebugLog.add("  · style event src"+sourceChannel+":"+s.event.note+": SKIP dst"+destinationChannel+" (reserved for keyboard voices)")
-                continue
-            }
-            if(destinationChannel in lockedChannels)continue
-            val channelOverride=channelOverrides[destinationChannel]
-            if(channelOverride?.muted==true)continue
-
-            val key=sourceChannel.toString()+":"+s.event.note
-            val previousActive=activeTransposedNotes[key]
-            if(previousActive!=null){
-                if(previousActive.destinationChannel==13)com.yourapp.yamahaarranger.ui.DebugLog.add("🎻 STRING REPLACE src"+previousActive.sourceChannel+":"+previousActive.sourceNote+" oldNote="+previousActive.outputNote)
-                audioEngine.noteOffChannel(previousActive.destinationChannel,previousActive.outputNote)
-                midiInputManager.sendNoteOff(previousActive.destinationChannel,previousActive.outputNote)
-                activeTransposedNotes.remove(key)
-            }
-
-            val isDrumPart=destinationChannel==9||(policy!=null&&isDrumVoice(policy.voiceName))
-            val transformed=if(policy!=null&&!isDrumPart){
-                chord?.let{CasmNoteTransformer.transform(s.event.note,it,policy)}?:s.event.note.coerceIn(0,127)
-            }else s.event.note.coerceIn(0,127)
-            val note=((transformed?:continue)+(channelOverride?.transpose?:0)).coerceIn(0,127)
-            val velocity=s.event.velocity.coerceIn(1,127)
-
-            if(policy!=null&&!isDrumPart){
-                val policyList=s.part.casmPolicies.ifEmpty{listOfNotNull(s.part.casm)}
-                activeTransposedNotes[key]=ActiveTransposedNote(sourceChannel,s.event.note,destinationChannel,note,velocity,policy,policyList)
-                if(destinationChannel==13)com.yourapp.yamahaarranger.ui.DebugLog.add("🎻 STRING NOTEON src"+sourceChannel+":"+s.event.note+" dst13 note="+note+" NTR="+(policy.ntr and 0x7f)+" NTT="+(policy.ntt and 0x7f)+" RTR="+(policy.rtr and 0x7f))
-                if(destinationChannel==13)com.yourapp.yamahaarranger.ui.DebugLog.add("🎼 CASM SELECT src"+sourceChannel+":"+s.event.note+" chord="+chord?.rootNote+"/"+chord?.quality+" → dst"+destinationChannel+" NTR="+(policy.ntr and 0x7f)+" NTT="+(policy.ntt and 0x7f)+" SRC="+policy.sourceChordRoot+"/"+policy.sourceChordType+" range="+policy.sourceNoteLow+"-"+policy.sourceNoteHigh+" RTR="+(policy.rtr and 0x7f))
-            }
-
-            audioEngine.noteOnChannel(destinationChannel,note,velocity/127f)
-            midiInputManager.sendNoteOn(destinationChannel,note,velocity)
-        }
-        val naturalEnd = startAbsoluteTick + section.lengthTicks.coerceAtLeast(0).toLong()
-        return if (interruptedByTransition) {
-            PlayOnceResult(lastProcessedTick, true)
-        } else {
-            PlayOnceResult(naturalEnd, false)
-        }
-    }
-
-    private fun ticksToMillis(ticks:Int,ppq:Int,bpm:Int):Long=if(ppq<=0||bpm<=0)0 else((ticks*(60000.0/bpm))/ppq).toLong().coerceAtLeast(0)
-}
