@@ -486,8 +486,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             val override = channelOverrides[destination]
             if (override?.muted == true) { applied += destination; return@forEach }
             val explicit = explicitByDestination[destination]
-            val sourcePart = explicit ?: part
-            val prog = override?.program ?: explicit?.program?.takeIf { it in 0..127 } ?: guessProgramFromVoiceName(c.voiceName)
+            val sourcePart = explicit ?: part            val prog = override?.program ?: explicit?.program?.takeIf { it in 0..127 } ?: guessProgramFromVoiceName(c.voiceName)
             if (prog !in 0..127) return@forEach
             val state = mixerStates[destination]
             sourcePart.events.filter { it.tick == 0 && it.isControlChange }.forEach { e ->
@@ -503,6 +502,9 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             val audioBank = if (drum) 128 else styleBank
             val midiMsb = if (drum) 127 else sourcePart.bankMsb.coerceIn(0,127)
             val midiLsb = if (drum) 0 else sourcePart.bankLsb.coerceIn(0,127)
+            val stringVoice = c.voiceName.lowercase().let {
+                it.contains("string") || it.contains("strg") || it.contains("strings")
+            }
             // The Yamaha LoveSong style stores String1/2 at relatively low
             // CC7/CC11 levels (54/51 and 127/83). With this SF2 that makes
             // the string layer audibly disappear behind the other parts.
@@ -533,9 +535,6 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             // another section/Program Change has touched the destination channel.
             // Re-apply the native preset for explicit string destinations so the
             // soundfont state is authoritative at every section activation.
-            val stringVoice = c.voiceName.lowercase().let {
-                it.contains("string") || it.contains("strg") || it.contains("strings")
-            }
             val forceNativePreset = stringVoice && destination in 13..14
             if (forceNativePreset || appliedChannelStates[destination] != nativeState) {
                 audioEngine.setChannelProgram(destination, prog, audioBank, c.voiceName)
@@ -558,7 +557,6 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         val durationUs = (System.nanoTime() - startedAtNanos) / 1_000L
         com.yourapp.yamahaarranger.ui.DebugLog.add("⏱ CASM VOICE APPLY END section=${section.name} duration_us=$durationUs")
     }
-
     private fun applyStyleController(destinationChannel:Int, event:StyleNoteEvent) {
         if (destinationChannel !in 4..15) return
         if ((event.status and 0xF0) != 0xB0) return
