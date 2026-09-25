@@ -240,6 +240,7 @@ class AudioEngineManager @Inject constructor(
             .toList()
     }
 
+    // Named overload carries the Yamaha/CASM voice identity into BASSMIDI resolution.
     fun setChannelProgram(channel: Int, program: Int, bank: Int = 0, voiceName: String? = null) {
         DebugLog.traceAudio("PROGRAM ch=$channel bank=$bank program=$program voice=${voiceName ?: ""}")
         if (voiceName.isNullOrBlank()) {
