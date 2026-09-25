@@ -712,7 +712,10 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         section.parts.forEach { part ->
             val msb = part.bankMsb.coerceIn(0, 127)
             val lsb = part.bankLsb.coerceIn(0, 127)
-            dynamicBankBySource[part.midiChannel] = msb * 128 + lsb
+            val sourceChannel = part.casmPolicies.firstOrNull()?.sourceChannel
+                ?: part.casm?.sourceChannel
+                ?: part.events.firstOrNull()?.channel
+            if (sourceChannel != null) dynamicBankBySource[sourceChannel] = msb * 128 + lsb
         }
 
         for(s in merged){
