@@ -668,6 +668,23 @@ bool BassMidiPlayer::findMelodicPreset(
         }
     }
 
+    // Yamaha variation banks are not represented by a Bank-LSB field in SF2.
+    // If the requested Yamaha 14-bit bank has no exact SF2 entry, prefer the
+    // SAME PROGRAM before doing any name/category similarity search. This is
+    // important for fonts such as the current Yamaha melody bank where:
+    //   style 8:1 + PC49 (Strings) -> SF2 bank 0 + PC49 (String Yamaha)
+    // A category-only match can otherwise select bank 8 + PC2 ("12 String
+    // Guitar"), which is a different instrument even though its name contains
+    // a string/guitar category.
+    for (const auto& p : melodyPresetCache_) {
+        if (p.program == requestedProgram) {
+            sourceBank = p.bank;
+            sourceProgram = p.program;
+            matchedName = p.name;
+            return true;
+        }
+    }
+
     std::string lower = voiceName;
     std::transform(lower.begin(), lower.end(), lower.begin(),
                    [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
@@ -750,14 +767,34 @@ void BassMidiPlayer::preloadCurrentPreset(int channel) {
     // and let MIDI_EVENT_BANK_LSB select the variation through FONTEX2.
     int sourceBank = state.drum ? 128 : state.bankMsb;
     if (!state.drum && !melodyPresetCache_.empty()) {
+        bool sourceFound = false;
+
+        // First honor the requested Yamaha bank when the SF2 actually stores
+        // that bank (packed 14-bit form or MSB-only form).
         for (const auto& p : melodyPresetCache_) {
             if (p.program == state.program &&
                 (p.bank == state.bankMsb * 128 + state.bankLsb ||
                  p.bank == state.bankMsb)) {
                 sourceBank = p.bank;
+                sourceFound = true;
                 break;
             }
         }
+
+        // If the Yamaha variation bank is absent from SF2, use the same
+        // program from another SF2 bank. This must mirror findMelodicPreset()
+        // so the preset that was resolved for the channel is also the preset
+        // that gets preloaded. Example: Yamaha 8:1/PC49 -> SF2 0/PC49.
+        if (!sourceFound) {
+            for (const auto& p : melodyPresetCache_) {
+                if (p.program == state.program) {
+                    sourceBank = p.bank;
+                    sourceFound = true;
+                    break;
+                }
+            }
+        }
+
         const int rawSourceBank = sourceBank;
         for (const auto& m : normalizedBanks_) {
             if (m.rawBank == rawSourceBank) {
