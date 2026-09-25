@@ -86,6 +86,16 @@ Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeLoadSoundFont(
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
+Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeAddSoundFont(
+    JNIEnv* env, jobject, jstring path) {
+    if (!g_engine) g_engine = std::make_unique<AudioEngine>();
+    const char* cpath = env->GetStringUTFChars(path, nullptr);
+    bool ok = g_engine->addSoundFont(std::string(cpath));
+    env->ReleaseStringUTFChars(path, cpath);
+    return ok ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
 Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeIsSoundFontLoaded(
     JNIEnv*, jobject) {
     return (g_engine && g_engine->isSoundFontLoaded()) ? JNI_TRUE : JNI_FALSE;

@@ -31,6 +31,14 @@ class AudioEngineManager @Inject constructor(
         DebugLog.add("🛑 AudioEngine stopped")
     }
 
+    fun addSoundFont(filePath: String): Boolean {
+        DebugLog.add("🎼 Adding SF2…")
+        val ok = bridge.nativeAddSoundFont(filePath)
+        soundFontLoaded = soundFontLoaded || ok
+        DebugLog.add(if (ok) "✅ Additional SF2 OK" else "❌ Additional SF2 FAILED")
+        return ok
+    }
+
     fun loadSoundFont(filePath: String): Boolean {
         DebugLog.add("🎼 Loading SF2…")
         val ok = bridge.nativeLoadSoundFont(filePath)
