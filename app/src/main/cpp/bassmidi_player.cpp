@@ -243,6 +243,7 @@ bool BassMidiPlayer::loadRole(const std::string& path, bool drum) {
 
     if (!drum) {
         melodyPath_ = path;
+        rebuildMelodyPresetCache(melodyPath_);
         rebuildDrumPresetCache(melodyPath_, melodyDrumPresetCache_);
     } else {
         drumPath_ = path;
@@ -393,6 +394,112 @@ bool BassMidiPlayer::findDrumPreset(const std::string& path,
     return false;
 }
 
+void BassMidiPlayer::rebuildMelodyPresetCache(const std::string& path) {
+    melodyPresetCache_.clear();
+    if (path.empty()) return;
+    std::ifstream file(path, std::ios::binary);
+    if (!file) return;
+    std::vector<unsigned char> data((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    const char phdr[] = {'p','h','d','r'};
+    for (size_t i = 0; i + 8 <= data.size(); ++i) {
+        if (std::memcmp(data.data() + i, phdr, 4) != 0) continue;
+        const uint32_t size = static_cast<uint32_t>(data[i + 4]) |
+            (static_cast<uint32_t>(data[i + 5]) << 8) |
+            (static_cast<uint32_t>(data[i + 6]) << 16) |
+            (static_cast<uint32_t>(data[i + 7]) << 24);
+        if (size < 38 || size % 38 != 0 || i + 8 + size > data.size()) continue;
+        const size_t count = size / 38;
+        for (size_t n = 0; n + 1 < count; ++n) {
+            const unsigned char* rec = data.data() + i + 8 + n * 38;
+            size_t nameLen = 0;
+            while (nameLen < 20 && rec[nameLen] != 0) ++nameLen;
+            std::string name(reinterpret_cast<const char*>(rec), nameLen);
+            const int program = static_cast<int>(rec[20]) | (static_cast<int>(rec[21]) << 8);
+            const int sourceBank = static_cast<int>(rec[22]) | (static_cast<int>(rec[23]) << 8);
+            if (sourceBank == 127 || sourceBank == 128) continue;
+            melodyPresetCache_.push_back({sourceBank, program, name});
+        }
+        LOGI("SF2 melodic preset cache built: entries=%u path=%s",
+             static_cast<unsigned>(melodyPresetCache_.size()), path.c_str());
+        return;
+    }
+    LOGI("SF2 melodic preset cache: phdr not found path=%s", path.c_str());
+}
+
+bool BassMidiPlayer::findMelodicPreset(
+    const std::string& path, int requestedBank, int requestedProgram,
+    const std::string& voiceName, int& sourceBank, int& sourceProgram,
+    std::string& matchedName) const {
+    if (path.empty() || melodyPresetCache_.empty()) return false;
+
+    for (const auto& p : melodyPresetCache_) {
+        if (p.bank == requestedBank && p.program == requestedProgram) {
+            sourceBank = p.bank; sourceProgram = p.program; matchedName = p.name; return true;
+        }
+    }
+
+    std::string lower = voiceName;
+    std::transform(lower.begin(), lower.end(), lower.begin(),
+                   [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+
+    auto category = [](const std::string& n) -> int {
+        if (n.find("string") != std::string::npos || n.find("strg") != std::string::npos ||
+            n.find("violin") != std::string::npos || n.find("viola") != std::string::npos ||
+            n.find("cello") != std::string::npos || n.find("ensemble") != std::string::npos) return 1;
+        if (n.find("bass") != std::string::npos) return 2;
+        if (n.find("guitar") != std::string::npos || n.find("gtr") != std::string::npos) return 3;
+        if (n.find("piano") != std::string::npos || n.find("grand") != std::string::npos) return 4;
+        if (n.find("organ") != std::string::npos) return 5;
+        if (n.find("accordion") != std::string::npos) return 6;
+        if (n.find("brass") != std::string::npos || n.find("trumpet") != std::string::npos ||
+            n.find("trombone") != std::string::npos) return 7;
+        if (n.find("sax") != std::string::npos || n.find("clarinet") != std::string::npos) return 8;
+        if (n.find("flute") != std::string::npos || n.find("oboe") != std::string::npos) return 9;
+        if (n.find("choir") != std::string::npos || n.find("voice") != std::string::npos) return 10;
+        if (n.find("pad") != std::string::npos) return 11;
+        if (n.find("synth") != std::string::npos) return 12;
+        return 0;
+    };
+    auto gmCategory = [](int p) -> int {
+        if (p <= 7) return 4; if (p <= 15) return 5; if (p <= 23) return 5;
+        if (p <= 31) return 3; if (p <= 39) return 2; if (p <= 55) return 1;
+        if (p <= 63) return 7; if (p <= 71) return 8; if (p <= 79) return 9;
+        if (p <= 95) return 12; if (p <= 103) return 11; if (p <= 111) return 10;
+        return 12;
+    };
+
+    const int wantedCategory = category(lower) != 0 ? category(lower) : gmCategory(requestedProgram);
+    int bestScore = -1;
+    const MelodicPresetEntry* best = nullptr;
+    for (const auto& p : melodyPresetCache_) {
+        std::string pn = p.name;
+        std::transform(pn.begin(), pn.end(), pn.begin(),
+                       [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+        int score = 0;
+        if (wantedCategory != 0 && category(pn) == wantedCategory) score += 1000;
+        if (p.bank == requestedBank) score += 120;
+        if (!lower.empty() && pn.find(lower) != std::string::npos) score += 80;
+        score += std::max(0, 32 - std::abs(p.program - requestedProgram));
+        if (score > bestScore) { bestScore = score; best = &p; }
+    }
+
+    // Voyager-style final melodic fallback: same-bank Piano/Program 0,
+    // then any Program 0, then the first selectable melodic preset.
+    if (!best || bestScore < 1000) {
+        best = nullptr;
+        for (const auto& p : melodyPresetCache_) {
+            if (p.bank == requestedBank && p.program == 0) { best = &p; break; }
+        }
+        if (!best) for (const auto& p : melodyPresetCache_) {
+            if (p.program == 0) { best = &p; break; }
+        }
+        if (!best) best = &melodyPresetCache_.front();
+    }
+
+    sourceBank = best->bank; sourceProgram = best->program; matchedName = best->name;
+    return true;
+}
+
 void BassMidiPlayer::preloadCurrentPreset(int channel) {
     if (!stream_ || channel < 0 || channel >= 16) return;
 
@@ -478,7 +585,7 @@ void BassMidiPlayer::allNotesOff() {
     }
 }
 
-void BassMidiPlayer::setChannelPreset(int channel, int bank, int program) {
+void BassMidiPlayer::setChannelPreset(int channel, int bank, int program, const std::string& voiceName) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (!ensureEngine()) return;
 
@@ -508,39 +615,46 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program) {
     state.initialized = true;
 
     if (state.drum) {
-        // Voyager keeps drum program numbers intact when they exist, but
-        // allows a default drumkit when the requested kit is unavailable.
-        // Resolve that against the actual loaded SF2 before sending the
-        // program change.
         int sourceBank = 128;
         int sourceProgram = program;
         const std::string& path = drumFont_ ? drumPath_ : melodyPath_;
-        const auto resolveStart = std::chrono::steady_clock::now();
-        const bool resolved =
-            findDrumPreset(path, program, sourceBank, sourceProgram);
-        const auto resolveUs = std::chrono::duration_cast<std::chrono::microseconds>(
-            std::chrono::steady_clock::now() - resolveStart).count();
-        LOGI("DRUM PRESET RESOLVE TIMING ch=%d requested=%d duration_us=%lld cache=%d",
-             channel, program, static_cast<long long>(resolveUs),
-             resolved ? 1 : 0);
+        const bool resolved = findDrumPreset(path, program, sourceBank, sourceProgram);
+        LOGI("DRUM PRESET RESOLVE ch=%d requested=%d -> bank=%d prog=%d found=%d",
+             channel, program, sourceBank, sourceProgram, resolved ? 1 : 0);
         if (resolved) {
-            state.bankMsb = 128;
-            state.bankLsb = 0;
+            state.bankMsb = 128; state.bankLsb = 0; state.program = sourceProgram;
+        }
+    } else {
+        const int requestedProgram = program;
+        const int requestedBank14 = bank;
+        int sourceBank = state.bankMsb;
+        int sourceProgram = requestedProgram;
+        std::string matchedName;
+        if (findMelodicPreset(melodyPath_, requestedBank14, requestedProgram, voiceName,
+                               sourceBank, sourceProgram, matchedName)) {
+            if (sourceBank != requestedBank14 || sourceProgram != requestedProgram) {
+                LOGI("VOICE RESOLVE ch=%d requested bank=%d prog=%d name='%s' -> SF2 bank=%d prog=%d '%s'",
+                     channel, requestedBank14, requestedProgram, voiceName.c_str(),
+                     sourceBank, sourceProgram, matchedName.c_str());
+            } else {
+                LOGI("VOICE RESOLVE ch=%d exact bank=%d prog=%d '%s'",
+                     channel, requestedBank14, requestedProgram, matchedName.c_str());
+            }
+            state.bankMsb = std::clamp(sourceBank / 128, 0, 127);
+            state.bankLsb = std::clamp(sourceBank % 128, 0, 127);
             state.program = sourceProgram;
-            LOGI("DRUM PRESET RESOLVE ch=%d requested=%d -> bank=%d prog=%d",
-                 channel, program, sourceBank, sourceProgram);
+        } else {
+            LOGI("VOICE RESOLVE ch=%d no melodic preset cache; keeping requested bank=%d prog=%d name='%s'",
+                 channel, requestedBank14, requestedProgram, voiceName.c_str());
         }
     }
 
-    LOGI("SET PRESET ch=%d requestedBank=%d effectiveBank=%d prog=%d drum=%d",
-         channel, requestedBank, state.bankMsb, state.program, state.drum ? 1 : 0);
+    LOGI("SET PRESET ch=%d requestedBank=%d effectiveBank=%d lsb=%d prog=%d drum=%d voice='%s'",
+         channel, requestedBank, state.bankMsb, state.bankLsb, state.program,
+         state.drum ? 1 : 0, voiceName.c_str());
 
-    if (state.drum) {
-        send(channel, MIDI_EVENT_DRUMS, 1);
-    } else {
-        send(channel, MIDI_EVENT_DRUMS, 0);
-    }
-
+    if (state.drum) send(channel, MIDI_EVENT_DRUMS, 1);
+    else send(channel, MIDI_EVENT_DRUMS, 0);
     send(channel, MIDI_EVENT_BANK, static_cast<DWORD>(state.bankMsb));
     send(channel, MIDI_EVENT_BANK_LSB, static_cast<DWORD>(state.bankLsb));
     send(channel, MIDI_EVENT_PROGRAM, static_cast<DWORD>(state.program));
