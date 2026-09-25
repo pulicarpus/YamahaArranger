@@ -530,9 +530,6 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             // another section/Program Change has touched the destination channel.
             // Re-apply the native preset for explicit string destinations so the
             // soundfont state is authoritative at every section activation.
-            val stringVoice = c.voiceName.lowercase().let {
-                it.contains("string") || it.contains("strg") || it.contains("strings")
-            }
             val forceNativePreset = stringVoice && destination in 13..14
             if (forceNativePreset || appliedChannelStates[destination] != nativeState) {
                 audioEngine.setChannelProgram(destination, prog, audioBank, c.voiceName)
