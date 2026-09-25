@@ -311,6 +311,66 @@ void BassMidiPlayer::send(int channel, DWORD event, DWORD param) {
     }
 }
 
+namespace {
+
+// Walk the SF2 RIFF structure to locate the real preset-header chunk.
+// Never scan raw sample data byte-by-byte: the PCM in "sdta" can contain
+// the four ASCII bytes "phdr" by coincidence.  The preset table is the
+// "phdr" sub-chunk of the "pdta" LIST.
+bool findPhdrChunk(const std::vector<unsigned char>& data,
+                   const unsigned char*& phdrData, uint32_t& phdrSize) {
+    phdrData = nullptr;
+    phdrSize = 0;
+    if (data.size() < 12) return false;
+    if (std::memcmp(data.data(), "RIFF", 4) != 0) return false;
+    if (std::memcmp(data.data() + 8, "sfbk", 4) != 0) return false;
+
+    size_t pos = 12;
+    while (pos + 8 <= data.size()) {
+        const uint32_t chunkSize =
+            static_cast<uint32_t>(data[pos + 4]) |
+            (static_cast<uint32_t>(data[pos + 5]) << 8) |
+            (static_cast<uint32_t>(data[pos + 6]) << 16) |
+            (static_cast<uint32_t>(data[pos + 7]) << 24);
+        const size_t chunkDataStart = pos + 8;
+        if (chunkDataStart > data.size() ||
+            chunkSize > data.size() - chunkDataStart) {
+            return false;
+        }
+
+        if (std::memcmp(data.data() + pos, "LIST", 4) == 0 &&
+            chunkSize >= 4 &&
+            std::memcmp(data.data() + chunkDataStart, "pdta", 4) == 0) {
+            const size_t listEnd = chunkDataStart + chunkSize;
+            size_t subPos = chunkDataStart + 4;
+            while (subPos + 8 <= listEnd) {
+                const uint32_t subSize =
+                    static_cast<uint32_t>(data[subPos + 4]) |
+                    (static_cast<uint32_t>(data[subPos + 5]) << 8) |
+                    (static_cast<uint32_t>(data[subPos + 6]) << 16) |
+                    (static_cast<uint32_t>(data[subPos + 7]) << 24);
+                const size_t subDataStart = subPos + 8;
+                if (subDataStart > listEnd ||
+                    subSize > listEnd - subDataStart) {
+                    return false;
+                }
+                if (std::memcmp(data.data() + subPos, "phdr", 4) == 0) {
+                    phdrData = data.data() + subDataStart;
+                    phdrSize = subSize;
+                    return true;
+                }
+                subPos = subDataStart + subSize + (subSize & 1u);
+            }
+            return false;
+        }
+
+        pos = chunkDataStart + chunkSize + (chunkSize & 1u);
+    }
+    return false;
+}
+
+} // namespace
+
 void BassMidiPlayer::rebuildDrumPresetCache(
     const std::string& path,
     std::vector<DrumPresetEntry>& cache) {
@@ -327,42 +387,32 @@ void BassMidiPlayer::rebuildDrumPresetCache(
         (std::istreambuf_iterator<char>(file)),
         std::istreambuf_iterator<char>());
 
-    const char phdr[] = {'p','h','d','r'};
-    for (size_t i = 0; i + 8 <= data.size(); ++i) {
-        if (std::memcmp(data.data() + i, phdr, 4) != 0) continue;
-
-        const uint32_t size =
-            static_cast<uint32_t>(data[i + 4]) |
-            (static_cast<uint32_t>(data[i + 5]) << 8) |
-            (static_cast<uint32_t>(data[i + 6]) << 16) |
-            (static_cast<uint32_t>(data[i + 7]) << 24);
-
-        if (size < 38 || size % 38 != 0 || i + 8 + size > data.size())
-            continue;
-
-        const size_t count = size / 38;
-        for (size_t n = 0; n + 1 < count; ++n) {
-            const unsigned char* rec = data.data() + i + 8 + n * 38;
-            const int program = static_cast<int>(rec[20]) |
-                                (static_cast<int>(rec[21]) << 8);
-            const int bank = static_cast<int>(rec[22]) |
-                             (static_cast<int>(rec[23]) << 8);
-            if (bank != 127 && bank != 128) continue;
-
-            cache.push_back({bank, program});
-        }
-
-        if (!cache.empty()) {
-            LOGI("SF2 drum preset cache built: entries=%u path=%s",
-                 static_cast<unsigned>(cache.size()), path.c_str());
-        } else {
-            LOGI("SF2 drum preset cache built: no bank 127/128 presets path=%s",
-                 path.c_str());
-        }
+    const unsigned char* phdrData = nullptr;
+    uint32_t phdrSize = 0;
+    if (!findPhdrChunk(data, phdrData, phdrSize) ||
+        phdrSize < 38 || phdrSize % 38 != 0) {
+        LOGI("SF2 drum preset cache: phdr not found path=%s", path.c_str());
         return;
     }
 
-    LOGI("SF2 drum preset cache: phdr not found path=%s", path.c_str());
+    const size_t count = phdrSize / 38;
+    for (size_t n = 0; n + 1 < count; ++n) {
+        const unsigned char* rec = phdrData + n * 38;
+        const int program = static_cast<int>(rec[20]) |
+                            (static_cast<int>(rec[21]) << 8);
+        const int bank = static_cast<int>(rec[22]) |
+                         (static_cast<int>(rec[23]) << 8);
+        if (bank != 127 && bank != 128) continue;
+        cache.push_back({bank, program});
+    }
+
+    if (!cache.empty()) {
+        LOGI("SF2 drum preset cache built: entries=%u path=%s",
+             static_cast<unsigned>(cache.size()), path.c_str());
+    } else {
+        LOGI("SF2 drum preset cache built: no bank 127/128 presets path=%s",
+             path.c_str());
+    }
 }
 
 bool BassMidiPlayer::findDrumPreset(const std::string& path,
@@ -404,32 +454,37 @@ void BassMidiPlayer::rebuildMelodyPresetCache(const std::string& path) {
     melodyPresetCache_.clear();
     if (path.empty()) return;
     std::ifstream file(path, std::ios::binary);
-    if (!file) return;
-    std::vector<unsigned char> data((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    const char phdr[] = {'p','h','d','r'};
-    for (size_t i = 0; i + 8 <= data.size(); ++i) {
-        if (std::memcmp(data.data() + i, phdr, 4) != 0) continue;
-        const uint32_t size = static_cast<uint32_t>(data[i + 4]) |
-            (static_cast<uint32_t>(data[i + 5]) << 8) |
-            (static_cast<uint32_t>(data[i + 6]) << 16) |
-            (static_cast<uint32_t>(data[i + 7]) << 24);
-        if (size < 38 || size % 38 != 0 || i + 8 + size > data.size()) continue;
-        const size_t count = size / 38;
-        for (size_t n = 0; n + 1 < count; ++n) {
-            const unsigned char* rec = data.data() + i + 8 + n * 38;
-            size_t nameLen = 0;
-            while (nameLen < 20 && rec[nameLen] != 0) ++nameLen;
-            std::string name(reinterpret_cast<const char*>(rec), nameLen);
-            const int program = static_cast<int>(rec[20]) | (static_cast<int>(rec[21]) << 8);
-            const int sourceBank = static_cast<int>(rec[22]) | (static_cast<int>(rec[23]) << 8);
-            if (sourceBank == 127 || sourceBank == 128) continue;
-            melodyPresetCache_.push_back({sourceBank, program, name});
-        }
-        LOGI("SF2 melodic preset cache built: entries=%u path=%s",
-             static_cast<unsigned>(melodyPresetCache_.size()), path.c_str());
+    if (!file) {
+        LOGI("SF2 melodic preset cache: cannot open %s", path.c_str());
         return;
     }
-    LOGI("SF2 melodic preset cache: phdr not found path=%s", path.c_str());
+    std::vector<unsigned char> data(
+        (std::istreambuf_iterator<char>(file)),
+        std::istreambuf_iterator<char>());
+
+    const unsigned char* phdrData = nullptr;
+    uint32_t phdrSize = 0;
+    if (!findPhdrChunk(data, phdrData, phdrSize) ||
+        phdrSize < 38 || phdrSize % 38 != 0) {
+        LOGI("SF2 melodic preset cache: phdr not found path=%s", path.c_str());
+        return;
+    }
+
+    const size_t count = phdrSize / 38;
+    for (size_t n = 0; n + 1 < count; ++n) {
+        const unsigned char* rec = phdrData + n * 38;
+        size_t nameLen = 0;
+        while (nameLen < 20 && rec[nameLen] != 0) ++nameLen;
+        std::string name(reinterpret_cast<const char*>(rec), nameLen);
+        const int program = static_cast<int>(rec[20]) |
+                            (static_cast<int>(rec[21]) << 8);
+        const int sourceBank = static_cast<int>(rec[22]) |
+                               (static_cast<int>(rec[23]) << 8);
+        if (sourceBank == 127 || sourceBank == 128) continue;
+        melodyPresetCache_.push_back({sourceBank, program, name});
+    }
+    LOGI("SF2 melodic preset cache built: entries=%u path=%s",
+         static_cast<unsigned>(melodyPresetCache_.size()), path.c_str());
 }
 
 bool BassMidiPlayer::findMelodicPreset(
