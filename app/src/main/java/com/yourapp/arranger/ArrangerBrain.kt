@@ -302,7 +302,7 @@ class ArrangerBrain @Inject constructor(
                 )
                 sequencer.queueAfterCurrentSection(
                     listOf(fillModel to 1, targetModel to -1),
-                    style.ppq
+                    style!!.ppq
                 ) {
                     currentPlayingSection = target
                     activeSection = target
