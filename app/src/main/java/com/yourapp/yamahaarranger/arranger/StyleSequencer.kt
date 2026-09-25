@@ -510,11 +510,25 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             val chorus = override?.chorusSend ?: state.chorusSend
             val nativeState = AppliedChannelState(prog, audioBank, volume.coerceIn(0,127), pan.coerceIn(0,127),
                 expression.coerceIn(0,127), reverb.coerceIn(0,127), chorus.coerceIn(0,127))
-            if (appliedChannelStates[destination] != nativeState) {
+            // String parts are sensitive to stale native BASSMIDI channel state:
+            // the CASM layer may legitimately keep the same logical voice while
+            // another section/Program Change has touched the destination channel.
+            // Re-apply the native preset for explicit string destinations so the
+            // soundfont state is authoritative at every section activation.
+            val stringVoice = c.voiceName.lowercase().let {
+                it.contains("string") || it.contains("strg") || it.contains("strings")
+            }
+            val forceNativePreset = stringVoice && destination in 13..14
+            if (forceNativePreset || appliedChannelStates[destination] != nativeState) {
                 audioEngine.setChannelProgram(destination, prog, audioBank, c.voiceName)
                 audioEngine.setChannelMixer(destination, nativeState.volume, nativeState.pan, nativeState.expression,
                     nativeState.reverbSend, nativeState.chorusSend)
                 appliedChannelStates[destination] = nativeState
+                if (forceNativePreset) {
+                    com.yourapp.yamahaarranger.ui.DebugLog.add(
+                        "🎻 STRING AUDIO PRESET REAPPLY dst$destination pc=$prog bank=$audioBank"
+                    )
+                }
             } else {
                 com.yourapp.yamahaarranger.ui.DebugLog.add("🎚 CASM AUDIO CACHE HIT dst$destination pc=$prog bank=$audioBank")
             }
