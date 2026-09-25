@@ -129,7 +129,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         val section: StyleSectionModel,
         val ppq: Int,
         val loopLimit: Int,
-        val onComplete: (() -> Unit)?
+        val onComplete: (() -> Unit)?,
+        val onStart: (() -> Unit)? = null
     )
 
     private data class PendingTransition(
@@ -160,7 +161,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         sections: List<Pair<StyleSectionModel, Int>>,
         ppq: Int,
         numerator: Int,
-        denominator: Int
+        denominator: Int,
+        onFinalSectionStarted: (() -> Unit)? = null
     ) {
         if (sections.isEmpty()) return
         if (playbackJob?.isActive != true) {
@@ -180,7 +182,10 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         // Immediate/phase-continuous mode: the button press becomes the
         // transition point on the SAME master clock. The fill is not restarted
         // from tick 0; it is phase-aligned to the beat where the request lands.
-        val queue = sections.map { PendingSection(it.first, ppq, it.second, null) }
+        val queue = sections.mapIndexed { index, item ->
+            val onStart = if (index == sections.lastIndex) onFinalSectionStarted else null
+            PendingSection(item.first, ppq, item.second, null, onStart)
+        }
         pendingTransition = PendingTransition(queue, currentTick)
         pendingSectionQueue.clear()
 
@@ -203,13 +208,15 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     /** Queue sections after the currently playing section finishes naturally. */
     fun queueAfterCurrentSection(
         sections: List<Pair<StyleSectionModel, Int>>,
-        ppq: Int
+        ppq: Int,
+        onFinalSectionStarted: (() -> Unit)? = null
     ) {
         if (sections.isEmpty()) return
         pendingTransition = null
         pendingSectionQueue.clear()
-        sections.forEach { (section, loopLimit) ->
-            pendingSectionQueue.addLast(PendingSection(section, ppq, loopLimit, null))
+        sections.forEachIndexed { index, (section, loopLimit) ->
+            val onStart = if (index == sections.lastIndex) onFinalSectionStarted else null
+            pendingSectionQueue.addLast(PendingSection(section, ppq, loopLimit, null, onStart))
         }
         com.yourapp.yamahaarranger.ui.DebugLog.add(
             "🎼 QUEUE AFTER CURRENT: " +
@@ -258,6 +265,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
 
         playbackJob = scope.launch(Dispatchers.Default) {
             var active = PendingSection(section, ppq, loopLimit, onComplete)
+            active.onStart?.invoke()
             var remainingLoops = loopLimit
             while (true) {
                 val result = playOnce(active.section, active.ppq, masterTimelineTick, 0L)
@@ -280,6 +288,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                         }
 
                         active = transition.sections.first()
+                        active.onStart?.invoke()
                         remainingLoops = active.loopLimit
                         // The transition start is an absolute tick. Every section
                         // in the sequence is placed immediately after the previous
@@ -306,6 +315,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                 val queued = if (pendingSectionQueue.isEmpty()) null else pendingSectionQueue.removeFirst()
                 if (queued != null) {
                     active = queued
+                    active.onStart?.invoke()
                     remainingLoops = queued.loopLimit
                     loopCount = 0
                     if (lastAppliedSection != active.section.name) {
