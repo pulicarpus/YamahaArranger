@@ -7,6 +7,8 @@
 #include <chrono>
 #include <sstream>
 #include <vector>
+#include <cctype>
+#include <cstring>
 
 #define LOG_TAG "BassMidiPlayer"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -448,8 +450,10 @@ bool BassMidiPlayer::findMelodicPreset(
 
     auto category = [](const std::string& n) -> int {
         if (n.find("string") != std::string::npos || n.find("strg") != std::string::npos ||
+            n.find("str") != std::string::npos || n.find("orch") != std::string::npos ||
             n.find("violin") != std::string::npos || n.find("viola") != std::string::npos ||
-            n.find("cello") != std::string::npos || n.find("ensemble") != std::string::npos) return 1;
+            n.find("cello") != std::string::npos || n.find("ensemble") != std::string::npos ||
+            n.find("ens") != std::string::npos || n.find("sforz") != std::string::npos) return 1;
         if (n.find("bass") != std::string::npos) return 2;
         if (n.find("guitar") != std::string::npos || n.find("gtr") != std::string::npos) return 3;
         if (n.find("piano") != std::string::npos || n.find("grand") != std::string::npos) return 4;
@@ -517,7 +521,12 @@ void BassMidiPlayer::preloadCurrentPreset(int channel) {
     // Resolve drum program against the actual SF2 drum banks before loading.
     // This mirrors Voyager's default-drumkit fallback instead of attempting
     // to preload a drum program that is not present.
-    int sourceBank = state.drum ? 128 : state.bankMsb;
+    // Melodic Yamaha banks are 14-bit: MSB * 128 + LSB.
+    // Do not drop the LSB here. For example, bank 8:1 must be preloaded
+    // as SF2 bank 1025, not bank 8.
+    const int sourceBank = state.drum
+        ? 128
+        : (state.bankMsb * 128 + state.bankLsb);
     int sourceProgram = state.program;
     // Preload asynchronously. BASSMIDI normally loads samples on demand,
     // which can cause a CPU spike exactly when a new voice is first heard.
@@ -552,8 +561,8 @@ void BassMidiPlayer::preloadCurrentPreset(int channel) {
         }
     }
 
-    LOGI("BASSMIDI preload ch=%d bank=%d lsb=%d prog=%d",
-         channel, state.bankMsb, state.bankLsb, state.program);
+    LOGI("BASSMIDI preload ch=%d sf2bank=%d midi=%d:%d prog=%d",
+         channel, sourceBank, state.bankMsb, state.bankLsb, sourceProgram);
 }
 
 void BassMidiPlayer::noteOn(int channel, int key, float velocity) {
