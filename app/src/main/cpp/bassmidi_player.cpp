@@ -904,8 +904,12 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program, const 
     }
 
     ChannelState& state = channels_[channel];
-    state.bankMsb = bank >= 128 ? 128 : bank / 128;
-    state.bankLsb = bank >= 128 ? 0 : bank % 128;
+    // Yamaha packs Bank MSB/LSB into one 14-bit integer:
+    //   bank = MSB * 128 + LSB.
+    // Only Rhythm channels are percussion. A melodic variation such as
+    // 1025 (8:1), 1026 (8:2), or 1029 (8:5) must remain a melodic bank.
+    state.bankMsb = wantDrum ? 128 : bank / 128;
+    state.bankLsb = wantDrum ? 0 : bank % 128;
     state.program = program;
     state.drum = wantDrum;
     state.initialized = true;
