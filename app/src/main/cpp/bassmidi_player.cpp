@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <fstream>
 #include <unordered_set>
+#include <unordered_map>
+#include <set>
 #include <cmath>
 #include <chrono>
 #include <sstream>
@@ -137,56 +139,28 @@ bool BassMidiPlayer::applyFonts() {
     }
 
     if (melodyFont_) {
-        // SF2 bank fields are 16-bit, and Yamaha/XG-style fonts in the
-        // wild are found in both representations:
-        //   8      = source bank MSB 8, with the MIDI LSB supplied separately
-        //   1025   = 8*128 + 1, with MSB/LSB already packed into the SF2 bank
-        //
-        // Support both. For a packed source bank, expose it only at its exact
-        // Yamaha destination (MSB=bank/128, LSB=bank%128). For a 7-bit source
-        // bank, expose the same SF2 bank at every destination LSB, which is
-        // the normal BASSMIDI FONTEX behavior for a bank whose variation is
-        // carried by MIDI_EVENT_BANK_LSB.
-        std::unordered_set<int> sourceBanks;
-        for (const auto& preset : melodyPresetCache_) {
-            if (preset.bank >= 0 && preset.bank < 16384) {
-                sourceBanks.insert(preset.bank);
-            }
+        // The melody SF2 has been normalized so every original Yamaha bank
+        // occupies one legal BASSMIDI source bank. Map each virtual source
+        // bank back to its Yamaha MSB/LSB destination.
+        for (const auto& m : normalizedBanks_) {
+            BASS_MIDI_FONTEX2 melody{};
+            melody.font = melodyFont_;
+            melody.spreset = -1;
+            melody.sbank = m.virtualBank;
+            melody.dpreset = -1;
+            melody.dbank = m.midiMsb;
+            melody.dbanklsb = m.midiLsb;
+            melody.minchan = 0;
+            melody.numchan = 8;
+            cfg.push_back(melody);
+
+            BASS_MIDI_FONTEX2 melodyB = melody;
+            melodyB.minchan = 10;
+            melodyB.numchan = 6;
+            cfg.push_back(melodyB);
         }
-        sourceBanks.insert(0);
-
-        for (const int sourceBank : sourceBanks) {
-            const bool packedYamahaBank = sourceBank >= 128;
-            const int destinationMsb = packedYamahaBank ? sourceBank / 128 : sourceBank;
-            const int firstLsb = packedYamahaBank ? sourceBank % 128 : 0;
-            const int lastLsb = packedYamahaBank ? firstLsb : 127;
-
-            for (int lsb = firstLsb; lsb <= lastLsb; ++lsb) {
-                BASS_MIDI_FONTEX2 melodyA{};
-                melodyA.font = melodyFont_;
-                melodyA.spreset = -1;
-                melodyA.sbank = sourceBank;
-                melodyA.dpreset = -1;
-                melodyA.dbank = destinationMsb;
-                melodyA.dbanklsb = lsb;
-                melodyA.minchan = 0;
-                melodyA.numchan = 8;
-                cfg.push_back(melodyA);
-
-                BASS_MIDI_FONTEX2 melodyB{};
-                melodyB.font = melodyFont_;
-                melodyB.spreset = -1;
-                melodyB.sbank = sourceBank;
-                melodyB.dpreset = -1;
-                melodyB.dbank = destinationMsb;
-                melodyB.dbanklsb = lsb;
-                melodyB.minchan = 10;
-                melodyB.numchan = 6;
-                cfg.push_back(melodyB);
-            }
-        }
-        LOGI("BASSMIDI melody FONTEX2 source banks=%u",
-             static_cast<unsigned>(sourceBanks.size()));
+        LOGI("BASSMIDI normalized melody FONTEX2 mappings=%u",
+             static_cast<unsigned>(normalizedBanks_.size()));
     }
 
     const DWORD count = static_cast<DWORD>(cfg.size());
@@ -228,7 +202,18 @@ bool BassMidiPlayer::loadRole(const std::string& path, bool drum) {
         target = 0;
     }
 
-    target = BASS_MIDI_FontInit(path.c_str(), 0);
+    std::string fontPath = path;
+    if (!drum) {
+        melodyBassPath_ = path + ".bassmidi-normalized.sf2";
+        if (!normalizeMelodySf2(path, melodyBassPath_)) {
+            LOGE("BASSMIDI melody normalization failed; refusing packed Yamaha banks");
+            melodyBassPath_.clear();
+            return false;
+        }
+        fontPath = melodyBassPath_;
+    }
+
+    target = BASS_MIDI_FontInit(fontPath.c_str(), 0);
     if (!target) {
         LOGE("FontInit failed role=%s error=%d",
              drum ? "DRUM" : "MELODY", BASS_ErrorGetCode());
@@ -315,6 +300,7 @@ void BassMidiPlayer::unload() {
 
     for (auto& ch : channels_) ch = ChannelState{};
     melodyPath_.clear();
+    melodyBassPath_.clear();
     drumPath_.clear();
     melodyPresetCache_.clear();
     melodyDrumPresetCache_.clear();
@@ -388,6 +374,110 @@ bool findPhdrChunk(const std::vector<unsigned char>& data,
         pos = chunkDataStart + chunkSize + (chunkSize & 1u);
     }
     return false;
+}
+
+} // namespace
+
+namespace {
+
+// BASSMIDI's FONTEX source bank is limited to the 128 SF2 banks. Yamaha
+// variation banks such as 1025 (= MSB 8, LSB 1) therefore cannot be passed
+// directly as sbank.  SF2 itself has no Bank-LSB field either.  Normalize the
+// preset-header bank numbers into unique legal SF2 banks while retaining a
+// side-table that maps each normalized bank back to Yamaha MSB/LSB.
+bool BassMidiPlayer::normalizeMelodySf2(const std::string& sourcePath,
+                                        const std::string& outputPath) {
+    std::ifstream file(sourcePath, std::ios::binary);
+    if (!file) {
+        LOGE("SF2 normalize: cannot open %s", sourcePath.c_str());
+        return false;
+    }
+    std::vector<unsigned char> data(
+        (std::istreambuf_iterator<char>(file)),
+        std::istreambuf_iterator<char>());
+
+    const unsigned char* phdrData = nullptr;
+    uint32_t phdrSize = 0;
+    if (!findPhdrChunk(data, phdrData, phdrSize) ||
+        phdrSize < 38 || phdrSize % 38 != 0) {
+        LOGE("SF2 normalize: invalid phdr in %s", sourcePath.c_str());
+        return false;
+    }
+
+    // Collect every melodic source bank. Bank 127/128 are reserved for drums.
+    std::set<int> rawBanks;
+    const size_t count = phdrSize / 38;
+    for (size_t n = 0; n + 1 < count; ++n) {
+        const unsigned char* rec = phdrData + n * 38;
+        const int bank = static_cast<int>(rec[22]) |
+                         (static_cast<int>(rec[23]) << 8);
+        if (bank != 127 && bank != 128) rawBanks.insert(bank);
+    }
+
+    if (rawBanks.size() > 127) {
+        LOGE("SF2 normalize: %u melodic banks exceed BASSMIDI's 127 usable source banks",
+             static_cast<unsigned>(rawBanks.size()));
+        return false;
+    }
+
+    normalizedBanks_.clear();
+    int nextVirtual = 0;
+    std::unordered_map<int, int> rawToVirtual;
+    for (int rawBank : rawBanks) {
+        // Reserve 0 for the first bank, then use 1..126. This avoids bank
+        // 127/128 which BASSMIDI treats specially for percussion/XG.
+        if (nextVirtual == 127) ++nextVirtual;
+        if (nextVirtual > 126) {
+            LOGE("SF2 normalize: no legal virtual source bank for raw=%d", rawBank);
+            normalizedBanks_.clear();
+            return false;
+        }
+        rawToVirtual[rawBank] = nextVirtual;
+        normalizedBanks_.push_back({rawBank, nextVirtual,
+                                    rawBank >= 128 ? rawBank / 128 : rawBank,
+                                    rawBank >= 128 ? rawBank % 128 : 0});
+        ++nextVirtual;
+    }
+
+    // Rewrite only phdr bank fields. All preset bags, instruments, samples,
+    // modulators, generators and sample data remain byte-for-byte unchanged.
+    // Because every raw bank gets its own virtual bank, programs from
+    // different Yamaha LSB banks can never collide.
+    const uintptr_t phdrOffset =
+        static_cast<uintptr_t>(phdrData - data.data());
+    unsigned char* mutablePhdr = data.data() + phdrOffset;
+    for (size_t n = 0; n + 1 < count; ++n) {
+        unsigned char* rec = mutablePhdr + n * 38;
+        const int rawBank = static_cast<int>(rec[22]) |
+                            (static_cast<int>(rec[23]) << 8);
+        if (rawBank == 127 || rawBank == 128) continue;
+        const auto it = rawToVirtual.find(rawBank);
+        if (it == rawToVirtual.end()) return false;
+        const int virtualBank = it->second;
+        rec[22] = static_cast<unsigned char>(virtualBank & 0xff);
+        rec[23] = static_cast<unsigned char>((virtualBank >> 8) & 0xff);
+    }
+
+    std::ofstream out(outputPath, std::ios::binary | std::ios::trunc);
+    if (!out) {
+        LOGE("SF2 normalize: cannot create %s", outputPath.c_str());
+        return false;
+    }
+    out.write(reinterpret_cast<const char*>(data.data()),
+              static_cast<std::streamsize>(data.size()));
+    if (!out.good()) {
+        LOGE("SF2 normalize: write failed %s", outputPath.c_str());
+        return false;
+    }
+
+    LOGI("SF2 normalize OK: %s -> %s melodicBanks=%u",
+         sourcePath.c_str(), outputPath.c_str(),
+         static_cast<unsigned>(normalizedBanks_.size()));
+    for (const auto& m : normalizedBanks_) {
+        LOGI("SF2 bank map raw=%d -> virtual=%d -> MIDI=%d:%d",
+             m.rawBank, m.virtualBank, m.midiMsb, m.midiLsb);
+    }
+    return true;
 }
 
 } // namespace
@@ -629,6 +719,13 @@ void BassMidiPlayer::preloadCurrentPreset(int channel) {
                 break;
             }
         }
+        const int rawSourceBank = sourceBank;
+        for (const auto& m : normalizedBanks_) {
+            if (m.rawBank == rawSourceBank) {
+                sourceBank = m.virtualBank;
+                break;
+            }
+        }
     }
     int sourceProgram = state.program;
     // Preload asynchronously. BASSMIDI normally loads samples on demand,
@@ -664,8 +761,10 @@ void BassMidiPlayer::preloadCurrentPreset(int channel) {
         }
     }
 
-    LOGI("BASSMIDI preload ch=%d sf2bank=%d midi=%d:%d prog=%d",
-         channel, sourceBank, state.bankMsb, state.bankLsb, sourceProgram);
+    LOGI("BASSMIDI preload ch=%d sf2bank=%d rawYamahaBank=%d midi=%d:%d prog=%d",
+         channel, sourceBank,
+         state.drum ? 128 : (state.bankMsb * 128 + state.bankLsb),
+         state.bankMsb, state.bankLsb, sourceProgram);
 }
 
 void BassMidiPlayer::noteOn(int channel, int key, float velocity) {
@@ -758,14 +857,9 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program, const 
                 LOGI("VOICE RESOLVE ch=%d exact bank=%d prog=%d '%s'",
                      channel, requestedBank14, requestedProgram, matchedName.c_str());
             }
-            // sourceBank is the SF2 bank, not the Yamaha destination bank.
-            // Keep the original Yamaha MSB/LSB for an exact match so
-            // FONTEX2 can select the mapping by the requested Bank LSB.
-            // Only move the destination MSB when fallback selected a
-            // different SF2 bank.
-            if (sourceBank != requestedSourceBank) {
-                state.bankMsb = std::clamp(sourceBank, 0, 127);
-            }
+            // Keep the requested Yamaha MSB/LSB as the destination.
+            // sourceBank is the original SF2/Yamaha bank and is converted to
+            // a legal virtual BASSMIDI source bank during preload.
             state.program = sourceProgram;
         } else {
             LOGI("VOICE RESOLVE ch=%d no melodic preset cache; keeping requested bank=%d prog=%d name='%s'",
