@@ -40,6 +40,16 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     private var lastAppliedSection=""
     private var lockedChannels:Set<Int> = emptySet()
     private val channelOverrides = mutableMapOf<Int, StyleChannelOverride>()
+
+    private data class MixerState(
+        var volume: Int = 127,
+        var pan: Int = 64,
+        var expression: Int = 127,
+        var reverbSend: Int = 40,
+        var chorusSend: Int = 0
+    )
+    private val mixerStates = Array(16) { MixerState() }
+
     private data class ActiveTransposedNote(
         val sourceChannel:Int,
         val sourceNote:Int,
@@ -498,11 +508,57 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                 )
             }
             midiInputManager.sendProgramChange(destination, prog, midiBank)
+
+            // SX/PSR styles put initial mix/program setup before the first section marker.
+            // The native parser carries that setup into each section at tick 0.
+            val state = mixerStates[destination]
+            part.events.filter { it.tick == 0 && it.isControlChange }.forEach { e ->
+                when (e.note) {
+                    7 -> state.volume = e.velocity
+                    10 -> state.pan = e.velocity
+                    11 -> state.expression = e.velocity
+                    91 -> state.reverbSend = e.velocity
+                    93 -> state.chorusSend = e.velocity
+                }
+            }
+            val ov = override
+            audioEngine.setChannelMixer(
+                destination,
+                volume = if (ov?.muted == true) 0 else state.volume,
+                pan = ov?.pan ?: state.pan,
+                expression = ov?.expression ?: state.expression,
+                reverbSend = ov?.reverbSend ?: state.reverbSend,
+                chorusSend = ov?.chorusSend ?: state.chorusSend
+            )
             applied += destination
             val source = if (override?.program != null) "STYLE OVERRIDE" else if (explicit != null) "actual MIDI setup" else "fallback name"
-            com.yourapp.yamahaarranger.ui.DebugLog.add("🎼 dst$destination: ${c.voiceName} → PC=$prog MIDIbank=$midiBank SFbank=$audioBank ($source)")
+            com.yourapp.yamahaarranger.ui.DebugLog.add("🎼 dst${destination}: ${c.voiceName} → PC=$prog MIDIbank=$midiBank SFbank=$audioBank ($source)")
         }
     }
+
+    private fun applyStyleController(destinationChannel:Int, event:StyleNoteEvent) {
+        if (destinationChannel !in 4..15) return
+        if ((event.status and 0xF0) != 0xB0) return
+        val state = mixerStates[destinationChannel]
+        when (event.note) {
+            7 -> state.volume = event.velocity.coerceIn(0,127)
+            10 -> state.pan = event.velocity.coerceIn(0,127)
+            11 -> state.expression = event.velocity.coerceIn(0,127)
+            91 -> state.reverbSend = event.velocity.coerceIn(0,127)
+            93 -> state.chorusSend = event.velocity.coerceIn(0,127)
+            else -> return
+        }
+        val ov = channelOverrides[destinationChannel]
+        audioEngine.setChannelMixer(
+            destinationChannel,
+            volume = if (ov?.muted == true) 0 else state.volume,
+            pan = ov?.pan ?: state.pan,
+            expression = ov?.expression ?: state.expression,
+            reverbSend = ov?.reverbSend ?: state.reverbSend,
+            chorusSend = ov?.chorusSend ?: state.chorusSend
+        )
+    }
+
     private fun guessProgramFromVoiceName(name:String):Int{val n=name.lowercase();val numeric=Regex("(?:^|\\D)(\\d{1,3})\\s*$").find(n)?.groupValues?.getOrNull(1)?.toIntOrNull();if(numeric!=null&&numeric in 0..127)return numeric;return when{n.contains("piano")->0;n.contains("e.piano")||n.contains("ep")->4;n.contains("organ")->16;n.contains("accordion")->21;n.contains("guitar")||n.contains("gtr")->24;n.contains("bass")->33;n.contains("violin")->40;n.contains("cello")->42;n.contains("strg")||n.contains("str")->48;n.contains("choir")->52;n.contains("trumpet")->56;n.contains("trombone")->57;n.contains("brass")->61;n.contains("sax")->65;n.contains("oboe")->68;n.contains("clarinet")->71;n.contains("flute")->73;n.contains("crash")||n.contains("cymbal")||n.contains("perc")||n.contains("dr")||n.contains("kit")||n.contains("drum")->0;n.contains("pad")->89;else->-1}}
     private fun isDrumVoice(name:String)=name.lowercase().let{it.contains("crash")||it.contains("cymbal")||it.contains("perc")||it.contains("add-dr")||it.contains("drum")||it.contains("kit")||it.startsWith("dr")}
     private fun yamahaChordType(chord:DetectedChord):Int = when(chord.quality){
@@ -642,7 +698,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         val phase = phaseStartTick.mod(sectionLength)
         val merged=section.parts
             .flatMap{part->
-                part.events.filter(::isNoteEvent).map{e->
+                part.events.map{e->
                     val raw = e.tick.toLong().coerceAtLeast(0L)
                     val relative = (raw - phase + sectionLength) % sectionLength
                     Scheduled(relative.toInt(), e, part)
@@ -675,7 +731,31 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             }
 
             val chord=currentChord
-            val policy=selectPolicy(s.part,s.event.note,chord)
+            val isNote = isNoteEvent(s.event)
+            val policy = if (isNote) {
+                selectPolicy(s.part, s.event.note, chord)
+            } else {
+                s.part.casmPolicies.firstOrNull() ?: s.part.casm
+            }
+
+            // Tick-0 setup is applied once when the section becomes active.
+            if (!isNote && s.tick == 0) continue
+
+            if (!isNote) {
+                val destination = policy?.destinationChannel ?: s.event.channel
+                if (destination !in 0..3 && destination !in lockedChannels) {
+                    if (s.event.isControlChange) {
+                        applyStyleController(destination, s.event)
+                    } else if (s.event.isProgramChange) {
+                        val drum = destination == 9 || (policy != null && isDrumVoice(policy.voiceName))
+                        val bank = if (drum) 128 else 0
+                        audioEngine.setChannelProgram(destination, s.event.note.coerceIn(0,127), bank)
+                        midiInputManager.sendProgramChange(destination, s.event.note.coerceIn(0,127), if (drum) 127 else 0)
+                    }
+                }
+                continue
+            }
+
             if(policy==null&&chord!=null&&s.event.isNoteOn&&!isRhythmSource(s.event.channel))continue
             if(s.event.isNoteOn&&isUnsupportedArticulation(policy)){
                 com.yourapp.yamahaarranger.ui.DebugLog.add("🔇 SUPPRESS " + (policy?.voiceName ?: "unknown") + " src" + s.event.channel + ":" + s.event.note + " (MegaVoice articulation unsupported by SF2)")
