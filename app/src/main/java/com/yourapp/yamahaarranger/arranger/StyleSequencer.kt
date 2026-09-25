@@ -7,8 +7,8 @@ import com.yourapp.midi.MidiInputManager
 import com.yourapp.yamahaarranger.style.CasmPolicyModel
 import com.yourapp.yamahaarranger.style.StyleNoteEvent
 import com.yourapp.yamahaarranger.style.StyleSectionModel
-import com.yourapp.yamahaarranger.style.StylePartModel
 import com.yourapp.yamahaarranger.style.StyleChannelOverride
+import com.yourapp.yamahaarranger.style.StylePartModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -41,22 +41,22 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     private var lastAppliedSection=""
     private var lockedChannels:Set<Int> = emptySet()
     private val channelOverrides = mutableMapOf<Int, StyleChannelOverride>()
-
-    // Cache the complete native voice state already applied to each destination.
-    // Fill→Main often uses the same voices as the Fill. Re-sending identical
-    // BASSMIDI program/mixer changes at the section boundary can contend with
-    // the realtime render path and create an audible hole. MIDI OUT is still
-    // sent on every section; only redundant native audio mutations are skipped.
+    
     private data class AppliedChannelState(
-        val program: Int,
-        val bank: Int,
-        val volume: Int,
-        val pan: Int,
-        val expression: Int,
-        val reverbSend: Int,
-        val chorusSend: Int
+        val program: Int, val bank: Int, val volume: Int, val pan: Int,
+        val expression: Int, val reverbSend: Int, val chorusSend: Int
     )
     private val appliedChannelStates = mutableMapOf<Int, AppliedChannelState>()
+
+    private data class MixerState(
+        var volume: Int = 127,
+        var pan: Int = 64,
+        var expression: Int = 127,
+        var reverbSend: Int = 40,
+        var chorusSend: Int = 0
+    )
+    private val mixerStates = Array(16) { MixerState() }
+
     private data class ActiveTransposedNote(
         val sourceChannel:Int,
         val sourceNote:Int,
@@ -142,23 +142,15 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     }
     fun setChannelProgramOverride(channel:Int, program:Int, bank:Int){
         val old=channelOverride(channel)
-        // Style/UI bank values use Yamaha's 14-bit MSB*128+LSB form.
-        // Keep the full range here; BassMidiPlayer splits it back into the
-        // two MIDI Bank Select bytes at the native boundary.
-        setChannelOverride(
-            channel,
-            old.copy(
-                program=program.coerceIn(0,127),
-                bank=bank.coerceIn(0,16383)
-            )
-        )
+        setChannelOverride(channel, old.copy(program=program.coerceIn(0,127), bank=bank.coerceIn(0,16383)))
     }
     fun setVoiceMap(vm:Map<Int,String>){voiceMap=vm;lastAppliedSection="";com.yourapp.yamahaarranger.ui.DebugLog.add("🎼 Legacy VoiceMap received: ${vm.size}; CASM policy takes precedence")}
     private data class PendingSection(
         val section: StyleSectionModel,
         val ppq: Int,
         val loopLimit: Int,
-        val onComplete: (() -> Unit)?
+        val onComplete: (() -> Unit)?,
+        val onStart: (() -> Unit)? = null
     )
 
     private data class PendingTransition(
@@ -166,7 +158,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         val startTick: Long
     )
 
-    @Volatile private var pendingSection: PendingSection? = null
+    private val pendingSectionQueue = java.util.ArrayDeque<PendingSection>()
     @Volatile private var pendingTransition: PendingTransition? = null
     @Volatile private var masterClockStartedAtNanos: Long = 0L
     @Volatile private var masterTimelineTick: Long = 0L
@@ -190,7 +182,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         ppq: Int,
         numerator: Int,
         denominator: Int,
-        finalOnComplete: (() -> Unit)? = null
+        onFinalSectionStarted: (() -> Unit)? = null
     ) {
         if (sections.isEmpty()) return
         if (playbackJob?.isActive != true) {
@@ -198,14 +190,9 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             startPlayback(first.first, ppq, first.second, null, seamless = true)
             if (sections.size > 1) {
                 pendingTransition = PendingTransition(
-                    sections.drop(1).mapIndexed { index, item ->
-                        val isLast = index == sections.size - 2
-                        PendingSection(item.first, ppq, item.second, if (isLast) finalOnComplete else null)
-                    },
+                    sections.drop(1).map { PendingSection(it.first, ppq, it.second, null) },
                     startTick = first.first.lengthTicks.toLong().coerceAtLeast(0L)
                 )
-            } else if (finalOnComplete != null) {
-                startPlayback(first.first, ppq, first.second, finalOnComplete, seamless = true)
             }
             return
         }
@@ -216,10 +203,11 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         // transition point on the SAME master clock. The fill is not restarted
         // from tick 0; it is phase-aligned to the beat where the request lands.
         val queue = sections.mapIndexed { index, item ->
-            PendingSection(item.first, ppq, item.second, if (index == sections.lastIndex) finalOnComplete else null)
+            val onStart = if (index == sections.lastIndex) onFinalSectionStarted else null
+            PendingSection(item.first, ppq, item.second, null, onStart)
         }
         pendingTransition = PendingTransition(queue, currentTick)
-        pendingSection = null
+        pendingSectionQueue.clear()
 
         com.yourapp.yamahaarranger.ui.DebugLog.add(
             "🎼 TRANSITION QUEUED: " +
@@ -237,9 +225,31 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         return ((System.nanoTime() - anchor) / nanosPerTick).toLong().coerceAtLeast(masterTimelineTick)
     }
 
+    /** Queue sections after the currently playing section finishes naturally. */
+    fun queueAfterCurrentSection(
+        sections: List<Pair<StyleSectionModel, Int>>,
+        ppq: Int,
+        onFinalSectionStarted: (() -> Unit)? = null
+    ) {
+        if (sections.isEmpty()) return
+        pendingTransition = null
+        pendingSectionQueue.clear()
+        sections.forEachIndexed { index, (section, loopLimit) ->
+            val onStart = if (index == sections.lastIndex) onFinalSectionStarted else null
+            pendingSectionQueue.addLast(PendingSection(section, ppq, loopLimit, null, onStart))
+        }
+        com.yourapp.yamahaarranger.ui.DebugLog.add(
+            "🎼 QUEUE AFTER CURRENT: " +
+                sections.joinToString(" → ") { it.first.name } +
+                " (active section is preserved)"
+        )
+    }
+
     fun playSeamless(section: StyleSectionModel, ppq: Int, loopLimit: Int = -1, onComplete: (() -> Unit)? = null) {
         if (playbackJob?.isActive == true) {
-            pendingSection = PendingSection(section, ppq, loopLimit, onComplete)
+            pendingTransition = null
+            pendingSectionQueue.clear()
+            pendingSectionQueue.addLast(PendingSection(section, ppq, loopLimit, onComplete))
             com.yourapp.yamahaarranger.ui.DebugLog.add(
                 "🎼 QUEUE seamless " + section.name + " (no cancel/no allNotesOff)"
             )
@@ -256,7 +266,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         seamless: Boolean
     ) {
         if (!seamless) clearStringTrace()
-        pendingSection = null
+        pendingSectionQueue.clear()
         pendingTransition = null
         masterClockStartedAtNanos = System.nanoTime()
         masterTimelineTick = 0L
@@ -275,6 +285,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
 
         playbackJob = scope.launch(Dispatchers.Default) {
             var active = PendingSection(section, ppq, loopLimit, onComplete)
+            active.onStart?.invoke()
             var remainingLoops = loopLimit
             while (true) {
                 val result = playOnce(active.section, active.ppq, masterTimelineTick, 0L)
@@ -297,17 +308,14 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                         }
 
                         active = transition.sections.first()
+                        active.onStart?.invoke()
                         remainingLoops = active.loopLimit
                         // The transition start is an absolute tick. Every section
                         // in the sequence is placed immediately after the previous
                         // one; no clock reset and no global note-off.
                         val rest = transition.sections.drop(1)
-                        if (rest.isNotEmpty()) {
-                            pendingSection = rest.first()
-                            if (rest.size > 1) {
-                                pendingTransition = PendingTransition(rest.drop(1), 0L)
-                            }
-                        }
+                        pendingSectionQueue.clear()
+                        rest.forEach { pendingSectionQueue.addLast(it) }
                         loopCount = 0
                         if (lastAppliedSection != active.section.name) {
                             applyVoicesFromCasm(active.section)
@@ -324,10 +332,10 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
 
                 if (remainingLoops == 0) active.onComplete?.invoke()
 
-                val queued = pendingSection
+                val queued = if (pendingSectionQueue.isEmpty()) null else pendingSectionQueue.removeFirst()
                 if (queued != null) {
-                    pendingSection = null
                     active = queued
+                    active.onStart?.invoke()
                     remainingLoops = queued.loopLimit
                     loopCount = 0
                     if (lastAppliedSection != active.section.name) {
@@ -353,7 +361,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     }
 
     fun stop(){
-        pendingSection = null
+        pendingSectionQueue.clear()
         pendingTransition = null
         playbackJob?.cancel()
         playbackJob=null
@@ -457,108 +465,88 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         activeTransposedNotes.remove(key)
     }
 
-    private fun applyVoicesFromCasm(section: StyleSectionModel) {
+    private fun applyVoicesFromCasm(section:StyleSectionModel) {
         val startedAtNanos = System.nanoTime()
-        com.yourapp.yamahaarranger.ui.DebugLog.add(
-            "⏱ CASM VOICE APPLY START section=${section.name}"
-        )
+        com.yourapp.yamahaarranger.ui.DebugLog.add("⏱ CASM VOICE APPLY START section=${section.name}")
         val explicitByDestination = linkedMapOf<Int, StylePartModel>()
         section.parts.forEach { part ->
             val policies = part.casmPolicies.ifEmpty { listOfNotNull(part.casm) }
             val c = policies.firstOrNull() ?: return@forEach
             val destination = c.destinationChannel
-            if (destination in 0..3) return@forEach
-            if (destination in lockedChannels) return@forEach
-            if (part.program in 0..127 && !explicitByDestination.containsKey(destination)) {
-                explicitByDestination[destination] = part
-            }
+            if (destination in 0..3 || destination in lockedChannels) return@forEach
+            if (part.program in 0..127 && !explicitByDestination.containsKey(destination)) explicitByDestination[destination] = part
         }
-
         val applied = mutableSetOf<Int>()
         section.parts.forEach { part ->
             val policies = part.casmPolicies.ifEmpty { listOfNotNull(part.casm) }
             val c = policies.firstOrNull() ?: return@forEach
             val destination = c.destinationChannel
             if (destination in lockedChannels || destination in applied) return@forEach
-
-            // Yamaha Rhythm 1/2 are destination channels 8 and 9
-            // (zero-based). Treat both as percussion regardless of whether
-            // the CASM voice name explicitly says "Drum".
             val drum = destination == 8 || destination == 9 || isDrumVoice(c.voiceName)
             val override = channelOverrides[destination]
-            if (override?.muted == true) {
-                applied += destination
-                return@forEach
-            }
-
+            if (override?.muted == true) { applied += destination; return@forEach }
             val explicit = explicitByDestination[destination]
             val sourcePart = explicit ?: part
-            val prog = override?.program
-                ?: explicit?.program?.takeIf { it in 0..127 }
-                ?: guessProgramFromVoiceName(c.voiceName)
+            val prog = override?.program ?: explicit?.program?.takeIf { it in 0..127 } ?: guessProgramFromVoiceName(c.voiceName)
             if (prog !in 0..127) return@forEach
-
-            // Preserve both Yamaha Bank Select bytes. FluidSynth program_select
-            // accepts the resulting 14-bit bank directly.
-            val styleBank = sourcePart.bankMsb.coerceIn(0, 127) * 128 +
-                sourcePart.bankLsb.coerceIn(0, 127)
-            val audioBank = if (drum) 128 else styleBank
-            val midiMsb = if (drum) 127 else sourcePart.bankMsb.coerceIn(0, 127)
-            val midiLsb = if (drum) 0 else sourcePart.bankLsb.coerceIn(0, 127)
-
-            val volume = override?.volume ?: sourcePart.volume
-            val pan = override?.pan ?: sourcePart.pan
-            val expression = override?.expression ?: sourcePart.expression
-            val reverb = override?.reverbSend ?: sourcePart.reverbSend
-            val chorus = override?.chorusSend ?: sourcePart.chorusSend
-
-            val nativeState = AppliedChannelState(
-                program = prog,
-                bank = audioBank,
-                volume = if (volume >= 0) volume else 127,
-                pan = if (pan >= 0) pan else 64,
-                expression = if (expression >= 0) expression else 127,
-                reverbSend = if (reverb >= 0) reverb else 0,
-                chorusSend = if (chorus >= 0) chorus else 0
-            )
-            val previousNativeState = appliedChannelStates[destination]
-            if (previousNativeState == nativeState) {
-                com.yourapp.yamahaarranger.ui.DebugLog.add(
-                    "🎚 CASM AUDIO CACHE HIT dst" + destination +
-                        " pc=" + prog + " bank=" + audioBank + " (native preset/mixer unchanged)"
-                )
-            } else {
-                audioEngine.setChannelProgram(destination, prog, audioBank)
-                if (volume >= 0 || pan >= 0 || expression >= 0 || reverb >= 0 || chorus >= 0) {
-                    audioEngine.setChannelMixer(
-                        destination,
-                        volume = nativeState.volume,
-                        pan = nativeState.pan,
-                        expression = nativeState.expression,
-                        reverbSend = nativeState.reverbSend,
-                        chorusSend = nativeState.chorusSend
-                    )
+            val state = mixerStates[destination]
+            sourcePart.events.filter { it.tick == 0 && it.isControlChange }.forEach { e ->
+                when (e.note) {
+                    7 -> state.volume = e.velocity
+                    10 -> state.pan = e.velocity
+                    11 -> state.expression = e.velocity
+                    91 -> state.reverbSend = e.velocity
+                    93 -> state.chorusSend = e.velocity
                 }
-                appliedChannelStates[destination] = nativeState
             }
-
-            // Keep the external MIDI device synchronized even when the local
-            // BASSMIDI state did not need to change.
+            val styleBank = sourcePart.bankMsb.coerceIn(0,127) * 128 + sourcePart.bankLsb.coerceIn(0,127)
+            val audioBank = if (drum) 128 else styleBank
+            val midiMsb = if (drum) 127 else sourcePart.bankMsb.coerceIn(0,127)
+            val midiLsb = if (drum) 0 else sourcePart.bankLsb.coerceIn(0,127)
+            val volume = override?.volume ?: state.volume
+            val pan = override?.pan ?: state.pan
+            val expression = override?.expression ?: state.expression
+            val reverb = override?.reverbSend ?: state.reverbSend
+            val chorus = override?.chorusSend ?: state.chorusSend
+            val nativeState = AppliedChannelState(prog, audioBank, volume.coerceIn(0,127), pan.coerceIn(0,127),
+                expression.coerceIn(0,127), reverb.coerceIn(0,127), chorus.coerceIn(0,127))
+            if (appliedChannelStates[destination] != nativeState) {
+                audioEngine.setChannelProgram(destination, prog, audioBank)
+                audioEngine.setChannelMixer(destination, nativeState.volume, nativeState.pan, nativeState.expression,
+                    nativeState.reverbSend, nativeState.chorusSend)
+                appliedChannelStates[destination] = nativeState
+            } else {
+                com.yourapp.yamahaarranger.ui.DebugLog.add("🎚 CASM AUDIO CACHE HIT dst$destination pc=$prog bank=$audioBank")
+            }
             midiInputManager.sendProgramChange(destination, prog, midiMsb, midiLsb)
             applied += destination
-            val source = if (override?.program != null) "STYLE OVERRIDE"
-                else if (explicit != null) "actual MIDI setup"
-                else "fallback name"
-            com.yourapp.yamahaarranger.ui.DebugLog.add(
-                "🎼 dst" + destination + ": " + c.voiceName + " → PC=" + prog +
-                    " MIDIbank=" + midiMsb + ":" + midiLsb + " SFbank=" + audioBank +
-                    " mix=" + volume + "/" + pan + "/" + expression + "/" + reverb + "/" + chorus +
-                    " (" + source + ")"
-            )
+            val source = if (override?.program != null) "STYLE OVERRIDE" else if (explicit != null) "actual MIDI setup" else "fallback name"
+            com.yourapp.yamahaarranger.ui.DebugLog.add("🎼 dst$destination: ${c.voiceName} → PC=$prog MIDIbank=$midiMsb:$midiLsb SFbank=$audioBank mix=$volume/$pan/$expression/$reverb/$chorus ($source)")
         }
         val durationUs = (System.nanoTime() - startedAtNanos) / 1_000L
-        com.yourapp.yamahaarranger.ui.DebugLog.add(
-            "⏱ CASM VOICE APPLY END section=${section.name} duration_us=$durationUs"
+        com.yourapp.yamahaarranger.ui.DebugLog.add("⏱ CASM VOICE APPLY END section=${section.name} duration_us=$durationUs")
+    }
+
+    private fun applyStyleController(destinationChannel:Int, event:StyleNoteEvent) {
+        if (destinationChannel !in 4..15) return
+        if ((event.status and 0xF0) != 0xB0) return
+        val state = mixerStates[destinationChannel]
+        when (event.note) {
+            7 -> state.volume = event.velocity.coerceIn(0,127)
+            10 -> state.pan = event.velocity.coerceIn(0,127)
+            11 -> state.expression = event.velocity.coerceIn(0,127)
+            91 -> state.reverbSend = event.velocity.coerceIn(0,127)
+            93 -> state.chorusSend = event.velocity.coerceIn(0,127)
+            else -> return
+        }
+        val ov = channelOverrides[destinationChannel]
+        audioEngine.setChannelMixer(
+            destinationChannel,
+            volume = if (ov?.muted == true) 0 else state.volume,
+            pan = ov?.pan ?: state.pan,
+            expression = ov?.expression ?: state.expression,
+            reverbSend = ov?.reverbSend ?: state.reverbSend,
+            chorusSend = ov?.chorusSend ?: state.chorusSend
         )
     }
 
@@ -701,7 +689,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         val phase = phaseStartTick.mod(sectionLength)
         val merged=section.parts
             .flatMap{part->
-                part.events.filter(::isNoteEvent).map{e->
+                part.events.map{e->
                     val raw = e.tick.toLong().coerceAtLeast(0L)
                     val relative = (raw - phase + sectionLength) % sectionLength
                     Scheduled(relative.toInt(), e, part)
@@ -734,7 +722,31 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             }
 
             val chord=currentChord
-            val policy=selectPolicy(s.part,s.event.note,chord)
+            val isNote = isNoteEvent(s.event)
+            val policy = if (isNote) {
+                selectPolicy(s.part, s.event.note, chord)
+            } else {
+                s.part.casmPolicies.firstOrNull() ?: s.part.casm
+            }
+
+            // Tick-0 setup is applied once when the section becomes active.
+            if (!isNote && s.tick == 0) continue
+
+            if (!isNote) {
+                val destination = policy?.destinationChannel ?: s.event.channel
+                if (destination !in 0..3 && destination !in lockedChannels) {
+                    if (s.event.isControlChange) {
+                        applyStyleController(destination, s.event)
+                    } else if (s.event.isProgramChange) {
+                        val drum = destination == 9 || (policy != null && isDrumVoice(policy.voiceName))
+                        val bank = if (drum) 128 else 0
+                        audioEngine.setChannelProgram(destination, s.event.note.coerceIn(0,127), bank)
+                        midiInputManager.sendProgramChange(destination, s.event.note.coerceIn(0,127), if (drum) 127 else 0)
+                    }
+                }
+                continue
+            }
+
             if(policy==null&&chord!=null&&s.event.isNoteOn&&!isRhythmSource(s.event.channel))continue
             if(s.event.isNoteOn&&isUnsupportedArticulation(policy)){
                 com.yourapp.yamahaarranger.ui.DebugLog.add("🔇 SUPPRESS " + (policy?.voiceName ?: "unknown") + " src" + s.event.channel + ":" + s.event.note + " (MegaVoice articulation unsupported by SF2)")
@@ -771,7 +783,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                 activeTransposedNotes.remove(key)
             }
 
-            val isDrumPart=destinationChannel==8||destinationChannel==9||(policy!=null&&isDrumVoice(policy.voiceName))
+            val isDrumPart=destinationChannel==9||(policy!=null&&isDrumVoice(policy.voiceName))
             val transformed=if(policy!=null&&!isDrumPart){
                 chord?.let{CasmNoteTransformer.transform(s.event.note,it,policy)}?:s.event.note.coerceIn(0,127)
             }else s.event.note.coerceIn(0,127)
