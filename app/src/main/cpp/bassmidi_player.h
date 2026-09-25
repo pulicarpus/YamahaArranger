@@ -38,6 +38,12 @@ private:
         int bank = 0;
         int program = 0;
     };
+    struct NormalizedBankMap {
+        int rawBank = 0;
+        int virtualBank = 0;
+        int midiMsb = 0;
+        int midiLsb = 0;
+    };
     struct MelodicPresetEntry {
         int bank = 0;
         int program = 0;
@@ -46,6 +52,7 @@ private:
     bool ensureEngine();
     bool loadRole(const std::string& path, bool drum);
     bool applyFonts();
+    bool normalizeMelodySf2(const std::string& sourcePath, const std::string& outputPath);
     void send(int channel, DWORD event, DWORD param);
     void preloadCurrentPreset(int channel);
     void rebuildDrumPresetCache(const std::string& path,
@@ -69,6 +76,8 @@ private:
     std::vector<DrumPresetEntry> melodyDrumPresetCache_;
     std::vector<DrumPresetEntry> drumDrumPresetCache_;
     std::vector<MelodicPresetEntry> melodyPresetCache_;
+    std::vector<NormalizedBankMap> normalizedBanks_;
     std::string melodyPath_;
+    std::string melodyBassPath_;
     std::string drumPath_;
 };
