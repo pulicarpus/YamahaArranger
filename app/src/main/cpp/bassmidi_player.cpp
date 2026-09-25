@@ -59,10 +59,21 @@ bool BassMidiPlayer::ensureEngine() {
             return false;
         }
 
-        // Yamaha style timing is PPQ 1920. This is mostly relevant if later
-        // we feed tick-timed event batches; realtime note events remain
-        // immediate because BASS_MIDI_ASYNC is deliberately not enabled.
+        // Yamaha style timing is PPQ 1920.
         BASS_ChannelSetAttribute(stream_, BASS_ATTRIB_MIDI_PPQN, 1920.0f);
+
+        // Decouple live MIDI event submission from the BASSMIDI render/update
+        // cycle. Without this flag, BASSMIDI may process a MIDI event directly
+        // while the decode callback is generating PCM. With ASYNC, events are
+        // queued for the next update cycle, which keeps the event-producing
+        // thread from contending with the audio render path.
+        //
+        // Preallocate the async queue so a busy style (especially drums +
+        // fills) does not trigger a vector-like growth/allocation during
+        // playback. 4096 events is deliberately generous for our 16-channel
+        // arranger and can still grow automatically if ever exceeded.
+        BASS_ChannelFlags(stream_, BASS_MIDI_ASYNC, BASS_MIDI_ASYNC);
+        BASS_ChannelSetAttribute(stream_, BASS_ATTRIB_MIDI_QUEUE_ASYNC, 4096.0f);
 
         // 16-point sinc is the highest BASSMIDI SRC quality available on
         // ARM/NEON and is the quality path we want for an arranger.
@@ -751,8 +762,13 @@ std::string BassMidiPlayer::presetList() const {
 }
 
 void BassMidiPlayer::render(float* out, int numFrames) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (!stream_) {
+    // This function runs on Oboe's realtime callback thread. Never wait for
+    // the control-side mutex here: a font reload, preset operation, or other
+    // BASSMIDI call can temporarily hold it for much longer than one audio
+    // burst. If the stream state is being changed right now, output silence
+    // for this burst instead of blocking the realtime callback.
+    std::unique_lock<std::mutex> lock(mutex_, std::try_to_lock);
+    if (!lock.owns_lock() || !stream_) {
         std::fill(out, out + numFrames * 2, 0.0f);
         return;
     }
