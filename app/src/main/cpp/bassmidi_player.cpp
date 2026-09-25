@@ -378,8 +378,6 @@ bool findPhdrChunk(const std::vector<unsigned char>& data,
 
 } // namespace
 
-namespace {
-
 // BASSMIDI's FONTEX source bank is limited to the 128 SF2 banks. Yamaha
 // variation banks such as 1025 (= MSB 8, LSB 1) therefore cannot be passed
 // directly as sbank.  SF2 itself has no Bank-LSB field either.  Normalize the
@@ -479,8 +477,6 @@ bool BassMidiPlayer::normalizeMelodySf2(const std::string& sourcePath,
     }
     return true;
 }
-
-} // namespace
 
 void BassMidiPlayer::rebuildDrumPresetCache(
     const std::string& path,
