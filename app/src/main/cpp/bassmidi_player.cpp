@@ -524,7 +524,7 @@ void BassMidiPlayer::preloadCurrentPreset(int channel) {
     // Melodic Yamaha banks are 14-bit: MSB * 128 + LSB.
     // Do not drop the LSB here. For example, bank 8:1 must be preloaded
     // as SF2 bank 1025, not bank 8.
-    const int sourceBank = state.drum
+    int sourceBank = state.drum
         ? 128
         : (state.bankMsb * 128 + state.bankLsb);
     int sourceProgram = state.program;
