@@ -183,7 +183,7 @@ class MainViewModel @Inject constructor(
     private val _sustainEnabled = MutableStateFlow(false)
     private val _soundFontName = MutableStateFlow("None")
     private val _availableSoundFonts = MutableStateFlow<List<Pair<Uri, String>>>(emptyList())
-    private val _styleFolders = MutableStateFlow<List<ContentResolverProvider.StyleFolder>>(emptyList())
+    private val _styleFolders = MutableStateFlow<List<StyleFolder>>(emptyList())
     private val _styleFiles = MutableStateFlow<List<Pair<Uri, String>>>(emptyList())
     private val _sf2Presets = MutableStateFlow<List<AudioEngineManager.SfPreset>>(emptyList())
     private val _styleVolume = MutableStateFlow(100)
@@ -226,8 +226,8 @@ class MainViewModel @Inject constructor(
         val (bank, regSlot, voices) = voiceData
         val rightVoices = sfData.first
         val sfFiles = sfData.second.first
-        val styleFolders = sfData.second.first
-        val styleFiles = sfData.second.second
+        val styleFolders = sfData.second.second.first
+        val styleFiles = sfData.second.second.second
         val sfPresets = sfData.third
         MainUiState(
             styleName = styleName,
