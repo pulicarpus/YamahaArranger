@@ -41,7 +41,7 @@ class ContentResolverProvider @Inject constructor(
         return styleRootDir.walkTopDown()
             .filter { it.isFile && it.extension.equals("sty", true) }
             .sortedBy { it.name.lowercase() }
-            .map { it.toUri() to it.name }
+            .map { Uri.fromFile(it) to it.name }
             .toList()
     }
 
