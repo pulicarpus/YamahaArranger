@@ -24,6 +24,7 @@ public:
     void setChannelPreset(int channel, int bank, int program, const std::string& voiceName = {});
     void setChannelMixer(int channel, int volume, int pan, int expression, int reverbSend, int chorusSend);
     void setChannelExpression(int channel, int expression);
+    void setKeyboardSustain(bool enabled);
     void setMasterGain(float gain);
     std::string presetList() const;
 private:
