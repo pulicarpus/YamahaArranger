@@ -159,7 +159,7 @@ data class MainUiState(
     val styleVolume: Int = 100, val leftVolume: Int = 100, val right1Volume: Int = 100, val right2Volume: Int = 100, val right3Volume: Int = 100, val masterVolume: Int = 100,
     val activeBank: Int = 1, val activeRegSlot: Int = 0, val voiceName: String = "GrandPiano",
     val right2Name: String = "OFF", val splitPoint: String = "C4",
-    val acmpEnabled: Boolean = true, val leftVoiceEnabled: Boolean = true,
+    val acmpEnabled: Boolean = true, val leftVoiceEnabled: Boolean = true, val sustainEnabled: Boolean = false,
     val rightVoices: List<KeyboardVoiceSlot> = defaultKeyboardVoices(),
     val voiceAssignments: List<VoiceSlot> = defaultVoices(),
     val availableSoundFonts: List<Pair<Uri, String>> = emptyList(),
@@ -178,6 +178,7 @@ class MainViewModel @Inject constructor(
     private val _midiStatus = MutableStateFlow("No MIDI device")
     private val _midiOutEnabled = MutableStateFlow(false)
     private val _transpose = MutableStateFlow(0)
+    private val _sustainEnabled = MutableStateFlow(false)
     private val _soundFontName = MutableStateFlow("None")
     private val _availableSoundFonts = MutableStateFlow<List<Pair<Uri, String>>>(emptyList())
     private val _sf2Presets = MutableStateFlow<List<AudioEngineManager.SfPreset>>(emptyList())
@@ -210,12 +211,12 @@ class MainViewModel @Inject constructor(
     val uiState: StateFlow<MainUiState> = combine(
         arrangerBrain.state,
         combine(_styleName, _midiStatus) { s, m -> s to m },
-        combine(_transpose, _soundFontName) { t, sf -> t to sf },
+        combine(_transpose, _sustainEnabled, _soundFontName) { t, sustain, sf -> Triple(t, sustain, sf) },
         volumeState,
         voiceAndSoundFontState
     ) { arranger, styleMidi, transposeSf, volumesMaster, voiceDataSf ->
         val (styleName, midi) = styleMidi
-        val (transpose, sfName) = transposeSf
+        val (transpose, sustain, sfName) = transposeSf
         val (voiceVolumes, masterVol) = volumesMaster
         val (voiceData, sfData) = voiceDataSf
         val (bank, regSlot, voices) = voiceData
@@ -232,6 +233,7 @@ class MainViewModel @Inject constructor(
             autoFill = arranger.autoFill,
             acmpEnabled = arranger.acmpEnabled,
             leftVoiceEnabled = arranger.leftVoiceEnabled,
+            sustainEnabled = sustain,
             midiStatus = midi,
             midiOutEnabled = _midiOutEnabled.value,
             soundFontName = sfName,
@@ -287,6 +289,10 @@ class MainViewModel @Inject constructor(
 
         midiInputManager.onNoteOn = { note, velocity -> arrangerBrain.onKeyboardNoteOn(note, velocity / 127f) }
         midiInputManager.onNoteOff = { note -> arrangerBrain.onKeyboardNoteOff(note) }
+        midiInputManager.onSustainChange = { enabled ->
+            _sustainEnabled.value = enabled
+            audioEngine.setKeyboardSustain(enabled)
+        }
     }
 
     fun connectFirstAvailableMidiDevice() {
@@ -324,8 +330,21 @@ class MainViewModel @Inject constructor(
     fun onTapTempo() { }
     fun onTempoDown() { arrangerBrain.setTempo((arrangerBrain.state.value.tempoBpm - 5).coerceIn(20, 280)) }
     fun onTempoUp() { arrangerBrain.setTempo((arrangerBrain.state.value.tempoBpm + 5).coerceIn(20, 280)) }
-    fun onTransposeDown() { _transpose.value = (_transpose.value - 1).coerceIn(-12, 12) }
-    fun onTransposeUp() { _transpose.value = (_transpose.value + 1).coerceIn(-12, 12) }
+    fun onTransposeDown() {
+        val value = (_transpose.value - 1).coerceIn(-12, 12)
+        _transpose.value = value
+        arrangerBrain.setKeyboardTranspose(value)
+    }
+    fun onTransposeUp() {
+        val value = (_transpose.value + 1).coerceIn(-12, 12)
+        _transpose.value = value
+        arrangerBrain.setKeyboardTranspose(value)
+    }
+    fun toggleSustain() {
+        val enabled = !_sustainEnabled.value
+        _sustainEnabled.value = enabled
+        audioEngine.setKeyboardSustain(enabled)
+    }
     fun onStyleVolumeChange(value: Int) {
         val v = value.coerceIn(0, 127); _styleVolume.value = v
         // Style parts currently render on destination channels 8..15.
