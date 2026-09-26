@@ -21,6 +21,30 @@ class ContentResolverProvider @Inject constructor(
     private val sf2RootDir: File
         get() = File(Environment.getExternalStorageDirectory(), "YamahaArranger/SF2")
 
+    private val styleRootDir: File
+        get() = File(Environment.getExternalStorageDirectory(), "YamahaArranger/Styles")
+
+    fun ensureStyleFolder() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
+                Timber.w("YamahaArranger Styles folder requires MANAGE_EXTERNAL_STORAGE")
+                return
+            }
+            styleRootDir.mkdirs()
+        } catch (e: Exception) {
+            Timber.w(e, "Could not create YamahaArranger/Styles folder")
+        }
+    }
+
+    fun listStyles(): List<Pair<Uri, String>> {
+        ensureStyleFolder()
+        return styleRootDir.walkTopDown()
+            .filter { it.isFile && it.extension.equals("sty", true) }
+            .sortedBy { it.name.lowercase() }
+            .map { it.toUri() to it.name }
+            .toList()
+    }
+
     fun readBytes(uri: Uri): ByteArray? = try {
         context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
     } catch (e: Exception) {
