@@ -70,7 +70,7 @@ class ArrangerBrain @Inject constructor(
     // Yamaha-style soft sustain: released keyboard notes get a short natural tail
     // instead of being held indefinitely until the pedal/button is turned off.
     private val sustainReleaseMs = 450L
-    private val sustainedNotes = mutableSetOf<Pair<Int, Int>>()
+    private val sustainedNotes = mutableSetOf<Pair<Int, Int>>()\n    // Notes currently sounding through the dedicated LEFT VOICE channel.\n    // Mode changes must release them even if the key-up arrives after ACMP changes.\n    private val leftVoiceNotes = mutableSetOf<Int>()
     private val sustainReleaseJobs = mutableMapOf<Pair<Int, Int>, Job>()
 
     private var appliedChord: DetectedChord? = null
@@ -285,7 +285,7 @@ class ArrangerBrain @Inject constructor(
         DebugLog.add(if (enabled) "🎹 LEFT VOICE: ON" else "🎹 LEFT VOICE: OFF (LEFT → RIGHT 1/2/3)")
     }
 
-    fun toggleAcmp() = setAcmpEnabled(!acmpEnabled)
+    private fun releaseLeftVoiceNotes(reason: String) {\n        if (leftVoiceNotes.isEmpty()) return\n        val notes = leftVoiceNotes.toList()\n        notes.forEach { note ->\n            sustainReleaseJobs.remove(leftVoiceChannel to note)?.cancel()\n            sustainedNotes.remove(leftVoiceChannel to note)\n            audioEngine.noteOffChannel(leftVoiceChannel, note)\n            midiInputManager.sendNoteOff(leftVoiceChannel, note)\n        }\n        leftVoiceNotes.clear()\n        DebugLog.add("🎹 LEFT VOICE RELEASE: $reason notes=${notes.joinToString(",")}")\n    }\n\n    fun toggleAcmp() = setAcmpEnabled(!acmpEnabled)
     fun toggleLeftVoice() = setLeftVoiceEnabled(!leftVoiceEnabled)
 
     fun setRightVoiceEnabled(layer: Int, enabled: Boolean) {
