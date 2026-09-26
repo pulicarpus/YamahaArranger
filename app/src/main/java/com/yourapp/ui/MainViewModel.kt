@@ -291,7 +291,7 @@ class MainViewModel @Inject constructor(
         midiInputManager.onNoteOff = { note -> arrangerBrain.onKeyboardNoteOff(note) }
         midiInputManager.onSustainChange = { enabled ->
             _sustainEnabled.value = enabled
-            audioEngine.setKeyboardSustain(enabled)
+            arrangerBrain.setKeyboardSustain(enabled)
         }
     }
 
@@ -343,7 +343,7 @@ class MainViewModel @Inject constructor(
     fun toggleSustain() {
         val enabled = !_sustainEnabled.value
         _sustainEnabled.value = enabled
-        audioEngine.setKeyboardSustain(enabled)
+        arrangerBrain.setKeyboardSustain(enabled)
     }
     fun onStyleVolumeChange(value: Int) {
         val v = value.coerceIn(0, 127); _styleVolume.value = v
