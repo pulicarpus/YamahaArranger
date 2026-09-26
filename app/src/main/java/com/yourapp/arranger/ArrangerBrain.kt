@@ -214,6 +214,7 @@ class ArrangerBrain @Inject constructor(
             audioEngine.noteOnChannel(leftVoiceChannel, outputNote, velocity)
             midiInputManager.sendNoteOn(leftVoiceChannel, outputNote, velocity127)
             leftVoiceNotes.add(outputNote)
+            leftVoiceNotes.add(outputNote)
         } else {
             transposedNotes[midiNote] = outputNote
             DebugLog.add("🎹 LEFT IN note=$midiNote → pitch=$outputNote vel=$velocity127 → R1/R2/R3 (LEFT OFF)")
@@ -255,6 +256,7 @@ class ArrangerBrain @Inject constructor(
             } else {
                 audioEngine.noteOffChannel(leftVoiceChannel, outputNote)
                 midiInputManager.sendNoteOff(leftVoiceChannel, outputNote)
+                leftVoiceNotes.remove(outputNote)
                 leftVoiceNotes.remove(outputNote)
             }
         } else {
