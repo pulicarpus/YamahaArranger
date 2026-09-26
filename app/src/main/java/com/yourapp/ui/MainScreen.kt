@@ -79,6 +79,15 @@ fun MainScreen(
     onImportSoundFontClicked: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    // SF2 preset enumeration is intentionally deferred at startup. Refresh it
+    // when a voice picker is actually opened so the picker can show and apply
+    // the real presets from the loaded SF2 instead of only the GM fallback list.
+    LaunchedEffect(showVoicePicker, showStyleVoicePicker) {
+        if (showVoicePicker != null || showStyleVoicePicker != null) {
+            viewModel.refreshSoundFontList()
+        }
+    }
     var showVoicePicker by remember { mutableStateOf<VoiceSlot?>(null) }
     var showStyleEditor by remember { mutableStateOf(false) }
     var showMixer by remember { mutableStateOf(false) }
