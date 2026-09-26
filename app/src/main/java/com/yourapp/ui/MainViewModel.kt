@@ -163,6 +163,7 @@ data class MainUiState(
     val rightVoices: List<KeyboardVoiceSlot> = defaultKeyboardVoices(),
     val voiceAssignments: List<VoiceSlot> = defaultVoices(),
     val availableSoundFonts: List<Pair<Uri, String>> = emptyList(),
+    val styleFolders: List<ContentResolverProvider.StyleFolder> = emptyList(),
     val styleFiles: List<Pair<Uri, String>> = emptyList(),
     val sf2Presets: List<AudioEngineManager.SfPreset> = emptyList()
 )
@@ -182,6 +183,7 @@ class MainViewModel @Inject constructor(
     private val _sustainEnabled = MutableStateFlow(false)
     private val _soundFontName = MutableStateFlow("None")
     private val _availableSoundFonts = MutableStateFlow<List<Pair<Uri, String>>>(emptyList())
+    private val _styleFolders = MutableStateFlow<List<ContentResolverProvider.StyleFolder>>(emptyList())
     private val _styleFiles = MutableStateFlow<List<Pair<Uri, String>>>(emptyList())
     private val _sf2Presets = MutableStateFlow<List<AudioEngineManager.SfPreset>>(emptyList())
     private val _styleVolume = MutableStateFlow(100)
@@ -205,7 +207,7 @@ class MainViewModel @Inject constructor(
 
     private val voiceAndSoundFontState = combine(
         combine(_activeBank, _activeRegSlot, _voiceAssignments) { b, r, v -> Triple(b, r, v) },
-        combine(_rightVoices, combine(_availableSoundFonts, _styleFiles) { sf, styles -> sf to styles }, _sf2Presets) { rightVoices, filesAndStyles, presets ->
+        combine(_rightVoices, combine(_availableSoundFonts, combine(_styleFolders, _styleFiles) { folders, styles -> folders to styles }) { sf, folderAndStyles -> sf to folderAndStyles }, _sf2Presets) { rightVoices, filesAndStyles, presets ->
             Triple(rightVoices, filesAndStyles, presets)
         }
     ) { voiceData, sfData -> voiceData to sfData }
@@ -224,10 +226,12 @@ class MainViewModel @Inject constructor(
         val (bank, regSlot, voices) = voiceData
         val rightVoices = sfData.first
         val sfFiles = sfData.second.first
+        val styleFolders = sfData.second.first
         val styleFiles = sfData.second.second
         val sfPresets = sfData.third
         MainUiState(
             styleName = styleName,
+            styleFolders = styleFolders,
             tempoBpm = arranger.tempoBpm,
             transpose = transpose,
             isPlaying = arranger.isPlaying,
@@ -615,8 +619,16 @@ class MainViewModel @Inject constructor(
 
     fun refreshStyleList() {
         viewModelScope.launch(Dispatchers.IO) {
+            _styleFolders.value = contentResolver.listStyleFolders()
             _styleFiles.value = contentResolver.listStyles()
-            DebugLog.add("🎼 Styles found: " + _styleFiles.value.size)
+            DebugLog.add("🎼 Style folders found: " + _styleFolders.value.size + " root styles=" + _styleFiles.value.size)
+        }
+    }
+
+    fun refreshStylesInFolder(folderUri: Uri) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _styleFiles.value = contentResolver.listStylesInFolder(folderUri)
+            DebugLog.add("🎼 Styles in folder: " + _styleFiles.value.size)
         }
     }
 
