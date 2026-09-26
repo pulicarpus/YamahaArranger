@@ -637,7 +637,7 @@ private fun SxCenterDisplay(
     onPickStyle: () -> Unit,
     onPickRightVoice: (Int) -> Unit,
     lcdPage: String,
-    styleFolders: List<ContentResolverProvider.StyleFolder>,
+    styleFolders: List<StyleFolder>,
     styleFiles: List<Pair<Uri, String>>,
     selectedStyleUri: Uri?,
     selectedStyleFolderUri: Uri?,
