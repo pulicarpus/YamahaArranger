@@ -1017,7 +1017,7 @@ void BassMidiPlayer::setKeyboardSustain(bool enabled) {
     if (!enabled) {
         BASS_MIDI_StreamEvent(stream_, 3, MIDI_EVENT_SUSTAIN, 0);
     }
-    LOGI("BASSMIDI keyboard sustain=%s channels=0..2; LEFT ch3 manual", enabled ? "ON" : "OFF");
+    // Intentionally only R1/R2/R3: LEFT and ACMP never receive sustain.\n    LOGI("BASSMIDI keyboard sustain=%s channels=0..2; LEFT ch3 manual", enabled ? "ON" : "OFF");
 }
 
 
