@@ -647,7 +647,16 @@ private fun SxCenterDisplay(
 ) {
     Surface(color = Color(0xFF101419), shape = RoundedCornerShape(6.dp), modifier = modifier.border(2.dp, Color(0xFF39424C), RoundedCornerShape(6.dp))) {
         if (lcdPage == "STYLE") {
-            SxStyleLcdPage(state, compact, onPickStyle, onBackHome)
+            SxStyleLcdPage(
+                state = state,
+                styleFiles = styleFiles,
+                selectedStyleUri = selectedStyleUri,
+                compact = compact,
+                onSelect = onStyleSelect,
+                onLoad = onStyleLoad,
+                onBrowse = onPickStyle,
+                onBack = onBackHome
+            )
         } else if (lcdPage == "VOICE") {
             SxVoiceLcdPage(
                 state = state,
