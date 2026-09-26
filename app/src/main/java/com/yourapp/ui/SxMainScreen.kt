@@ -76,6 +76,8 @@ fun SxMainScreen(
     var showSf2Manager by remember { mutableStateOf(false) }
     var rightVoicePickerLayer by remember { mutableStateOf<Int?>(null) }
     var selectedVoiceCategory by remember { mutableStateOf<String?>(null) }
+    var lcdPage by remember { mutableStateOf("HOME") }
+    var selectedVoiceLayer by remember { mutableStateOf(0) }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(SxBlack)) {
         val compact = maxHeight < 620.dp
@@ -90,10 +92,12 @@ fun SxMainScreen(
             Spacer(Modifier.height(gap))
             SxNavBar(
                 navH,
-                onStyle = { stylePicker.launch(arrayOf("audio/*", "application/octet-stream", "*/*")) },
+                onStyle = { lcdPage = "STYLE" },
                 onVoice = {
                     selectedVoiceCategory = null
-                    rightVoicePickerLayer = 0
+                    selectedVoiceLayer = 0
+                    rightVoicePickerLayer = null
+                    lcdPage = "VOICE"
                 },
                 onMixer = { showMixer = true },
                 onUtility = { showUtilityLog = true },
@@ -120,8 +124,31 @@ fun SxMainScreen(
                         state,
                         viewModel,
                         compact,
-                        onPickStyle = { stylePicker.launch(arrayOf("audio/*", "application/octet-stream", "*/*")) },
-                        onPickRightVoice = { rightVoicePickerLayer = it },
+                        onPickStyle = { lcdPage = "STYLE" },
+                        onPickRightVoice = {
+                            selectedVoiceLayer = it
+                            selectedVoiceCategory = null
+                            rightVoicePickerLayer = null
+                            lcdPage = "VOICE"
+                        },
+                        lcdPage = lcdPage,
+                        voicePresets = state.sf2Presets,
+                        voiceCategory = selectedVoiceCategory,
+                        selectedVoiceLayer = selectedVoiceLayer,
+                        onVoiceSelect = { program, bank ->
+                            viewModel.setRightVoice(selectedVoiceLayer, program, bank)
+                            lcdPage = "HOME"
+                            selectedVoiceCategory = null
+                        },
+                        onVoiceCategory = { category ->
+                            selectedVoiceCategory = category
+                            selectedVoiceLayer = 0
+                            lcdPage = "VOICE"
+                        },
+                        onBackHome = {
+                            lcdPage = "HOME"
+                            selectedVoiceCategory = null
+                        },
                         modifier = Modifier.fillMaxSize()
                     )
                 }
@@ -133,7 +160,9 @@ fun SxMainScreen(
                     compact,
                     onPickVoice = { category ->
                         selectedVoiceCategory = category
-                        rightVoicePickerLayer = 0
+                        selectedVoiceLayer = 0
+                        rightVoicePickerLayer = null
+                        lcdPage = "VOICE"
                     }
                 )
             }
@@ -161,15 +190,10 @@ fun SxMainScreen(
         )
     }
 
-    // Preset enumeration is intentionally deferred at startup for large Yamaha SF2s.
-    // When the user actually opens RIGHT 1/2/3 voice selection, populate the SF2 list now.
-    // Without this trigger the dialog falls back to the built-in GM list even though an SF2 is loaded.
-    LaunchedEffect(rightVoicePickerLayer, state.soundFontName) {
-        if (rightVoicePickerLayer != null &&
-            state.soundFontName != "None" &&
-            (state.sf2Presets.isEmpty() || selectedVoiceCategory != null)
-        ) {
-            DebugLog.add("🎹 Voice picker opened → loading SF2 preset list")
+    // Large Yamaha SF2 preset enumeration is deferred until the LCD VOICE page is opened.
+    LaunchedEffect(lcdPage, state.soundFontName) {
+        if (lcdPage == "VOICE" && state.soundFontName != "None" && state.sf2Presets.isEmpty()) {
+            DebugLog.add("🎹 LCD VOICE opened → loading SF2 preset list")
             viewModel.refreshSoundFontList()
         }
     }
@@ -603,9 +627,30 @@ private fun SxCenterDisplay(
     compact: Boolean,
     onPickStyle: () -> Unit,
     onPickRightVoice: (Int) -> Unit,
+    lcdPage: String,
+    voicePresets: List<AudioEngineManager.SfPreset>,
+    voiceCategory: String?,
+    selectedVoiceLayer: Int,
+    onVoiceSelect: (Int, Int) -> Unit,
+    onVoiceCategory: (String) -> Unit,
+    onBackHome: () -> Unit,
     modifier: Modifier
 ) {
     Surface(color = Color(0xFF101419), shape = RoundedCornerShape(6.dp), modifier = modifier.border(2.dp, Color(0xFF39424C), RoundedCornerShape(6.dp))) {
+        if (lcdPage == "STYLE") {
+            SxStyleLcdPage(state, compact, onPickStyle, onBackHome)
+        } else if (lcdPage == "VOICE") {
+            SxVoiceLcdPage(
+                state = state,
+                presets = voicePresets,
+                category = voiceCategory,
+                selectedLayer = selectedVoiceLayer,
+                compact = compact,
+                onCategory = onVoiceCategory,
+                onSelect = onVoiceSelect,
+                onBack = onBackHome
+            )
+        } else {
         Column(Modifier.fillMaxSize().padding(if (compact) 5.dp else 7.dp)) {
             Row(Modifier.fillMaxWidth().height(if (compact) 26.dp else 30.dp).background(Color(0xFF080B0E), RoundedCornerShape(2.dp)), verticalAlignment = Alignment.CenterVertically) {
                 Text("HOME", color = Color.White, fontSize = 8.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp)); Text("STYLE", color = Color(0xFF55A9E6), fontSize = 8.sp)
@@ -634,6 +679,117 @@ private fun SxCenterDisplay(
                             Text("PART", color = SxDim, fontSize = 6.sp, fontWeight = FontWeight.Bold)
                             listOf("A", "B", "C", "D").forEach { part -> Box(Modifier.weight(1f).fillMaxHeight().padding(start = 2.dp).background(if (state.activeSection.endsWith(" $part")) SxOrangeBright else Color(0xFF26313B), RoundedCornerShape(2.dp)), contentAlignment = Alignment.Center) { Text(part, color = Color.White, fontSize = 8.sp, fontWeight = FontWeight.Bold) } }
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+
+        }
+    }
+}
+
+@Composable
+private fun SxStyleLcdPage(
+    state: MainUiState,
+    compact: Boolean,
+    onLoad: () -> Unit,
+    onBack: () -> Unit
+) {
+    Column(Modifier.fillMaxSize().padding(if (compact) 7.dp else 10.dp)) {
+        Row(Modifier.fillMaxWidth().height(if (compact) 28.dp else 34.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("STYLE", color = SxOrangeBright, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.width(8.dp))
+            Text("STYLE SELECT", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.weight(1f))
+            TextButton(onClick = onBack) { Text("HOME", color = SxGreen, fontSize = 9.sp) }
+        }
+        Surface(
+            color = Color(0xFF171D23),
+            shape = RoundedCornerShape(4.dp),
+            modifier = Modifier.fillMaxWidth().weight(1f).border(1.dp, Color(0xFF3A4650), RoundedCornerShape(4.dp))
+        ) {
+            Column(Modifier.fillMaxSize().padding(10.dp)) {
+                Text("CURRENT STYLE", color = SxDim, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(5.dp))
+                Text(state.styleName, color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Spacer(Modifier.height(4.dp))
+                Text("Tempo " + state.tempoBpm + " BPM  •  " + state.activeSection, color = SxDim, fontSize = 9.sp)
+                Spacer(Modifier.height(12.dp))
+                Button(
+                    onClick = onLoad,
+                    modifier = Modifier.fillMaxWidth().height(if (compact) 42.dp else 50.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = SxOrange),
+                    shape = RoundedCornerShape(3.dp)
+                ) {
+                    Text("LOAD STYLE FILE", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+                Spacer(Modifier.height(7.dp))
+                Text("STY / PRS / SUPPORTED STYLE FILES", color = SxDim, fontSize = 7.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SxVoiceLcdPage(
+    state: MainUiState,
+    presets: List<AudioEngineManager.SfPreset>,
+    category: String?,
+    selectedLayer: Int,
+    compact: Boolean,
+    onCategory: (String) -> Unit,
+    onSelect: (Int, Int) -> Unit,
+    onBack: () -> Unit
+) {
+    val filtered = presets
+        .filter { it.role == "MELODY" && it.bank != 128 }
+        .filter { voiceCategoryMatches(it.program, category) }
+
+    Column(Modifier.fillMaxSize().padding(if (compact) 6.dp else 8.dp)) {
+        Row(Modifier.fillMaxWidth().height(if (compact) 28.dp else 34.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("VOICE", color = SxBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.width(7.dp))
+            Text("RIGHT " + (selectedLayer + 1), color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.weight(1f))
+            Text(filtered.size.toString() + " SF2", color = SxDim, fontSize = 8.sp)
+            TextButton(onClick = onBack) { Text("HOME", color = SxGreen, fontSize = 9.sp) }
+        }
+
+        if (state.soundFontName == "None") {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("LOAD SF2 FIRST", color = SxOrangeBright, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            }
+        } else if (presets.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("LOADING SF2 VOICES…", color = SxDim, fontSize = 12.sp)
+            }
+        } else {
+            Row(Modifier.fillMaxWidth().height(if (compact) 27.dp else 31.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                listOf("PIANO","ORGAN","GUITAR","STRINGS","BRASS","SAX/WOODWIND","SYNTH","CHOIR/PAD","BASS","WORLD").forEach { cat ->
+                    Surface(
+                        color = if (cat == category) SxBlue else Color(0xFF20262D),
+                        shape = RoundedCornerShape(2.dp),
+                        modifier = Modifier.weight(1f).fillMaxHeight().clickable { onCategory(cat) }
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(cat, color = Color.White, fontSize = if (cat.length > 7) 4.sp else 5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                items(filtered) { item ->
+                    Row(
+                        Modifier.fillMaxWidth().clickable { onSelect(item.program, item.bank) }
+                            .background(Color(0xFF171D23), RoundedCornerShape(2.dp))
+                            .padding(horizontal = 7.dp, vertical = if (compact) 5.dp else 7.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(item.bank.toString() + ":" + (item.program + 1), color = SxDim, fontSize = 8.sp, modifier = Modifier.width(52.dp))
+                        Text(item.name, color = Color.White, fontSize = if (compact) 9.sp else 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
             }
