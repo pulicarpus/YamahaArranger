@@ -14,12 +14,65 @@ import java.io.InputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
+data class StyleFolder(val uri: Uri, val name: String, val styleCount: Int)
+
 @Singleton
 class ContentResolverProvider @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     private val sf2RootDir: File
         get() = File(Environment.getExternalStorageDirectory(), "YamahaArranger/SF2")
+
+    private val styleRootDir: File
+        get() = File(Environment.getExternalStorageDirectory(), "YamahaArranger/Styles")
+
+    fun ensureStyleFolder() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
+                Timber.w("YamahaArranger Styles folder requires MANAGE_EXTERNAL_STORAGE")
+                return
+            }
+            styleRootDir.mkdirs()
+        } catch (e: Exception) {
+            Timber.w(e, "Could not create YamahaArranger/Styles folder")
+        }
+    }
+
+    fun listStyleFolders(): List<StyleFolder> {
+        ensureStyleFolder()
+        return styleRootDir.listFiles()
+            ?.filter { it.isDirectory }
+            ?.sortedBy { it.name.lowercase() }
+            ?.map { dir ->
+                StyleFolder(
+                    uri = Uri.fromFile(dir),
+                    name = dir.name,
+                    styleCount = dir.listFiles { f -> f.isFile && f.extension.equals("sty", true) }?.size ?: 0
+                )
+            }
+            ?: emptyList()
+    }
+
+    fun listStyles(): List<Pair<Uri, String>> {
+        ensureStyleFolder()
+        return styleRootDir.listFiles { f -> f.isFile && f.extension.equals("sty", true) }
+            ?.sortedBy { it.name.lowercase() }
+            ?.map { Uri.fromFile(it) to it.name }
+            ?: emptyList()
+    }
+
+    fun listStylesInFolder(folderUri: Uri): List<Pair<Uri, String>> {
+        return try {
+            val dir = File(folderUri.path ?: return emptyList())
+            dir.listFiles { f -> f.isFile && f.extension.equals("sty", true) }
+                ?.sortedBy { it.name.lowercase() }
+                ?.map { Uri.fromFile(it) to it.name }
+                ?: emptyList()
+        } catch (e: Exception) {
+            Timber.e(e, "Failed listing styles in $folderUri")
+            emptyList()
+        }
+    }
 
     fun readBytes(uri: Uri): ByteArray? = try {
         context.contentResolver.openInputStream(uri)?.use { it.readBytes() }

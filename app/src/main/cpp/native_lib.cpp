@@ -80,6 +80,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAu
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetChannelMixer(JNIEnv*,jobject,jint channel,jint volume,jint pan,jint expression,jint reverbSend,jint chorusSend){if(g_engine)g_engine->sfSetChannelMixer(channel,volume,pan,expression,reverbSend,chorusSend);}
 
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetChannelExpression(JNIEnv*,jobject,jint channel,jint expression){if(g_engine)g_engine->sfSetChannelExpression(channel,expression);}
+extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetKeyboardSustain(JNIEnv*,jobject,jboolean enabled){if(g_engine)g_engine->sfSetKeyboardSustain(enabled==JNI_TRUE);}
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetMasterGain(JNIEnv*,jobject,jfloat gain){if(g_engine)g_engine->sfSetMasterGain(gain);}
 extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeGetSoundFontPresets(JNIEnv* env,jobject){
     if(!g_engine) return env->NewStringUTF("");

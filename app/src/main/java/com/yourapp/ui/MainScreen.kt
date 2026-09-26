@@ -85,6 +85,15 @@ fun MainScreen(
     var showStyleVoicePicker by remember { mutableStateOf<VoiceSlot?>(null) }
     var showSf2Manager by remember { mutableStateOf(false) }
 
+    // SF2 preset enumeration is intentionally deferred at startup. Refresh it
+    // when a voice picker is actually opened so the picker can show and apply
+    // the real presets from the loaded SF2 instead of only the GM fallback list.
+    LaunchedEffect(showVoicePicker, showStyleVoicePicker) {
+        if (showVoicePicker != null || showStyleVoicePicker != null) {
+            viewModel.refreshSoundFontList()
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()

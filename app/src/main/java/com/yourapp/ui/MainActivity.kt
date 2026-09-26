@@ -15,7 +15,9 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.ui.Alignment
+import androidx.compose.material3.Text
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -72,12 +74,22 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             YamahaArrangerTheme {
+                val showInspector = remember { mutableStateOf(false) }
                 Box(Modifier.fillMaxSize()) {
-                    SxMainScreen(viewModel = viewModel)
+                    SxMainScreen(
+                        viewModel = viewModel,
+                        onOpenInspector = { showInspector.value = true }
+                    )
                     ChordModeSelector(
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
+                        modifier = androidx.compose.ui.Modifier
+                            .align(androidx.compose.ui.Alignment.TopCenter)
                             .padding(top = 7.dp)
+                    )
+                }
+                if (showInspector.value) {
+                    Sf2StyleInspectorDialog(
+                        onDismiss = { showInspector.value = false },
+                        viewModel = viewModel
                     )
                 }
             }

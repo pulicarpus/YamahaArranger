@@ -48,7 +48,10 @@ private val SxGreen = Color(0xFF27D887)
 private val SxDim = Color(0xFF9AA3AD)
 
 @Composable
-fun SxMainScreen(viewModel: MainViewModel = hiltViewModel()) {
+fun SxMainScreen(
+    viewModel: MainViewModel = hiltViewModel(),
+    onOpenInspector: () -> Unit = {}
+) {
     val state by viewModel.uiState.collectAsState()
     val stylePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(viewModel::onStyleFilePicked) }
     val soundFontPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(viewModel::onSoundFontFilePicked) }
@@ -72,6 +75,11 @@ fun SxMainScreen(viewModel: MainViewModel = hiltViewModel()) {
     var showMixer by remember { mutableStateOf(false) }
     var showSf2Manager by remember { mutableStateOf(false) }
     var rightVoicePickerLayer by remember { mutableStateOf<Int?>(null) }
+    var selectedVoiceCategory by remember { mutableStateOf<String?>(null) }
+    var lcdPage by remember { mutableStateOf("HOME") }
+    var selectedVoiceLayer by remember { mutableStateOf(0) }
+    var selectedStyleUri by remember { mutableStateOf<Uri?>(null) }
+    var selectedStyleFolderUri by remember { mutableStateOf<Uri?>(null) }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(SxBlack)) {
         val compact = maxHeight < 620.dp
@@ -84,19 +92,99 @@ fun SxMainScreen(viewModel: MainViewModel = hiltViewModel()) {
         Column(Modifier.fillMaxSize().padding(horizontal = 7.dp, vertical = 5.dp)) {
             SxHeader(state, headerH) { showSf2Manager = true }
             Spacer(Modifier.height(gap))
-            SxNavBar(navH, onMixer = { showMixer = true }, onUtility = { showUtilityLog = true })
+            SxNavBar(
+                navH,
+                onStyle = { selectedStyleUri = null; selectedStyleFolderUri = null; viewModel.refreshStyleList(); lcdPage = "STYLE" },
+                onVoice = {
+                    selectedVoiceCategory = null
+                    selectedVoiceLayer = 0
+                    rightVoicePickerLayer = null
+                    lcdPage = "VOICE"
+                },
+                onMixer = { showMixer = true },
+                onUtility = { showUtilityLog = true },
+                onInspector = onOpenInspector
+            )
             Spacer(Modifier.height(gap))
-            Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(gap)) {
-                SxSideMenu(Modifier.weight(.17f).fillMaxHeight(), compact)
-                SxCenterDisplay(state, viewModel, compact,
-                    onPickStyle = { stylePicker.launch(arrayOf("audio/*", "application/octet-stream", "*/*")) },
-                    onPickRightVoice = { rightVoicePickerLayer = it },
-                    modifier = Modifier.weight(.66f).fillMaxHeight())
-                SxRightPanel(state, viewModel, Modifier.weight(.17f).fillMaxHeight(), compact)
+            // Arranger-style hardware panel: the center is a dedicated LCD,
+            // visually separated from the physical-style controls on both sides.
+            Row(
+                Modifier.fillMaxWidth().weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(if (compact) 5.dp else 7.dp)
+            ) {
+                SxSideMenu(
+                    Modifier.weight(.18f).fillMaxHeight(),
+                    compact,
+                    onPickStyle = { stylePicker.launch(arrayOf("audio/*", "application/octet-stream", "*/*")) }
+                )
+
+                SxLcdFrame(
+                    modifier = Modifier.weight(.64f).fillMaxHeight(),
+                    compact = compact
+                ) {
+                    SxCenterDisplay(
+                        state,
+                        viewModel,
+                        compact,
+                        onPickStyle = { selectedStyleUri = null; selectedStyleFolderUri = null; viewModel.refreshStyleList(); lcdPage = "STYLE" },
+                        onPickRightVoice = {
+                            selectedVoiceLayer = it
+                            selectedVoiceCategory = null
+                            rightVoicePickerLayer = null
+                            lcdPage = "VOICE"
+                        },
+                        lcdPage = lcdPage,
+                        styleFolders = state.styleFolders,
+                        styleFiles = state.styleFiles,
+                        selectedStyleUri = selectedStyleUri,
+                        selectedStyleFolderUri = selectedStyleFolderUri,
+                        onStyleFolderSelect = { folder -> selectedStyleFolderUri = folder; viewModel.refreshStylesInFolder(folder) },
+                        onStyleSelect = { selectedStyleUri = it },
+                        onStyleLoad = { uri -> viewModel.onStyleFilePicked(uri); selectedStyleUri = null; lcdPage = "HOME" },
+                        voicePresets = state.sf2Presets,
+                        voiceCategory = selectedVoiceCategory,
+                        selectedVoiceLayer = selectedVoiceLayer,
+                        onVoiceSelect = { program, bank ->
+                            viewModel.setRightVoice(selectedVoiceLayer, program, bank)
+                            lcdPage = "HOME"
+                            selectedVoiceCategory = null
+                        },
+                        onVoiceCategory = { category ->
+                            selectedVoiceCategory = category
+                            selectedVoiceLayer = 0
+                            lcdPage = "VOICE"
+                        },
+                        onBackHome = {
+                            lcdPage = "HOME"
+                            selectedVoiceCategory = null
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+
+                SxRightPanel(
+                    state,
+                    viewModel,
+                    Modifier.weight(.18f).fillMaxHeight(),
+                    compact,
+                    onPickVoice = { category ->
+                        selectedVoiceCategory = category
+                        selectedVoiceLayer = 0
+                        rightVoicePickerLayer = null
+                        lcdPage = "VOICE"
+                    }
+                )
             }
             Spacer(Modifier.height(gap)); SxStyleControls(state, viewModel, controlH, compact)
             Spacer(Modifier.height(gap)); SxRegistration(state, viewModel, regH, compact)
             Spacer(Modifier.height(gap)); SxMidiBar(state, viewModel, footerH, compact)
+        }
+    }
+
+    LaunchedEffect(showMixer, state.soundFontName) {
+        if (showMixer && state.soundFontName != "None" && state.sf2Presets.isEmpty()) {
+            DebugLog.add("🎛 Mixer opened → loading MELODY + DRUM SF2 preset list")
+            viewModel.refreshSoundFontList()
         }
     }
 
@@ -111,15 +199,10 @@ fun SxMainScreen(viewModel: MainViewModel = hiltViewModel()) {
         )
     }
 
-    // Preset enumeration is intentionally deferred at startup for large Yamaha SF2s.
-    // When the user actually opens RIGHT 1/2/3 voice selection, populate the SF2 list now.
-    // Without this trigger the dialog falls back to the built-in GM list even though an SF2 is loaded.
-    LaunchedEffect(rightVoicePickerLayer, state.soundFontName) {
-        if (rightVoicePickerLayer != null &&
-            state.soundFontName != "None" &&
-            state.sf2Presets.isEmpty()
-        ) {
-            DebugLog.add("🎹 Voice picker opened → loading SF2 preset list")
+    // Large Yamaha SF2 preset enumeration is deferred until the LCD VOICE page is opened.
+    LaunchedEffect(lcdPage, state.soundFontName) {
+        if (lcdPage == "VOICE" && state.soundFontName != "None" && state.sf2Presets.isEmpty()) {
+            DebugLog.add("🎹 LCD VOICE opened → loading SF2 preset list")
             viewModel.refreshSoundFontList()
         }
     }
@@ -130,10 +213,15 @@ fun SxMainScreen(viewModel: MainViewModel = hiltViewModel()) {
             SxKeyboardVoiceDialog(
                 slot = slot,
                 presets = state.sf2Presets,
-                onDismiss = { rightVoicePickerLayer = null },
+                category = selectedVoiceCategory,
+                onDismiss = {
+                    rightVoicePickerLayer = null
+                    selectedVoiceCategory = null
+                },
                 onSelect = { program, bank ->
                     viewModel.setRightVoice(layer, program, bank)
                     rightVoicePickerLayer = null
+                    selectedVoiceCategory = null
                 },
                 onToggle = { viewModel.toggleRightVoice(layer) }
             )
@@ -246,8 +334,14 @@ private fun SxStyleMixerDialog(voices: List<VoiceSlot>, presets: List<AudioEngin
                                             fontWeight = FontWeight.Bold
                                         )
                                         Spacer(Modifier.width(7.dp))
+                                        val resolvedName = presets
+                                            .firstOrNull { it.bank == slot.bank && it.program == slot.program && (if (slot.isDrum()) it.role == "DRUM" else it.role == "MELODY") }
+                                            ?.name
+                                            ?: presets
+                                                .firstOrNull { it.program == slot.program && (if (slot.isDrum()) it.role == "DRUM" else it.role == "MELODY") }
+                                                ?.name
                                         Text(
-                                            slot.displayName(),
+                                            resolvedName ?: slot.displayName(),
                                             color = Color.White,
                                             fontSize = 10.sp,
                                             modifier = Modifier.weight(1f),
@@ -383,19 +477,46 @@ private fun SxHeader(state: MainUiState, height: Dp, onPickSoundFont: () -> Unit
 }
 
 @Composable
-private fun SxNavBar(height: Dp, onMixer: () -> Unit, onUtility: () -> Unit) {
+private fun SxNavBar(
+    height: Dp,
+    onStyle: () -> Unit,
+    onVoice: () -> Unit,
+    onMixer: () -> Unit,
+    onUtility: () -> Unit,
+    onInspector: () -> Unit
+) {
     val tabs = listOf("HOME", "STYLE", "VOICE", "SONG", "MULTI PAD", "REGIST", "MIXER", "UTILITY")
-    Row(Modifier.fillMaxWidth().height(height).background(Color(0xFF0D1115), RoundedCornerShape(5.dp)).padding(3.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+    Row(
+        Modifier.fillMaxWidth().height(height).background(Color(0xFF0D1115), RoundedCornerShape(5.dp)).padding(3.dp),
+        horizontalArrangement = Arrangement.spacedBy(3.dp)
+    ) {
         tabs.forEachIndexed { i, label ->
             val modifier = Modifier.weight(1f).fillMaxHeight().then(
                 when (label) {
+                    "STYLE" -> Modifier.clickable(onClick = onStyle)
+                    "VOICE" -> Modifier.clickable(onClick = onVoice)
                     "MIXER" -> Modifier.clickable(onClick = onMixer)
                     "UTILITY" -> Modifier.clickable(onClick = onUtility)
                     else -> Modifier
                 }
             )
-            Surface(color = if (i == 0) Color(0xFF073E82) else Color(0xFF1C2228), shape = RoundedCornerShape(3.dp), modifier = modifier) {
-                Box(contentAlignment = Alignment.Center) { Text(label, color = Color.White, fontSize = 7.sp, fontWeight = FontWeight.Bold, maxLines = 1) }
+            Surface(
+                color = if (i == 0) Color(0xFF073E82) else Color(0xFF1C2228),
+                shape = RoundedCornerShape(3.dp),
+                modifier = modifier
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(label, color = Color.White, fontSize = 7.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                }
+            }
+        }
+        Surface(
+            color = Color(0xFF5A2A92),
+            shape = RoundedCornerShape(3.dp),
+            modifier = Modifier.width(48.dp).fillMaxHeight().clickable(onClick = onInspector)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text("🔍", fontSize = 13.sp)
             }
         }
     }
@@ -459,16 +580,51 @@ private fun SxEngineLogDialog(onDismiss: () -> Unit, onSaveAllLog: () -> Unit) {
 }
 
 @Composable
-private fun SxSideMenu(modifier: Modifier, compact: Boolean) {
+private fun SxSideMenu(modifier: Modifier, compact: Boolean, onPickStyle: () -> Unit) {
     val labels = listOf("STYLE SELECT", "FAVORITE", "STYLE CONTROL", "OTS LINK", "SYNC START", "STYLE SETTING")
     Surface(color = SxPanel, shape = RoundedCornerShape(5.dp), modifier = modifier.border(1.dp, Color(0xFF303942), RoundedCornerShape(5.dp))) {
         Column(Modifier.fillMaxSize().padding(if (compact) 4.dp else 6.dp), verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 5.dp)) {
             Text("STYLE", color = Color(0xFF55A9E6), fontSize = 9.sp, fontWeight = FontWeight.Bold)
             labels.forEach { label ->
-                Surface(color = Color(0xFF1D2329), shape = RoundedCornerShape(3.dp), modifier = Modifier.fillMaxWidth().weight(1f).border(1.dp, Color(0xFF343C45), RoundedCornerShape(3.dp))) {
+                val click = if (label == "STYLE SELECT") Modifier.clickable(onClick = onPickStyle) else Modifier
+                Surface(color = Color(0xFF1D2329), shape = RoundedCornerShape(3.dp), modifier = Modifier.fillMaxWidth().weight(1f).then(click).border(1.dp, Color(0xFF343C45), RoundedCornerShape(3.dp))) {
                     Box(contentAlignment = Alignment.Center) { Text(label, color = Color.White, fontSize = if (compact) 6.sp else 7.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SxLcdFrame(
+    modifier: Modifier,
+    compact: Boolean,
+    content: @Composable () -> Unit
+) {
+    // Thick dark bezel + inner highlight deliberately make this look like a
+    // physical arranger LCD rather than a normal Android card.
+    Surface(
+        color = Color(0xFF050607),
+        shape = RoundedCornerShape(if (compact) 6.dp else 8.dp),
+        modifier = modifier.border(
+            width = if (compact) 2.dp else 3.dp,
+            color = Color(0xFF2B3035),
+            shape = RoundedCornerShape(if (compact) 6.dp else 8.dp)
+        )
+    ) {
+        Surface(
+            color = Color(0xFF0B0E11),
+            shape = RoundedCornerShape(if (compact) 4.dp else 6.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(if (compact) 3.dp else 5.dp)
+                .border(
+                    1.dp,
+                    Color(0xFF444A50),
+                    RoundedCornerShape(if (compact) 4.dp else 6.dp)
+                )
+        ) {
+            content()
         }
     }
 }
@@ -480,9 +636,49 @@ private fun SxCenterDisplay(
     compact: Boolean,
     onPickStyle: () -> Unit,
     onPickRightVoice: (Int) -> Unit,
+    lcdPage: String,
+    styleFolders: List<StyleFolder>,
+    styleFiles: List<Pair<Uri, String>>,
+    selectedStyleUri: Uri?,
+    selectedStyleFolderUri: Uri?,
+    onStyleFolderSelect: (Uri) -> Unit,
+    onStyleSelect: (Uri) -> Unit,
+    onStyleLoad: (Uri) -> Unit,
+    voicePresets: List<AudioEngineManager.SfPreset>,
+    voiceCategory: String?,
+    selectedVoiceLayer: Int,
+    onVoiceSelect: (Int, Int) -> Unit,
+    onVoiceCategory: (String) -> Unit,
+    onBackHome: () -> Unit,
     modifier: Modifier
 ) {
     Surface(color = Color(0xFF101419), shape = RoundedCornerShape(6.dp), modifier = modifier.border(2.dp, Color(0xFF39424C), RoundedCornerShape(6.dp))) {
+        if (lcdPage == "STYLE") {
+            SxStyleLcdPage(
+                state = state,
+                styleFolders = styleFolders,
+                styleFiles = styleFiles,
+                selectedStyleUri = selectedStyleUri,
+                selectedStyleFolderUri = selectedStyleFolderUri,
+                compact = compact,
+                onFolderSelect = onStyleFolderSelect,
+                onSelect = onStyleSelect,
+                onLoad = onStyleLoad,
+                onBrowse = onPickStyle,
+                onBack = onBackHome
+            )
+        } else if (lcdPage == "VOICE") {
+            SxVoiceLcdPage(
+                state = state,
+                presets = voicePresets,
+                category = voiceCategory,
+                selectedLayer = selectedVoiceLayer,
+                compact = compact,
+                onCategory = onVoiceCategory,
+                onSelect = onVoiceSelect,
+                onBack = onBackHome
+            )
+        } else {
         Column(Modifier.fillMaxSize().padding(if (compact) 5.dp else 7.dp)) {
             Row(Modifier.fillMaxWidth().height(if (compact) 26.dp else 30.dp).background(Color(0xFF080B0E), RoundedCornerShape(2.dp)), verticalAlignment = Alignment.CenterVertically) {
                 Text("HOME", color = Color.White, fontSize = 8.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp)); Text("STYLE", color = Color(0xFF55A9E6), fontSize = 8.sp)
@@ -504,12 +700,153 @@ private fun SxCenterDisplay(
                     SxValue("CHORD", state.detectedChordLabel.ifBlank { "—" }, Modifier.weight(1f), null, null, compact)
                     SxValue("TEMPO", state.tempoBpm.toString(), Modifier.weight(.8f), vm::onTempoDown, vm::onTempoUp, compact)
                     SxValue("TRANSPOSE", if (state.transpose >= 0) "+${state.transpose}" else state.transpose.toString(), Modifier.weight(.9f), vm::onTransposeDown, vm::onTransposeUp, compact)
+                    SxToggleValue("SUSTAIN", if (state.sustainEnabled) "ON" else "OFF", state.sustainEnabled, vm::toggleSustain, Modifier.weight(.8f), compact)
                     SxValue("SPLIT", state.splitPoint, Modifier.weight(.8f), null, null, compact)
                     Surface(color = Color(0xFF172029), shape = RoundedCornerShape(3.dp), modifier = Modifier.weight(1.25f).fillMaxHeight().border(1.dp, Color(0xFF34404C), RoundedCornerShape(3.dp))) {
                         Row(Modifier.fillMaxSize().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text("PART", color = SxDim, fontSize = 6.sp, fontWeight = FontWeight.Bold)
                             listOf("A", "B", "C", "D").forEach { part -> Box(Modifier.weight(1f).fillMaxHeight().padding(start = 2.dp).background(if (state.activeSection.endsWith(" $part")) SxOrangeBright else Color(0xFF26313B), RoundedCornerShape(2.dp)), contentAlignment = Alignment.Center) { Text(part, color = Color.White, fontSize = 8.sp, fontWeight = FontWeight.Bold) } }
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+}
+
+@Composable
+private fun SxStyleLcdPage(
+    state: MainUiState,
+    styleFolders: List<ContentResolverProvider.StyleFolder>,
+    styleFiles: List<Pair<Uri, String>>,
+    selectedStyleUri: Uri?,
+    selectedStyleFolderUri: Uri?,
+    compact: Boolean,
+    onFolderSelect: (Uri) -> Unit,
+    onSelect: (Uri) -> Unit,
+    onLoad: (Uri) -> Unit,
+    onBrowse: () -> Unit,
+    onBack: () -> Unit
+) {
+    Column(Modifier.fillMaxSize().padding(if (compact) 7.dp else 9.dp)) {
+        Row(Modifier.fillMaxWidth().height(if (compact) 30.dp else 34.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("STYLE", color = SxOrangeBright, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.width(8.dp))
+            Text("STYLE SELECT", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.weight(1f))
+            TextButton(onClick = onBack) { Text("HOME", color = SxGreen, fontSize = 9.sp) }
+        }
+        Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Surface(color = Color(0xFF151A20), shape = RoundedCornerShape(4.dp), modifier = Modifier.width(if (compact) 145.dp else 175.dp).fillMaxHeight().border(1.dp, Color(0xFF38424C), RoundedCornerShape(4.dp))) {
+                Column(Modifier.fillMaxSize().padding(5.dp)) {
+                    Text("STYLE FOLDER", color = SxDim, fontSize = 7.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(3.dp))
+                    if (styleFolders.isEmpty()) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("NO FOLDERS", color = SxDim, fontSize = 9.sp) } }
+                    else {
+                        LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            items(styleFolders) { folder ->
+                                val selected = selectedStyleFolderUri == folder.uri
+                                Row(Modifier.fillMaxWidth().clickable { onFolderSelect(folder.uri) }.background(if (selected) SxBlue else Color(0xFF20262D), RoundedCornerShape(2.dp)).padding(horizontal = 6.dp, vertical = if (compact) 7.dp else 9.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Text("📁", fontSize = 10.sp); Spacer(Modifier.width(5.dp))
+                                    Text(folder.name, color = Color.White, fontSize = 8.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                                    Text(folder.styleCount.toString(), color = SxDim, fontSize = 7.sp)
+                                }
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(3.dp))
+                    Text("YamahaArranger/Styles", color = SxDim, fontSize = 6.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            Surface(color = Color(0xFF151A20), shape = RoundedCornerShape(4.dp), modifier = Modifier.weight(1f).fillMaxHeight().border(1.dp, Color(0xFF38424C), RoundedCornerShape(4.dp))) {
+                Column(Modifier.fillMaxSize().padding(5.dp)) {
+                    Row(Modifier.fillMaxWidth().height(28.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(styleFolders.firstOrNull { it.uri == selectedStyleFolderUri }?.name ?: "STYLE FILES", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.weight(1f)); Text(styleFiles.size.toString() + " FILES", color = SxDim, fontSize = 7.sp)
+                    }
+                    if (selectedStyleFolderUri == null) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("SELECT A STYLE FOLDER", color = SxDim, fontSize = 11.sp, fontWeight = FontWeight.Bold) } }
+                    else if (styleFiles.isEmpty()) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("NO .STY FILES IN THIS FOLDER", color = SxDim, fontSize = 9.sp) } }
+                    else {
+                        LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            items(styleFiles) { item ->
+                                val selected = selectedStyleUri == item.first
+                                Row(Modifier.fillMaxWidth().clickable { onSelect(item.first) }.background(if (selected) SxBlueDark else Color(0xFF20262D), RoundedCornerShape(2.dp)).padding(horizontal = 8.dp, vertical = if (compact) 7.dp else 9.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Text((styleFiles.indexOf(item) + 1).toString(), color = SxDim, fontSize = 8.sp, modifier = Modifier.width(28.dp))
+                                    Text(item.second.substringBeforeLast('.'), color = Color.White, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                                    Text("STY", color = SxDim, fontSize = 7.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(5.dp))
+        Row(Modifier.fillMaxWidth().height(if (compact) 38.dp else 44.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            Button(onClick = onBrowse, modifier = Modifier.weight(1f).fillMaxHeight(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF252C34)), shape = RoundedCornerShape(3.dp)) { Text("OPEN FILE", fontSize = 9.sp) }
+            Button(onClick = { selectedStyleUri?.let(onLoad) }, enabled = selectedStyleUri != null, modifier = Modifier.weight(1.35f).fillMaxHeight(), colors = ButtonDefaults.buttonColors(containerColor = SxOrange), shape = RoundedCornerShape(3.dp)) { Text("LOAD STYLE", fontSize = 10.sp, fontWeight = FontWeight.Bold) }
+        }
+    }
+}
+@Composable
+private fun SxVoiceLcdPage(
+    state: MainUiState,
+    presets: List<AudioEngineManager.SfPreset>,
+    category: String?,
+    selectedLayer: Int,
+    compact: Boolean,
+    onCategory: (String) -> Unit,
+    onSelect: (Int, Int) -> Unit,
+    onBack: () -> Unit
+) {
+    val filtered = presets
+        .filter { it.role == "MELODY" && it.bank != 128 }
+        .filter { voiceCategoryMatches(it.program, category) }
+
+    Column(Modifier.fillMaxSize().padding(if (compact) 6.dp else 8.dp)) {
+        Row(Modifier.fillMaxWidth().height(if (compact) 28.dp else 34.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("VOICE", color = SxBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.width(7.dp))
+            Text("RIGHT " + (selectedLayer + 1), color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.weight(1f))
+            Text(filtered.size.toString() + " SF2", color = SxDim, fontSize = 8.sp)
+            TextButton(onClick = onBack) { Text("HOME", color = SxGreen, fontSize = 9.sp) }
+        }
+
+        if (state.soundFontName == "None") {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("LOAD SF2 FIRST", color = SxOrangeBright, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            }
+        } else if (presets.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("LOADING SF2 VOICES…", color = SxDim, fontSize = 12.sp)
+            }
+        } else {
+            Row(Modifier.fillMaxWidth().height(if (compact) 27.dp else 31.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                listOf("PIANO","ORGAN","GUITAR","STRINGS","BRASS","SAX/WOODWIND","SYNTH","CHOIR/PAD","BASS","WORLD").forEach { cat ->
+                    Surface(
+                        color = if (cat == category) SxBlue else Color(0xFF20262D),
+                        shape = RoundedCornerShape(2.dp),
+                        modifier = Modifier.weight(1f).fillMaxHeight().clickable { onCategory(cat) }
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(cat, color = Color.White, fontSize = if (cat.length > 7) 4.sp else 5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                items(filtered) { item ->
+                    Row(
+                        Modifier.fillMaxWidth().clickable { onSelect(item.program, item.bank) }
+                            .background(Color(0xFF171D23), RoundedCornerShape(2.dp))
+                            .padding(horizontal = 7.dp, vertical = if (compact) 5.dp else 7.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(item.bank.toString() + ":" + (item.program + 1), color = SxDim, fontSize = 8.sp, modifier = Modifier.width(52.dp))
+                        Text(item.name, color = Color.White, fontSize = if (compact) 9.sp else 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
             }
@@ -527,9 +864,74 @@ private fun SxCenterDisplay(
 }
 @Composable private fun SxMultiPad(modifier: Modifier) { Surface(color = SxBlueDark, shape = RoundedCornerShape(4.dp), modifier = modifier.fillMaxHeight().border(1.dp, Color(0xFF146CB3), RoundedCornerShape(4.dp))) { Column(Modifier.fillMaxSize().padding(7.dp), verticalArrangement = Arrangement.Center) { Text("MULTI PAD", color = Color(0xFFA8D8FF), fontSize = 7.sp, fontWeight = FontWeight.Bold); Spacer(Modifier.height(4.dp)); Text("Ready", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold); Text("Shaker & Tamb   1/4", color = SxDim, fontSize = 7.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) } } }
 @Composable private fun SxVoiceCard(label: String, name: String, active: Boolean, modifier: Modifier) { Surface(color = if (active) Color(0xFF063F85) else Color(0xFF24292F), shape = RoundedCornerShape(3.dp), modifier = modifier.fillMaxHeight().border(1.dp, if (active) Color(0xFF2C91FF) else Color(0xFF3A424B), RoundedCornerShape(3.dp))) { Column(Modifier.fillMaxSize().padding(6.dp), verticalArrangement = Arrangement.SpaceBetween) { Text(label, color = if (active) Color(0xFFA8D8FF) else SxDim, fontSize = 7.sp, fontWeight = FontWeight.Bold); Text(name.ifBlank { "OFF" }.take(18), color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis); Text(if (active) "ON" else "OFF", color = if (active) Color(0xFF58D8FF) else SxDim, fontSize = 6.sp) } } }
-@Composable private fun SxValue(label: String, value: String, modifier: Modifier, minus: (() -> Unit)?, plus: (() -> Unit)?, compact: Boolean) { Surface(color = SxPanel2, shape = RoundedCornerShape(3.dp), modifier = modifier.fillMaxHeight().border(1.dp, Color(0xFF343B44), RoundedCornerShape(3.dp))) { Row(Modifier.fillMaxSize().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) { Text(label, color = SxDim, fontSize = if (compact) 5.sp else 6.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(end = 3.dp), maxLines = 1); if (minus != null && plus != null) SmallKey("−", minus, compact); Text(value, color = Color.White, fontSize = if (compact) 10.sp else 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis); if (minus != null && plus != null) SmallKey("+", plus, compact) } } }
+@Composable private fun SxToggleValue(label: String, value: String, active: Boolean, onClick: () -> Unit, modifier: Modifier, compact: Boolean) {
+    Surface(color = if (active) Color(0xFF155B3C) else SxPanel2, shape = RoundedCornerShape(3.dp),
+        modifier = modifier.fillMaxHeight().clickable(onClick = onClick)
+            .border(1.dp, if (active) SxGreen else Color(0xFF343B44), RoundedCornerShape(3.dp))) {
+        Row(Modifier.fillMaxSize().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center) {
+            Text(label, color = if (active) Color(0xFF9BE7C2) else SxDim, fontSize = if (compact) 5.sp else 6.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            Spacer(Modifier.width(3.dp))
+            Text(value, color = Color.White, fontSize = if (compact) 10.sp else 12.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
 
-@Composable private fun SxRightPanel(state: MainUiState, vm: MainViewModel, modifier: Modifier, compact: Boolean) { Surface(color = SxPanel, shape = RoundedCornerShape(5.dp), modifier = modifier.border(1.dp, Color(0xFF303942), RoundedCornerShape(5.dp))) { Column(Modifier.fillMaxSize().padding(if (compact) 4.dp else 6.dp), verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 5.dp)) { Text("VOICE SELECT", color = Color(0xFF55A9E6), fontSize = 9.sp, fontWeight = FontWeight.Bold); val cats = listOf("PIANO", "ORGAN", "GUITAR", "STRINGS", "BRASS", "SAX/WOODWIND", "SYNTH", "CHOIR/PAD", "BASS", "PERCUSSION", "WORLD", "USER"); Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) { cats.chunked(4).forEach { row -> Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(3.dp)) { row.forEach { c -> Surface(color = if (c == "PIANO") SxBlue else Color(0xFF1D2329), shape = RoundedCornerShape(3.dp), modifier = Modifier.weight(1f).fillMaxHeight().border(1.dp, Color(0xFF35404A), RoundedCornerShape(3.dp))) { Box(contentAlignment = Alignment.Center) { Text(c, color = Color.White, fontSize = if (c.length > 8) 5.sp else 6.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) } } } } } }; Text("PART ON/OFF", color = Color(0xFF55A9E6), fontSize = 8.sp, fontWeight = FontWeight.Bold); Row(Modifier.fillMaxWidth().height(if (compact) 34.dp else 40.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+@Composable private fun SxValue(
+    label: String,
+    value: String,
+    modifier: Modifier,
+    minus: (() -> Unit)?,
+    plus: (() -> Unit)?,
+    compact: Boolean
+) {
+    Surface(
+        color = SxPanel2,
+        shape = RoundedCornerShape(3.dp),
+        modifier = modifier
+            .fillMaxHeight()
+            .border(1.dp, Color(0xFF343B44), RoundedCornerShape(3.dp))
+    ) {
+        Column(
+            Modifier.fillMaxSize().padding(horizontal = 4.dp, vertical = 2.dp),
+            verticalArrangement = Arrangement.spacedBy(1.dp)
+        ) {
+            Text(
+                label,
+                color = SxDim,
+                fontSize = if (compact) 5.sp else 6.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.fillMaxWidth(),
+                maxLines = 1
+            )
+            Row(
+                Modifier.fillMaxWidth().weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                if (minus != null && plus != null) SmallKey("−", minus, compact)
+                Text(
+                    value,
+                    color = Color.White,
+                    fontSize = if (compact) 10.sp else 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (minus != null && plus != null) SmallKey("+", plus, compact)
+            }
+        }
+    }
+}
+
+@Composable private fun SxRightPanel(
+    state: MainUiState,
+    vm: MainViewModel,
+    modifier: Modifier,
+    compact: Boolean,
+    onPickVoice: (String) -> Unit
+) { Surface(color = SxPanel, shape = RoundedCornerShape(5.dp), modifier = modifier.border(1.dp, Color(0xFF303942), RoundedCornerShape(5.dp))) { Column(Modifier.fillMaxSize().padding(if (compact) 4.dp else 6.dp), verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 5.dp)) { Text("VOICE SELECT", color = Color(0xFF55A9E6), fontSize = 9.sp, fontWeight = FontWeight.Bold); val cats = listOf("PIANO", "ORGAN", "GUITAR", "STRINGS", "BRASS", "SAX/WOODWIND", "SYNTH", "CHOIR/PAD", "BASS", "PERCUSSION", "WORLD", "USER"); Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) { cats.chunked(4).forEach { row -> Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(3.dp)) { row.forEach { c -> Surface(color = if (c == "PIANO") SxBlue else Color(0xFF1D2329), shape = RoundedCornerShape(3.dp), modifier = Modifier.weight(1f).fillMaxHeight().clickable { onPickVoice(c) }.border(1.dp, Color(0xFF35404A), RoundedCornerShape(3.dp))) { Box(contentAlignment = Alignment.Center) { Text(c, color = Color.White, fontSize = if (c.length > 8) 5.sp else 6.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) } } } } } }; Text("PART ON/OFF", color = Color(0xFF55A9E6), fontSize = 8.sp, fontWeight = FontWeight.Bold); Row(Modifier.fillMaxWidth().height(if (compact) 34.dp else 40.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
     listOf(0, 1, 2).forEach { layer ->
         val enabled = state.rightVoices.getOrNull(layer)?.enabled == true
         Surface(color = if (enabled) SxBlue else Color(0xFF1D2329), shape = RoundedCornerShape(3.dp), modifier = Modifier.weight(1f).fillMaxHeight().clickable { vm.toggleRightVoice(layer) }) {
@@ -610,10 +1012,29 @@ private fun SxCenterDisplay(
 @Composable private fun SxMidiBar(state: MainUiState, vm: MainViewModel, height: Dp, compact: Boolean) { Row(Modifier.fillMaxWidth().height(height), verticalAlignment = Alignment.CenterVertically) { Text("YamahaArranger v0.1.0   |   MIDI: ${state.midiStatus}", color = SxDim, fontSize = if (compact) 6.sp else 7.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis); OutlinedButton(onClick = vm::refreshMidiConnection, modifier = Modifier.height(height), contentPadding = PaddingValues(horizontal = 10.dp)) { Text("CONNECT", fontSize = if (compact) 6.sp else 7.sp) }; Spacer(Modifier.width(4.dp)); Button(onClick = vm::toggleMidiOut, modifier = Modifier.height(height), contentPadding = PaddingValues(horizontal = 10.dp), colors = ButtonDefaults.buttonColors(containerColor = if (state.midiOutEnabled) SxBlue else SxPanel2)) { Text("MIDI OUT", fontSize = if (compact) 6.sp else 7.sp) } } }
 @Composable private fun SmallKey(text: String, onClick: () -> Unit, compact: Boolean = false) { Button(onClick = onClick, modifier = Modifier.size(if (compact) 23.dp else 25.dp), contentPadding = PaddingValues(0.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF39434B)), shape = RoundedCornerShape(2.dp)) { Text(text, fontSize = if (compact) 10.sp else 12.sp) } }
 
+private fun voiceCategoryMatches(program: Int, category: String?): Boolean {
+    if (category == null || category == "USER") return true
+    return when (category) {
+        "PIANO" -> program in 0..15
+        "ORGAN" -> program in 16..23
+        "GUITAR" -> program in 24..31
+        "BASS" -> program in 32..39
+        "STRINGS" -> program in 40..55
+        "CHOIR/PAD" -> program in 52..55 || program in 88..95
+        "BRASS" -> program in 56..63
+        "SAX/WOODWIND" -> program in 64..79
+        "SYNTH" -> program in 80..103
+        "WORLD" -> program in 104..127
+        "PERCUSSION" -> false
+        else -> true
+    }
+}
+
 @Composable
 private fun SxKeyboardVoiceDialog(
     slot: KeyboardVoiceSlot,
     presets: List<AudioEngineManager.SfPreset>,
+    category: String? = null,
     onDismiss: () -> Unit,
     onSelect: (Int, Int) -> Unit,
     onToggle: () -> Unit
@@ -621,10 +1042,12 @@ private fun SxKeyboardVoiceDialog(
     var search by remember { mutableStateOf("") }
     val filteredSf = presets
         .filter { it.role == "MELODY" && it.bank != 128 }
+        .filter { voiceCategoryMatches(it.program, category) }
         .filter { search.isBlank() || it.name.contains(search, ignoreCase = true) }
-    val filteredGm = remember(search) {
-        if (search.isBlank()) GM_VOICES
+    val filteredGm = remember(search, category) {
+        val voices = if (search.isBlank()) GM_VOICES
         else GM_VOICES.filter { it.first.contains(search, ignoreCase = true) }
+        voices.filter { voiceCategoryMatches(it.second, category) }
     }
 
     AlertDialog(
