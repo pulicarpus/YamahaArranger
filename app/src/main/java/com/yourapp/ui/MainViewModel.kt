@@ -163,6 +163,7 @@ data class MainUiState(
     val rightVoices: List<KeyboardVoiceSlot> = defaultKeyboardVoices(),
     val voiceAssignments: List<VoiceSlot> = defaultVoices(),
     val availableSoundFonts: List<Pair<Uri, String>> = emptyList(),
+    val styleFiles: List<Pair<Uri, String>> = emptyList(),
     val sf2Presets: List<AudioEngineManager.SfPreset> = emptyList()
 )
 
@@ -181,6 +182,7 @@ class MainViewModel @Inject constructor(
     private val _sustainEnabled = MutableStateFlow(false)
     private val _soundFontName = MutableStateFlow("None")
     private val _availableSoundFonts = MutableStateFlow<List<Pair<Uri, String>>>(emptyList())
+    private val _styleFiles = MutableStateFlow<List<Pair<Uri, String>>>(emptyList())
     private val _sf2Presets = MutableStateFlow<List<AudioEngineManager.SfPreset>>(emptyList())
     private val _styleVolume = MutableStateFlow(100)
     private val _leftVolume = MutableStateFlow(100)
@@ -203,8 +205,8 @@ class MainViewModel @Inject constructor(
 
     private val voiceAndSoundFontState = combine(
         combine(_activeBank, _activeRegSlot, _voiceAssignments) { b, r, v -> Triple(b, r, v) },
-        combine(_rightVoices, _availableSoundFonts, _sf2Presets) { rightVoices, files, presets ->
-            Triple(rightVoices, files, presets)
+        combine(_rightVoices, combine(_availableSoundFonts, _styleFiles) { sf, styles -> sf to styles }, _sf2Presets) { rightVoices, filesAndStyles, presets ->
+            Triple(rightVoices, filesAndStyles, presets)
         }
     ) { voiceData, sfData -> voiceData to sfData }
 
@@ -221,7 +223,8 @@ class MainViewModel @Inject constructor(
         val (voiceData, sfData) = voiceDataSf
         val (bank, regSlot, voices) = voiceData
         val rightVoices = sfData.first
-        val sfFiles = sfData.second
+        val sfFiles = sfData.second.first
+        val styleFiles = sfData.second.second
         val sfPresets = sfData.third
         MainUiState(
             styleName = styleName,
@@ -608,6 +611,13 @@ class MainViewModel @Inject constructor(
         // can kill the process before the UI can record a log. Presets will be
         // loaded lazily by the explicit refresh/preset UI path.
         DebugLog.add(if (ok) "✅ SF2 loaded: $displayName (preset scan deferred)" else "❌ SF2 load failed: $displayName")
+    }
+
+    fun refreshStyleList() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _styleFiles.value = contentResolver.listStyles()
+            DebugLog.add("🎼 Styles found: " + _styleFiles.value.size)
+        }
     }
 
     fun refreshSoundFontList() {
