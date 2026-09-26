@@ -205,7 +205,7 @@ class ArrangerBrain @Inject constructor(
             }
             return
         }
-        if (acmpEnabled) {
+        if (acmpEnabled && leftVoiceEnabled) {
             DebugLog.add("🎹 LEFT IN note=$midiNote vel=$velocity127 → CHORD")
             chordDetector.noteOn(midiNote)?.let(::onChordChanged)
         } else if (leftVoiceEnabled) {
@@ -217,7 +217,7 @@ class ArrangerBrain @Inject constructor(
             leftVoiceNotes.add(outputNote)
         } else {
             transposedNotes[midiNote] = outputNote
-            DebugLog.add("🎹 LEFT IN note=$midiNote → pitch=$outputNote vel=$velocity127 → R1/R2/R3 (LEFT OFF)")
+            DebugLog.add("🎹 LEFT IN note=$midiNote → pitch=$outputNote vel=$velocity127 → R1/R2/R3 (ACMP/L OFF)")
             for (channel in 0..2) {
                 if (!rightVoiceEnabled[channel]) continue
                 if (channel == 0) audioEngine.noteOn(outputNote, velocity)
@@ -244,7 +244,7 @@ class ArrangerBrain @Inject constructor(
             }
             return
         }
-        if (acmpEnabled) {
+        if (acmpEnabled && leftVoiceEnabled) {
             DebugLog.add("🎹 LEFT OFF note=$midiNote → CHORD")
             val chord = chordDetector.noteOff(midiNote)
             if (chord != null) onChordChanged(chord)
@@ -264,7 +264,7 @@ class ArrangerBrain @Inject constructor(
             for (channel in 0..2) {
                 if (!rightVoiceEnabled[channel]) continue
                 if (keyboardSustain) {
-                    sustainedNotes.add(channel to outputNote)
+                    deferSustainNoteOff(channel, outputNote)
                 } else {
                     if (channel == 0) audioEngine.noteOff(outputNote)
                     else audioEngine.noteOffChannel(channel, outputNote)
