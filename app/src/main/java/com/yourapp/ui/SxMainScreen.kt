@@ -78,6 +78,7 @@ fun SxMainScreen(
     var selectedVoiceCategory by remember { mutableStateOf<String?>(null) }
     var lcdPage by remember { mutableStateOf("HOME") }
     var selectedVoiceLayer by remember { mutableStateOf(0) }
+    var selectedStyleUri by remember { mutableStateOf<Uri?>(null) }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(SxBlack)) {
         val compact = maxHeight < 620.dp
@@ -92,7 +93,7 @@ fun SxMainScreen(
             Spacer(Modifier.height(gap))
             SxNavBar(
                 navH,
-                onStyle = { lcdPage = "STYLE" },
+                onStyle = { selectedStyleUri = null; viewModel.refreshStyleList(); lcdPage = "STYLE" },
                 onVoice = {
                     selectedVoiceCategory = null
                     selectedVoiceLayer = 0
@@ -124,7 +125,7 @@ fun SxMainScreen(
                         state,
                         viewModel,
                         compact,
-                        onPickStyle = { lcdPage = "STYLE" },
+                        onPickStyle = { selectedStyleUri = null; viewModel.refreshStyleList(); lcdPage = "STYLE" },
                         onPickRightVoice = {
                             selectedVoiceLayer = it
                             selectedVoiceCategory = null
@@ -132,6 +133,10 @@ fun SxMainScreen(
                             lcdPage = "VOICE"
                         },
                         lcdPage = lcdPage,
+                        styleFiles = state.styleFiles,
+                        selectedStyleUri = selectedStyleUri,
+                        onStyleSelect = { selectedStyleUri = it },
+                        onStyleLoad = { uri -> viewModel.onStyleFilePicked(uri); selectedStyleUri = null; lcdPage = "HOME" },
                         voicePresets = state.sf2Presets,
                         voiceCategory = selectedVoiceCategory,
                         selectedVoiceLayer = selectedVoiceLayer,
@@ -628,6 +633,10 @@ private fun SxCenterDisplay(
     onPickStyle: () -> Unit,
     onPickRightVoice: (Int) -> Unit,
     lcdPage: String,
+    styleFiles: List<Pair<Uri, String>>,
+    selectedStyleUri: Uri?,
+    onStyleSelect: (Uri) -> Unit,
+    onStyleLoad: (Uri) -> Unit,
     voicePresets: List<AudioEngineManager.SfPreset>,
     voiceCategory: String?,
     selectedVoiceLayer: Int,
@@ -690,41 +699,73 @@ private fun SxCenterDisplay(
 @Composable
 private fun SxStyleLcdPage(
     state: MainUiState,
+    styleFiles: List<Pair<Uri, String>>,
+    selectedStyleUri: Uri?,
     compact: Boolean,
-    onLoad: () -> Unit,
+    onSelect: (Uri) -> Unit,
+    onLoad: (Uri) -> Unit,
+    onBrowse: () -> Unit,
     onBack: () -> Unit
 ) {
-    Column(Modifier.fillMaxSize().padding(if (compact) 7.dp else 10.dp)) {
-        Row(Modifier.fillMaxWidth().height(if (compact) 28.dp else 34.dp), verticalAlignment = Alignment.CenterVertically) {
+    Column(Modifier.fillMaxSize().padding(if (compact) 7.dp else 9.dp)) {
+        Row(Modifier.fillMaxWidth().height(if (compact) 30.dp else 34.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("STYLE", color = SxOrangeBright, fontSize = 10.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.width(8.dp))
             Text("STYLE SELECT", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.weight(1f))
             TextButton(onClick = onBack) { Text("HOME", color = SxGreen, fontSize = 9.sp) }
         }
-        Surface(
-            color = Color(0xFF171D23),
-            shape = RoundedCornerShape(4.dp),
-            modifier = Modifier.fillMaxWidth().weight(1f).border(1.dp, Color(0xFF3A4650), RoundedCornerShape(4.dp))
-        ) {
-            Column(Modifier.fillMaxSize().padding(10.dp)) {
-                Text("CURRENT STYLE", color = SxDim, fontSize = 8.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(5.dp))
-                Text(state.styleName, color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Spacer(Modifier.height(4.dp))
-                Text("Tempo " + state.tempoBpm + " BPM  •  " + state.activeSection, color = SxDim, fontSize = 9.sp)
-                Spacer(Modifier.height(12.dp))
-                Button(
-                    onClick = onLoad,
-                    modifier = Modifier.fillMaxWidth().height(if (compact) 42.dp else 50.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = SxOrange),
-                    shape = RoundedCornerShape(3.dp)
-                ) {
-                    Text("LOAD STYLE FILE", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Surface(color = Color(0xFF151A20), shape = RoundedCornerShape(4.dp), modifier = Modifier.width(if (compact) 118.dp else 145.dp).fillMaxHeight().border(1.dp, Color(0xFF38424C), RoundedCornerShape(4.dp))) {
+                Column(Modifier.fillMaxSize().padding(5.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text("STYLE FOLDER", color = SxDim, fontSize = 7.sp, fontWeight = FontWeight.Bold)
+                    listOf("FAVORITE", "ALL", "USER").forEach { name ->
+                        Surface(color = if (name == "ALL") SxBlue else Color(0xFF20262D), shape = RoundedCornerShape(2.dp), modifier = Modifier.fillMaxWidth().height(if (compact) 30.dp else 34.dp)) {
+                            Box(contentAlignment = Alignment.CenterStart) { Text(name, color = Color.White, fontSize = 8.sp, modifier = Modifier.padding(horizontal = 8.dp)) }
+                        }
+                    }
+                    Spacer(Modifier.weight(1f))
+                    Text("YamahaArranger/Styles", color = SxDim, fontSize = 6.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
-                Spacer(Modifier.height(7.dp))
-                Text("STY / PRS / SUPPORTED STYLE FILES", color = SxDim, fontSize = 7.sp)
             }
+            Surface(color = Color(0xFF151A20), shape = RoundedCornerShape(4.dp), modifier = Modifier.weight(1f).fillMaxHeight().border(1.dp, Color(0xFF38424C), RoundedCornerShape(4.dp))) {
+                Column(Modifier.fillMaxSize().padding(5.dp)) {
+                    Row(Modifier.fillMaxWidth().height(28.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("USER STYLE", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.weight(1f))
+                        Text("${styleFiles.size} FILES", color = SxDim, fontSize = 7.sp)
+                    }
+                    if (styleFiles.isEmpty()) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("NO STYLE FOUND", color = SxDim, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Spacer(Modifier.height(6.dp))
+                                Text("Place .STY files in", color = SxDim, fontSize = 7.sp)
+                                Text("/YamahaArranger/Styles", color = SxOrangeBright, fontSize = 8.sp)
+                                Spacer(Modifier.height(8.dp))
+                                Button(onClick = onBrowse, colors = ButtonDefaults.buttonColors(containerColor = SxPanel2), shape = RoundedCornerShape(3.dp)) { Text("BROWSE DEVICE", fontSize = 8.sp) }
+                            }
+                        }
+                    } else {
+                        LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            items(styleFiles) { item ->
+                                val selected = selectedStyleUri == item.first
+                                Row(Modifier.fillMaxWidth().clickable { onSelect(item.first) }.background(if (selected) SxBlueDark else Color(0xFF20262D), RoundedCornerShape(2.dp)).padding(horizontal = 8.dp, vertical = if (compact) 7.dp else 9.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Text("${styleFiles.indexOf(item) + 1}", color = SxDim, fontSize = 8.sp, modifier = Modifier.width(28.dp))
+                                    Text(item.second.substringBeforeLast('.'), color = Color.White, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Spacer(Modifier.weight(1f))
+                                    Text("STY", color = SxDim, fontSize = 7.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(5.dp))
+        Row(Modifier.fillMaxWidth().height(if (compact) 38.dp else 44.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            Button(onClick = onBrowse, modifier = Modifier.weight(1f).fillMaxHeight(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF252C34)), shape = RoundedCornerShape(3.dp)) { Text("OPEN FILE", fontSize = 9.sp) }
+            Button(onClick = { selectedStyleUri?.let(onLoad) }, enabled = selectedStyleUri != null, modifier = Modifier.weight(1.35f).fillMaxHeight(), colors = ButtonDefaults.buttonColors(containerColor = SxOrange), shape = RoundedCornerShape(3.dp)) { Text("LOAD STYLE", fontSize = 10.sp, fontWeight = FontWeight.Bold) }
         }
     }
 }
