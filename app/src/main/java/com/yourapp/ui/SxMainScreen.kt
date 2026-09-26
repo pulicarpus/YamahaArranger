@@ -48,7 +48,10 @@ private val SxGreen = Color(0xFF27D887)
 private val SxDim = Color(0xFF9AA3AD)
 
 @Composable
-fun SxMainScreen(viewModel: MainViewModel = hiltViewModel()) {
+fun SxMainScreen(
+    viewModel: MainViewModel = hiltViewModel(),
+    onOpenInspector: () -> Unit = {}
+) {
     val state by viewModel.uiState.collectAsState()
     val stylePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(viewModel::onStyleFilePicked) }
     val soundFontPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(viewModel::onSoundFontFilePicked) }
@@ -84,7 +87,12 @@ fun SxMainScreen(viewModel: MainViewModel = hiltViewModel()) {
         Column(Modifier.fillMaxSize().padding(horizontal = 7.dp, vertical = 5.dp)) {
             SxHeader(state, headerH) { showSf2Manager = true }
             Spacer(Modifier.height(gap))
-            SxNavBar(navH, onMixer = { showMixer = true }, onUtility = { showUtilityLog = true })
+            SxNavBar(
+                navH,
+                onMixer = { showMixer = true },
+                onUtility = { showUtilityLog = true },
+                onInspector = onOpenInspector
+            )
             Spacer(Modifier.height(gap))
             Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(gap)) {
                 SxSideMenu(Modifier.weight(.17f).fillMaxHeight(), compact)
@@ -396,9 +404,17 @@ private fun SxHeader(state: MainUiState, height: Dp, onPickSoundFont: () -> Unit
 }
 
 @Composable
-private fun SxNavBar(height: Dp, onMixer: () -> Unit, onUtility: () -> Unit) {
+private fun SxNavBar(
+    height: Dp,
+    onMixer: () -> Unit,
+    onUtility: () -> Unit,
+    onInspector: () -> Unit
+) {
     val tabs = listOf("HOME", "STYLE", "VOICE", "SONG", "MULTI PAD", "REGIST", "MIXER", "UTILITY")
-    Row(Modifier.fillMaxWidth().height(height).background(Color(0xFF0D1115), RoundedCornerShape(5.dp)).padding(3.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+    Row(
+        Modifier.fillMaxWidth().height(height).background(Color(0xFF0D1115), RoundedCornerShape(5.dp)).padding(3.dp),
+        horizontalArrangement = Arrangement.spacedBy(3.dp)
+    ) {
         tabs.forEachIndexed { i, label ->
             val modifier = Modifier.weight(1f).fillMaxHeight().then(
                 when (label) {
@@ -407,8 +423,23 @@ private fun SxNavBar(height: Dp, onMixer: () -> Unit, onUtility: () -> Unit) {
                     else -> Modifier
                 }
             )
-            Surface(color = if (i == 0) Color(0xFF073E82) else Color(0xFF1C2228), shape = RoundedCornerShape(3.dp), modifier = modifier) {
-                Box(contentAlignment = Alignment.Center) { Text(label, color = Color.White, fontSize = 7.sp, fontWeight = FontWeight.Bold, maxLines = 1) }
+            Surface(
+                color = if (i == 0) Color(0xFF073E82) else Color(0xFF1C2228),
+                shape = RoundedCornerShape(3.dp),
+                modifier = modifier
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(label, color = Color.White, fontSize = 7.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                }
+            }
+        }
+        Surface(
+            color = Color(0xFF5A2A92),
+            shape = RoundedCornerShape(3.dp),
+            modifier = Modifier.width(48.dp).fillMaxHeight().clickable(onClick = onInspector)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text("🔍", fontSize = 13.sp)
             }
         }
     }
