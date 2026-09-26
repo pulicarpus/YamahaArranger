@@ -66,6 +66,8 @@ class ArrangerBrain @Inject constructor(
     // Preserve the exact output pitch used at NOTE_ON so changing transpose
     // while a key is held cannot produce a mismatched NOTE_OFF.
     private val transposedNotes = mutableMapOf<Int, Int>()
+    private var keyboardSustain = false
+    private val sustainedNotes = mutableSetOf<Pair<Int, Int>>()
 
     private var appliedChord: DetectedChord? = null
     private var pendingChord: DetectedChord? = null
@@ -119,6 +121,23 @@ class ArrangerBrain @Inject constructor(
         Timber.i("Style loaded: ${style.fileName}, voices=${style.voiceMap.size}")
     }
 
+    fun setKeyboardSustain(enabled: Boolean) {
+        if (keyboardSustain == enabled) return
+        keyboardSustain = enabled
+        DebugLog.add("🎹 SUSTAIN = " + if (enabled) "ON" else "OFF")
+        if (!enabled) {
+            val pending = sustainedNotes.toList()
+            sustainedNotes.clear()
+            pending.groupBy { it.first }.forEach { (channel, notes) ->
+                notes.distinct().forEach { (_, note) ->
+                    if (channel == 0) audioEngine.noteOff(note)
+                    else audioEngine.noteOffChannel(channel, note)
+                    midiInputManager.sendNoteOff(channel, note)
+                }
+            }
+        }
+    }
+
     fun setKeyboardTranspose(semitones: Int) {
         keyboardTranspose = semitones.coerceIn(-12, 12)
         DebugLog.add("🎹 TRANSPOSE = " + if (keyboardTranspose >= 0) "+$keyboardTranspose" else keyboardTranspose.toString())
@@ -170,10 +189,13 @@ class ArrangerBrain @Inject constructor(
             // Send NoteOff to all three channels so a layer switched OFF while
             // a key is held cannot leave a hanging note in FluidSynth.
             for (channel in 0..2) {
-                if (channel == 0) audioEngine.noteOff(outputNote)
-                else audioEngine.noteOffChannel(channel, outputNote)
-                // Always release the corresponding external E343 channel too.
-                midiInputManager.sendNoteOff(channel, outputNote)
+                if (keyboardSustain) {
+                    sustainedNotes.add(channel to outputNote)
+                } else {
+                    if (channel == 0) audioEngine.noteOff(outputNote)
+                    else audioEngine.noteOffChannel(channel, outputNote)
+                    midiInputManager.sendNoteOff(channel, outputNote)
+                }
             }
             return
         }
@@ -184,15 +206,23 @@ class ArrangerBrain @Inject constructor(
             else DebugLog.add("🎹 Chord release: keep last chord")
         } else if (leftVoiceEnabled) {
             DebugLog.add("🎹 LEFT OFF note=$midiNote → pitch=$outputNote → LEFT VOICE OFF")
-            audioEngine.noteOffChannel(leftVoiceChannel, outputNote)
-            midiInputManager.sendNoteOff(leftVoiceChannel, outputNote)
+            if (keyboardSustain) {
+                sustainedNotes.add(leftVoiceChannel to outputNote)
+            } else {
+                audioEngine.noteOffChannel(leftVoiceChannel, outputNote)
+                midiInputManager.sendNoteOff(leftVoiceChannel, outputNote)
+            }
         } else {
             DebugLog.add("🎹 LEFT OFF note=$midiNote → pitch=$outputNote → R1/R2/R3 OFF (LEFT OFF)")
             for (channel in 0..2) {
                 if (!rightVoiceEnabled[channel]) continue
-                if (channel == 0) audioEngine.noteOff(outputNote)
-                else audioEngine.noteOffChannel(channel, outputNote)
-                midiInputManager.sendNoteOff(channel, outputNote)
+                if (keyboardSustain) {
+                    sustainedNotes.add(channel to outputNote)
+                } else {
+                    if (channel == 0) audioEngine.noteOff(outputNote)
+                    else audioEngine.noteOffChannel(channel, outputNote)
+                    midiInputManager.sendNoteOff(channel, outputNote)
+                }
             }
         }
     }
