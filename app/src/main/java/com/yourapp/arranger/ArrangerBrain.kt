@@ -67,7 +67,11 @@ class ArrangerBrain @Inject constructor(
     // while a key is held cannot produce a mismatched NOTE_OFF.
     private val transposedNotes = mutableMapOf<Int, Int>()
     private var keyboardSustain = false
+    // Yamaha-style soft sustain: released keyboard notes get a short natural tail
+    // instead of being held indefinitely until the pedal/button is turned off.
+    private val sustainReleaseMs = 450L
     private val sustainedNotes = mutableSetOf<Pair<Int, Int>>()
+    private val sustainReleaseJobs = mutableMapOf<Pair<Int, Int>, Job>()
 
     private var appliedChord: DetectedChord? = null
     private var pendingChord: DetectedChord? = null
@@ -128,6 +132,9 @@ class ArrangerBrain @Inject constructor(
         if (!enabled) {
             val pending = sustainedNotes.toList()
             sustainedNotes.clear()
+            pending.forEach { key ->
+                sustainReleaseJobs.remove(key)?.cancel()
+            }
             pending.groupBy { it.first }.forEach { (channel, notes) ->
                 notes.distinct().forEach { (_, note) ->
                     if (channel == 0) audioEngine.noteOff(note)
@@ -135,6 +142,38 @@ class ArrangerBrain @Inject constructor(
                     midiInputManager.sendNoteOff(channel, note)
                 }
             }
+        }
+    }
+
+    private fun deferSustainNoteOff(channel: Int, note: Int) {
+        val key = channel to note
+        sustainReleaseJobs.remove(key)?.cancel()
+        sustainedNotes.add(key)
+        val scope = externalScope
+        if (scope == null) {
+            // Before the arranger scope is attached, never leave a hanging note.
+            sustainedNotes.remove(key)
+            if (channel == 0) audioEngine.noteOff(note)
+            else audioEngine.noteOffChannel(channel, note)
+            midiInputManager.sendNoteOff(channel, note)
+            return
+        }
+        sustainReleaseJobs[key] = scope.launch {
+            delay(sustainReleaseMs)
+            sustainReleaseJobs.remove(key)
+            if (!keyboardSustain || sustainedNotes.remove(key)) {
+                if (channel == 0) audioEngine.noteOff(note)
+                else audioEngine.noteOffChannel(channel, note)
+                midiInputManager.sendNoteOff(channel, note)
+            }
+        }
+    }
+
+    private fun cancelSustainForNote(note: Int) {
+        val keys = sustainReleaseJobs.keys.filter { it.second == note }
+        keys.forEach { key ->
+            sustainReleaseJobs.remove(key)?.cancel()
+            sustainedNotes.remove(key)
         }
     }
 
@@ -149,6 +188,7 @@ class ArrangerBrain @Inject constructor(
         if (midiNote > splitNote) {
             transposedNotes[midiNote] = outputNote
             DebugLog.add("🎹 RIGHT IN note=$midiNote → pitch=$outputNote vel=$velocity127")
+            cancelSustainForNote(outputNote)
             for (channel in 0..2) {
                 if (!rightVoiceEnabled[channel]) continue
                 // RIGHT 1 deliberately keeps the exact legacy channel-0 audio path that the
@@ -190,7 +230,7 @@ class ArrangerBrain @Inject constructor(
             // a key is held cannot leave a hanging note in FluidSynth.
             for (channel in 0..2) {
                 if (keyboardSustain) {
-                    sustainedNotes.add(channel to outputNote)
+                    deferSustainNoteOff(channel, outputNote)
                 } else {
                     if (channel == 0) audioEngine.noteOff(outputNote)
                     else audioEngine.noteOffChannel(channel, outputNote)
@@ -207,7 +247,7 @@ class ArrangerBrain @Inject constructor(
         } else if (leftVoiceEnabled) {
             DebugLog.add("🎹 LEFT OFF note=$midiNote → pitch=$outputNote → LEFT VOICE OFF")
             if (keyboardSustain) {
-                sustainedNotes.add(leftVoiceChannel to outputNote)
+                deferSustainNoteOff(leftVoiceChannel, outputNote)
             } else {
                 audioEngine.noteOffChannel(leftVoiceChannel, outputNote)
                 midiInputManager.sendNoteOff(leftVoiceChannel, outputNote)
