@@ -23,6 +23,7 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
     private var inputPort: MidiInputPort? = null
     var onNoteOn: ((midiNote: Int, velocity: Int) -> Unit)? = null
     var onNoteOff: ((midiNote: Int) -> Unit)? = null
+    var onSustainChange: ((enabled: Boolean) -> Unit)? = null
     var connectedDeviceName: String? = null
         private set
     var midiOutEnabled = false
@@ -151,6 +152,11 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
             when (type) {
                 0x90 -> DebugLog.traceMidi("RAW NOTE_ON status=0x" + status.toString(16).uppercase().padStart(2, '0') + " ch=" + channel + " note=" + d1 + " vel=" + d2)
                 0x80 -> DebugLog.traceMidi("RAW NOTE_OFF status=0x" + status.toString(16).uppercase().padStart(2, '0') + " ch=" + channel + " note=" + d1 + " vel=" + d2)
+                0xB0 -> if (d1 == 64 && channel == chordInputChannel) {
+                    val enabled = d2 >= 64
+                    onSustainChange?.invoke(enabled)
+                    DebugLog.add("🎹 IN ch$channel Sustain " + if (enabled) "ON" else "OFF")
+                }
             }
 
             when (type) {
