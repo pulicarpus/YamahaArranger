@@ -85,9 +85,15 @@ bool BassMidiPlayer::ensureEngine() {
     }
 
     if (!stream_) {
+        // Rapid playing can create overlapping instances of the same MIDI note
+        // (especially with layered String voices). BASSMIDI 2.4.16 provides
+        // BASS_MIDI_NOTEOFF1 specifically for this case: each NOTE_OFF releases
+        // the oldest matching instance instead of releasing every overlapping
+        // instance. Without it, a fast NOTE_ON/NOTE_OFF sequence can leave the
+        // note-instance bookkeeping out of sync and produce a stuck String note.
         stream_ = BASS_MIDI_StreamCreate(
             16,
-            BASS_STREAM_DECODE | BASS_SAMPLE_FLOAT,
+            BASS_STREAM_DECODE | BASS_SAMPLE_FLOAT | BASS_MIDI_NOTEOFF1,
             sampleRate_);
 
         if (!stream_) {
