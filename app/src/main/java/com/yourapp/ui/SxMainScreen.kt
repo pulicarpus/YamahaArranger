@@ -79,6 +79,7 @@ fun SxMainScreen(
     var lcdPage by remember { mutableStateOf("HOME") }
     var selectedVoiceLayer by remember { mutableStateOf(0) }
     var selectedStyleUri by remember { mutableStateOf<Uri?>(null) }
+    var selectedStyleFolderUri by remember { mutableStateOf<Uri?>(null) }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(SxBlack)) {
         val compact = maxHeight < 620.dp
@@ -93,7 +94,7 @@ fun SxMainScreen(
             Spacer(Modifier.height(gap))
             SxNavBar(
                 navH,
-                onStyle = { selectedStyleUri = null; viewModel.refreshStyleList(); lcdPage = "STYLE" },
+                onStyle = { selectedStyleUri = null; selectedStyleFolderUri = null; viewModel.refreshStyleList(); lcdPage = "STYLE" },
                 onVoice = {
                     selectedVoiceCategory = null
                     selectedVoiceLayer = 0
@@ -125,7 +126,7 @@ fun SxMainScreen(
                         state,
                         viewModel,
                         compact,
-                        onPickStyle = { selectedStyleUri = null; viewModel.refreshStyleList(); lcdPage = "STYLE" },
+                        onPickStyle = { selectedStyleUri = null; selectedStyleFolderUri = null; viewModel.refreshStyleList(); lcdPage = "STYLE" },
                         onPickRightVoice = {
                             selectedVoiceLayer = it
                             selectedVoiceCategory = null
@@ -133,8 +134,11 @@ fun SxMainScreen(
                             lcdPage = "VOICE"
                         },
                         lcdPage = lcdPage,
+                        styleFolders = state.styleFolders,
                         styleFiles = state.styleFiles,
                         selectedStyleUri = selectedStyleUri,
+                        selectedStyleFolderUri = selectedStyleFolderUri,
+                        onStyleFolderSelect = { folder -> selectedStyleFolderUri = folder; viewModel.refreshStylesInFolder(folder) },
                         onStyleSelect = { selectedStyleUri = it },
                         onStyleLoad = { uri -> viewModel.onStyleFilePicked(uri); selectedStyleUri = null; lcdPage = "HOME" },
                         voicePresets = state.sf2Presets,
@@ -633,8 +637,11 @@ private fun SxCenterDisplay(
     onPickStyle: () -> Unit,
     onPickRightVoice: (Int) -> Unit,
     lcdPage: String,
+    styleFolders: List<ContentResolverProvider.StyleFolder>,
     styleFiles: List<Pair<Uri, String>>,
     selectedStyleUri: Uri?,
+    selectedStyleFolderUri: Uri?,
+    onStyleFolderSelect: (Uri) -> Unit,
     onStyleSelect: (Uri) -> Unit,
     onStyleLoad: (Uri) -> Unit,
     voicePresets: List<AudioEngineManager.SfPreset>,
@@ -649,9 +656,12 @@ private fun SxCenterDisplay(
         if (lcdPage == "STYLE") {
             SxStyleLcdPage(
                 state = state,
+                styleFolders = styleFolders,
                 styleFiles = styleFiles,
                 selectedStyleUri = selectedStyleUri,
+                selectedStyleFolderUri = selectedStyleFolderUri,
                 compact = compact,
+                onFolderSelect = onStyleFolderSelect,
                 onSelect = onStyleSelect,
                 onLoad = onStyleLoad,
                 onBrowse = onPickStyle,
@@ -708,9 +718,12 @@ private fun SxCenterDisplay(
 @Composable
 private fun SxStyleLcdPage(
     state: MainUiState,
+    styleFolders: List<ContentResolverProvider.StyleFolder>,
     styleFiles: List<Pair<Uri, String>>,
     selectedStyleUri: Uri?,
+    selectedStyleFolderUri: Uri?,
     compact: Boolean,
+    onFolderSelect: (Uri) -> Unit,
     onSelect: (Uri) -> Unit,
     onLoad: (Uri) -> Unit,
     onBrowse: () -> Unit,
@@ -725,44 +738,42 @@ private fun SxStyleLcdPage(
             TextButton(onClick = onBack) { Text("HOME", color = SxGreen, fontSize = 9.sp) }
         }
         Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Surface(color = Color(0xFF151A20), shape = RoundedCornerShape(4.dp), modifier = Modifier.width(if (compact) 118.dp else 145.dp).fillMaxHeight().border(1.dp, Color(0xFF38424C), RoundedCornerShape(4.dp))) {
-                Column(Modifier.fillMaxSize().padding(5.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Surface(color = Color(0xFF151A20), shape = RoundedCornerShape(4.dp), modifier = Modifier.width(if (compact) 145.dp else 175.dp).fillMaxHeight().border(1.dp, Color(0xFF38424C), RoundedCornerShape(4.dp))) {
+                Column(Modifier.fillMaxSize().padding(5.dp)) {
                     Text("STYLE FOLDER", color = SxDim, fontSize = 7.sp, fontWeight = FontWeight.Bold)
-                    listOf("FAVORITE", "ALL", "USER").forEach { name ->
-                        Surface(color = if (name == "ALL") SxBlue else Color(0xFF20262D), shape = RoundedCornerShape(2.dp), modifier = Modifier.fillMaxWidth().height(if (compact) 30.dp else 34.dp)) {
-                            Box(contentAlignment = Alignment.CenterStart) { Text(name, color = Color.White, fontSize = 8.sp, modifier = Modifier.padding(horizontal = 8.dp)) }
+                    Spacer(Modifier.height(3.dp))
+                    if (styleFolders.isEmpty()) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("NO FOLDERS", color = SxDim, fontSize = 9.sp) } }
+                    else {
+                        LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            items(styleFolders) { folder ->
+                                val selected = selectedStyleFolderUri == folder.uri
+                                Row(Modifier.fillMaxWidth().clickable { onFolderSelect(folder.uri) }.background(if (selected) SxBlue else Color(0xFF20262D), RoundedCornerShape(2.dp)).padding(horizontal = 6.dp, vertical = if (compact) 7.dp else 9.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Text("📁", fontSize = 10.sp); Spacer(Modifier.width(5.dp))
+                                    Text(folder.name, color = Color.White, fontSize = 8.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                                    Text(folder.styleCount.toString(), color = SxDim, fontSize = 7.sp)
+                                }
+                            }
                         }
                     }
-                    Spacer(Modifier.weight(1f))
+                    Spacer(Modifier.height(3.dp))
                     Text("YamahaArranger/Styles", color = SxDim, fontSize = 6.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
             }
             Surface(color = Color(0xFF151A20), shape = RoundedCornerShape(4.dp), modifier = Modifier.weight(1f).fillMaxHeight().border(1.dp, Color(0xFF38424C), RoundedCornerShape(4.dp))) {
                 Column(Modifier.fillMaxSize().padding(5.dp)) {
                     Row(Modifier.fillMaxWidth().height(28.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text("USER STYLE", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.weight(1f))
-                        Text("${styleFiles.size} FILES", color = SxDim, fontSize = 7.sp)
+                        Text(styleFolders.firstOrNull { it.uri == selectedStyleFolderUri }?.name ?: "STYLE FILES", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.weight(1f)); Text(styleFiles.size.toString() + " FILES", color = SxDim, fontSize = 7.sp)
                     }
-                    if (styleFiles.isEmpty()) {
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("NO STYLE FOUND", color = SxDim, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                Spacer(Modifier.height(6.dp))
-                                Text("Place .STY files in", color = SxDim, fontSize = 7.sp)
-                                Text("/YamahaArranger/Styles", color = SxOrangeBright, fontSize = 8.sp)
-                                Spacer(Modifier.height(8.dp))
-                                Button(onClick = onBrowse, colors = ButtonDefaults.buttonColors(containerColor = SxPanel2), shape = RoundedCornerShape(3.dp)) { Text("BROWSE DEVICE", fontSize = 8.sp) }
-                            }
-                        }
-                    } else {
+                    if (selectedStyleFolderUri == null) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("SELECT A STYLE FOLDER", color = SxDim, fontSize = 11.sp, fontWeight = FontWeight.Bold) } }
+                    else if (styleFiles.isEmpty()) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("NO .STY FILES IN THIS FOLDER", color = SxDim, fontSize = 9.sp) } }
+                    else {
                         LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             items(styleFiles) { item ->
                                 val selected = selectedStyleUri == item.first
                                 Row(Modifier.fillMaxWidth().clickable { onSelect(item.first) }.background(if (selected) SxBlueDark else Color(0xFF20262D), RoundedCornerShape(2.dp)).padding(horizontal = 8.dp, vertical = if (compact) 7.dp else 9.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Text("${styleFiles.indexOf(item) + 1}", color = SxDim, fontSize = 8.sp, modifier = Modifier.width(28.dp))
-                                    Text(item.second.substringBeforeLast('.'), color = Color.White, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    Spacer(Modifier.weight(1f))
+                                    Text((styleFiles.indexOf(item) + 1).toString(), color = SxDim, fontSize = 8.sp, modifier = Modifier.width(28.dp))
+                                    Text(item.second.substringBeforeLast('.'), color = Color.White, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                                     Text("STY", color = SxDim, fontSize = 7.sp)
                                 }
                             }
@@ -778,7 +789,6 @@ private fun SxStyleLcdPage(
         }
     }
 }
-
 @Composable
 private fun SxVoiceLcdPage(
     state: MainUiState,
