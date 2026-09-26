@@ -213,6 +213,7 @@ class ArrangerBrain @Inject constructor(
             DebugLog.add("🎹 LEFT IN note=$midiNote → pitch=$outputNote vel=$velocity127 → LEFT VOICE")
             audioEngine.noteOnChannel(leftVoiceChannel, outputNote, velocity)
             midiInputManager.sendNoteOn(leftVoiceChannel, outputNote, velocity127)
+            leftVoiceNotes.add(outputNote)
         } else {
             transposedNotes[midiNote] = outputNote
             DebugLog.add("🎹 LEFT IN note=$midiNote → pitch=$outputNote vel=$velocity127 → R1/R2/R3 (LEFT OFF)")
@@ -254,6 +255,7 @@ class ArrangerBrain @Inject constructor(
             } else {
                 audioEngine.noteOffChannel(leftVoiceChannel, outputNote)
                 midiInputManager.sendNoteOff(leftVoiceChannel, outputNote)
+                leftVoiceNotes.remove(outputNote)
             }
         } else {
             DebugLog.add("🎹 LEFT OFF note=$midiNote → pitch=$outputNote → R1/R2/R3 OFF (LEFT OFF)")
@@ -271,6 +273,7 @@ class ArrangerBrain @Inject constructor(
     }
 
     fun setAcmpEnabled(enabled: Boolean) {
+        if (acmpEnabled != enabled && enabled) releaseLeftVoiceNotes("ACMP ON")
         acmpEnabled = enabled
         pendingChordJob?.cancel()
         pendingChord = null
@@ -283,6 +286,7 @@ class ArrangerBrain @Inject constructor(
     }
 
     fun setLeftVoiceEnabled(enabled: Boolean) {
+        if (leftVoiceEnabled && !enabled) releaseLeftVoiceNotes("LEFT VOICE OFF")
         leftVoiceEnabled = enabled
         _state.update { it.copy(leftVoiceEnabled = enabled) }
         DebugLog.add(if (enabled) "🎹 LEFT VOICE: ON" else "🎹 LEFT VOICE: OFF (LEFT → RIGHT 1/2/3)")
