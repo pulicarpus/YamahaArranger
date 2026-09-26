@@ -685,7 +685,7 @@ private fun SxCenterDisplay(
         }
     }
 }
-
+}
 
 @Composable
 private fun SxStyleLcdPage(
