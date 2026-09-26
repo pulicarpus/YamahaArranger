@@ -1000,12 +1000,18 @@ void BassMidiPlayer::setKeyboardSustain(bool enabled) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (!stream_) return;
     const DWORD value = enabled ? 127 : 0;
-    // Yamaha E343 sustain applies to keyboard voices (RIGHT 1/2/3 + LEFT),
-    // not the style accompaniment channels 8..15.
-    for (int channel = 0; channel <= 3; ++channel) {
+    // Keyboard sustain is handled separately by ArrangerBrain for LEFT (ch3),
+    // because ACMP/LEFT mode changes must be able to release LEFT immediately.
+    // Keep native BASSMIDI sustain only on RIGHT 1/2/3 (ch0..2).
+    for (int channel = 0; channel <= 2; ++channel) {
         BASS_MIDI_StreamEvent(stream_, static_cast<DWORD>(channel), MIDI_EVENT_SUSTAIN, value);
     }
-    LOGI("BASSMIDI keyboard sustain=%s channels=0..3", enabled ? "ON" : "OFF");
+    // Explicitly clear LEFT sustain so an earlier pedal state can never keep
+    // a LEFT note alive after ArrangerBrain sends NOTE_OFF.
+    if (!enabled) {
+        BASS_MIDI_StreamEvent(stream_, 3, MIDI_EVENT_SUSTAIN, 0);
+    }
+    LOGI("BASSMIDI keyboard sustain=%s channels=0..2; LEFT ch3 manual", enabled ? "ON" : "OFF");
 }
 
 
