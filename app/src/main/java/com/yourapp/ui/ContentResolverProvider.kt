@@ -15,6 +15,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
+data class StyleFolder(val uri: Uri, val name: String, val styleCount: Int)
+
+@Singleton
 class ContentResolverProvider @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
@@ -36,13 +39,40 @@ class ContentResolverProvider @Inject constructor(
         }
     }
 
+    fun listStyleFolders(): List<StyleFolder> {
+        ensureStyleFolder()
+        return styleRootDir.listFiles()
+            ?.filter { it.isDirectory }
+            ?.sortedBy { it.name.lowercase() }
+            ?.map { dir ->
+                StyleFolder(
+                    uri = Uri.fromFile(dir),
+                    name = dir.name,
+                    styleCount = dir.listFiles { f -> f.isFile && f.extension.equals("sty", true) }?.size ?: 0
+                )
+            }
+            ?: emptyList()
+    }
+
     fun listStyles(): List<Pair<Uri, String>> {
         ensureStyleFolder()
-        return styleRootDir.walkTopDown()
-            .filter { it.isFile && it.extension.equals("sty", true) }
-            .sortedBy { it.name.lowercase() }
-            .map { Uri.fromFile(it) to it.name }
-            .toList()
+        return styleRootDir.listFiles { f -> f.isFile && f.extension.equals("sty", true) }
+            ?.sortedBy { it.name.lowercase() }
+            ?.map { Uri.fromFile(it) to it.name }
+            ?: emptyList()
+    }
+
+    fun listStylesInFolder(folderUri: Uri): List<Pair<Uri, String>> {
+        return try {
+            val dir = File(folderUri.path ?: return emptyList())
+            dir.listFiles { f -> f.isFile && f.extension.equals("sty", true) }
+                ?.sortedBy { it.name.lowercase() }
+                ?.map { Uri.fromFile(it) to it.name }
+                ?: emptyList()
+        } catch (e: Exception) {
+            Timber.e(e, "Failed listing styles in $folderUri")
+            emptyList()
+        }
     }
 
     fun readBytes(uri: Uri): ByteArray? = try {
