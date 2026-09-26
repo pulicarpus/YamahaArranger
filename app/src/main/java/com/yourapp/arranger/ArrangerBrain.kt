@@ -201,25 +201,16 @@ class ArrangerBrain @Inject constructor(
             else DebugLog.add("🎹 Chord release: keep last chord")
         } else if (leftVoiceEnabled) {
             DebugLog.add("🎹 LEFT OFF note=$midiNote → pitch=$outputNote → LEFT VOICE OFF")
-            if (keyboardSustain) {
-                deferSustainNoteOff(leftVoiceChannel, outputNote)
-            } else {
-                audioEngine.noteOffChannel(leftVoiceChannel, outputNote)
-                midiInputManager.sendNoteOff(leftVoiceChannel, outputNote)
-                leftVoiceNotes.remove(outputNote)
-                leftVoiceNotes.remove(outputNote)
-            }
+            audioEngine.noteOffChannel(leftVoiceChannel, outputNote)
+            midiInputManager.sendNoteOff(leftVoiceChannel, outputNote)
+            leftVoiceNotes.remove(outputNote)
         } else {
             DebugLog.add("🎹 LEFT OFF note=$midiNote → pitch=$outputNote → R1/R2/R3 OFF (LEFT OFF)")
             for (channel in 0..2) {
                 if (!rightVoiceEnabled[channel]) continue
-                if (keyboardSustain) {
-                    deferSustainNoteOff(channel, outputNote)
-                } else {
-                    if (channel == 0) audioEngine.noteOff(outputNote)
-                    else audioEngine.noteOffChannel(channel, outputNote)
-                    midiInputManager.sendNoteOff(channel, outputNote)
-                }
+                if (channel == 0) audioEngine.noteOff(outputNote)
+                else audioEngine.noteOffChannel(channel, outputNote)
+                midiInputManager.sendNoteOff(channel, outputNote)
             }
         }
     }
@@ -248,8 +239,6 @@ class ArrangerBrain @Inject constructor(
         if (leftVoiceNotes.isEmpty()) return
         val notes = leftVoiceNotes.toList()
         notes.forEach { note ->
-            sustainReleaseJobs.remove(leftVoiceChannel to note)?.cancel()
-            sustainedNotes.remove(leftVoiceChannel to note)
             audioEngine.noteOffChannel(leftVoiceChannel, note)
             midiInputManager.sendNoteOff(leftVoiceChannel, note)
         }
