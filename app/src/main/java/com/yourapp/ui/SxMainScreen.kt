@@ -718,7 +718,7 @@ private fun SxCenterDisplay(
 @Composable
 private fun SxStyleLcdPage(
     state: MainUiState,
-    styleFolders: List<ContentResolverProvider.StyleFolder>,
+    styleFolders: List<StyleFolder>,
     styleFiles: List<Pair<Uri, String>>,
     selectedStyleUri: Uri?,
     selectedStyleFolderUri: Uri?,
