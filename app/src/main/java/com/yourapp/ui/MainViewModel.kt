@@ -163,7 +163,7 @@ data class MainUiState(
     val rightVoices: List<KeyboardVoiceSlot> = defaultKeyboardVoices(),
     val voiceAssignments: List<VoiceSlot> = defaultVoices(),
     val availableSoundFonts: List<Pair<Uri, String>> = emptyList(),
-    val styleFolders: List<ContentResolverProvider.StyleFolder> = emptyList(),
+    val styleFolders: List<StyleFolder> = emptyList(),
     val styleFiles: List<Pair<Uri, String>> = emptyList(),
     val sf2Presets: List<AudioEngineManager.SfPreset> = emptyList()
 )
