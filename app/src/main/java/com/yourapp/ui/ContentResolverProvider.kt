@@ -14,7 +14,6 @@ import java.io.InputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
-@Singleton
 data class StyleFolder(val uri: Uri, val name: String, val styleCount: Int)
 
 @Singleton
