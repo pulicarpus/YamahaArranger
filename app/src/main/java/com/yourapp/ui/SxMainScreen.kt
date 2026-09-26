@@ -781,10 +781,10 @@ private fun SxKeyboardVoiceDialog(
         .filter { it.role == "MELODY" && it.bank != 128 }
         .filter { voiceCategoryMatches(it.program, category) }
         .filter { search.isBlank() || it.name.contains(search, ignoreCase = true) }
-    val filteredGm = remember(search) {
-        if (search.isBlank()) GM_VOICES
+    val filteredGm = remember(search, category) {
+        val voices = if (search.isBlank()) GM_VOICES
         else GM_VOICES.filter { it.first.contains(search, ignoreCase = true) }
-    }.filter { voiceCategoryMatches(it.second, category) }
+        voices.filter { voiceCategoryMatches(it.second, category) }
     }
 
     AlertDialog(
