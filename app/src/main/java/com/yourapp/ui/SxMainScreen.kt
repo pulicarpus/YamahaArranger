@@ -100,20 +100,36 @@ fun SxMainScreen(
                 onInspector = onOpenInspector
             )
             Spacer(Modifier.height(gap))
-            Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(gap)) {
+            // Arranger-style hardware panel: the center is a dedicated LCD,
+            // visually separated from the physical-style controls on both sides.
+            Row(
+                Modifier.fillMaxWidth().weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(if (compact) 5.dp else 7.dp)
+            ) {
                 SxSideMenu(
-                    Modifier.weight(.17f).fillMaxHeight(),
+                    Modifier.weight(.18f).fillMaxHeight(),
                     compact,
                     onPickStyle = { stylePicker.launch(arrayOf("audio/*", "application/octet-stream", "*/*")) }
                 )
-                SxCenterDisplay(state, viewModel, compact,
-                    onPickStyle = { stylePicker.launch(arrayOf("audio/*", "application/octet-stream", "*/*")) },
-                    onPickRightVoice = { rightVoicePickerLayer = it },
-                    modifier = Modifier.weight(.66f).fillMaxHeight())
+
+                SxLcdFrame(
+                    modifier = Modifier.weight(.64f).fillMaxHeight(),
+                    compact = compact
+                ) {
+                    SxCenterDisplay(
+                        state,
+                        viewModel,
+                        compact,
+                        onPickStyle = { stylePicker.launch(arrayOf("audio/*", "application/octet-stream", "*/*")) },
+                        onPickRightVoice = { rightVoicePickerLayer = it },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+
                 SxRightPanel(
                     state,
                     viewModel,
-                    Modifier.weight(.17f).fillMaxHeight(),
+                    Modifier.weight(.18f).fillMaxHeight(),
                     compact,
                     onPickVoice = { category ->
                         selectedVoiceCategory = category
@@ -542,6 +558,40 @@ private fun SxSideMenu(modifier: Modifier, compact: Boolean, onPickStyle: () -> 
                     Box(contentAlignment = Alignment.Center) { Text(label, color = Color.White, fontSize = if (compact) 6.sp else 7.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SxLcdFrame(
+    modifier: Modifier,
+    compact: Boolean,
+    content: @Composable () -> Unit
+) {
+    // Thick dark bezel + inner highlight deliberately make this look like a
+    // physical arranger LCD rather than a normal Android card.
+    Surface(
+        color = Color(0xFF050607),
+        shape = RoundedCornerShape(if (compact) 6.dp else 8.dp),
+        modifier = modifier.border(
+            width = if (compact) 2.dp else 3.dp,
+            color = Color(0xFF2B3035),
+            shape = RoundedCornerShape(if (compact) 6.dp else 8.dp)
+        )
+    ) {
+        Surface(
+            color = Color(0xFF0B0E11),
+            shape = RoundedCornerShape(if (compact) 4.dp else 6.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(if (compact) 3.dp else 5.dp)
+                .border(
+                    1.dp,
+                    Color(0xFF444A50),
+                    RoundedCornerShape(if (compact) 4.dp else 6.dp)
+                )
+        ) {
+            content()
         }
     }
 }
