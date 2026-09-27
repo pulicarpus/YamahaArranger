@@ -174,6 +174,16 @@ class ContentResolverProvider @Inject constructor(
             ?: emptyList()
     }
 
+    fun listAllStylesInFolders(): List<Pair<Uri, String>> {
+        ensureStyleFolder()
+        return styleRootDir.listFiles()
+            ?.filter { it.isDirectory }
+            ?.flatMap { styleFilesUnder(it) }
+            ?.sortedBy { it.absolutePath.lowercase() }
+            ?.map { Uri.fromFile(it) to it.name }
+            ?: emptyList()
+    }
+
     fun listStyles(): List<Pair<Uri, String>> {
         ensureStyleFolder()
         return styleRootDir.listFiles { f -> f.isFile && isStyleFile(f) }
