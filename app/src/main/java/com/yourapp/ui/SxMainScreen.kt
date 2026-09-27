@@ -766,7 +766,7 @@ private fun SxStyleLcdPage(
                         Spacer(Modifier.weight(1f)); Text(styleFiles.size.toString() + " FILES", color = SxDim, fontSize = 7.sp)
                     }
                     if (selectedStyleFolderUri == null) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("SELECT A STYLE FOLDER", color = SxDim, fontSize = 11.sp, fontWeight = FontWeight.Bold) } }
-                    else if (styleFiles.isEmpty()) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("NO .STY FILES IN THIS FOLDER", color = SxDim, fontSize = 9.sp) } }
+                    else if (styleFiles.isEmpty()) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("NO STYLE FILES IN THIS FOLDER", color = SxDim, fontSize = 9.sp) } }
                     else {
                         LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             items(styleFiles) { item ->
@@ -774,7 +774,7 @@ private fun SxStyleLcdPage(
                                 Row(Modifier.fillMaxWidth().clickable { onSelect(item.first) }.background(if (selected) SxBlueDark else Color(0xFF20262D), RoundedCornerShape(2.dp)).padding(horizontal = 8.dp, vertical = if (compact) 7.dp else 9.dp), verticalAlignment = Alignment.CenterVertically) {
                                     Text((styleFiles.indexOf(item) + 1).toString(), color = SxDim, fontSize = 8.sp, modifier = Modifier.width(28.dp))
                                     Text(item.second.substringBeforeLast('.'), color = Color.White, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                                    Text("STY", color = SxDim, fontSize = 7.sp)
+                                    Text(item.second.substringAfterLast(".", "").uppercase().ifBlank { "STYLE" }, color = SxDim, fontSize = 7.sp)
                                 }
                             }
                         }
