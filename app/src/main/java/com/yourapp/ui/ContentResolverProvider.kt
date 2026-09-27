@@ -11,6 +11,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import timber.log.Timber
 import java.io.File
 import java.io.InputStream
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -111,7 +112,9 @@ class ContentResolverProvider @Inject constructor(
                 context.contentResolver.query(
                     mediaUri,
                     projection,
-                    "\u0024{MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ?",
+                    "(${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ? OR " +
+                        "${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ? OR " +
+                        "${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ?)",
                     arrayOf("%.sty", "%.prs", "%.sst"),
                     null
                 )?.use { cursor ->
