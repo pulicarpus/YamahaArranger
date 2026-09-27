@@ -184,7 +184,8 @@ class ContentResolverProvider @Inject constructor(
 
     fun listStylesInFolder(folderUri: Uri): List<Pair<Uri, String>> {
         return try {
-            val path = folderUri.path ?: return emptyList()
+            val rawPath = folderUri.path ?: return emptyList()
+            val path = Uri.decode(rawPath)
             val dir = File(path)
             val files = styleFilesUnder(dir)
                 .sortedBy { it.name.lowercase() }
