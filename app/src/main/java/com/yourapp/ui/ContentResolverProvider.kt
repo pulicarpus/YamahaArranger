@@ -82,6 +82,56 @@ class ContentResolverProvider @Inject constructor(
             }
         }
 
+        if (result.isNotEmpty()) return result
+
+        // Fallback for devices where direct File.listFiles() cannot enumerate
+        // shared-storage children reliably. MANAGE_EXTERNAL_STORAGE also
+        // permits access to MediaStore.Files.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+            Environment.isExternalStorageManager()
+        ) {
+            val prefix = styleRootDir.absolutePath.trimEnd('/') + "/"
+            val mediaUri = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
+            val projection = arrayOf(
+                MediaStore.Files.FileColumns.DATA,
+                MediaStore.Files.FileColumns.DISPLAY_NAME
+            )
+            val mediaResult = mutableListOf<File>()
+
+            try {
+                context.contentResolver.query(
+                    mediaUri,
+                    projection,
+                    "\u0024{MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ?",
+                    arrayOf("%.sty"),
+                    null
+                )?.use { cursor ->
+                    val dataIndex = cursor.getColumnIndex(MediaStore.Files.FileColumns.DATA)
+                    while (cursor.moveToNext()) {
+                        if (dataIndex < 0 || cursor.isNull(dataIndex)) continue
+                        val path = cursor.getString(dataIndex)
+                        val file = File(path)
+                        if (path.startsWith(prefix) &&
+                            file.absolutePath.startsWith(dir.absolutePath.trimEnd('/') + "/") &&
+                            file.isFile &&
+                            file.name.endsWith(".sty", ignoreCase = true)
+                        ) {
+                            mediaResult += file
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "🎼 MediaStore Style fallback failed for \u0024{dir.absolutePath}")
+            }
+
+            if (mediaResult.isNotEmpty()) {
+                Timber.i(
+                    "🎼 MediaStore Style fallback found \u0024{mediaResult.size} files in \u0024{dir.absolutePath}"
+                )
+                return mediaResult.distinctBy { it.absolutePath }
+            }
+        }
+
         return result
     }
 
