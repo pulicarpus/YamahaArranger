@@ -38,11 +38,52 @@ class ContentResolverProvider @Inject constructor(
         }
     }
 
-    private fun styleFilesUnder(dir: File): List<File> =
-        if (!dir.isDirectory) emptyList()
-        else dir.walkTopDown()
-            .filter { it.isFile && it.extension.equals("sty", true) }
-            .toList()
+    /**
+     * Scan YamahaArranger/Styles without FileTreeWalk's silent SKIP behavior.
+     *
+     * On Android 11+ a directory can be visible while child enumeration is
+     * blocked by scoped-storage permissions. FileTreeWalk silently skips an
+     * unreadable directory, which made the UI report "0" with no useful clue.
+     * An explicit stack lets us log exactly where enumeration stops.
+     */
+    private fun styleFilesUnder(dir: File): List<File> {
+        if (!dir.isDirectory) {
+            Timber.w("🎼 Style scan: not a directory: \u0024{dir.absolutePath}")
+            return emptyList()
+        }
+
+        val result = mutableListOf<File>()
+        val pending = ArrayDeque<File>()
+        pending.addLast(dir)
+
+        while (pending.isNotEmpty()) {
+            val current = pending.removeLast()
+            val children = try {
+                current.listFiles()
+            } catch (e: SecurityException) {
+                Timber.e(e, "🎼 Style scan denied: \u0024{current.absolutePath}")
+                null
+            }
+
+            if (children == null) {
+                Timber.w(
+                    "🎼 Style scan cannot enumerate: path=\u0024{current.absolutePath} " +
+                        "exists=\u0024{current.exists()} dir=\u0024{current.isDirectory} canRead=\u0024{current.canRead()}"
+                )
+                continue
+            }
+
+            for (child in children) {
+                if (child.isDirectory) {
+                    pending.addLast(child)
+                } else if (child.isFile && child.name.endsWith(".sty", ignoreCase = true)) {
+                    result += child
+                }
+            }
+        }
+
+        return result
+    }
 
     fun listStyleFolders(): List<StyleFolder> {
         ensureStyleFolder()
