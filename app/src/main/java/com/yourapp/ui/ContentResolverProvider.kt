@@ -38,6 +38,12 @@ class ContentResolverProvider @Inject constructor(
         }
     }
 
+    private fun styleFilesUnder(dir: File): List<File> =
+        if (!dir.isDirectory) emptyList()
+        else dir.walkTopDown()
+            .filter { it.isFile && it.extension.equals("sty", true) }
+            .toList()
+
     fun listStyleFolders(): List<StyleFolder> {
         ensureStyleFolder()
         return styleRootDir.listFiles()
@@ -47,7 +53,10 @@ class ContentResolverProvider @Inject constructor(
                 StyleFolder(
                     uri = Uri.fromFile(dir),
                     name = dir.name,
-                    styleCount = dir.listFiles { f -> f.isFile && f.extension.equals("sty", true) }?.size ?: 0
+                    // Yamaha style packs can contain another level of folders.
+                    // Count every .STY below the category, like the Android
+                    // file manager's item count, instead of only direct files.
+                    styleCount = styleFilesUnder(dir).size
                 )
             }
             ?: emptyList()
@@ -64,10 +73,9 @@ class ContentResolverProvider @Inject constructor(
     fun listStylesInFolder(folderUri: Uri): List<Pair<Uri, String>> {
         return try {
             val dir = File(folderUri.path ?: return emptyList())
-            dir.listFiles { f -> f.isFile && f.extension.equals("sty", true) }
-                ?.sortedBy { it.name.lowercase() }
-                ?.map { Uri.fromFile(it) to it.name }
-                ?: emptyList()
+            styleFilesUnder(dir)
+                .sortedBy { it.name.lowercase() }
+                .map { Uri.fromFile(it) to it.name }
         } catch (e: Exception) {
             Timber.e(e, "Failed listing styles in $folderUri")
             emptyList()
