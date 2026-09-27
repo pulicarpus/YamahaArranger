@@ -232,6 +232,7 @@ class MainViewModel @Inject constructor(
         MainUiState(
             styleName = styleName,
             styleFolders = styleFolders,
+            styleFiles = styleFiles,
             tempoBpm = arranger.tempoBpm,
             transpose = transpose,
             isPlaying = arranger.isPlaying,
