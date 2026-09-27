@@ -623,8 +623,8 @@ class MainViewModel @Inject constructor(
             // Style Select is folder-first. Keep the file list empty until a
             // folder is explicitly selected, avoiding a refresh race that can
             // overwrite the selected folder's files with the root file list.
-            _styleFiles.value = emptyList()
-            DebugLog.add("🎼 Style folders found: " + _styleFolders.value.size)
+            _styleFiles.value = contentResolver.listAllStylesInFolders()
+            DebugLog.add("🎼 Style folders found: " + _styleFolders.value.size + " all styles=" + _styleFiles.value.size)
         }
     }
 
