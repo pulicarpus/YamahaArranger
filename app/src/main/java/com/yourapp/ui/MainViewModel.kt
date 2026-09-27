@@ -620,8 +620,11 @@ class MainViewModel @Inject constructor(
     fun refreshStyleList() {
         viewModelScope.launch(Dispatchers.IO) {
             _styleFolders.value = contentResolver.listStyleFolders()
-            _styleFiles.value = contentResolver.listStyles()
-            DebugLog.add("🎼 Style folders found: " + _styleFolders.value.size + " root styles=" + _styleFiles.value.size)
+            // Style Select is folder-first. Keep the file list empty until a
+            // folder is explicitly selected, avoiding a refresh race that can
+            // overwrite the selected folder's files with the root file list.
+            _styleFiles.value = emptyList()
+            DebugLog.add("🎼 Style folders found: " + _styleFolders.value.size)
         }
     }
 
