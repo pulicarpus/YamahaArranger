@@ -138,7 +138,7 @@ fun SxMainScreen(
                         styleFiles = state.styleFiles,
                         selectedStyleUri = selectedStyleUri,
                         selectedStyleFolderUri = selectedStyleFolderUri,
-                        onStyleFolderSelect = { folder -> selectedStyleFolderUri = folder; viewModel.refreshStylesInFolder(folder) },
+                        onStyleFolderSelect = { folder -> selectedStyleFolderUri = folder },
                         onStyleSelect = { selectedStyleUri = it },
                         onStyleLoad = { uri -> viewModel.onStyleFilePicked(uri); selectedStyleUri = null; lcdPage = "HOME" },
                         voicePresets = state.sf2Presets,
@@ -729,6 +729,15 @@ private fun SxStyleLcdPage(
     onBrowse: () -> Unit,
     onBack: () -> Unit
 ) {
+    val visibleStyleFiles = remember(selectedStyleFolderUri, styleFiles) {
+        val folderPath = selectedStyleFolderUri?.path?.let(Uri::decode)?.trimEnd('/')
+        if (folderPath == null) emptyList()
+        else styleFiles.filter { (uri, _) ->
+            val p = uri.path?.let(Uri::decode)?.trimEnd('/') ?: return@filter false
+            p.startsWith(folderPath + "/")
+        }
+    }
+
     Column(Modifier.fillMaxSize().padding(if (compact) 7.dp else 9.dp)) {
         Row(Modifier.fillMaxWidth().height(if (compact) 30.dp else 34.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("STYLE", color = SxOrangeBright, fontSize = 10.sp, fontWeight = FontWeight.Bold)
@@ -763,16 +772,16 @@ private fun SxStyleLcdPage(
                 Column(Modifier.fillMaxSize().padding(5.dp)) {
                     Row(Modifier.fillMaxWidth().height(28.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(styleFolders.firstOrNull { it.uri == selectedStyleFolderUri }?.name ?: "STYLE FILES", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.weight(1f)); Text(styleFiles.size.toString() + " FILES", color = SxDim, fontSize = 7.sp)
+                        Spacer(Modifier.weight(1f)); Text(visibleStyleFiles.size.toString() + " FILES", color = SxDim, fontSize = 7.sp)
                     }
                     if (selectedStyleFolderUri == null) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("SELECT A STYLE FOLDER", color = SxDim, fontSize = 11.sp, fontWeight = FontWeight.Bold) } }
-                    else if (styleFiles.isEmpty()) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("NO STYLE FILES IN THIS FOLDER", color = SxDim, fontSize = 9.sp) } }
+                    else if (visibleStyleFiles.isEmpty()) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("NO STYLE FILES IN THIS FOLDER", color = SxDim, fontSize = 9.sp) } }
                     else {
                         LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            items(styleFiles) { item ->
+                            items(visibleStyleFiles) { item ->
                                 val selected = selectedStyleUri == item.first
                                 Row(Modifier.fillMaxWidth().clickable { onSelect(item.first) }.background(if (selected) SxBlueDark else Color(0xFF20262D), RoundedCornerShape(2.dp)).padding(horizontal = 8.dp, vertical = if (compact) 7.dp else 9.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Text((styleFiles.indexOf(item) + 1).toString(), color = SxDim, fontSize = 8.sp, modifier = Modifier.width(28.dp))
+                                    Text((visibleStyleFiles.indexOf(item) + 1).toString(), color = SxDim, fontSize = 8.sp, modifier = Modifier.width(28.dp))
                                     Text(item.second.substringBeforeLast('.'), color = Color.White, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                                     Text(item.second.substringAfterLast(".", "").uppercase().ifBlank { "STYLE" }, color = SxDim, fontSize = 7.sp)
                                 }
