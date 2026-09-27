@@ -87,17 +87,26 @@ class ContentResolverProvider @Inject constructor(
 
     fun listStyleFolders(): List<StyleFolder> {
         ensureStyleFolder()
-        return styleRootDir.listFiles()
+        val allFiles = Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()
+        val children = styleRootDir.listFiles()
+        Timber.i(
+            "🎼 Style root: path=\u0024{styleRootDir.absolutePath} exists=\u0024{styleRootDir.exists()} " +
+                "dir=\u0024{styleRootDir.isDirectory} canRead=\u0024{styleRootDir.canRead()} " +
+                "allFiles=\u0024allFiles children=\u0024{children?.size ?: -1}"
+        )
+        return children
             ?.filter { it.isDirectory }
             ?.sortedBy { it.name.lowercase() }
             ?.map { dir ->
+                val count = styleFilesUnder(dir).size
+                Timber.i(
+                    "🎼 Style category: \u0024{dir.name} path=\u0024{dir.absolutePath} " +
+                        "canRead=\u0024{dir.canRead()} styCount=\u0024count"
+                )
                 StyleFolder(
                     uri = Uri.fromFile(dir),
                     name = dir.name,
-                    // Yamaha style packs can contain another level of folders.
-                    // Count every .STY below the category, like the Android
-                    // file manager's item count, instead of only direct files.
-                    styleCount = styleFilesUnder(dir).size
+                    styleCount = count
                 )
             }
             ?: emptyList()
@@ -113,10 +122,16 @@ class ContentResolverProvider @Inject constructor(
 
     fun listStylesInFolder(folderUri: Uri): List<Pair<Uri, String>> {
         return try {
-            val dir = File(folderUri.path ?: return emptyList())
-            styleFilesUnder(dir)
+            val path = folderUri.path ?: return emptyList()
+            val dir = File(path)
+            val files = styleFilesUnder(dir)
                 .sortedBy { it.name.lowercase() }
-                .map { Uri.fromFile(it) to it.name }
+            Timber.i(
+                "🎼 Style folder open: uri=\u0024folderUri path=\u0024{dir.absolutePath} " +
+                    "exists=\u0024{dir.exists()} dir=\u0024{dir.isDirectory} canRead=\u0024{dir.canRead()} " +
+                    "styCount=\u0024{files.size}"
+            )
+            files.map { Uri.fromFile(it) to it.name }
         } catch (e: Exception) {
             Timber.e(e, "Failed listing styles in $folderUri")
             emptyList()
