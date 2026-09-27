@@ -186,9 +186,22 @@ class ContentResolverProvider @Inject constructor(
         return try {
             val rawPath = folderUri.path ?: return emptyList()
             val path = Uri.decode(rawPath)
-            val dir = File(path)
-            val files = styleFilesUnder(dir)
-                .sortedBy { it.name.lowercase() }
+            var dir = File(path)
+
+            // Uri paths can be encoded differently by Android/Compose. If the
+            // URI-derived File does not enumerate, resolve the folder again
+            // from the known YamahaArranger/Styles root by canonical path/name.
+            var files = styleFilesUnder(dir)
+            if (files.isEmpty()) {
+                val requestedName = dir.name
+                styleRootDir.listFiles()
+                    ?.firstOrNull { it.isDirectory && it.name == requestedName }
+                    ?.let {
+                        dir = it
+                        files = styleFilesUnder(it)
+                    }
+            }
+            files = files.sortedBy { it.name.lowercase() }
             Timber.i(
                 "🎼 Style folder open: uri=\u0024folderUri path=\u0024{dir.absolutePath} " +
                     "exists=\u0024{dir.exists()} dir=\u0024{dir.isDirectory} canRead=\u0024{dir.canRead()} " +
