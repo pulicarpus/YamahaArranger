@@ -46,6 +46,15 @@ class ContentResolverProvider @Inject constructor(
      * unreadable directory, which made the UI report "0" with no useful clue.
      * An explicit stack lets us log exactly where enumeration stops.
      */
+    /** Yamaha style collections may use .STY, .PRS and .SST containers. */
+    private fun isStyleFile(file: File): Boolean {
+        if (!file.isFile) return false
+        return when (file.extension.lowercase(Locale.ROOT)) {
+            "sty", "prs", "sst" -> true
+            else -> false
+        }
+    }
+
     private fun styleFilesUnder(dir: File): List<File> {
         if (!dir.isDirectory) {
             Timber.w("🎼 Style scan: not a directory: \u0024{dir.absolutePath}")
@@ -76,7 +85,7 @@ class ContentResolverProvider @Inject constructor(
             for (child in children) {
                 if (child.isDirectory) {
                     pending.addLast(child)
-                } else if (child.isFile && child.name.endsWith(".sty", ignoreCase = true)) {
+                } else if (child.isFile && isStyleFile(child)) {
                     result += child
                 }
             }
@@ -103,7 +112,7 @@ class ContentResolverProvider @Inject constructor(
                     mediaUri,
                     projection,
                     "\u0024{MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ?",
-                    arrayOf("%.sty"),
+                    arrayOf("%.sty", "%.prs", "%.sst"),
                     null
                 )?.use { cursor ->
                     val dataIndex = cursor.getColumnIndex(MediaStore.Files.FileColumns.DATA)
@@ -114,7 +123,7 @@ class ContentResolverProvider @Inject constructor(
                         if (path.startsWith(prefix) &&
                             file.absolutePath.startsWith(dir.absolutePath.trimEnd('/') + "/") &&
                             file.isFile &&
-                            file.name.endsWith(".sty", ignoreCase = true)
+                            isStyleFile(file)
                         ) {
                             mediaResult += file
                         }
@@ -164,7 +173,7 @@ class ContentResolverProvider @Inject constructor(
 
     fun listStyles(): List<Pair<Uri, String>> {
         ensureStyleFolder()
-        return styleRootDir.listFiles { f -> f.isFile && f.extension.equals("sty", true) }
+        return styleRootDir.listFiles { f -> f.isFile && isStyleFile(f) }
             ?.sortedBy { it.name.lowercase() }
             ?.map { Uri.fromFile(it) to it.name }
             ?: emptyList()
