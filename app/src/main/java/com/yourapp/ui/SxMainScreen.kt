@@ -793,7 +793,7 @@ private fun SxStyleLcdPage(
                     verticalArrangement = Arrangement.spacedBy(if (compact) 3.dp else 4.dp)
                 ) {
                     pageItems.chunked(2).forEachIndexed { rowIndex, rowItems ->
-                        item(key = "style-row-\$safePage-\$rowIndex") {
+                        item(key = "style-row-$safePage-$rowIndex") {
                             Row(
                                 Modifier.fillMaxWidth().height(if (compact) 48.dp else 58.dp),
                                 horizontalArrangement = Arrangement.spacedBy(if (compact) 3.dp else 4.dp)
@@ -943,7 +943,7 @@ private fun SxVoiceLcdPage(
                     verticalArrangement = Arrangement.spacedBy(if (compact) 3.dp else 4.dp)
                 ) {
                     pageItems.chunked(2).forEachIndexed { rowIndex, rowItems ->
-                        item(key = "voice-row-\$safePage-\$rowIndex") {
+                        item(key = "voice-row-$safePage-$rowIndex") {
                             Row(
                                 Modifier.fillMaxWidth().height(if (compact) 48.dp else 58.dp),
                                 horizontalArrangement = Arrangement.spacedBy(if (compact) 3.dp else 4.dp)
