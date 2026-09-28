@@ -760,7 +760,7 @@ private fun SxStyleLcdPage(
                 maxLines = 1, overflow = TextOverflow.Ellipsis
             )
             Spacer(Modifier.weight(1f))
-            Text("\${visibleStyleFiles.size} STYLES", color = SxDim, fontSize = 7.sp)
+            Text("${visibleStyleFiles.size} STYLES", color = SxDim, fontSize = 7.sp)
             TextButton(onClick = onBack, contentPadding = PaddingValues(horizontal = 4.dp)) {
                 Text("HOME", color = SxGreen, fontSize = 8.sp)
             }
@@ -858,26 +858,13 @@ private fun SxStyleLcdPage(
                         )
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Text("P\${index + 1}", color = if (enabled) Color.White else SxDim, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text("P${index + 1}", color = if (enabled) Color.White else SxDim, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
         }
 
         Spacer(Modifier.height(4.dp))
-        Row(Modifier.fillMaxWidth().height(if (compact) 35.dp else 40.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Button(
-                onClick = onBrowse, modifier = Modifier.weight(1f).fillMaxHeight(),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF252C34)),
-                shape = RoundedCornerShape(3.dp), contentPadding = PaddingValues(4.dp)
-            ) { Text("OPEN FILE", fontSize = 8.sp) }
-            Button(
-                onClick = { selectedStyleUri?.let(onLoad) }, enabled = selectedStyleUri != null,
-                modifier = Modifier.weight(1.35f).fillMaxHeight(),
-                colors = ButtonDefaults.buttonColors(containerColor = SxOrange),
-                shape = RoundedCornerShape(3.dp), contentPadding = PaddingValues(4.dp)
-            ) { Text("LOAD STYLE", fontSize = 9.sp, fontWeight = FontWeight.Bold) }
-        }
     }
 }
 
@@ -908,7 +895,7 @@ private fun SxVoiceLcdPage(
             Spacer(Modifier.width(7.dp))
             Text("RIGHT " + (selectedLayer + 1), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.weight(1f))
-            Text("\${filtered.size} VOICES", color = SxDim, fontSize = 7.sp)
+            Text("${filtered.size} VOICES", color = SxDim, fontSize = 7.sp)
             TextButton(onClick = onBack, contentPadding = PaddingValues(horizontal = 4.dp)) {
                 Text("HOME", color = SxGreen, fontSize = 8.sp)
             }
@@ -1009,7 +996,7 @@ private fun SxVoiceLcdPage(
                         )
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Text("P\${index + 1}", color = if (enabled) Color.White else SxDim, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text("P${index + 1}", color = if (enabled) Color.White else SxDim, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
