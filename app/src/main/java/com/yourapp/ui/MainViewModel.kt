@@ -534,7 +534,12 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             val bytes = withContext(Dispatchers.IO) { contentResolver.readBytes(uri) }
             if (bytes == null) { DebugLog.add("❌ Cannot read style"); return@launch }
-            val fileName = contentResolver.fileName(uri) ?: "style.sty"
+            // Prefer the actual URI/path filename. Some Android providers expose
+            // a generic name such as "style.sty", which loses the real style name.
+            val uriFileName = uri.path?.let { path ->
+                path.substringAfterLast('/').takeIf { it.isNotBlank() }
+            }
+            val fileName = uriFileName ?: contentResolver.fileName(uri) ?: "style.sty"
             val parsed = withContext(Dispatchers.Default) { styleRepository.loadStyle(fileName, bytes) }
             if (parsed == null) { DebugLog.add("❌ Parse fail: $fileName"); return@launch }
             arrangerBrain.loadStyle(parsed)
