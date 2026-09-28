@@ -139,7 +139,7 @@ fun SxMainScreen(
                         selectedStyleUri = selectedStyleUri,
                         selectedStyleFolderUri = selectedStyleFolderUri,
                         onStyleFolderSelect = { folder -> selectedStyleFolderUri = folder },
-                        onStyleSelect = { selectedStyleUri = it },
+                        onStyleSelect = { uri -> selectedStyleUri = uri; viewModel.onStyleFilePicked(uri); selectedStyleUri = null; lcdPage = "HOME" },
                         onStyleLoad = { uri -> viewModel.onStyleFilePicked(uri); selectedStyleUri = null; lcdPage = "HOME" },
                         voicePresets = state.sf2Presets,
                         voiceCategory = selectedVoiceCategory,
@@ -745,7 +745,7 @@ private fun SxStyleLcdPage(
         }
     }
     var page by remember(selectedStyleFolderUri) { mutableStateOf(0) }
-    val pageSize = 8
+    val pageSize = 16
     val pageCount = maxOf(1, (visibleStyleFiles.size + pageSize - 1) / pageSize)
     val safePage = page.coerceIn(0, pageCount - 1)
     val pageItems = visibleStyleFiles.drop(safePage * pageSize).take(pageSize)
@@ -788,51 +788,49 @@ private fun SxStyleLcdPage(
                 modifier = Modifier.fillMaxWidth().weight(1f)
                     .border(1.dp, Color(0xFF38424C), RoundedCornerShape(4.dp))
             ) {
-                LazyColumn(
+                Column(
                     Modifier.fillMaxSize().padding(if (compact) 4.dp else 5.dp),
                     verticalArrangement = Arrangement.spacedBy(if (compact) 3.dp else 4.dp)
                 ) {
-                    pageItems.chunked(2).forEachIndexed { rowIndex, rowItems ->
-                        item(key = "style-row-$safePage-$rowIndex") {
-                            Row(
-                                Modifier.fillMaxWidth().height(if (compact) 48.dp else 58.dp),
-                                horizontalArrangement = Arrangement.spacedBy(if (compact) 3.dp else 4.dp)
-                            ) {
-                                rowItems.forEachIndexed { colIndex, item ->
-                                    val selected = selectedStyleUri == item.first
-                                    Surface(
-                                        color = if (selected) SxBlue else Color(0xFF20262D),
-                                        shape = RoundedCornerShape(3.dp),
-                                        modifier = Modifier.weight(1f).fillMaxHeight()
-                                            .clickable { onSelect(item.first) }
-                                            .border(
-                                                1.dp,
-                                                if (selected) Color(0xFF58A9FF) else Color(0xFF38434E),
-                                                RoundedCornerShape(3.dp)
-                                            )
+                    pageItems.chunked(4).forEachIndexed { rowIndex, rowItems ->
+                        Row(
+                            Modifier.fillMaxWidth().weight(1f),
+                            horizontalArrangement = Arrangement.spacedBy(if (compact) 3.dp else 4.dp)
+                        ) {
+                            rowItems.forEachIndexed { colIndex, item ->
+                                val selected = selectedStyleUri == item.first
+                                Surface(
+                                    color = if (selected) SxBlue else Color(0xFF20262D),
+                                    shape = RoundedCornerShape(3.dp),
+                                    modifier = Modifier.weight(1f).fillMaxHeight()
+                                        .clickable { onSelect(item.first) }
+                                        .border(
+                                            1.dp,
+                                            if (selected) Color(0xFF58A9FF) else Color(0xFF38434E),
+                                            RoundedCornerShape(3.dp)
+                                        )
+                                ) {
+                                    Column(
+                                        Modifier.fillMaxSize().padding(horizontal = 6.dp, vertical = 3.dp),
+                                        verticalArrangement = Arrangement.Center
                                     ) {
-                                        Column(
-                                            Modifier.fillMaxSize().padding(horizontal = 7.dp, vertical = 4.dp),
-                                            verticalArrangement = Arrangement.Center
-                                        ) {
-                                            Text(
-                                                item.second.substringBeforeLast(".").take(24),
-                                                color = Color.White,
-                                                fontSize = if (compact) 9.sp else 10.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                            Text(
-                                                "STYLE " + (safePage * pageSize + rowIndex * 2 + colIndex + 1),
-                                                color = if (selected) Color(0xFFC9E5FF) else SxDim,
-                                                fontSize = 6.sp, maxLines = 1
-                                            )
-                                        }
+                                        Text(
+                                            item.second.substringBeforeLast(".").take(22),
+                                            color = Color.White,
+                                            fontSize = if (compact) 8.sp else 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            "STYLE " + (safePage * pageSize + rowIndex * 4 + colIndex + 1),
+                                            color = if (selected) Color(0xFFC9E5FF) else SxDim,
+                                            fontSize = 5.sp, maxLines = 1
+                                        )
                                     }
                                 }
-                                if (rowItems.size == 1) Spacer(Modifier.weight(1f))
                             }
+                            repeat(4 - rowItems.size) { Spacer(Modifier.weight(1f)) }
                         }
                     }
                 }
@@ -929,7 +927,7 @@ private fun SxVoiceLcdPage(
                     Modifier.fillMaxSize().padding(if (compact) 4.dp else 5.dp),
                     verticalArrangement = Arrangement.spacedBy(if (compact) 3.dp else 4.dp)
                 ) {
-                    pageItems.chunked(2).forEachIndexed { rowIndex, rowItems ->
+                    pageItems.chunked(4).forEachIndexed { rowIndex, rowItems ->
                         item(key = "voice-row-$safePage-$rowIndex") {
                             Row(
                                 Modifier.fillMaxWidth().height(if (compact) 48.dp else 58.dp),
@@ -1002,42 +1000,6 @@ private fun SxVoiceLcdPage(
             }
         }
 
-        Spacer(Modifier.height(4.dp))
-        Row(
-            Modifier.fillMaxWidth().height(if (compact) 30.dp else 34.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            val categories = listOf("PIANO", "ORGAN", "GUITAR", "STRINGS", "BRASS", "SAX/WOODWIND", "SYNTH", "CHOIR/PAD", "BASS", "WORLD")
-            categories.take(6).forEach { cat ->
-                Surface(
-                    color = if (cat == category) SxBlue else Color(0xFF20262D),
-                    shape = RoundedCornerShape(2.dp),
-                    modifier = Modifier.weight(1f).fillMaxHeight().clickable { onCategory(cat) }
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(cat, color = Color.White, fontSize = if (cat.length > 7) 4.sp else 5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                }
-            }
-        }
-        Row(
-            Modifier.fillMaxWidth().height(if (compact) 30.dp else 34.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            val categories = listOf("PIANO", "ORGAN", "GUITAR", "STRINGS", "BRASS", "SAX/WOODWIND", "SYNTH", "CHOIR/PAD", "BASS", "WORLD")
-            categories.drop(6).forEach { cat ->
-                Surface(
-                    color = if (cat == category) SxBlue else Color(0xFF20262D),
-                    shape = RoundedCornerShape(2.dp),
-                    modifier = Modifier.weight(1f).fillMaxHeight().clickable { onCategory(cat) }
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(cat, color = Color.White, fontSize = if (cat.length > 7) 4.sp else 5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                }
-            }
-            Spacer(Modifier.weight(6f - categories.drop(6).size))
-        }
     }
 }
 
