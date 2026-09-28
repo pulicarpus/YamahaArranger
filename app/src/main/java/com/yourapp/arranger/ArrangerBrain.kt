@@ -67,8 +67,11 @@ class ArrangerBrain @Inject constructor(
     // while a key is held cannot produce a mismatched NOTE_OFF.
     private val transposedNotes = mutableMapOf<Int, Int>()
     private var keyboardSustain = false
-    // Sustain is owned by BASSMIDI CC64. Keyboard NOTE_OFF events are always
-    // sent immediately; BASSMIDI decides whether to hold/release them.
+    // Kotlin-side safety ledger: BASSMIDI CC64 handles RIGHT 1/2/3; LEFT
+    // channel 3 deliberately has no native sustain. ACMP/chord notes are
+    // excluded so arranger chord changes are never pedal-sustained.
+    private val sustainHeldNotes = mutableSetOf<Pair<Int, Int>>()
+    // Sustain is native for RIGHT 1/2/3; LEFT uses the ledger above.
     // Notes currently sounding through the dedicated LEFT VOICE channel.
     // Mode changes must release them even if the key-up arrives after ACMP changes.
     private val leftVoiceNotes = mutableSetOf<Int>()
@@ -128,11 +131,45 @@ class ArrangerBrain @Inject constructor(
         if (keyboardSustain == enabled) return
         keyboardSustain = enabled
         DebugLog.add("🎹 SUSTAIN = " + if (enabled) "ON" else "OFF")
-        // Let BASSMIDI handle sustain at the MIDI level. This is important for
-        // rapid playing/retriggering: every physical NOTE_OFF reaches BASSMIDI
-        // immediately, while CC64 keeps the released voice sounding. This avoids
-        // delayed-job cancellation leaving a repeated String note stuck.
         audioEngine.setKeyboardSustain(enabled)
+        if (!enabled) flushSustainedNotes()
+    }
+
+    private fun engineNoteOn(channel: Int, note: Int, velocity: Float) {
+        if (channel == 0) audioEngine.noteOn(note, velocity)
+        else audioEngine.noteOnChannel(channel, note, velocity)
+    }
+
+    private fun engineNoteOff(channel: Int, note: Int) {
+        if (channel == 0) audioEngine.noteOff(note)
+        else audioEngine.noteOffChannel(channel, note)
+    }
+
+    private fun releaseKeyboardNote(channel: Int, note: Int) {
+        if (keyboardSustain) {
+            sustainHeldNotes.add(channel to note)
+            return
+        }
+        engineNoteOff(channel, note)
+        midiInputManager.sendNoteOff(channel, note)
+    }
+
+    private fun stopSustainedNote(channel: Int, note: Int) {
+        if (sustainHeldNotes.remove(channel to note)) {
+            engineNoteOff(channel, note)
+            midiInputManager.sendNoteOff(channel, note)
+        }
+    }
+
+    private fun flushSustainedNotes() {
+        if (sustainHeldNotes.isEmpty()) return
+        val notes = sustainHeldNotes.toList()
+        sustainHeldNotes.clear()
+        notes.forEach { (channel, note) ->
+            engineNoteOff(channel, note)
+            midiInputManager.sendNoteOff(channel, note)
+        }
+        DebugLog.add("🎹 SUSTAIN RELEASE: ${notes.size} held note(s)")
     }
 
     fun setKeyboardTranspose(semitones: Int) {
