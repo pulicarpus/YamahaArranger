@@ -750,45 +750,24 @@ private fun SxStyleLcdPage(
             Spacer(Modifier.weight(1f))
             TextButton(onClick = onBack) { Text("HOME", color = SxGreen, fontSize = 9.sp) }
         }
-        Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Surface(color = Color(0xFF151A20), shape = RoundedCornerShape(4.dp), modifier = Modifier.width(if (compact) 145.dp else 175.dp).fillMaxHeight().border(1.dp, Color(0xFF38424C), RoundedCornerShape(4.dp))) {
-                Column(Modifier.fillMaxSize().padding(5.dp)) {
-                    Text("STYLE FOLDER", color = SxDim, fontSize = 7.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(3.dp))
-                    if (styleFolders.isEmpty()) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("NO FOLDERS", color = SxDim, fontSize = 9.sp) } }
-                    else {
-                        LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                            items(styleFolders) { folder ->
-                                val selected = selectedStyleFolderUri == folder.uri
-                                Row(Modifier.fillMaxWidth().clickable { onFolderSelect(folder.uri) }.background(if (selected) SxBlue else Color(0xFF20262D), RoundedCornerShape(2.dp)).padding(horizontal = 6.dp, vertical = if (compact) 7.dp else 9.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Text("📁", fontSize = 10.sp); Spacer(Modifier.width(5.dp))
-                                    Text(folder.name, color = Color.White, fontSize = 8.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                                    Text(folder.styleCount.toString(), color = SxDim, fontSize = 7.sp)
-                                }
-                            }
-                        }
-                    }
-                    Spacer(Modifier.height(3.dp))
-                    Text("YamahaArranger/Styles", color = SxDim, fontSize = 6.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Surface(color = Color(0xFF151A20), shape = RoundedCornerShape(4.dp), modifier = Modifier.fillMaxWidth().weight(1f).border(1.dp, Color(0xFF38424C), RoundedCornerShape(4.dp))) {
+            Column(Modifier.fillMaxSize().padding(5.dp)) {
+                Row(Modifier.fillMaxWidth().height(28.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(styleFolders.firstOrNull { it.uri == selectedStyleFolderUri }?.name ?: "STYLE FILES", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.weight(1f)); Text(visibleStyleFiles.size.toString() + " FILES", color = SxDim, fontSize = 7.sp)
                 }
-            }
-            Surface(color = Color(0xFF151A20), shape = RoundedCornerShape(4.dp), modifier = Modifier.weight(1f).fillMaxHeight().border(1.dp, Color(0xFF38424C), RoundedCornerShape(4.dp))) {
-                Column(Modifier.fillMaxSize().padding(5.dp)) {
-                    Row(Modifier.fillMaxWidth().height(28.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(styleFolders.firstOrNull { it.uri == selectedStyleFolderUri }?.name ?: "STYLE FILES", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.weight(1f)); Text(visibleStyleFiles.size.toString() + " FILES", color = SxDim, fontSize = 7.sp)
-                    }
-                    if (selectedStyleFolderUri == null) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("SELECT A STYLE FOLDER", color = SxDim, fontSize = 11.sp, fontWeight = FontWeight.Bold) } }
-                    else if (visibleStyleFiles.isEmpty()) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("NO STYLE FILES IN THIS FOLDER", color = SxDim, fontSize = 9.sp) } }
-                    else {
-                        LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            items(visibleStyleFiles) { item ->
-                                val selected = selectedStyleUri == item.first
-                                Row(Modifier.fillMaxWidth().clickable { onSelect(item.first) }.background(if (selected) SxBlueDark else Color(0xFF20262D), RoundedCornerShape(2.dp)).padding(horizontal = 8.dp, vertical = if (compact) 7.dp else 9.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Text((visibleStyleFiles.indexOf(item) + 1).toString(), color = SxDim, fontSize = 8.sp, modifier = Modifier.width(28.dp))
-                                    Text(item.second.substringBeforeLast('.'), color = Color.White, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                                    Text(item.second.substringAfterLast(".", "").uppercase().ifBlank { "STYLE" }, color = SxDim, fontSize = 7.sp)
-                                }
+                if (selectedStyleFolderUri == null) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("SELECT A STYLE FOLDER", color = SxDim, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+                } else if (visibleStyleFiles.isEmpty()) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("NO STYLE FILES IN THIS FOLDER", color = SxDim, fontSize = 9.sp) }
+                } else {
+                    LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        items(visibleStyleFiles) { item ->
+                            val selected = selectedStyleUri == item.first
+                            Row(Modifier.fillMaxWidth().clickable { onSelect(item.first) }.background(if (selected) SxBlueDark else Color(0xFF20262D), RoundedCornerShape(2.dp)).padding(horizontal = 8.dp, vertical = if (compact) 7.dp else 9.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text((visibleStyleFiles.indexOf(item) + 1).toString(), color = SxDim, fontSize = 8.sp, modifier = Modifier.width(28.dp))
+                                Text(item.second.substringBeforeLast("."), color = Color.White, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                                Text(item.second.substringAfterLast(".", "").uppercase().ifBlank { "STYLE" }, color = SxDim, fontSize = 7.sp)
                             }
                         }
                     }
