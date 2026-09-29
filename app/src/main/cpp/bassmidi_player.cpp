@@ -649,13 +649,14 @@ bool BassMidiPlayer::findMelodicPreset(
     std::string& matchedName) const {
     if (path.empty() || melodyPresetCache_.empty()) return false;
 
-    // Prefer an exact SF2 bank match first. Some Yamaha/XG SF2s store
-    // bank MSB+LSB packed as 1025 (= 8:1), while others store only the MSB
-    // (8) and rely on MIDI_EVENT_BANK_LSB. The requested value from Kotlin
-    // is the packed Yamaha 14-bit bank, so both forms must be accepted.
+    // The requested bank is Yamaha's packed MSB*128+LSB representation.
+    // Some SF2 files store that packed value, while others store only the
+    // MSB and rely on the MIDI Bank-LSB event. Accept both forms as an exact
+    // bank match before doing any fallback.
     const int requestedSourceBank =
         (requestedBank >= 128) ? (requestedBank / 128) : requestedBank;
 
+    // 1) Exact Yamaha/SF2 bank + program.
     for (const auto& p : melodyPresetCache_) {
         if (p.bank == requestedBank && p.program == requestedProgram) {
             sourceBank = p.bank;
@@ -665,6 +666,7 @@ bool BassMidiPlayer::findMelodicPreset(
         }
     }
 
+    // 2) MSB-only bank + program.
     for (const auto& p : melodyPresetCache_) {
         if (p.bank == requestedSourceBank && p.program == requestedProgram) {
             sourceBank = p.bank;
@@ -674,84 +676,159 @@ bool BassMidiPlayer::findMelodicPreset(
         }
     }
 
-    // Yamaha variation banks are not represented by a Bank-LSB field in SF2.
-    // If the requested Yamaha 14-bit bank has no exact SF2 entry, prefer the
-    // SAME PROGRAM before doing any name/category similarity search. This is
-    // important for fonts such as the current Yamaha melody bank where:
-    //   style 8:1 + PC49 (Strings) -> SF2 bank 0 + PC49 (String Yamaha)
-    // A category-only match can otherwise select bank 8 + PC2 ("12 String
-    // Guitar"), which is a different instrument even though its name contains
-    // a string/guitar category.
-    for (const auto& p : melodyPresetCache_) {
-        if (p.program == requestedProgram) {
-            sourceBank = p.bank;
-            sourceProgram = p.program;
-            matchedName = p.name;
-            return true;
-        }
-    }
-
+    // 3) Semantic voice matching.
+    //
+    // IMPORTANT: do this BEFORE "same program in another bank".
+    // A Yamaha variation bank may be absent from the SF2, but blindly taking
+    // the same PC number can turn Strings into Piano/E.Piano or another
+    // unrelated instrument. The requested voice name/category carries more
+    // musical information than a bare numeric PC once the exact bank is gone.
     std::string lower = voiceName;
     std::transform(lower.begin(), lower.end(), lower.begin(),
                    [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
 
     auto category = [](const std::string& n) -> int {
-        if (n.find("string") != std::string::npos || n.find("strg") != std::string::npos ||
-            n.find("str") != std::string::npos || n.find("orch") != std::string::npos ||
-            n.find("violin") != std::string::npos || n.find("viola") != std::string::npos ||
-            n.find("cello") != std::string::npos || n.find("ensemble") != std::string::npos ||
-            n.find("ens") != std::string::npos || n.find("sforz") != std::string::npos) return 1;
+        // Check guitar before "string" so names such as "12 String Guitar"
+        // remain guitar-family voices rather than being classified as strings.
+        if (n.find("guitar") != std::string::npos ||
+            n.find("gtr") != std::string::npos) return 3;
+        if (n.find("string") != std::string::npos ||
+            n.find("strg") != std::string::npos ||
+            n.find("str") != std::string::npos ||
+            n.find("orch") != std::string::npos ||
+            n.find("violin") != std::string::npos ||
+            n.find("viola") != std::string::npos ||
+            n.find("cello") != std::string::npos ||
+            n.find("ensemble") != std::string::npos ||
+            n.find("ens") != std::string::npos ||
+            n.find("sforz") != std::string::npos) return 1;
         if (n.find("bass") != std::string::npos) return 2;
-        if (n.find("guitar") != std::string::npos || n.find("gtr") != std::string::npos) return 3;
-        if (n.find("piano") != std::string::npos || n.find("grand") != std::string::npos) return 4;
+        if (n.find("piano") != std::string::npos ||
+            n.find("grand") != std::string::npos) return 4;
         if (n.find("organ") != std::string::npos) return 5;
         if (n.find("accordion") != std::string::npos) return 6;
-        if (n.find("brass") != std::string::npos || n.find("trumpet") != std::string::npos ||
+        if (n.find("brass") != std::string::npos ||
+            n.find("trumpet") != std::string::npos ||
             n.find("trombone") != std::string::npos) return 7;
-        if (n.find("sax") != std::string::npos || n.find("clarinet") != std::string::npos) return 8;
-        if (n.find("flute") != std::string::npos || n.find("oboe") != std::string::npos) return 9;
-        if (n.find("choir") != std::string::npos || n.find("voice") != std::string::npos) return 10;
+        if (n.find("sax") != std::string::npos ||
+            n.find("clarinet") != std::string::npos) return 8;
+        if (n.find("flute") != std::string::npos ||
+            n.find("oboe") != std::string::npos) return 9;
+        if (n.find("choir") != std::string::npos ||
+            n.find("voice") != std::string::npos) return 10;
         if (n.find("pad") != std::string::npos) return 11;
         if (n.find("synth") != std::string::npos) return 12;
         return 0;
     };
+
     auto gmCategory = [](int p) -> int {
-        if (p <= 7) return 4; if (p <= 15) return 5; if (p <= 23) return 5;
-        if (p <= 31) return 3; if (p <= 39) return 2; if (p <= 55) return 1;
-        if (p <= 63) return 7; if (p <= 71) return 8; if (p <= 79) return 9;
-        if (p <= 95) return 12; if (p <= 103) return 11; if (p <= 111) return 10;
+        if (p <= 7) return 4;
+        if (p <= 15) return 5;
+        if (p <= 23) return 5;
+        if (p <= 31) return 3;
+        if (p <= 39) return 2;
+        if (p <= 55) return 1;
+        if (p <= 63) return 7;
+        if (p <= 71) return 8;
+        if (p <= 79) return 9;
+        if (p <= 95) return 12;
+        if (p <= 103) return 11;
+        if (p <= 111) return 10;
         return 12;
     };
 
-    const int wantedCategory = category(lower) != 0 ? category(lower) : gmCategory(requestedProgram);
+    const int wantedCategory =
+        category(lower) != 0 ? category(lower) : gmCategory(requestedProgram);
+
     int bestScore = -1;
     const MelodicPresetEntry* best = nullptr;
+
     for (const auto& p : melodyPresetCache_) {
         std::string pn = p.name;
         std::transform(pn.begin(), pn.end(), pn.begin(),
                        [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+
+        const int candidateCategory = category(pn);
         int score = 0;
-        if (wantedCategory != 0 && category(pn) == wantedCategory) score += 1000;
-        if (p.bank == requestedSourceBank) score += 120;
-        if (!lower.empty() && pn.find(lower) != std::string::npos) score += 80;
-        score += std::max(0, 32 - std::abs(p.program - requestedProgram));
-        if (score > bestScore) { bestScore = score; best = &p; }
+
+        // Category is the strongest semantic signal.
+        if (wantedCategory != 0 && candidateCategory == wantedCategory) {
+            score += 1000;
+        } else if (wantedCategory != 0 && candidateCategory != 0) {
+            // Do not let a same-bank/same-program candidate from an unrelated
+            // family beat a genuinely compatible voice.
+            score -= 500;
+        }
+
+        // Keep bank proximity useful, but deliberately weaker than semantic
+        // identity so a wrong-family preset cannot win merely because it is
+        // in the requested source bank.
+        if (p.bank == requestedSourceBank) score += 80;
+
+        // Exact/partial voice-name evidence is stronger than raw PC distance.
+        if (!lower.empty() && pn == lower) score += 1500;
+        if (!lower.empty() && pn.find(lower) != std::string::npos) score += 350;
+
+        // Program proximity is only a tie-breaker after semantic identity.
+        score += std::max(0, 64 - std::abs(p.program - requestedProgram));
+
+        if (score > bestScore) {
+            bestScore = score;
+            best = &p;
+        }
     }
 
-    // Voyager-style final melodic fallback: same-bank Piano/Program 0,
-    // then any Program 0, then the first selectable melodic preset.
-    if (!best || bestScore < 1000) {
-        best = nullptr;
+    if (best && bestScore >= 1000) {
+        sourceBank = best->bank;
+        sourceProgram = best->program;
+        matchedName = best->name;
+        LOGI("VOICE RESOLVE semantic requestedBank=%d prog=%d name='%s' -> bank=%d prog=%d '%s' score=%d category=%d",
+             requestedBank, requestedProgram, voiceName.c_str(),
+             sourceBank, sourceProgram, matchedName.c_str(),
+             bestScore, wantedCategory);
+        return true;
+    }
+
+    // 4) Only after semantic matching has failed, use the same program from
+    // another SF2 bank. This is the safe numeric fallback used for Yamaha
+    // variation banks whose semantic name/category cannot be resolved.
+    for (const auto& p : melodyPresetCache_) {
+        if (p.program == requestedProgram) {
+            sourceBank = p.bank;
+            sourceProgram = p.program;
+            matchedName = p.name;
+            LOGI("VOICE RESOLVE numeric fallback requestedBank=%d prog=%d name='%s' -> bank=%d prog=%d '%s'",
+                 requestedBank, requestedProgram, voiceName.c_str(),
+                 sourceBank, sourceProgram, matchedName.c_str());
+            return true;
+        }
+    }
+
+    // 5) Final melodic fallback: same-bank Piano/Program 0, then any Program
+    // 0, then the first selectable melodic preset.
+    best = nullptr;
+    for (const auto& p : melodyPresetCache_) {
+        if (p.bank == requestedSourceBank && p.program == 0) {
+            best = &p;
+            break;
+        }
+    }
+    if (!best) {
         for (const auto& p : melodyPresetCache_) {
-            if (p.bank == requestedSourceBank && p.program == 0) { best = &p; break; }
+            if (p.program == 0) {
+                best = &p;
+                break;
+            }
         }
-        if (!best) for (const auto& p : melodyPresetCache_) {
-            if (p.program == 0) { best = &p; break; }
-        }
-        if (!best) best = &melodyPresetCache_.front();
     }
+    if (!best) best = &melodyPresetCache_.front();
 
-    sourceBank = best->bank; sourceProgram = best->program; matchedName = best->name;
+    sourceBank = best->bank;
+    sourceProgram = best->program;
+    matchedName = best->name;
+    LOGI("VOICE RESOLVE final fallback requestedBank=%d prog=%d name='%s' -> bank=%d prog=%d '%s'",
+         requestedBank, requestedProgram, voiceName.c_str(),
+         sourceBank, sourceProgram, matchedName.c_str());
     return true;
 }
 
