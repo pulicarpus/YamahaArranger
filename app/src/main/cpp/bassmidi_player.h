@@ -25,6 +25,7 @@ public:
     void setChannelMixer(int channel, int volume, int pan, int expression, int reverbSend, int chorusSend);
     void setChannelExpression(int channel, int expression);
     void setKeyboardSustain(bool enabled);
+    void setKeyboardReleaseTime(int releaseTime);
     void setMasterGain(float gain);
     std::string presetList() const;
 private:
