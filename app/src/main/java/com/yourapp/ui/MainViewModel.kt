@@ -687,7 +687,7 @@ class MainViewModel @Inject constructor(
             } else {
                 DebugLog.add("❌ Auto SF2 stack cache failed")
             }
-        }        } else if (files.size == 1) {
+        } else if (files.size == 1) {
             // A style-specific SF2 is often shipped as a single file. Keep the
             // same font available to both melodic and Yamaha rhythm channels.
             val single = files.first()
