@@ -1005,23 +1005,39 @@ void BassMidiPlayer::setChannelExpression(int channel, int expression) {
 void BassMidiPlayer::setKeyboardSustain(bool enabled) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (!stream_) return;
-    const DWORD value = enabled ? 127 : 0;
-    // Keyboard sustain is handled separately by ArrangerBrain for LEFT (ch3),
-    // because ACMP/LEFT mode changes must be able to release LEFT immediately.
-    // Keep native BASSMIDI sustain only on RIGHT 1/2/3 (ch0..2).
+
+    // Yamaha panel SUSTAIN is NOT the sustain pedal. Yamaha documents the
+    // panel button as making the RIGHT 1/2/3 keyboard Voices have a longer
+    // sustain; the pedal is the separate CC#64 Hold function.
+    //
+    // On Yamaha arrangers this panel action is represented on MIDI OUT as
+    // Release Time (CC#72). It does not hold key-up events: NOTE_OFF remains
+    // immediate and the voice then follows its longer release envelope.
+    //
+    // Important: only RIGHT 1/2/3 are affected. LEFT is deliberately excluded
+    // to match Yamaha's arranger behavior. ACMP/style channels are never touched.
+    //
+    // BASSMIDI's MIDI_EVENT_RELEASE uses 64 as the neutral point. We use a
+    // conservative Yamaha-like positive release-time offset rather than CC64.
+    constexpr DWORD PANEL_SUSTAIN_RELEASE = 112;
+    constexpr DWORD NORMAL_RELEASE = 64;
+
     for (int channel = 0; channel <= 2; ++channel) {
-        BASS_MIDI_StreamEvent(stream_, static_cast<DWORD>(channel), MIDI_EVENT_SUSTAIN, value);
+        const DWORD value = enabled ? PANEL_SUSTAIN_RELEASE : NORMAL_RELEASE;
+        if (!BASS_MIDI_StreamEvent(
+                stream_, static_cast<DWORD>(channel), MIDI_EVENT_RELEASE, value)) {
+            LOGE("BASSMIDI panel sustain release failed ch=%d value=%u error=%d",
+                 channel, static_cast<unsigned>(value), BASS_ErrorGetCode());
+        }
     }
-    // Explicitly clear LEFT sustain so an earlier pedal state can never keep
-    // a LEFT note alive after ArrangerBrain sends NOTE_OFF.
-    if (!enabled) {
-        BASS_MIDI_StreamEvent(stream_, 3, MIDI_EVENT_SUSTAIN, 0);
-    }
-    // Intentionally only R1/R2/R3: LEFT and ACMP never receive sustain.\n    LOGI("BASSMIDI keyboard sustain=%s channels=0..2; LEFT ch3 manual", enabled ? "ON" : "OFF");
+
+    LOGI("BASSMIDI panel sustain=%s CC72 value=%u channels=R1,R2,R3; LEFT/ACMP untouched",
+         enabled ? "ON" : "OFF",
+         static_cast<unsigned>(enabled ? PANEL_SUSTAIN_RELEASE : NORMAL_RELEASE));
 }
 
 
-void BassMidiPlayer::setMasterGain(float gain) {
+void BassMidiPlayer::setMasterGainvoid BassMidiPlayer::setMasterGain(float gain) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (!stream_) return;
     BASS_ChannelSetAttribute(stream_, BASS_ATTRIB_MIDI_VOL,
