@@ -206,6 +206,10 @@ void AudioEngine::sfSetKeyboardSustain(bool enabled) {
     soundFont_.setKeyboardSustain(enabled);
 }
 
+void AudioEngine::sfSetKeyboardReleaseTime(int releaseTime) {
+    soundFont_.setKeyboardReleaseTime(releaseTime);
+}
+
 void AudioEngine::sfSetMasterGain(float gain) {
     soundFont_.setMasterGain(gain);
 }
