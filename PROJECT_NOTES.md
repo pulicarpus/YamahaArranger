@@ -114,19 +114,24 @@ Referensi perilaku eksternal yang digunakan dalam audit:
 
 ## Sumber bug yang sudah diketahui
 
-### P0.1 Voice Resolver
+### P0.1 Voice Resolver — SELESAI TAHAP 1
 
 File: `app/src/main/cpp/bassmidi_player.cpp`
 
-Urutan sekarang masih dapat mengutamakan program numerik yang sama sebelum semantic category.
+Commit perbaikan: `bb203f604b96c04ad43cbe42b1933b3b73a3c972`
 
-Gejala:
-Strings dapat menjadi Piano/E.Piano, bukan preset String.
+Perubahan:
+- exact bank/program tetap menjadi prioritas pertama;
+- MSB-only bank + program tetap diterima;
+- semantic name/category sekarang dicari **sebelum** fallback same-program lintas bank;
+- kandidat beda-family diberi penalti agar tidak menang hanya karena bank numeriknya dekat;
+- fallback numeric baru dipakai setelah pencarian semantic gagal;
+- log `VOICE RESOLVE semantic/numeric fallback/final fallback` ditambahkan.
 
-Target:
-exact bank/program → explicit mapping → semantic category → family match → compatible numeric fallback → Piano sebagai fallback terakhir.
+Target urutan:
+exact bank/program → MSB-only bank/program → semantic category/name → same-program lintas bank → Piano/fallback terakhir.
 
-Jangan mengubah CASM untuk memperbaiki ini.
+Jangan mengubah CASM untuk memperbaiki voice resolution.
 
 ### P0.2 Realtime mutex
 
