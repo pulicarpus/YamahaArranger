@@ -596,3 +596,53 @@ Artefak:
 - commit: 25337e745e399dc629c4187c2c02784b381331b3
 
 **Status:** coverage audit selesai. Voice Resolver V2 belum diubah berdasarkan audit ini.
+
+
+## Tahap 7 — Candidate Matrix + default SF2 selection guard — 2026-09-30
+
+Tahap berikutnya dimulai pada branch `feat/voice-resolver-v2-multisf2` agar perubahan runtime Voice Resolver tidak mengganggu `main` sebelum build dan uji perangkat.
+
+### Candidate matrix
+
+Inventory 7 SF2 dipetakan terhadap 578 request unik dari 569 factory styles.
+
+- 250/578 request memiliki kandidat exact-family berdasarkan bank SF2 yang dipetakan ke destination Yamaha.
+- 328/578 hanya memiliki kandidat same-PC lintas bank.
+- 578/578 memiliki minimal satu PC yang sama di inventory, sehingga same-PC tidak boleh dianggap sebagai bukti kecocokan suara.
+- Candidate matrix lengkap: `docs/SX920_SF2_VOICE_CANDIDATE_MATRIX.md`.
+
+Matrix menggunakan nama preset yang benar-benar ada di inspector. Karena export corpus 569 style tidak membawa nama voice untuk setiap request, matrix tidak mengarang semantic voice-name match untuk request yang tidak memiliki nama sumber.
+
+### Temuan yang mengubah implementasi
+
+- MSB 104: 282 request unik, 0 exact-family candidate dari 7 SF2. Ini tidak boleh diselesaikan dengan numeric same-PC fallback.
+- MSB 126/127: role rhythm/SFX harus dipisahkan dari melodic.
+- BASSMIDI 2.4.16 mendukung `BASS_MIDI_FONTEX2` dengan mapping per-channel. Dokumentasi resmi menyatakan konfigurasi dapat menentukan source preset/bank, destination program/bank/LSB, serta channel range. Ini memungkinkan resolver memilih SF2 berbeda per channel tanpa membuat bank global yang saling bertabrakan. 
+
+### Perubahan awal yang aman
+
+Sebelum runtime multi-SF2 penuh, auto-loader tidak lagi memilih "file non-drum pertama" dari folder.
+
+Sekarang pemilihan default memberi prioritas:
+1. MELODI Yamaha PSR-SX700/SX900 PRIME untuk melody;
+2. DRUMKIT Yamaha PSR-SX700/SX900 PRIME untuk rhythm;
+3. Tyros/Colombo/Timbres/Merlin/CP80 sebagai prioritas berikutnya.
+
+Tujuannya menghindari folder-order memilih SF2 yang salah sebagai melody source.
+
+Commit branch:
+- `ec1ab42b88c1b091c5ef1fd913b59c10ef2036a5` — preferred Yamaha melody/drum SF2 selection.
+- `81d8f5af8096445120d2f2779bbfc93a4e851e4f` — CI trigger untuk branch resolver v2.
+
+### Rencana runtime Voice Resolver V2
+
+Jangan langsung memuat semua 7 SF2. BASSMIDI memang mendukung stacking multiple soundfonts, tetapi total sample corpus cukup besar. Implementasi berikutnya harus memakai stack terkontrol dan mapping EX2/EX2 per-channel:
+
+1. Yamaha PRIME sebagai sumber utama.
+2. Drumkit Yamaha khusus rhythm.
+3. Fallback melody terpilih (Tyros/Colombo) hanya sebagai lapisan tambahan yang terkontrol.
+4. Exact bank/program mendapat prioritas.
+5. Jika exact tidak ada, resolver memilih candidate berdasarkan role + semantic voice name bila nama tersedia.
+6. Same-PC lintas bank hanya fallback paling akhir dan harus ditolak bila role/category bertentangan.
+
+**Status:** candidate matrix selesai; default SF2 selection guard sudah di branch; runtime multi-SF2 resolver belum diubah.
