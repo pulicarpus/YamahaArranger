@@ -12,6 +12,7 @@ public:
     ~BassMidiPlayer();
     bool load(const std::string& path);
     bool loadMelody(const std::string& path);
+    bool loadMelodyFallback(const std::string& path);
     bool loadDrum(const std::string& path);
     void unload();
     bool isLoaded() const { return stream_ != 0 && (melodyFont_ != 0 || drumFont_ != 0); }
@@ -32,6 +33,7 @@ private:
     struct ChannelState {
         int bankMsb = 0;
         int bankLsb = 0;
+        int melodySource = 0;
         int program = 0;
         bool drum = false;
         bool initialized = false;
@@ -62,11 +64,12 @@ private:
     void rebuildMelodyPresetCache(const std::string& path);
     bool findMelodicPreset(const std::string& path, int requestedBank, int requestedProgram,
                            const std::string& voiceName, int& sourceBank, int& sourceProgram,
-                           std::string& matchedName) const;
+                           std::string& matchedName, int& sourceFont) const;
     bool findDrumPreset(const std::string& path, int requestedProgram,
                         int& sourceBank, int& sourceProgram) const;
     HSTREAM stream_ = 0;
     HSOUNDFONT melodyFont_ = 0;
+    HSOUNDFONT melodyFallbackFont_ = 0;
     HSOUNDFONT drumFont_ = 0;
     bool bassInitialized_ = false;
     mutable std::mutex mutex_;
@@ -79,7 +82,11 @@ private:
     std::vector<DrumPresetEntry> drumDrumPresetCache_;
     std::vector<MelodicPresetEntry> melodyPresetCache_;
     std::vector<NormalizedBankMap> normalizedBanks_;
+    std::vector<MelodicPresetEntry> melodyFallbackPresetCache_;
+    std::vector<NormalizedBankMap> melodyFallbackNormalizedBanks_;
     std::string melodyPath_;
     std::string melodyBassPath_;
+    std::string melodyFallbackPath_;
+    std::string melodyFallbackBassPath_;
     std::string drumPath_;
 };
