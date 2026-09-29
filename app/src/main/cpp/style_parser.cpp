@@ -7,8 +7,13 @@ namespace { std::string toLower(std::string s){std::transform(s.begin(),s.end(),
 StyleSection StyleParser::classifyMarkerText(const std::string& text){std::string t=toLower(text);if(t.find("intro")!=std::string::npos){if(t.find('1')!=std::string::npos||t.find('a')!=std::string::npos)return StyleSection::IntroA;if(t.find('2')!=std::string::npos||t.find('b')!=std::string::npos)return StyleSection::IntroB;if(t.find('3')!=std::string::npos||t.find('c')!=std::string::npos)return StyleSection::IntroC;return StyleSection::IntroA;}if(t.find("main")!=std::string::npos){size_t pos=t.find("main")+4;while(pos<t.size()&&(t[pos]==' '||t[pos]=='_'||t[pos]=='-'))++pos;if(pos<t.size()){if(t[pos]=='a')return StyleSection::MainA;if(t[pos]=='b')return StyleSection::MainB;if(t[pos]=='c')return StyleSection::MainC;if(t[pos]=='d')return StyleSection::MainD;}return StyleSection::MainA;}if(t.find("fill")!=std::string::npos){size_t pos=t.find("fill")+4;while(pos<t.size()&&(t[pos]==' '||t[pos]=='_'||t[pos]=='-'))++pos;if(pos<t.size()){if(t[pos]=='a')return StyleSection::FillAA;if(t[pos]=='b')return StyleSection::FillBB;if(t[pos]=='c')return StyleSection::FillCC;if(t[pos]=='d')return StyleSection::FillDD;}std::string compact; compact.reserve(t.size()); for(char ch:t) if(std::isalnum(static_cast<unsigned char>(ch))) compact.push_back(ch);
         if(compact.find("fill")!=std::string::npos){
             const size_t fp=compact.find("fill")+4;
-            if(fp+2<=compact.size()){
-                const std::string code=compact.substr(fp,2);
+            // Yamaha markers are commonly written as "Fill In BA".
+            // After compaction this becomes "fillinba", so skip the optional
+            // "in" token before reading the two-letter directional code.
+            size_t codePos=fp;
+            if(compact.compare(codePos,2,"in")==0)codePos+=2;
+            if(codePos+2<=compact.size()){
+                const std::string code=compact.substr(codePos,2);
                 if(code=="aa")return StyleSection::FillAA;if(code=="ab")return StyleSection::FillAB;if(code=="ac")return StyleSection::FillAC;if(code=="ad")return StyleSection::FillAD;
                 if(code=="ba")return StyleSection::FillBA;if(code=="bb")return StyleSection::FillBB;if(code=="bc")return StyleSection::FillBC;if(code=="bd")return StyleSection::FillBD;
                 if(code=="ca")return StyleSection::FillCA;if(code=="cb")return StyleSection::FillCB;if(code=="cc")return StyleSection::FillCC;if(code=="cd")return StyleSection::FillCD;
