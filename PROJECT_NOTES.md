@@ -247,3 +247,98 @@ Engine belum dianggap bebas bug. Empat target P0 utama adalah:
 2. realtime BASSMIDI mutex.
 3. unique note-instance ownership.
 4. directional Fill parser/model.
+
+
+## Dataset audit Yamaha SX920 Factory Styles — 2026-09-29
+
+User menyediakan `SX920_Factory_Styles_EN.zip` sebagai dataset referensi factory style Yamaha SX920. Dataset ini diperlakukan sebagai **fixture/regression corpus**, bukan sebagai source code aplikasi.
+
+Inventaris awal:
+- 520 file `.prs`
+- 49 file `.sst`
+- total 569 style
+- 6 file `.fps` ikut terdeteksi dalam paket, tetapi bukan bagian dari hitungan 569 style utama.
+- Audit awal menunjukkan seluruh 569 style yang diaudit menggunakan PPQ 1920.
+
+Distribusi FF58 pada audit awal:
+- 4/4: 523
+- 3/4: 33
+- 6/4: 6
+- 6/8: 3
+- 2/4: 3
+- 5/4: 1
+
+Audit awal juga menemukan 42 style yang indikasi meter pada nama style berbeda dari nilai FF58. Ini harus diperlakukan sebagai sinyal bahwa FF58 tidak boleh menjadi satu-satunya sumber kebenaran untuk menentukan groove/meter style. Panjang section dan struktur event MIDI harus ikut dianalisis.
+
+### Tujuan audit otomatis 569 style
+
+Audit lanjutan harus menggunakan parser native YamahaArranger bila memungkinkan, sehingga hasil audit mencerminkan jalur parser yang benar-benar dipakai aplikasi.
+
+Data minimum yang perlu diekstrak per style:
+- nama/file/extension
+- PPQ
+- tempo
+- FF58
+- marker section
+- panjang Main A/B/C/D dalam tick
+- Intro A/B/C
+- Fill/Break dan arah Fill bila tersedia
+- Ending A/B/C
+- channel/track yang aktif
+- bank MSB/LSB + Program Change
+- CASM CSEG
+- NTR
+- NTT
+- RTR
+- High Key
+- Note Limit
+- Bass-On
+- source/destination channel
+- kepadatan note/event dan karakter subdivision
+
+Output audit:
+- CSV untuk analisis/filter
+- JSON untuk data terstruktur
+- Markdown untuk ringkasan temuan
+- daftar regression styles terpilih
+
+### Prinsip penting dari dataset
+
+1. Jangan menganggap nama style sebagai bukti meter MIDI.
+2. Jangan menganggap FF58 sendirian sebagai panjang groove/section.
+3. Gunakan tick/event/marker aktual untuk menentukan panjang section.
+4. Gunakan CASM aktual untuk memahami revoicing dan routing.
+5. Gunakan bank/program aktual untuk menguji Voice Resolver.
+6. Jangan mengubah engine hanya berdasarkan satu style; gunakan corpus 569 style.
+7. Setiap perubahan parser/CASM/transition/Voice Resolver harus diuji ulang terhadap regression corpus.
+
+### Regression corpus yang akan dipilih
+
+Setelah audit native parser selesai, pilih sekitar 20–30 style yang mewakili:
+- 2/4, 3/4, 4/4, 6/8, 12/8 dan meter tidak lazim
+- perbedaan nama meter vs FF58
+- Main A-D dengan panjang berbeda
+- Intro → Main
+- Fill → Main
+- Main D → Main A
+- directional Fill
+- CASM NTR/NTT/RTR kompleks
+- Guitar/NTR khusus
+- Yamaha variation bank
+- banyak channel accompaniment
+- kombinasi drum + melody
+
+Corpus ini menjadi regression suite sebelum perubahan besar pada StyleSequencer, CASM, parser, atau Voice Resolver.
+
+### Status
+
+Audit statis awal 569 style: **SELESAI**.
+
+Tahap berikutnya:
+1. jalankan audit menggunakan parser native `style_parser.cpp`;
+2. bandingkan hasil parser native dengan audit SMF statis;
+3. identifikasi mismatch parser;
+4. pilih 20–30 regression styles;
+5. baru gunakan hasil tersebut sebagai dasar perubahan engine.
+
+**Catatan:** audit dataset tidak boleh dianggap sebagai perubahan engine. Source code engine tetap tidak diubah hanya karena hasil audit menunjukkan kasus yang belum didukung.
