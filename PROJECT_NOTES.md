@@ -342,3 +342,69 @@ Tahap berikutnya:
 5. baru gunakan hasil tersebut sebagai dasar perubahan engine.
 
 **Catatan:** audit dataset tidak boleh dianggap sebagai perubahan engine. Source code engine tetap tidak diubah hanya karena hasil audit menunjukkan kasus yang belum didukung.
+
+
+## Tahap 2 — Audit parser native terhadap corpus SX920 — 2026-09-29
+
+Tahap 2 selesai secara audit terhadap 569 style menggunakan perilaku parser yang sama dengan `style_parser.cpp` pada baseline `main`. Audit dilakukan tanpa mengubah source engine.
+
+Hasil:
+- 569/569 style berhasil diparse.
+- 569/569 menggunakan PPQ 1920.
+- 569/569 memiliki Main A, Main B, Main C, dan Main D.
+- Panjang Main A/B/C/D hasil parser native 100% cocok dengan audit SMF statis untuk seluruh 569 style.
+- CASM ditemukan pada seluruh corpus.
+- 2.218 CSEG terdeteksi.
+- 22.940 Ctb2 terdeteksi.
+- 68.820 policy range Ctb2 terbentuk dari model parser.
+- Pemeriksaan source-channel CASM terhadap voice setup tidak menemukan mismatch jumlah source channel pada corpus.
+
+### Temuan P0 yang sekarang terbukti oleh corpus
+
+**Directional Fill bukan kasus langka — seluruh 569 style memiliki marker `Fill In BA`.**
+
+Audit SMF statis menemukan marker `Fill In BA`.
+
+Namun `StyleParser::classifyMarkerText()` saat ini:
+- mengenali Fill AA/BB/CC/DD;
+- untuk pola `ba` mengembalikan `StyleSection::BreakDown`;
+- tidak mempertahankan identitas directional Fill BA sebagai section tersendiri.
+
+Akibatnya, pada seluruh 569 style:
+`Fill In BA` → `BreakDown`
+
+Ini mengonfirmasi P0.4 sebelumnya secara jauh lebih kuat: informasi directional Fill memang hilang pada batas parser/model, dan masalahnya bukan edge case satu style.
+
+### Temuan penting lain
+
+Panjang Main A/B/C/D tidak bermasalah pada corpus ini. Jadi untuk masalah transisi Main dan panjang section, **jangan mengubah perhitungan lengthTicks parser secara membabi buta**. Parser saat ini berhasil mempertahankan panjang Main terhadap audit event/marker statis.
+
+### CASM
+
+Corpus menunjukkan dominasi `Ctb2`, bukan `Ctab`:
+- CSEG: 2.218
+- Ctb2: 22.940
+- Ctab: 0 pada corpus audit
+- Cntt: 0 pada corpus audit
+
+Ini menjadikan Ctb2/range-policy sebagai jalur CASM yang paling penting untuk regression test factory SX920.
+
+### Keputusan engineering
+
+Belum ada perubahan source code pada tahap ini.
+
+Sebelum memperbaiki parser:
+1. pertahankan hasil audit sebagai baseline;
+2. tambahkan regression fixture untuk `Fill In BA`;
+3. desain representasi directional Fill yang tidak merusak section AA/BB/CC/DD yang sudah berjalan;
+4. audit ulang seluruh 569 style setelah perubahan parser;
+5. baru lanjut ke StyleSequencer untuk memastikan arah Fill benar-benar dipakai saat transition.
+
+Jangan memperbaiki masalah directional Fill di CASM atau Voice Resolver; sumber masalah yang terbukti berada pada klasifikasi/model section parser.
+
+### Artefak audit
+
+- `SX920_Factory_Styles_Audit/native_parser_audit.csv`
+- `SX920_Factory_Styles_Audit/native_parser_audit_summary.json`
+
+Artefak ini adalah snapshot audit, bukan source engine.
