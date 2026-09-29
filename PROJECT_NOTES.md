@@ -441,3 +441,48 @@ Sebelum melakukan pekerjaan:
 ---
 
 **Current project phase: Generation 4 — Realtime Audio Stability + Yamaha/MIDI Voyager Parity.**
+
+
+---
+
+## 🔬 2026-09-29 — MAIN BASELINE AUDIT / ARRANGER PLAN
+
+**Baseline checked:** `main` @ `7bb971d3374e0a6a64049bc80cae98240ba41709`
+
+The current main baseline was re-checked against the research on GigLad, vArranger, One Man Band, Android Arranger Keyboard, Android MIDI Arranger, Yamaha SFF/CASM, Yamaha Style Studio, and Korg arranger architecture.
+
+### Important correction
+
+The current `main` source uses **FluidSynth**, not the BASSMIDI branch. Therefore BASSMIDI must not be assumed to be the current production audio architecture.
+
+### Current main findings
+
+- CASM Ctab/Ctb2 decoding exists.
+- NTR/NTT transformation exists.
+- RTR-aware live chord revoicing exists, but the complete Yamaha RTR behavior still needs verification.
+- Main A-D and Fill AA/BB/CC/DD states exist.
+- Fill→Main is currently implemented by `loopLimit=1` plus callback chaining.
+- `StyleSequencer.play()` currently calls `stop()`, and `stop()` performs global `allNotesOff()`.
+- Active note tracking exists, but its key is currently `channel:sourceNote`, which is too coarse for full arranger ownership.
+- Voice application still contains a documented voice-name→GM-program heuristic.
+- Drum transposition bypass currently relies on channel 9 in the playback path.
+- FluidSynth uses a global mutex shared by render and control operations; realtime contention must be measured before changing it.
+
+### Revised implementation priority
+
+1. Baseline APK + logs — no behavior change.
+2. Transition instrumentation.
+3. Explicit musical conductor/master timeline.
+4. Generation/per-note ownership and targeted transition NOTE_OFF.
+5. Complete CASM/RTR behavior verification.
+6. Explicit Yamaha MSB/LSB/Program voice mapping.
+7. Realtime audio isolation / mutex and program-change cost measurement.
+8. 2/4, 3/4, 4/4, 6/8 transition regression.
+9. Multifunction knob/controller work.
+10. Final APK acceptance matrix.
+
+### New planning document
+
+`docs/ARRANGER_ENGINE_PLAN_MAIN_AUDIT.md`
+
+**No application source code was changed for this audit.**
