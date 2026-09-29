@@ -5,7 +5,7 @@
 #include <vector>
 #include "smf_reader.h"
 
-enum class StyleSection { IntroA, IntroB, IntroC, MainA, MainB, MainC, MainD, FillAA, FillBB, FillCC, FillDD, BreakDown, EndingA, EndingB, EndingC, Unknown };
+enum class StyleSection { IntroA, IntroB, IntroC, MainA, MainB, MainC, MainD, FillAA, FillAB, FillAC, FillAD, FillBA, FillBB, FillBC, FillBD, FillCA, FillCB, FillCC, FillCD, FillDA, FillDB, FillDC, FillDD, BreakDown, EndingA, EndingB, EndingC, Unknown };
 struct CasmPolicy {
     bool valid=false; uint8_t sourceChannel=0; uint8_t destinationChannel=0; std::string voiceName;
     uint8_t sourceChordRoot=0; uint8_t sourceChordType=0; uint8_t ntr=3; uint8_t ntt=0; uint8_t highKey=127;
