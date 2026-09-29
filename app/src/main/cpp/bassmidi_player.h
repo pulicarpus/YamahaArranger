@@ -34,6 +34,8 @@ private:
         int bankMsb = 0;
         int bankLsb = 0;
         int melodySource = 0;
+        int melodySourceBank = -1;
+        int melodySourceProgram = -1;
         int program = 0;
         bool drum = false;
         bool initialized = false;
