@@ -164,6 +164,63 @@ bool BassMidiPlayer::applyFonts() {
         cfg.push_back(drum);
     };
 
+    // Channel-specific resolver mappings are intentionally placed before
+    // generic all-preset mappings. BASSMIDI gives earlier FONTEX/EX2 entries
+    // priority when multiple soundfonts provide the same destination.
+    auto addResolvedChannelMappings = [&]() {
+        auto toVirtualBank = [](const std::vector<NormalizedBankMap>& maps, int rawBank) {
+            for (const auto& m : maps) {
+                if (m.rawBank == rawBank) return m.virtualBank;
+            }
+            return (rawBank >= 0 && rawBank <= 128) ? rawBank : -1;
+        };
+
+        for (int ch = 0; ch < 16; ++ch) {
+            const ChannelState& state = channels_[ch];
+            if (!state.initialized || state.drum ||
+                state.melodySourceBank < 0 || state.melodySourceProgram < 0) {
+                continue;
+            }
+
+            HSOUNDFONT font = nullptr;
+            const std::vector<NormalizedBankMap>* maps = nullptr;
+            const char* role = "PRIMARY";
+            if (state.melodySource == 1 && melodyFallbackFont_) {
+                font = melodyFallbackFont_;
+                maps = &melodyFallbackNormalizedBanks_;
+                role = "FALLBACK";
+            } else if (melodyFont_) {
+                font = melodyFont_;
+                maps = &normalizedBanks_;
+            }
+            if (!font || !maps) continue;
+
+            const int virtualBank = toVirtualBank(*maps, state.melodySourceBank);
+            if (virtualBank < 0) {
+                LOGI("VOICE MAP skipped ch=%d role=%s rawSourceBank=%d sourceProg=%d",
+                     ch, role, state.melodySourceBank, state.melodySourceProgram);
+                continue;
+            }
+
+            BASS_MIDI_FONTEX2 selected{};
+            selected.font = font;
+            selected.spreset = state.melodySourceProgram;
+            selected.sbank = virtualBank;
+            selected.dpreset = state.program;
+            selected.dbank = state.bankMsb;
+            selected.dbanklsb = state.bankLsb;
+            selected.minchan = ch;
+            selected.numchan = 1;
+            cfg.push_back(selected);
+
+            LOGI("VOICE MAP ch=%d role=%s srcBank=%d srcProg=%d -> dstBank=%d:%d dstProg=%d",
+                 ch, role, state.melodySourceBank, state.melodySourceProgram,
+                 state.bankMsb, state.bankLsb, state.program);
+        }
+    };
+
+    addResolvedChannelMappings();
+
     if (drumFont_) {
         addDrumMapping(drumFont_, 127);
         addDrumMapping(drumFont_, 128);
@@ -888,48 +945,54 @@ bool BassMidiPlayer::findMelodicPreset(
         return true;
     }
 
-    // 4) Only after semantic matching has failed, use the same program from
-    // another SF2 bank. This is the safe numeric fallback used for Yamaha
-    // variation banks whose semantic name/category cannot be resolved.
+    // 4) Same-PC fallback is allowed only when the candidate remains in
+    // the same semantic family. Bare PC equality is deliberately rejected:
+    // the inspector proved that it can produce Bass->Organ, Guitar->Drum,
+    // Piano->Strings, etc.
     for (const auto& p : melodyPresetCache_) {
-        if (p.program == requestedProgram) {
-            sourceBank = p.bank;
-            sourceProgram = p.program;
-            matchedName = p.name;
-            LOGI("VOICE RESOLVE numeric fallback requestedBank=%d prog=%d name='%s' -> bank=%d prog=%d '%s'",
-                 requestedBank, requestedProgram, voiceName.c_str(),
-                 sourceBank, sourceProgram, matchedName.c_str());
-            return true;
-        }
+        if (p.program != requestedProgram) continue;
+        std::string pn = p.name;
+        std::transform(pn.begin(), pn.end(), pn.begin(),
+                       [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+        if (wantedCategory != 0 && category(pn) != wantedCategory) continue;
+
+        sourceBank = p.bank;
+        sourceProgram = p.program;
+        matchedName = p.name;
+        LOGI("VOICE RESOLVE category-safe PC fallback requestedBank=%d prog=%d name='%s' -> bank=%d prog=%d '%s' category=%d",
+             requestedBank, requestedProgram, voiceName.c_str(),
+             sourceBank, sourceProgram, matchedName.c_str(), wantedCategory);
+        return true;
     }
 
-    // 5) Final melodic fallback is postponed while a controlled secondary
-    // melody font is available, so the secondary font gets the last chance.
+    // 5) Give the controlled secondary font the next chance rather than
+    // inventing an unrelated primary preset.
     if (melodyFallbackFont_) return false;
 
-    // 5) Final melodic fallback: same-bank Piano/Program 0, then any Program
-    // 0, then the first selectable melodic preset.
+    // 6) Final fallback is conservative: a piano-family Program 0 only.
     best = nullptr;
     for (const auto& p : melodyPresetCache_) {
-        if (p.bank == requestedSourceBank && p.program == 0) {
-            best = &p;
-            break;
-        }
-    }
-    if (!best) {
-        for (const auto& p : melodyPresetCache_) {
-            if (p.program == 0) {
+        std::string pn = p.name;
+        std::transform(pn.begin(), pn.end(), pn.begin(),
+                       [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+        if (p.program == 0 && category(pn) == 4) {
+            if (p.bank == requestedSourceBank) {
                 best = &p;
                 break;
             }
+            if (!best) best = &p;
         }
     }
-    if (!best) best = &melodyPresetCache_.front();
+    if (!best) {
+        LOGI("VOICE RESOLVE no safe primary candidate requestedBank=%d prog=%d name='%s'",
+             requestedBank, requestedProgram, voiceName.c_str());
+        return false;
+    }
 
     sourceBank = best->bank;
     sourceProgram = best->program;
     matchedName = best->name;
-    LOGI("VOICE RESOLVE final fallback requestedBank=%d prog=%d name='%s' -> bank=%d prog=%d '%s'",
+    LOGI("VOICE RESOLVE conservative piano fallback requestedBank=%d prog=%d name='%s' -> bank=%d prog=%d '%s'",
          requestedBank, requestedProgram, voiceName.c_str(),
          sourceBank, sourceProgram, matchedName.c_str());
     return true;
@@ -1082,46 +1145,49 @@ bool BassMidiPlayer::findMelodicPresetFallback(
         return true;
     }
 
-    // 4) Only after semantic matching has failed, use the same program from
-    // another SF2 bank. This is the safe numeric fallback used for Yamaha
-    // variation banks whose semantic name/category cannot be resolved.
+    // 4) Same-PC fallback is allowed only inside the requested semantic
+    // family. This prevents a Yamaha variation PC from selecting an unrelated
+    // instrument merely because the number happens to match.
     for (const auto& p : melodyFallbackPresetCache_) {
-        if (p.program == requestedProgram) {
-            sourceBank = p.bank;
-            sourceProgram = p.program;
-            matchedName = p.name;
-            LOGI("VOICE RESOLVE numeric fallback requestedBank=%d prog=%d name='%s' -> bank=%d prog=%d '%s'",
-                 requestedBank, requestedProgram, voiceName.c_str(),
-                 sourceBank, sourceProgram, matchedName.c_str());
-            return true;
-        }
+        if (p.program != requestedProgram) continue;
+        std::string pn = p.name;
+        std::transform(pn.begin(), pn.end(), pn.begin(),
+                       [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+        if (wantedCategory != 0 && category(pn) != wantedCategory) continue;
+
+        sourceBank = p.bank;
+        sourceProgram = p.program;
+        matchedName = p.name;
+        LOGI("VOICE RESOLVE fallback category-safe PC requestedBank=%d prog=%d name='%s' -> bank=%d prog=%d '%s' category=%d",
+             requestedBank, requestedProgram, voiceName.c_str(),
+             sourceBank, sourceProgram, matchedName.c_str(), wantedCategory);
+        return true;
     }
 
-    // 5) Final melodic fallback is postponed while a controlled secondary
-    // melody font is available, so the secondary font gets the last chance.
-    // 5) Final melodic fallback: same-bank Piano/Program 0, then any Program
-    // 0, then the first selectable melodic preset.
+    // 5) Final fallback is conservative: only a piano-family Program 0.
     best = nullptr;
     for (const auto& p : melodyFallbackPresetCache_) {
-        if (p.bank == requestedSourceBank && p.program == 0) {
-            best = &p;
-            break;
-        }
-    }
-    if (!best) {
-        for (const auto& p : melodyFallbackPresetCache_) {
-            if (p.program == 0) {
+        std::string pn = p.name;
+        std::transform(pn.begin(), pn.end(), pn.begin(),
+                       [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+        if (p.program == 0 && category(pn) == 4) {
+            if (p.bank == requestedSourceBank) {
                 best = &p;
                 break;
             }
+            if (!best) best = &p;
         }
     }
-    if (!best) best = &melodyFallbackPresetCache_.front();
+    if (!best) {
+        LOGI("VOICE RESOLVE no safe fallback candidate requestedBank=%d prog=%d name='%s'",
+             requestedBank, requestedProgram, voiceName.c_str());
+        return false;
+    }
 
     sourceBank = best->bank;
     sourceProgram = best->program;
     matchedName = best->name;
-    LOGI("VOICE RESOLVE final fallback requestedBank=%d prog=%d name='%s' -> bank=%d prog=%d '%s'",
+    LOGI("VOICE RESOLVE fallback conservative piano requestedBank=%d prog=%d name='%s' -> bank=%d prog=%d '%s'",
          requestedBank, requestedProgram, voiceName.c_str(),
          sourceBank, sourceProgram, matchedName.c_str());
     return true;
@@ -1146,35 +1212,12 @@ void BassMidiPlayer::preloadCurrentPreset(int channel) {
     // Use the actual SF2 source bank when it is available. Yamaha/XG fonts
     // may store 8:1 as packed SF2 bank 1025, while other fonts store bank 8
     // and let MIDI_EVENT_BANK_LSB select the variation through FONTEX2.
-    int sourceBank = state.drum ? 128 : state.bankMsb;
-    if (!state.drum && !presetCache.empty()) {
-        bool sourceFound = false;
+    int sourceBank = state.drum ? 128 : state.melodySourceBank;
+    int sourceProgram = state.drum ? state.program : state.melodySourceProgram;
 
-        // First honor the requested Yamaha bank when the SF2 actually stores
-        // that bank (packed 14-bit form or MSB-only form).
-        for (const auto& p : presetCache) {
-            if (p.program == state.program &&
-                (p.bank == state.bankMsb * 128 + state.bankLsb ||
-                 p.bank == state.bankMsb)) {
-                sourceBank = p.bank;
-                sourceFound = true;
-                break;
-            }
-        }
-
-        // If the Yamaha variation bank is absent from SF2, use the same
-        // program from another SF2 bank. This must mirror findMelodicPreset()
-        // so the preset that was resolved for the channel is also the preset
-        // that gets preloaded. Example: Yamaha 8:1/PC49 -> SF2 0/PC49.
-        if (!sourceFound) {
-            for (const auto& p : presetCache) {
-                if (p.program == state.program) {
-                    sourceBank = p.bank;
-                    sourceFound = true;
-                    break;
-                }
-            }
-        }
+    if (!state.drum) {
+        if (sourceBank < 0) sourceBank = state.bankMsb;
+        if (sourceProgram < 0) sourceProgram = state.program;
 
         const int rawSourceBank = sourceBank;
         for (const auto& m : bankMaps) {
@@ -1184,7 +1227,6 @@ void BassMidiPlayer::preloadCurrentPreset(int channel) {
             }
         }
     }
-    int sourceProgram = state.program;
     // Preload asynchronously. BASSMIDI normally loads samples on demand,
     // which can cause a CPU spike exactly when a new voice is first heard.
     // The synchronous BASS_MIDI_FontLoad() path is unsafe for this arranger:
@@ -1291,8 +1333,11 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program, const 
     // 1025 (8:1), 1026 (8:2), or 1029 (8:5) must remain a melodic bank.
     state.bankMsb = wantDrum ? 128 : bank / 128;
     state.bankLsb = wantDrum ? 0 : bank % 128;
-    state.program = program;
+    state.program = program; // requested destination program
     state.drum = wantDrum;
+    state.melodySource = 0;
+    state.melodySourceBank = -1;
+    state.melodySourceProgram = -1;
     state.initialized = true;
 
     if (state.drum) {
@@ -1322,27 +1367,30 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program, const 
         }
         state.melodySource = sourceFont;
         if (resolved) {
+            state.melodySourceBank = sourceBank;
+            state.melodySourceProgram = sourceProgram;
             if (sourceBank != requestedSourceBank || sourceProgram != requestedProgram) {
-                LOGI("VOICE RESOLVE ch=%d requested bank=%d prog=%d name='%s' -> SF2 bank=%d prog=%d '%s'",
+                LOGI("VOICE RESOLVE ch=%d requested bank=%d prog=%d name='%s' -> sourceRole=%d bank=%d prog=%d '%s'",
                      channel, requestedBank14, requestedProgram, voiceName.c_str(),
-                     sourceBank, sourceProgram, matchedName.c_str());
+                     sourceFont, sourceBank, sourceProgram, matchedName.c_str());
             } else {
-                LOGI("VOICE RESOLVE ch=%d exact bank=%d prog=%d '%s'",
-                     channel, requestedBank14, requestedProgram, matchedName.c_str());
+                LOGI("VOICE RESOLVE ch=%d exact bank=%d prog=%d '%s' sourceRole=%d",
+                     channel, requestedBank14, requestedProgram, matchedName.c_str(), sourceFont);
             }
-            // Keep the requested Yamaha MSB/LSB as the destination.
-            // sourceBank is the original SF2/Yamaha bank and is converted to
-            // a legal virtual BASSMIDI source bank during preload.
-            state.program = sourceProgram;
         } else {
             LOGI("VOICE RESOLVE ch=%d no melodic preset cache; keeping requested bank=%d prog=%d name='%s'",
                  channel, requestedBank14, requestedProgram, voiceName.c_str());
         }
     }
 
-    LOGI("SET PRESET ch=%d requestedBank=%d effectiveBank=%d lsb=%d prog=%d drum=%d voice='%s'",
+    LOGI("SET PRESET ch=%d requestedBank=%d effectiveBank=%d lsb=%d prog=%d drum=%d voice='%s' sourceRole=%d sourceBank=%d sourceProg=%d",
          channel, requestedBank, state.bankMsb, state.bankLsb, state.program,
-         state.drum ? 1 : 0, voiceName.c_str());
+         state.drum ? 1 : 0, voiceName.c_str(), state.melodySource,
+         state.melodySourceBank, state.melodySourceProgram);
+
+    if (!state.drum && !applyFonts()) {
+        LOGI("VOICE MAP apply failed ch=%d; generic SF2 mapping retained", channel);
+    }
 
     if (state.drum) send(channel, MIDI_EVENT_DRUMS, 1);
     else send(channel, MIDI_EVENT_DRUMS, 0);
