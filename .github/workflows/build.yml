@@ -6,6 +6,7 @@ on:
       - fix/audio-transition-preset-cache
       - integration/bassmidi-casm-sx720
       - feat/sf2-style-inspector
+      - fix/yamaha-panel-sustain-clean
   workflow_dispatch: {}
 jobs:
   build:
