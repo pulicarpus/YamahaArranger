@@ -12,6 +12,7 @@ public:
     bool start(); void stop();
     bool loadSoundFont(const std::string& path);
     bool loadMelodySoundFont(const std::string& path);
+    bool loadMelodyFallbackSoundFont(const std::string& path);
     bool loadDrumSoundFont(const std::string& path);
     bool isSoundFontLoaded() const{return soundFont_.isLoaded();}
     bool isMelodySoundFontLoaded() const{return soundFont_.isMelodyLoaded();}
