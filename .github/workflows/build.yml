@@ -8,6 +8,7 @@ on:
       - integration/bassmidi-casm-sx720
       - feat/sf2-style-inspector
       - fix/yamaha-panel-sustain-clean
+      - feat/voice-resolver-v2-multisf2
   workflow_dispatch: {}
 jobs:
   build:
