@@ -471,3 +471,51 @@ Tahap berikutnya:
 1. jalankan build native/Gradle melalui CI atau environment build yang tersedia;
 2. audit 569 style terhadap hasil parser yang benar-benar terkompilasi;
 3. lanjut regression transition Main → Fill → Main setelah build valid.
+
+
+## Tahap 5 — Multi-SF2 Inspector aman untuk SF2 besar — 2026-09-29
+
+Tujuan tahap ini adalah memisahkan **inspeksi seluruh SF2 yang tersimpan** dari daftar preset yang sedang dimuat engine. Ini penting karena folder managed dapat berisi banyak SF2, sedangkan engine saat ini sengaja hanya memuat kombinasi font yang dipilih untuk playback.
+
+### Masalah yang ditemukan
+
+Sebelumnya:
+- `ContentResolverProvider.listSoundFonts()` sudah menemukan seluruh file `.sf2`.
+- `refreshSoundFontList()` hanya mengisi `availableSoundFonts`, lalu mengambil preset dari `audioEngine.loadedSoundFontPresets()`.
+- Akibatnya UI dapat mengatakan "managed files = 6" tetapi hanya menampilkan preset dari SF2 yang sedang dimuat engine.
+- Implementasi `SoundFontInspector.inspect()` lama menggunakan `InputStream.readBytes()`, sehingga inspeksi file Yamaha/Tyros berukuran ratusan MB berpotensi menggunakan RAM sangat besar.
+
+### Implementasi
+
+Perubahan:
+- `SoundFontInspector.inspect()` sekarang menggunakan parser RIFF streaming dengan buffer 64 KiB.
+- Parser hanya membaca metadata SF2 yang diperlukan:
+  - RIFF/SFBK validity;
+  - INFO: INAM, ISFT, ICMT;
+  - pdta/phdr: nama, program, bank;
+  - inst: jumlah instrument;
+  - shdr: jumlah sample.
+- Chunk sample/audio besar dilewati dengan `skipFully()`; sample audio tidak dimuat ke RAM.
+- `MainViewModel` menambahkan:
+  - `sf2Reports`;
+  - `sf2ScanInProgress`.
+- `refreshSoundFontList()` sekarang melakukan scan berurutan terhadap **semua managed SF2**, tanpa mengubah konfigurasi playback.
+- Inspector UI sekarang memiliki tombol **SCAN ALL SF2** dan menampilkan hasil per file: validitas, ukuran, jumlah preset/instrument/sample, metadata, dan preset.
+- Report inspector sekarang menyimpan inventory semua SF2 yang berhasil diinspeksi, terpisah dari daftar preset engine yang sedang loaded.
+- Resolver/playback/CASM/parser/style sequencer tidak diubah pada tahap ini.
+
+### File/commit
+
+- `65563607b10d0a13781623c4d66f546298f52d09` — streaming SF2 metadata parser.
+- `8c1cb1f5c0676fc2670165360bdfee0a7078604d` — multi-SF2 inspector state and sequential scan.
+- `b83ae955799e08f94b4d71139d77084743562274` — Inspector UI dan report inventory semua SF2.
+
+### Keputusan engineering
+
+Tahap ini **belum mengubah Voice Resolver atau BASSMIDI font mapping**. Tujuannya adalah memperoleh inventory nyata dari semua SF2 yang tersedia terlebih dahulu.
+
+Setelah inventory tersedia, langkah berikutnya:
+1. bandingkan request Yamaha style (MSB:LSB + PC) terhadap seluruh preset dari semua SF2;
+2. pisahkan role melodic vs drum secara eksplisit;
+3. ukur coverage exact-match dan near-match;
+4. baru desain fallback resolver yang tidak menukar Bass → Organ, Guitar → Piano, atau Drum → Flute.
