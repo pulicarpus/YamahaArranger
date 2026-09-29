@@ -435,3 +435,39 @@ Status:
 - Implementasi parser selesai.
 - Build APK belum diverifikasi dari commit ini karena workflow .github/workflows/build.yml saat ini hanya trigger otomatis pada beberapa branch fitur/fix dan tidak mencantumkan main.
 - Tahap berikutnya: verifikasi build native/Gradle, lalu audit ulang 569 style terhadap section names/length/CASM dan regression transisi Main→Fill→Main.
+
+
+## Tahap 4 — Audit 569 style setelah parser directional Fill — 2026-09-29
+
+Audit terhadap corpus SX920_Factory_Styles_EN.zip dilakukan setelah Stage 3 dan menemukan satu bug nyata pada implementasi classifier:
+
+- Marker Yamaha ditulis sebagai Fill In BA.
+- Implementasi awal Stage 3 melakukan compaction menjadi fillinba, tetapi langsung membaca dua karakter setelah fill, sehingga yang terbaca adalah in, bukan ba.
+- Akibatnya directional Fill belum benar-benar lolos ke FillBA.
+
+Perbaikan dibuat pada app/src/main/cpp/style_parser.cpp:
+- setelah fill, classifier sekarang melewati token opsional in;
+- kemudian membaca dua huruf arah AA..DD;
+- Fill In BA sekarang dipetakan ke FillBA.
+
+Commit perbaikan:
+- 4b682f4c7380a9f72b2d1cab196bf7159faad9902 — fix parser handling of Yamaha Fill In directional markers.
+
+Verifikasi corpus setelah perbaikan:
+- 569/569 style terdeteksi.
+- 0 parse failure pada audit corpus.
+- 569/569 PPQ 1920.
+- 569/569 style yang memiliki Fill In BA diklasifikasikan sebagai FillBA.
+- 0 Fill In BA yang jatuh ke BreakDown.
+- Panjang Main A/B/C/D: 0 mismatch dibanding baseline Stage 2.
+- Baseline Stage 2 sebelumnya mencatat Fill In BA sebagai BreakDown pada 569/569; hasil ini sekarang berubah sesuai target parser directional.
+
+### Status build
+Build APK belum dapat dijalankan dari environment saat checkpoint ini karena workflow .github/workflows/build.yml hanya auto-trigger pada branch fitur/fix tertentu dan tidak memiliki main pada push trigger. Workflow memang memiliki workflow_dispatch, tetapi tool GitHub yang tersedia di sesi ini tidak menyediakan aksi dispatch workflow baru.
+
+Jangan menyatakan APK/build hijau sampai ada hasil build nyata.
+
+Tahap berikutnya:
+1. jalankan build native/Gradle melalui CI atau environment build yang tersedia;
+2. audit 569 style terhadap hasil parser yang benar-benar terkompilasi;
+3. lanjut regression transition Main → Fill → Main setelah build valid.
