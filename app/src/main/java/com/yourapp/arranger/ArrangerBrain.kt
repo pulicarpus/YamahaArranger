@@ -67,12 +67,10 @@ class ArrangerBrain @Inject constructor(
     // while a key is held cannot produce a mismatched NOTE_OFF.
     private val transposedNotes = mutableMapOf<Int, Int>()
     private var keyboardSustain = false
-    // Kotlin-side safety ledger: BASSMIDI CC64 handles RIGHT 1/2/3; LEFT
-    // channel 3 deliberately has no native sustain. ACMP/chord notes are
-    // excluded so arranger chord changes are never pedal-sustained.
-    private val sustainHeldNotes = mutableSetOf<Pair<Int, Int>>()
-    // Sustain is native for RIGHT 1/2/3; LEFT uses the ledger above.
-    // Notes currently sounding through the dedicated LEFT VOICE channel.
+    // Panel Sustain is a Yamaha-style release-time effect, not a note-hold
+    // pedal. Every physical key-up therefore sends NOTE_OFF immediately.
+
+    // Notes currently sounding through the dedicated LEFT VOICE channel.    // Notes currently sounding through the dedicated LEFT VOICE channel.
     // Mode changes must release them even if the key-up arrives after ACMP changes.
     private val leftVoiceNotes = mutableSetOf<Int>()
     private var appliedChord: DetectedChord? = null
@@ -130,12 +128,12 @@ class ArrangerBrain @Inject constructor(
     fun setKeyboardSustain(enabled: Boolean) {
         if (keyboardSustain == enabled) return
         keyboardSustain = enabled
-        DebugLog.add("🎹 SUSTAIN = " + if (enabled) "ON" else "OFF")
+        DebugLog.add("🎹 PANEL SUSTAIN = " + if (enabled) "ON" else "OFF" +
+            " (CC72 release-time; NOTE_OFF remains immediate)")
         audioEngine.setKeyboardSustain(enabled)
-        if (!enabled) flushSustainedNotes()
     }
 
-    private fun engineNoteOn(channel: Int, note: Int, velocity: Float) {
+    private fun engineNoteOn    private fun engineNoteOn(channel: Int, note: Int, velocity: Float) {
         if (channel == 0) audioEngine.noteOn(note, velocity)
         else audioEngine.noteOnChannel(channel, note, velocity)
     }
@@ -145,34 +143,16 @@ class ArrangerBrain @Inject constructor(
         else audioEngine.noteOffChannel(channel, note)
     }
 
+    /** Physical key-up always reaches the synth immediately.
+     * Panel Sustain only changes CC#72 release time in the native engine.
+     */
     private fun releaseKeyboardNote(channel: Int, note: Int) {
-        if (keyboardSustain) {
-            sustainHeldNotes.add(channel to note)
-            return
-        }
         engineNoteOff(channel, note)
         midiInputManager.sendNoteOff(channel, note)
+        if (channel == leftVoiceChannel) leftVoiceNotes.remove(note)
     }
 
-    private fun stopSustainedNote(channel: Int, note: Int) {
-        if (sustainHeldNotes.remove(channel to note)) {
-            engineNoteOff(channel, note)
-            midiInputManager.sendNoteOff(channel, note)
-        }
-    }
-
-    private fun flushSustainedNotes() {
-        if (sustainHeldNotes.isEmpty()) return
-        val notes = sustainHeldNotes.toList()
-        sustainHeldNotes.clear()
-        notes.forEach { (channel, note) ->
-            engineNoteOff(channel, note)
-            midiInputManager.sendNoteOff(channel, note)
-        }
-        DebugLog.add("🎹 SUSTAIN RELEASE: ${notes.size} held note(s)")
-    }
-
-    fun setKeyboardTranspose(semitones: Int) {
+    fun setKeyboardTranspose    fun setKeyboardTranspose(semitones: Int) {
         keyboardTranspose = semitones.coerceIn(-12, 12)
         DebugLog.add("🎹 TRANSPOSE = " + if (keyboardTranspose >= 0) "+$keyboardTranspose" else keyboardTranspose.toString())
     }
@@ -185,7 +165,6 @@ class ArrangerBrain @Inject constructor(
             DebugLog.add("🎹 RIGHT IN note=$midiNote → pitch=$outputNote vel=$velocity127")
             for (channel in 0..2) {
                 if (!rightVoiceEnabled[channel]) continue
-                stopSustainedNote(channel, outputNote)
                 engineNoteOn(channel, outputNote, velocity)
                 midiInputManager.sendNoteOn(channel, outputNote, velocity127)
             }
@@ -198,7 +177,6 @@ class ArrangerBrain @Inject constructor(
         } else if (leftVoiceEnabled) {
             transposedNotes[midiNote] = outputNote
             DebugLog.add("🎹 LEFT IN note=$midiNote → pitch=$outputNote vel=$velocity127 → LEFT VOICE")
-            stopSustainedNote(leftVoiceChannel, outputNote)
             audioEngine.noteOnChannel(leftVoiceChannel, outputNote, velocity)
             midiInputManager.sendNoteOn(leftVoiceChannel, outputNote, velocity127)
             leftVoiceNotes.add(outputNote)
@@ -207,7 +185,6 @@ class ArrangerBrain @Inject constructor(
             DebugLog.add("🎹 LEFT IN note=$midiNote → pitch=$outputNote vel=$velocity127 → R1/R2/R3 (ACMP/L OFF)")
             for (channel in 0..2) {
                 if (!rightVoiceEnabled[channel]) continue
-                stopSustainedNote(channel, outputNote)
                 engineNoteOn(channel, outputNote, velocity)
                 midiInputManager.sendNoteOn(channel, outputNote, velocity127)
             }
@@ -217,8 +194,7 @@ class ArrangerBrain @Inject constructor(
     fun onKeyboardNoteOff(midiNote: Int) {
         val outputNote = transposedNotes.remove(midiNote) ?: (midiNote + keyboardTranspose).coerceIn(0, 127)
         if (midiNote > splitNote) {
-            DebugLog.add("🎹 RIGHT OFF note=$midiNote → pitch=$outputNote → R1/R2/R3 OFF" +
-                if (keyboardSustain) " (held by sustain)" else "")
+            DebugLog.add("🎹 RIGHT OFF note=$midiNote → pitch=$outputNote → R1/R2/R3 OFF")
             for (channel in 0..2) {
                 if (!rightVoiceEnabled[channel]) continue
                 releaseKeyboardNote(channel, outputNote)
@@ -232,18 +208,10 @@ class ArrangerBrain @Inject constructor(
             if (chord != null) onChordChanged(chord)
             else DebugLog.add("🎹 Chord release: keep last chord")
         } else if (leftVoiceEnabled) {
-            DebugLog.add("🎹 LEFT OFF note=$midiNote → pitch=$outputNote → LEFT VOICE OFF" +
-                if (keyboardSustain) " (held by sustain)" else "")
-            if (keyboardSustain) {
-                sustainHeldNotes.add(leftVoiceChannel to outputNote)
-            } else {
-                audioEngine.noteOffChannel(leftVoiceChannel, outputNote)
-                midiInputManager.sendNoteOff(leftVoiceChannel, outputNote)
-                leftVoiceNotes.remove(outputNote)
-            }
+            DebugLog.add("🎹 LEFT OFF note=$midiNote → pitch=$outputNote → LEFT VOICE OFF")
+            releaseKeyboardNote(leftVoiceChannel, outputNote)
         } else {
-            DebugLog.add("🎹 LEFT OFF note=$midiNote → pitch=$outputNote → R1/R2/R3 OFF (LEFT OFF)" +
-                if (keyboardSustain) " (held by sustain)" else "")
+            DebugLog.add("🎹 LEFT OFF note=$midiNote → pitch=$outputNote → R1/R2/R3 OFF (LEFT OFF)")
             for (channel in 0..2) {
                 if (!rightVoiceEnabled[channel]) continue
                 releaseKeyboardNote(channel, outputNote)
@@ -272,7 +240,6 @@ class ArrangerBrain @Inject constructor(
     }
 
     private fun releaseLeftVoiceNotes(reason: String) {
-        sustainHeldNotes.removeAll { it.first == leftVoiceChannel }
         if (leftVoiceNotes.isEmpty()) return
         val notes = leftVoiceNotes.toList()
         notes.forEach { note ->
