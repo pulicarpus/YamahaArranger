@@ -1,5 +1,6 @@
 package com.yourapp.audio
 
+import java.io.BufferedInputStream
 import java.io.InputStream
 import java.nio.charset.Charset
 
@@ -49,64 +50,141 @@ object SoundFontInspector {
         }
     }
 
+    /** Inspect SF2 metadata without loading the sample-data chunk into RAM. */
     fun inspect(input: InputStream, fileName: String, fileSize: Long = -1L): Report {
-        val data = input.readBytes()
-        val actualSize = if (fileSize >= 0) fileSize else data.size.toLong()
-        if (data.size < 12 || ascii(data, 0, 4) != "RIFF" || ascii(data, 8, 4) != "sfbk") {
-            return Report(fileName, actualSize, false, null, null, null, emptyList(), 0, 0)
-        }
+        BufferedInputStream(input, 64 * 1024).use { stream ->
+            val header = ByteArray(12)
+            if (!readFully(stream, header, 0, header.size) ||
+                ascii(header, 0, 4) != "RIFF" || ascii(header, 8, 4) != "sfbk"
+            ) {
+                return Report(fileName, fileSize.coerceAtLeast(0L), false, null, null, null, emptyList(), 0, 0)
+            }
 
-        val presets = mutableListOf<Preset>()
-        var instrumentCount = 0
-        var sampleCount = 0
-        var soundFontName: String? = null
-        var engine: String? = null
-        var comment: String? = null
+            val declaredRiffSize = u32(header, 4)
+            val presets = mutableListOf<Preset>()
+            var instrumentCount = 0
+            var sampleCount = 0
+            var soundFontName: String? = null
+            var engine: String? = null
+            var comment: String? = null
+            var validStructure = true
+            val remaining = (declaredRiffSize - 4L).coerceAtLeast(0L)
 
-        walkChunks(data, 12, data.size) { id, start, end ->
-            when (id) {
-                "phdr" -> {
-                    var p = start
-                    while (p + 38 <= end) {
-                        val name = readString(data, p, 20)
-                        val program = u16(data, p + 20)
-                        val bank = u16(data, p + 22)
-                        if (name.isNotBlank() && name != "EOP") presets += Preset(name, program, bank)
-                        p += 38
+            fun visitChunk(id: String, size: Long) {
+                when (id) {
+                    "phdr" -> {
+                        val recordSize = 38L
+                        val recordCount = size / recordSize
+                        repeat(recordCount.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()) {
+                            val record = ByteArray(38)
+                            if (!readFully(stream, record, 0, record.size)) {
+                                validStructure = false
+                                return
+                            }
+                            val name = readString(record, 0, 20)
+                            if (name.isNotBlank() && name != "EOP") {
+                                presets += Preset(name, u16(record, 20), u16(record, 22))
+                            }
+                        }
+                        if (!skipFully(stream, size - recordCount * recordSize)) validStructure = false
+                    }
+                    "inst " -> {
+                        instrumentCount = maxOf(0L, size / 22L - 1L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+                        if (!skipFully(stream, size)) validStructure = false
+                    }
+                    "shdr" -> {
+                        sampleCount = maxOf(0L, size / 46L - 1L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+                        if (!skipFully(stream, size)) validStructure = false
+                    }
+                    "INAM", "ISFT", "ICMT" -> {
+                        val maxRead = minOf(size, 64L * 1024L).toInt()
+                        val bytes = ByteArray(maxRead)
+                        if (!readFully(stream, bytes, 0, maxRead)) {
+                            validStructure = false
+                            return
+                        }
+                        val text = readString(bytes, 0, bytes.size)
+                        when (id) {
+                            "INAM" -> soundFontName = text
+                            "ISFT" -> engine = text
+                            "ICMT" -> comment = text
+                        }
+                        if (!skipFully(stream, size - maxRead)) validStructure = false
+                    }
+                    else -> if (!skipFully(stream, size)) validStructure = false
+                }
+            }
+
+            fun parseChunks(limit: Long) {
+                var left = limit
+                while (left >= 8L) {
+                    val idBytes = ByteArray(4)
+                    val sizeBytes = ByteArray(4)
+                    if (!readFully(stream, idBytes, 0, 4) || !readFully(stream, sizeBytes, 0, 4)) {
+                        validStructure = false
+                        return
+                    }
+                    val id = ascii(idBytes, 0, 4)
+                    val size = u32(sizeBytes, 0)
+                    left -= 8L
+                    if (size > left) {
+                        validStructure = false
+                        return
+                    }
+                    if (id == "LIST") {
+                        if (size < 4L) {
+                            validStructure = false
+                            return
+                        }
+                        val type = ByteArray(4)
+                        if (!readFully(stream, type, 0, 4)) {
+                            validStructure = false
+                            return
+                        }
+                        parseChunks(size - 4L)
+                    } else {
+                        visitChunk(id, size)
+                    }
+                    if (!validStructure) return
+                    left -= size
+                    if ((size and 1L) != 0L) {
+                        if (!skipFully(stream, 1L)) {
+                            validStructure = false
+                            return
+                        }
+                        left--
                     }
                 }
-                "inst " -> {
-                    instrumentCount = maxOf(0, (end - start) / 22 - 1)
-                }
-                "shdr" -> {
-                    sampleCount = maxOf(0, (end - start) / 46 - 1)
-                }
-                "INAM" -> soundFontName = readString(data, start, end - start)
-                "ISFT" -> engine = readString(data, start, end - start)
-                "ICMT" -> comment = readString(data, start, end - start)
+                if (left > 0L && !skipFully(stream, left)) validStructure = false
             }
-            false
-        }
 
-        return Report(fileName, actualSize, true, soundFontName, engine, comment, presets, instrumentCount, sampleCount)
+            parseChunks(remaining)
+            return Report(fileName, fileSize, validStructure, soundFontName, engine, comment, presets, instrumentCount, sampleCount)
+        }
     }
 
-    private fun walkChunks(data: ByteArray, start: Int, limit: Int, visitor: (String, Int, Int) -> Boolean) {
-        var pos = start
-        while (pos + 8 <= limit) {
-            val id = ascii(data, pos, 4)
-            val size = u32(data, pos + 4).toLong()
-            val payload = pos + 8
-            val endLong = payload.toLong() + size
-            if (endLong > limit || endLong > data.size) break
-            val end = endLong.toInt()
-            if (id == "LIST" && payload + 4 <= end) {
-                walkChunks(data, payload + 4, end, visitor)
-            } else {
-                visitor(id, payload, end)
-            }
-            pos = end + (size.toInt() and 1)
+    private fun readFully(input: InputStream, buffer: ByteArray, offset: Int, length: Int): Boolean {
+        var read = 0
+        while (read < length) {
+            val n = input.read(buffer, offset + read, length - read)
+            if (n < 0) return false
+            if (n == 0) continue
+            read += n
         }
+        return true
+    }
+
+    private fun skipFully(input: InputStream, length: Long): Boolean {
+        var left = length
+        while (left > 0L) {
+            val skipped = input.skip(left)
+            if (skipped > 0L) left -= skipped
+            else {
+                if (input.read() < 0) return false
+                left--
+            }
+        }
+        return true
     }
 
     private fun u16(data: ByteArray, p: Int): Int =
