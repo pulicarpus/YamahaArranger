@@ -583,17 +583,60 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    /** Prefer Yamaha-specific melody/drum fonts over arbitrary folder order. */
+    private fun preferredSoundFontPair(
+        files: List<Pair<Uri, String>>
+    ): Pair<Pair<Uri, String>, Pair<Uri, String>>? {
+        if (files.isEmpty()) return null
+
+        fun scoreDrum(name: String): Int {
+            val n = name.lowercase()
+            return when {
+                n.contains("drumkit") && n.contains("yamaha") && n.contains("sx700") -> 100
+                n.contains("drumkit") && n.contains("yamaha") -> 95
+                n.contains("yamaha") && n.contains("drum") -> 90
+                n.contains("drumkit") -> 80
+                n.contains("drum") || n.contains("percussion") -> 60
+                else -> 0
+            }
+        }
+
+        fun scoreMelody(name: String): Int {
+            val n = name.lowercase()
+            return when {
+                n.contains("melodi") && n.contains("yamaha") && n.contains("sx700") -> 100
+                n.contains("melodi") && n.contains("yamaha") -> 95
+                n.contains("yamaha") && n.contains("tyros") -> 90
+                n.contains("tyros") -> 85
+                n.contains("colombo") -> 80
+                n.contains("timbres") -> 70
+                n.contains("merlin") -> 50
+                n.contains("cp80") -> 40
+                else -> 10
+            }
+        }
+
+        val drum = files.maxByOrNull { scoreDrum(it.second) }?.takeIf { scoreDrum(it.second) > 0 }
+            ?: return null
+        val melody = files
+            .filter { it != drum }
+            .maxByOrNull { scoreMelody(it.second) }
+            ?.takeIf { scoreMelody(it.second) > 0 }
+            ?: return null
+
+        DebugLog.add("🎯 Preferred SF2 pair: MELODY='${melody.second}' DRUM='${drum.second}'")
+        return melody to drum
+    }
+
     private suspend fun autoLoadSoundFont() {
         val files = withContext(Dispatchers.IO) { contentResolver.listSoundFonts() }
         if (files.isEmpty()) {
             DebugLog.add("📂 SF2 folder ready: /storage/emulated/0/YamahaArranger/SF2")
             return
         }
-        val drum = files.firstOrNull { (_, name) ->
-            val n = name.lowercase()
-            n.contains("drum") || n.contains("drumkit") || n.contains("percussion")
-        }
-        val melody = files.firstOrNull { it != drum }
+        val preferredPair = preferredSoundFontPair(files)
+        val melody = preferredPair?.first
+        val drum = preferredPair?.second
         if (melody != null && drum != null) {
             DebugLog.add("🔄 Auto-loading MELODY + DRUM SF2 as one transaction")
             val melodyCache = withContext(Dispatchers.IO) {
@@ -724,11 +767,9 @@ class MainViewModel @Inject constructor(
             // both roles with the selected file. That made selecting the drum
             // font remove the melody font, and vice versa.
             val files = withContext(Dispatchers.IO) { contentResolver.listSoundFonts() }
-            val drum = files.firstOrNull { (_, fileName) ->
-                val n = fileName.lowercase()
-                n.contains("drum") || n.contains("drumkit") || n.contains("percussion")
-            }
-            val melody = files.firstOrNull { it != drum }
+            val preferredPair = preferredSoundFontPair(files)
+            val melody = preferredPair?.first
+            val drum = preferredPair?.second
 
             if (melody != null && drum != null) {
                 val melodyCache = withContext(Dispatchers.IO) {
