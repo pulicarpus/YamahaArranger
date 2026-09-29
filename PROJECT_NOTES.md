@@ -1,104 +1,104 @@
-# YamahaArranger — Project Notes
+# YamahaArranger — Catatan Proyek
 
-## Authoritative baseline
+## Baseline resmi
 
-- Current branch: fix/yamaha-panel-sustain-clean
-- Audited commit: f85ba7641fd73c34cdb57a4fc9984a05ac5d1b93
-- Repository: pulicarpus/YamahaArranger
-- main is stale relative to the current branch and must not be used as the engine baseline until this branch is promoted.
-- This audit did not modify application source code.
+- Branch utama: `main`
+- Commit baseline: `52e5b7ea6f8ee4b1166f999e198fea07c8573ab1`
+- Repository: `pulicarpus/YamahaArranger`
+- Branch `fix/yamaha-panel-sustain-clean` sudah dipromosikan menjadi baseline `main`.
+- Audit ini tidak mengubah source code aplikasi; perubahan dokumentasi dipisahkan dari perbaikan engine.
 
-## Current architecture
+## Arsitektur saat ini
 
-### Style pipeline
+### Jalur style
 
 Yamaha STY / PRS / SFF / SFF GE
--> native SMF parser
--> StyleSectionModel / StylePartModel
--> CASM policy
--> StyleSequencer
--> AudioEngineManager
--> BASSMIDI
--> Oboe
+→ native SMF parser
+→ StyleSectionModel / StylePartModel
+→ CASM policy
+→ StyleSequencer
+→ AudioEngineManager
+→ BASSMIDI
+→ Oboe
 
-### MIDI/keyboard pipeline
+### Jalur MIDI/keyboard
 
 Android MIDI
--> MidiInputManager
--> chord/keyboard routing
--> ArrangerBrain
--> StyleSequencer and AudioEngineManager
+→ MidiInputManager
+→ routing chord/keyboard
+→ ArrangerBrain
+→ StyleSequencer + AudioEngineManager
 
-## Current authoritative files
+## File yang menjadi acuan
 
-| File | Role |
+| File | Fungsi |
 |---|---|
-| app/src/main/cpp/style_parser.cpp | SMF/style markers + CASM parser |
-| app/src/main/cpp/smf_reader.cpp | Standard MIDI parsing |
-| app/src/main/java/com/yourapp/yamahaarranger/style/StyleRepository.kt | Kotlin style model builder |
-| app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt | musical timeline, transitions, note ownership |
-| app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt | live arranger state, Auto Fill, keyboard routing |
-| app/src/main/java/com/yourapp/yamahaarranger/arranger/CasmNoteTransformer.kt | NTR/NTT/RTR note transformation |
-| app/src/main/java/com/yourapp/yamahaarranger/audio/AudioEngineManager.kt | Kotlin audio facade |
-| app/src/main/cpp/bassmidi_player.cpp | BASSMIDI, SF2 mapping, voice resolution |
-| app/src/main/cpp/audio_engine.cpp | Oboe output |
-| app/src/main/cpp/native_lib.cpp | JNI bridge |
+| `app/src/main/cpp/style_parser.cpp` | parser SMF/style marker + CASM |
+| `app/src/main/cpp/smf_reader.cpp` | parser MIDI standar |
+| `app/src/main/java/com/yourapp/yamahaarranger/style/StyleRepository.kt` | pembentuk model style Kotlin |
+| `app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt` | timeline musik, transisi dan kepemilikan note |
+| `app/src/main/java/com/yourapp/yamahaarranger/arranger/ArrangerBrain.kt` | state arranger live, Auto Fill dan routing keyboard |
+| `app/src/main/java/com/yourapp/yamahaarranger/arranger/CasmNoteTransformer.kt` | transformasi note NTR/NTT/RTR |
+| `app/src/main/java/com/yourapp/yamahaarranger/audio/AudioEngineManager.kt` | facade audio Kotlin |
+| `app/src/main/cpp/bassmidi_player.cpp` | BASSMIDI, mapping SF2 dan Voice Resolver |
+| `app/src/main/cpp/audio_engine.cpp` | output Oboe |
+| `app/src/main/cpp/native_lib.cpp` | JNI bridge |
 
-## Reference blueprint
+## Blueprint dan riset
 
-See:
+Baca dokumen berikut sebelum menyentuh engine:
 
-- docs/ARRANGER_ENGINE_AUDIT.md
-- docs/ARRANGER_ENGINE_BLUEPRINT.md
-- docs/MIDI_VOYAGER_PRO_5.4.11_AUDIO_RESEARCH.md
+- `docs/ARRANGER_ENGINE_AUDIT.md`
+- `docs/ARRANGER_ENGINE_BLUEPRINT.md`
+- `docs/MIDI_VOYAGER_PRO_5.4.11_AUDIO_RESEARCH.md`
 
-External behavioral references:
+Referensi perilaku eksternal yang digunakan dalam audit:
 
-- GigLad: https://www.deltarray.com/documentation/giglad/
-- vArranger: https://www.varranger.com/features/
-- One Man Band: https://www.1manband.nl/features.htm
-- Arranger Keyboard: https://www.audiosdroid.com/arranger-keyboard-support
-- Yamaha MIDI Song to Style: https://europe.yamaha.com/files/download/other_assets/4/2179884/MIDI_Song_to_Style_owners_manual_En_B0.pdf
-- Yamaha PSR-E343 MIDI Reference: https://usa.yamaha.com/files/download/other_assets/4/329464/psre343_en_mr_a0.pdf
+- GigLad
+- vArranger
+- One Man Band
+- Android Arranger Keyboard
+- MIDI Voyager Pro
+- Yamaha arranger/SFF
 
-## What is already correct
+## Yang sudah benar
 
-### Transition architecture
+### Arsitektur transisi
 
-- continuous master clock
+- master clock kontinu
 - pending transition queue
 - queued successor sections
-- no global allNotesOff during seamless section change
-- outgoing style note release is targeted
-- Auto Fill exists
-- Main A-D exists
-- Intro/Ending/Fill successor logic exists when the section change starts while playing
+- tidak ada global `allNotesOff` saat seamless section change
+- release note style keluar dilakukan secara targeted
+- Auto Fill
+- Main A-D
+- logika Intro/Ending/Fill successor ketika perubahan section dimulai saat playback
 
 ### CASM
 
-- CSEG parsing
-- Ctab/Ctb2 parsing
-- Cntt overrides
+- CSEG
+- Ctab/Ctb2
+- Cntt override
 - NTR
 - NTT
-- RTR 0-5 representation
+- RTR 0-5
 - High Key
 - Note Limits
 - Bass-On
 - chord mute policy
-- CASM diagnostics
+- diagnostics CASM
 
 ### Audio
 
-- BASSMIDI live path
+- BASSMIDI sebagai jalur aktif
 - BASSMIDI NOTEOFF1
-- Yamaha MSB/LSB bank handling
+- Yamaha MSB/LSB bank
 - Yamaha variation-bank normalization
-- melody/drum SF2 roles
+- role SF2 melody/drum
 - async preload
-- drum routing restoration
-- voice-name-aware native resolver
-- channel mixer
+- routing drum
+- resolver berbasis nama voice
+- mixer channel
 - master gain
 
 ### Keyboard
@@ -110,96 +110,93 @@ External behavioral references:
 - sustain ledger
 - release time
 - MIDI OUT
-- E343-style MIDI input handling
+- input MIDI bergaya E343
 
-## Known bug sources
+## Sumber bug yang sudah diketahui
 
-### P0.1 Voice resolver
+### P0.1 Voice Resolver
 
-File:
-app/src/main/cpp/bassmidi_player.cpp
+File: `app/src/main/cpp/bassmidi_player.cpp`
 
-Current order still prefers same numeric program before semantic category matching.
+Urutan sekarang masih dapat mengutamakan program numerik yang sama sebelum semantic category.
 
-Failure class:
-Strings can resolve to Piano/E.Piano instead of a String preset.
+Gejala:
+Strings dapat menjadi Piano/E.Piano, bukan preset String.
 
-Target order:
-exact bank/program -> explicit mapping -> semantic category -> family match -> compatible numeric fallback -> Piano final fallback.
+Target:
+exact bank/program → explicit mapping → semantic category → family match → compatible numeric fallback → Piano sebagai fallback terakhir.
 
-Do not modify CASM to fix this.
+Jangan mengubah CASM untuk memperbaiki ini.
 
 ### P0.2 Realtime mutex
 
-File:
-app/src/main/cpp/bassmidi_player.cpp
+File: `app/src/main/cpp/bassmidi_player.cpp`
 
-render() and control/preload operations share mutex_.
+`render()` dan operasi control/preload masih berbagi `mutex_`.
 
-Risk:
-audio callback can wait during voice/program changes.
-
-Target:
-realtime render must not depend on a UI/file-operation mutex.
-
-### P0.3 Note instance identity
-
-File:
-app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt
-
-Current key:
-sourceChannel:sourceNote
-
-Risk:
-repeated identical notes collapse into one active record.
+Risiko:
+callback audio menunggu saat voice/program change atau operasi lain sedang berjalan.
 
 Target:
-section generation + source track + source channel + event index or another unique instance token.
+render realtime tidak bergantung pada mutex operasi UI/file yang lambat.
 
-### P0.4 Directional fills
+### P0.3 Identitas instance note
 
-File:
-app/src/main/cpp/style_parser.cpp
+File: `app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt`
 
-ArrangerBrain has directional FillAB/BA/etc concepts, but the native StyleSection model currently only represents FillAA/BB/CC/DD.
+Kunci sekarang masih:
+`sourceChannel:sourceNote`
 
-Target:
-preserve source fill direction instead of reducing it to a generic fill.
-
-### P1.1 Idle Intro/Ending
-
-File:
-ArrangerBrain.kt
+Risiko:
+dua note identik yang overlap dapat dianggap satu record aktif.
 
 Target:
-starting Intro while idle should execute Intro once then Main; starting Ending while idle should execute Ending once then Stop.
+section generation + source track + source channel + event index, atau token instance unik lain.
 
-### P1.2 Timing model
+### P0.4 Directional Fill
 
-Current:
+File: `app/src/main/cpp/style_parser.cpp`
+
+ArrangerBrain sudah memiliki konsep FillAB/BA dan arah lain, tetapi model native StyleSection terutama hanya mempertahankan FillAA/BB/CC/DD.
+
+Target:
+pertahankan arah Fill dari file style, bukan mereduksinya menjadi Fill generik.
+
+### P1.1 Intro/Ending saat idle
+
+File: `ArrangerBrain.kt`
+
+Target:
+Intro ketika idle → Intro satu kali → Main.
+Ending ketika idle → Ending satu kali → Stop.
+
+### P1.2 Model timing
+
+Sekarang masih ada:
 wall-clock next-bar quantization + coroutine scheduler + master tick.
 
 Target:
-one authoritative musical tick for quantization and section transitions.
+satu musical tick yang menjadi sumber kebenaran untuk quantization dan section transition.
 
 ## Sustain
 
-Panel sustain is currently implemented as a keyboard note ledger in ArrangerBrain plus native release control.
+Sustain panel diimplementasikan sebagai keyboard note ledger di ArrangerBrain dengan kontrol release native.
 
-ACMP/chord notes are intentionally excluded from keyboard sustain.
+Note ACMP/chord sengaja tidak dimasukkan ke keyboard sustain.
 
-The PSR-E343 MIDI reference identifies:
+Acuan Yamaha E343:
+
 - CC64 = Sustain
 - CC72 = Release Time
 
-## Regression tests required before engine changes are considered safe
+## Regression test yang wajib
 
-1. Main A -> Main B
-2. Main B -> Main D
-3. Main D -> Main A
-4. Intro -> Main
-5. Fill -> Main
-6. Ending -> Stop
+1. Main A → Main B
+2. Main B → Main D
+3. Main D → Main A
+4. Intro → Main
+5. Fill → Main
+6. Ending → Stop
 7. repeated same-note events
 8. 2/4
 9. 3/4
@@ -212,31 +209,36 @@ The PSR-E343 MIDI reference identifies:
 16. sustain ON/OFF
 17. release time changes
 
-## Legacy documentation warning
+## Peringatan dokumentasi lama
 
-Older README/project notes described:
+Dokumentasi lama pernah menyebut:
 
-- FluidSynth as the live engine;
-- sine-wave placeholder as the active SoundFont path;
-- incomplete CASM;
-- the old short StyleSequencer.
+- FluidSynth sebagai engine aktif;
+- sine-wave placeholder sebagai jalur SoundFont;
+- CASM belum lengkap;
+- StyleSequencer versi lama.
 
-Those statements are no longer authoritative for this branch.
+Pernyataan tersebut **bukan lagi acuan** untuk branch `main`.
 
-## Development rule
+## Aturan pengembangan
 
-Do not touch a subsystem merely because the old documentation says it is incomplete.
+Jangan menyentuh subsystem hanya karena dokumentasi lama mengatakan subsystem tersebut belum selesai.
 
-Always inspect the current branch first.
+Selalu periksa branch `main` saat ini.
 
-When a bug appears, classify it as:
+Jika ada bug, klasifikasikan:
 
-parser -> CASM -> transition -> note ownership -> voice resolver -> BASSMIDI state -> realtime audio -> UI state.
+parser → CASM → transition → note ownership → Voice Resolver → state BASSMIDI → realtime audio → UI state.
 
-Then change the smallest responsible boundary and add a regression test.
+Kemudian ubah batas terkecil yang memang bertanggung jawab dan tambahkan regression test.
 
-## Current audit result
+## Hasil audit saat ini
 
-The current branch is suitable to become the project main baseline after documentation promotion.
+Baseline `main` sudah menjadi acuan proyek.
 
-The branch should not be treated as bug-free. The four P0 issues above are the primary stabilization targets.
+Engine belum dianggap bebas bug. Empat target P0 utama adalah:
+
+1. Voice Resolver.
+2. realtime BASSMIDI mutex.
+3. unique note-instance ownership.
+4. directional Fill parser/model.
