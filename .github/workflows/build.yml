@@ -2,6 +2,7 @@ name: Build APK
 on:
   push:
     branches:
+      - main
       - feat/bassmidi-engine-build448
       - fix/audio-transition-preset-cache
       - integration/bassmidi-casm-sx720
