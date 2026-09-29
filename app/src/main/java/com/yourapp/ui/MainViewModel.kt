@@ -159,10 +159,12 @@ data class MainUiState(
     val styleVolume: Int = 100, val leftVolume: Int = 100, val right1Volume: Int = 100, val right2Volume: Int = 100, val right3Volume: Int = 100, val masterVolume: Int = 100,
     val activeBank: Int = 1, val activeRegSlot: Int = 0, val voiceName: String = "GrandPiano",
     val right2Name: String = "OFF", val splitPoint: String = "C4",
-    val acmpEnabled: Boolean = true, val leftVoiceEnabled: Boolean = true,
+    val acmpEnabled: Boolean = true, val leftVoiceEnabled: Boolean = true, val sustainEnabled: Boolean = false, val releaseTime: Int = 64,
     val rightVoices: List<KeyboardVoiceSlot> = defaultKeyboardVoices(),
     val voiceAssignments: List<VoiceSlot> = defaultVoices(),
     val availableSoundFonts: List<Pair<Uri, String>> = emptyList(),
+    val styleFolders: List<StyleFolder> = emptyList(),
+    val styleFiles: List<Pair<Uri, String>> = emptyList(),
     val sf2Presets: List<AudioEngineManager.SfPreset> = emptyList()
 )
 
@@ -178,8 +180,12 @@ class MainViewModel @Inject constructor(
     private val _midiStatus = MutableStateFlow("No MIDI device")
     private val _midiOutEnabled = MutableStateFlow(false)
     private val _transpose = MutableStateFlow(0)
+    private val _sustainEnabled = MutableStateFlow(false)
+    private val _releaseTime = MutableStateFlow(64)
     private val _soundFontName = MutableStateFlow("None")
     private val _availableSoundFonts = MutableStateFlow<List<Pair<Uri, String>>>(emptyList())
+    private val _styleFolders = MutableStateFlow<List<StyleFolder>>(emptyList())
+    private val _styleFiles = MutableStateFlow<List<Pair<Uri, String>>>(emptyList())
     private val _sf2Presets = MutableStateFlow<List<AudioEngineManager.SfPreset>>(emptyList())
     private val _styleVolume = MutableStateFlow(100)
     private val _leftVolume = MutableStateFlow(100)
@@ -202,28 +208,33 @@ class MainViewModel @Inject constructor(
 
     private val voiceAndSoundFontState = combine(
         combine(_activeBank, _activeRegSlot, _voiceAssignments) { b, r, v -> Triple(b, r, v) },
-        combine(_rightVoices, _availableSoundFonts, _sf2Presets) { rightVoices, files, presets ->
-            Triple(rightVoices, files, presets)
+        combine(_rightVoices, combine(_availableSoundFonts, combine(_styleFolders, _styleFiles) { folders, styles -> folders to styles }) { sf, folderAndStyles -> sf to folderAndStyles }, _sf2Presets) { rightVoices, filesAndStyles, presets ->
+            Triple(rightVoices, filesAndStyles, presets)
         }
     ) { voiceData, sfData -> voiceData to sfData }
 
     val uiState: StateFlow<MainUiState> = combine(
         arrangerBrain.state,
         combine(_styleName, _midiStatus) { s, m -> s to m },
-        combine(_transpose, _soundFontName) { t, sf -> t to sf },
+        combine(_transpose, combine(_sustainEnabled, _releaseTime) { sustain, release -> sustain to release }, _soundFontName) { t, sustainRelease, sf -> Triple(t, sustainRelease, sf) },
         volumeState,
         voiceAndSoundFontState
     ) { arranger, styleMidi, transposeSf, volumesMaster, voiceDataSf ->
         val (styleName, midi) = styleMidi
-        val (transpose, sfName) = transposeSf
+        val (transpose, sustainRelease, sfName) = transposeSf
+        val (sustain, releaseTime) = sustainRelease
         val (voiceVolumes, masterVol) = volumesMaster
         val (voiceData, sfData) = voiceDataSf
         val (bank, regSlot, voices) = voiceData
         val rightVoices = sfData.first
-        val sfFiles = sfData.second
+        val sfFiles = sfData.second.first
+        val styleFolders = sfData.second.second.first
+        val styleFiles = sfData.second.second.second
         val sfPresets = sfData.third
         MainUiState(
             styleName = styleName,
+            styleFolders = styleFolders,
+            styleFiles = styleFiles,
             tempoBpm = arranger.tempoBpm,
             transpose = transpose,
             isPlaying = arranger.isPlaying,
@@ -232,6 +243,8 @@ class MainViewModel @Inject constructor(
             autoFill = arranger.autoFill,
             acmpEnabled = arranger.acmpEnabled,
             leftVoiceEnabled = arranger.leftVoiceEnabled,
+            sustainEnabled = sustain,
+            releaseTime = releaseTime,
             midiStatus = midi,
             midiOutEnabled = _midiOutEnabled.value,
             soundFontName = sfName,
@@ -287,6 +300,10 @@ class MainViewModel @Inject constructor(
 
         midiInputManager.onNoteOn = { note, velocity -> arrangerBrain.onKeyboardNoteOn(note, velocity / 127f) }
         midiInputManager.onNoteOff = { note -> arrangerBrain.onKeyboardNoteOff(note) }
+        midiInputManager.onSustainChange = { enabled ->
+            _sustainEnabled.value = enabled
+            arrangerBrain.setKeyboardSustain(enabled)
+        }
     }
 
     fun connectFirstAvailableMidiDevice() {
@@ -324,8 +341,31 @@ class MainViewModel @Inject constructor(
     fun onTapTempo() { }
     fun onTempoDown() { arrangerBrain.setTempo((arrangerBrain.state.value.tempoBpm - 5).coerceIn(20, 280)) }
     fun onTempoUp() { arrangerBrain.setTempo((arrangerBrain.state.value.tempoBpm + 5).coerceIn(20, 280)) }
-    fun onTransposeDown() { _transpose.value = (_transpose.value - 1).coerceIn(-12, 12) }
-    fun onTransposeUp() { _transpose.value = (_transpose.value + 1).coerceIn(-12, 12) }
+    fun onTransposeDown() {
+        val value = (_transpose.value - 1).coerceIn(-12, 12)
+        _transpose.value = value
+        arrangerBrain.setKeyboardTranspose(value)
+    }
+    fun onTransposeUp() {
+        val value = (_transpose.value + 1).coerceIn(-12, 12)
+        _transpose.value = value
+        arrangerBrain.setKeyboardTranspose(value)
+    }
+    fun onReleaseDown() {
+        val value = (_releaseTime.value - 1).coerceIn(0, 127)
+        _releaseTime.value = value
+        arrangerBrain.setKeyboardReleaseTime(value)
+    }
+    fun onReleaseUp() {
+        val value = (_releaseTime.value + 1).coerceIn(0, 127)
+        _releaseTime.value = value
+        arrangerBrain.setKeyboardReleaseTime(value)
+    }
+    fun toggleSustain() {
+        val enabled = !_sustainEnabled.value
+        _sustainEnabled.value = enabled
+        arrangerBrain.setKeyboardSustain(enabled)
+    }
     fun onStyleVolumeChange(value: Int) {
         val v = value.coerceIn(0, 127); _styleVolume.value = v
         // Style parts currently render on destination channels 8..15.
@@ -406,12 +446,12 @@ class MainViewModel @Inject constructor(
                 }.ifBlank {
                     GM_VOICES.firstOrNull { it.second == part.program }?.first ?: "Ch$channel"
                 }
-                val drum = channel == 9 || rawName.lowercase().let {
+                val drum = channel == 8 || channel == 9 || rawName.lowercase().let {
                     it.contains("drum") || it.contains("kit") || it.contains("perc") || it.startsWith("dr")
                 }
                 val program = if (part.program in 0..127) part.program else
                     GM_VOICES.firstOrNull { it.first.equals(styleName, ignoreCase = true) }?.second ?: 0
-                val bank = if (drum) 128 else 0
+                val bank = if (drum) 128 else (part.bankMsb.coerceIn(0, 127) * 128 + part.bankLsb.coerceIn(0, 127))
 
                 // Keep the first explicit instrument for a destination. CASM can
                 // legitimately have multiple source channels feeding one destination.
@@ -507,13 +547,18 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             val bytes = withContext(Dispatchers.IO) { contentResolver.readBytes(uri) }
             if (bytes == null) { DebugLog.add("❌ Cannot read style"); return@launch }
-            val fileName = contentResolver.fileName(uri) ?: "style.sty"
+            // Prefer the actual URI/path filename. Some Android providers expose
+            // a generic name such as "style.sty", which loses the real style name.
+            val uriFileName = uri.path?.let { path ->
+                path.substringAfterLast('/').takeIf { it.isNotBlank() }
+            }
+            val fileName = uriFileName ?: contentResolver.fileName(uri) ?: "style.sty"
             val parsed = withContext(Dispatchers.Default) { styleRepository.loadStyle(fileName, bytes) }
             if (parsed == null) { DebugLog.add("❌ Parse fail: $fileName"); return@launch }
             arrangerBrain.loadStyle(parsed)
             _voiceAssignments.value = voiceSlotsFromStyle(parsed)
             _styleName.value = fileName
-            DebugLog.add("🎼 Mixer channels from style: ${_voiceAssignments.value.map { it.channel to it.sf2Name }.joinToString()}")
+            DebugLog.add("🎼 Mixer channels from style: ${_voiceAssignments.value.map { "${it.channel}:${it.sf2Name}@${it.bank}/${it.program}" }.joinToString()}")
             DebugLog.add("✅ Loaded: $fileName")
         }
     }
@@ -589,6 +634,24 @@ class MainViewModel @Inject constructor(
         // can kill the process before the UI can record a log. Presets will be
         // loaded lazily by the explicit refresh/preset UI path.
         DebugLog.add(if (ok) "✅ SF2 loaded: $displayName (preset scan deferred)" else "❌ SF2 load failed: $displayName")
+    }
+
+    fun refreshStyleList() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _styleFolders.value = contentResolver.listStyleFolders()
+            // Style Select is folder-first. Keep the file list empty until a
+            // folder is explicitly selected, avoiding a refresh race that can
+            // overwrite the selected folder's files with the root file list.
+            _styleFiles.value = contentResolver.listAllStylesInFolders()
+            DebugLog.add("🎼 Style folders found: " + _styleFolders.value.size + " all styles=" + _styleFiles.value.size)
+        }
+    }
+
+    fun refreshStylesInFolder(folderUri: Uri) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _styleFiles.value = contentResolver.listStylesInFolder(folderUri)
+            DebugLog.add("🎼 Styles in folder: " + _styleFiles.value.size)
+        }
     }
 
     fun refreshSoundFontList() {

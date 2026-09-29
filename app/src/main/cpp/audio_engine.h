@@ -22,8 +22,11 @@ public:
     void sfNoteOnChannel(int channel,int midiNote,float velocity01);
     void sfNoteOffChannel(int channel,int midiNote);
     void sfSetChannelPreset(int channel,int bank,int program);
+    void sfSetChannelPresetWithName(int channel,int bank,int program,const std::string& voiceName);
     void sfSetChannelMixer(int channel,int volume,int pan,int expression,int reverbSend,int chorusSend);
     void sfSetChannelExpression(int channel,int expression);
+    void sfSetKeyboardSustain(bool enabled);
+    void sfSetKeyboardReleaseTime(int releaseTime);
     void sfSetMasterGain(float gain);
     std::string sfPresetList() const;
     oboe::DataCallbackResult onAudioReady(oboe::AudioStream*,void*,int32_t) override;

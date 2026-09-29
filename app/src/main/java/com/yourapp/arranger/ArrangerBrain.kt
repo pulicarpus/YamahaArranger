@@ -62,7 +62,20 @@ class ArrangerBrain @Inject constructor(
     private var acmpEnabled = true
     private var leftVoiceEnabled = true
     private val leftVoiceChannel = 3
-
+    private var keyboardTranspose = 0
+    // Preserve the exact output pitch used at NOTE_ON so changing transpose
+    // while a key is held cannot produce a mismatched NOTE_OFF.
+    private val transposedNotes = mutableMapOf<Int, Int>()
+    private var keyboardSustain = false
+    private var keyboardReleaseTime = 64
+    // Kotlin-side safety ledger: panel SUSTAIN delays keyboard NOTE_OFF for
+    // RIGHT 1/2/3 and LEFT. ACMP/chord notes are excluded so arranger chord
+    // changes are never sustain-held.
+    private val sustainHeldNotes = mutableSetOf<Pair<Int, Int>>()
+    // Sustain is native for RIGHT 1/2/3; LEFT uses the ledger above.
+    // Notes currently sounding through the dedicated LEFT VOICE channel.
+    // Mode changes must release them even if the key-up arrives after ACMP changes.
+    private val leftVoiceNotes = mutableSetOf<Int>()
     private var appliedChord: DetectedChord? = null
     private var pendingChord: DetectedChord? = null
     private var pendingChordJob: Job? = null
@@ -70,9 +83,13 @@ class ArrangerBrain @Inject constructor(
     // MIDI keyboards commonly deliver the fingers of one chord a few
     // milliseconds apart. Settle the note-on burst before retargeting CASM.
     private val chordSettleMs = 15L
-    // Monotonic anchor for the currently playing style section. Section changes
-    // are quantized from the actual section start, not from app Start/Stop time.
+    // UI/transition target and the section that is actually sounding are
+    // deliberately separate. During Auto Fill, activeSection must not be used
+    // as the "currently playing" section because it already points at the
+    // future Main target.
     private var activeSection: ArrangerSection = ArrangerSection.MainA
+    private var currentPlayingSection: ArrangerSection = ArrangerSection.MainA
+    private var pendingMainTarget: ArrangerSection? = null
 
     private val _state = MutableStateFlow(ArrangerState())
     val state: StateFlow<ArrangerState> = _state.asStateFlow()
@@ -111,75 +128,138 @@ class ArrangerBrain @Inject constructor(
         Timber.i("Style loaded: ${style.fileName}, voices=${style.voiceMap.size}")
     }
 
+    fun setKeyboardReleaseTime(value: Int) {
+        keyboardReleaseTime = value.coerceIn(0, 127)
+        DebugLog.add("🎹 RELEASE TIME = $keyboardReleaseTime")
+        audioEngine.setKeyboardReleaseTime(keyboardReleaseTime)
+    }
+
+    fun setKeyboardSustain(enabled: Boolean) {
+        if (keyboardSustain == enabled) return
+        keyboardSustain = enabled
+        DebugLog.add("🎹 SUSTAIN = " + if (enabled) "ON" else "OFF")
+        audioEngine.setKeyboardSustain(enabled)
+        if (!enabled) flushSustainedNotes()
+    }
+
+    private fun engineNoteOn(channel: Int, note: Int, velocity: Float) {
+        if (channel == 0) audioEngine.noteOn(note, velocity)
+        else audioEngine.noteOnChannel(channel, note, velocity)
+    }
+
+    private fun engineNoteOff(channel: Int, note: Int) {
+        if (channel == 0) audioEngine.noteOff(note)
+        else audioEngine.noteOffChannel(channel, note)
+    }
+
+    private fun releaseKeyboardNote(channel: Int, note: Int) {
+        if (keyboardSustain) {
+            sustainHeldNotes.add(channel to note)
+            return
+        }
+        engineNoteOff(channel, note)
+        midiInputManager.sendNoteOff(channel, note)
+    }
+
+    private fun stopSustainedNote(channel: Int, note: Int) {
+        if (sustainHeldNotes.remove(channel to note)) {
+            engineNoteOff(channel, note)
+            midiInputManager.sendNoteOff(channel, note)
+        }
+    }
+
+    private fun flushSustainedNotes() {
+        if (sustainHeldNotes.isEmpty()) return
+        val notes = sustainHeldNotes.toList()
+        sustainHeldNotes.clear()
+        notes.forEach { (channel, note) ->
+            engineNoteOff(channel, note)
+            midiInputManager.sendNoteOff(channel, note)
+        }
+        DebugLog.add("🎹 SUSTAIN RELEASE: ${notes.size} held note(s)")
+    }
+
+    fun setKeyboardTranspose(semitones: Int) {
+        keyboardTranspose = semitones.coerceIn(-12, 12)
+        DebugLog.add("🎹 TRANSPOSE = " + if (keyboardTranspose >= 0) "+$keyboardTranspose" else keyboardTranspose.toString())
+    }
+
     fun onKeyboardNoteOn(midiNote: Int, velocity: Float) {
         val velocity127 = (velocity * 127f).toInt().coerceIn(0, 127)
+        val outputNote = (midiNote + keyboardTranspose).coerceIn(0, 127)
         if (midiNote > splitNote) {
-            DebugLog.add("🎹 RIGHT IN note=$midiNote vel=$velocity127 → R1/R2/R3")
+            transposedNotes[midiNote] = outputNote
+            DebugLog.add("🎹 RIGHT IN note=$midiNote → pitch=$outputNote vel=$velocity127")
             for (channel in 0..2) {
                 if (!rightVoiceEnabled[channel]) continue
-                // RIGHT 1 deliberately keeps the exact legacy channel-0 audio path that the
-                // on-screen keyboard already uses successfully. RIGHT 2/3 use
-                // their dedicated FluidSynth channels.
-                if (channel == 0) audioEngine.noteOn(midiNote, velocity)
-                else audioEngine.noteOnChannel(channel, midiNote, velocity)
-                // Mirror the upper-keyboard note to the external E343 when MIDI OUT is enabled.
-                // Keep the internal SF2 path above so the app can still audition the RIGHT layer.
-                midiInputManager.sendNoteOn(channel, midiNote, velocity127)
+                stopSustainedNote(channel, outputNote)
+                engineNoteOn(channel, outputNote, velocity)
+                midiInputManager.sendNoteOn(channel, outputNote, velocity127)
             }
             return
         }
-        if (acmpEnabled) {
+        if (acmpEnabled && leftVoiceEnabled) {
+            // ACMP/chord notes are deliberately not sustain-held.
             DebugLog.add("🎹 LEFT IN note=$midiNote vel=$velocity127 → CHORD")
             chordDetector.noteOn(midiNote)?.let(::onChordChanged)
         } else if (leftVoiceEnabled) {
-            DebugLog.add("🎹 LEFT IN note=$midiNote vel=$velocity127 → LEFT VOICE")
-            audioEngine.noteOnChannel(leftVoiceChannel, midiNote, velocity)
-            midiInputManager.sendNoteOn(leftVoiceChannel, midiNote, velocity127)
+            transposedNotes[midiNote] = outputNote
+            DebugLog.add("🎹 LEFT IN note=$midiNote → pitch=$outputNote vel=$velocity127 → LEFT VOICE")
+            stopSustainedNote(leftVoiceChannel, outputNote)
+            audioEngine.noteOnChannel(leftVoiceChannel, outputNote, velocity)
+            midiInputManager.sendNoteOn(leftVoiceChannel, outputNote, velocity127)
+            leftVoiceNotes.add(outputNote)
         } else {
-            DebugLog.add("🎹 LEFT IN note=$midiNote vel=$velocity127 → R1/R2/R3 (LEFT OFF)")
+            transposedNotes[midiNote] = outputNote
+            DebugLog.add("🎹 LEFT IN note=$midiNote → pitch=$outputNote vel=$velocity127 → R1/R2/R3 (ACMP/L OFF)")
             for (channel in 0..2) {
                 if (!rightVoiceEnabled[channel]) continue
-                if (channel == 0) audioEngine.noteOn(midiNote, velocity)
-                else audioEngine.noteOnChannel(channel, midiNote, velocity)
-                midiInputManager.sendNoteOn(channel, midiNote, velocity127)
+                stopSustainedNote(channel, outputNote)
+                engineNoteOn(channel, outputNote, velocity)
+                midiInputManager.sendNoteOn(channel, outputNote, velocity127)
             }
         }
     }
 
     fun onKeyboardNoteOff(midiNote: Int) {
+        val outputNote = transposedNotes.remove(midiNote) ?: (midiNote + keyboardTranspose).coerceIn(0, 127)
         if (midiNote > splitNote) {
-            DebugLog.add("🎹 RIGHT OFF note=$midiNote → R1/R2/R3 OFF")
-            // Send NoteOff to all three channels so a layer switched OFF while
-            // a key is held cannot leave a hanging note in FluidSynth.
+            DebugLog.add("🎹 RIGHT OFF note=$midiNote → pitch=$outputNote → R1/R2/R3 OFF" +
+                if (keyboardSustain) " (held by sustain)" else "")
             for (channel in 0..2) {
-                if (channel == 0) audioEngine.noteOff(midiNote)
-                else audioEngine.noteOffChannel(channel, midiNote)
-                // Always release the corresponding external E343 channel too.
-                midiInputManager.sendNoteOff(channel, midiNote)
+                if (!rightVoiceEnabled[channel]) continue
+                releaseKeyboardNote(channel, outputNote)
             }
             return
         }
-        if (acmpEnabled) {
+        if (acmpEnabled && leftVoiceEnabled) {
+            // ACMP owns chord release; sustain never intercepts this path.
             DebugLog.add("🎹 LEFT OFF note=$midiNote → CHORD")
             val chord = chordDetector.noteOff(midiNote)
             if (chord != null) onChordChanged(chord)
             else DebugLog.add("🎹 Chord release: keep last chord")
         } else if (leftVoiceEnabled) {
-            DebugLog.add("🎹 LEFT OFF note=$midiNote → LEFT VOICE OFF")
-            audioEngine.noteOffChannel(leftVoiceChannel, midiNote)
-            midiInputManager.sendNoteOff(leftVoiceChannel, midiNote)
+            DebugLog.add("🎹 LEFT OFF note=$midiNote → pitch=$outputNote → LEFT VOICE OFF" +
+                if (keyboardSustain) " (held by sustain)" else "")
+            if (keyboardSustain) {
+                sustainHeldNotes.add(leftVoiceChannel to outputNote)
+            } else {
+                audioEngine.noteOffChannel(leftVoiceChannel, outputNote)
+                midiInputManager.sendNoteOff(leftVoiceChannel, outputNote)
+                leftVoiceNotes.remove(outputNote)
+            }
         } else {
-            DebugLog.add("🎹 LEFT OFF note=$midiNote → R1/R2/R3 OFF (LEFT OFF)")
+            DebugLog.add("🎹 LEFT OFF note=$midiNote → pitch=$outputNote → R1/R2/R3 OFF (LEFT OFF)" +
+                if (keyboardSustain) " (held by sustain)" else "")
             for (channel in 0..2) {
                 if (!rightVoiceEnabled[channel]) continue
-                if (channel == 0) audioEngine.noteOff(midiNote)
-                else audioEngine.noteOffChannel(channel, midiNote)
-                midiInputManager.sendNoteOff(channel, midiNote)
+                releaseKeyboardNote(channel, outputNote)
             }
         }
     }
 
     fun setAcmpEnabled(enabled: Boolean) {
+        if (acmpEnabled != enabled && enabled) releaseLeftVoiceNotes("ACMP ON")
         acmpEnabled = enabled
         pendingChordJob?.cancel()
         pendingChord = null
@@ -192,9 +272,22 @@ class ArrangerBrain @Inject constructor(
     }
 
     fun setLeftVoiceEnabled(enabled: Boolean) {
+        if (leftVoiceEnabled && !enabled) releaseLeftVoiceNotes("LEFT VOICE OFF")
         leftVoiceEnabled = enabled
         _state.update { it.copy(leftVoiceEnabled = enabled) }
         DebugLog.add(if (enabled) "🎹 LEFT VOICE: ON" else "🎹 LEFT VOICE: OFF (LEFT → RIGHT 1/2/3)")
+    }
+
+    private fun releaseLeftVoiceNotes(reason: String) {
+        sustainHeldNotes.removeAll { it.first == leftVoiceChannel }
+        if (leftVoiceNotes.isEmpty()) return
+        val notes = leftVoiceNotes.toList()
+        notes.forEach { note ->
+            audioEngine.noteOffChannel(leftVoiceChannel, note)
+            midiInputManager.sendNoteOff(leftVoiceChannel, note)
+        }
+        leftVoiceNotes.clear()
+        DebugLog.add("🎹 LEFT VOICE RELEASE: $reason notes=${notes.joinToString(",")}")
     }
 
     fun toggleAcmp() = setAcmpEnabled(!acmpEnabled)
@@ -265,6 +358,8 @@ class ArrangerBrain @Inject constructor(
             pendingChordJob?.cancel()
             pendingChord = null
             activeSection = _state.value.currentSection
+            currentPlayingSection = activeSection
+            pendingMainTarget = null
             playSection(activeSection)
             _state.update { it.copy(isPlaying = true) }
         }
@@ -273,15 +368,49 @@ class ArrangerBrain @Inject constructor(
     fun selectMainVariation(target: ArrangerSection) {
         ensureSequencer()
         val wasPlaying = _state.value.isPlaying
-        val previous = activeSection
         _state.update { it.copy(currentSection = target) }
         if (!wasPlaying) return
+
+        // If a Fill is already sounding, do NOT create a new transition job.
+        // Keep the current Fill intact; replace only the pending tail with the
+        // newest requested directional Fill + final Main target.
+        if (currentPlayingSection in fillVariations && pendingMainTarget != null) {
+            val fromMain = pendingMainTarget!!
+            val nextFill = fillForTransition(fromMain, target)
+            val style = loadedStyle
+            val fillModel = nextFill?.let { style?.sections?.get(it.styleName) }
+            val targetModel = style?.sections?.get(target.styleName)
+            if (_state.value.autoFill && nextFill != null && fillModel != null && targetModel != null) {
+                pendingMainTarget = target
+                pendingTransitionJob?.cancel()
+                pendingTransitionJob = null
+                DebugLog.add(
+                    "🎼 ACTIVE FILL RETARGET: " +
+                        currentPlayingSection.styleName + " → " +
+                        nextFill.styleName + " → " + target.styleName
+                )
+                sequencer.queueAfterCurrentSection(
+                    listOf(fillModel to 1, targetModel to -1),
+                    style!!.ppq
+                ) {
+                    currentPlayingSection = target
+                    activeSection = target
+                    pendingMainTarget = null
+                    DebugLog.add("🎼 FINAL MAIN STARTED: ${target.styleName}")
+                }
+                return
+            }
+        }
+
+        val previous = currentPlayingSection
         val previousWasMain = previous in mainVariations
         val fill = fillForTransition(previous, target)
         if (_state.value.autoFill && previousWasMain && previous != target && fill != null && sectionExists(fill)) {
+            pendingMainTarget = target
             DebugLog.add("🎼 Main→Main: queue fill $fill then $target at next bar")
             scheduleSectionChange(fill, thenPlay = target, quantizeToNextBar = true)
         } else {
+            pendingMainTarget = null
             scheduleSectionChange(target)
         }
     }
@@ -346,38 +475,26 @@ class ArrangerBrain @Inject constructor(
                     DebugLog.add(
                         "🎼 MASTER TRANSITION " + section.styleName + " → " + thenPlay.styleName + " (same clock)"
                     )
+                    currentPlayingSection = section
                     sequencer.queueSeamlessTransition(
                         listOf(firstModel to 1, targetModel to -1),
                         style.ppq,
                         style.meter.numerator,
                         style.meter.denominator
-                    )
+                    ) {
+                        currentPlayingSection = thenPlay
+                        activeSection = thenPlay
+                        pendingMainTarget = null
+                        DebugLog.add("🎼 FINAL MAIN STARTED: ${thenPlay.styleName}")
+                    }
                     activeSection = thenPlay
                 } else {
                     DebugLog.add(
                         "⚠ Transition section missing: " + section.styleName + " / " + thenPlay.styleName
                     )
                 }
-            } else if (thenStop) {
-                val endingModel = style.sections[section.styleName]
-                if (endingModel != null) {
-                    DebugLog.add("🎼 MASTER TRANSITION " + section.styleName + " → STOP (same clock)")
-                    sequencer.queueSeamlessTransition(
-                        listOf(endingModel to 1),
-                        style.ppq,
-                        style.meter.numerator,
-                        style.meter.denominator
-                    ) {
-                        DebugLog.add("🎼 " + section.styleName + " selesai → STOP")
-                        sequencer.stop()
-                        _state.update { it.copy(isPlaying = false) }
-                    }
-                    activeSection = section
-                } else {
-                    DebugLog.add("⚠ Transition section missing: " + section.styleName)
-                }
             } else {
-                playSection(section, null, false)
+                playSection(section, null, thenStop)
             }
         }
     }
@@ -432,7 +549,9 @@ class ArrangerBrain @Inject constructor(
 
     private fun playSection(section: ArrangerSection, thenPlay: ArrangerSection? = null, thenStop: Boolean = false) {
         ensureSequencer()
+        currentPlayingSection = section
         activeSection = section
+        if (section in mainVariations) pendingMainTarget = null
         val style = loadedStyle ?: return
         val model = style.sections[section.styleName]
         if (model == null) {

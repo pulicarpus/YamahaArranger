@@ -182,6 +182,16 @@ class AudioEngineManager @Inject constructor(
 
     fun setChannelVolume(channel: Int, volume: Int) = setChannelMixer(channel, volume=volume)
     fun setChannelExpression(channel: Int, expression: Int) = bridge.nativeSetChannelExpression(channel, expression.coerceIn(0, 127))
+    fun setKeyboardSustain(enabled: Boolean) {
+        DebugLog.add(if (enabled) "🎹 SUSTAIN: ON" else "🎹 SUSTAIN: OFF")
+        bridge.nativeSetKeyboardSustain(enabled)
+    }
+
+    fun setKeyboardReleaseTime(releaseTime: Int) {
+        val value = releaseTime.coerceIn(0, 127)
+        DebugLog.add("🎹 RELEASE TIME = $value (CC72) R1/R2/R3")
+        bridge.nativeSetKeyboardReleaseTime(value)
+    }
 
     fun setMasterVolume(volume: Int) {
         val v = volume.coerceIn(0, 127)
@@ -240,10 +250,15 @@ class AudioEngineManager @Inject constructor(
             .toList()
     }
 
-    fun setChannelProgram(channel: Int, program: Int, bank: Int = 0) {
-        DebugLog.traceAudio("PROGRAM ch=$channel bank=$bank program=$program")
-        bridge.nativeSetChannelPreset(channel, bank, program)
-        DebugLog.add("🎼 Ch$channel → prog=$program bank=$bank")
+    // Named overload carries the Yamaha/CASM voice identity into BASSMIDI resolution.
+    fun setChannelProgram(channel: Int, program: Int, bank: Int = 0, voiceName: String? = null) {
+        DebugLog.traceAudio("PROGRAM ch=$channel bank=$bank program=$program voice=${voiceName ?: ""}")
+        if (voiceName.isNullOrBlank()) {
+            bridge.nativeSetChannelPreset(channel, bank, program)
+        } else {
+            bridge.nativeSetChannelPresetWithName(channel, bank, program, voiceName)
+        }
+        DebugLog.add("🎼 Ch$channel → prog=$program bank=$bank voice=${voiceName ?: "AUTO"}")
     }
 
     fun allNotesOff() { DebugLog.traceAudio("ALL_NOTES_OFF"); bridge.nativeAllNotesOff() }

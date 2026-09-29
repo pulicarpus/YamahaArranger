@@ -1,138 +1,242 @@
 # YamahaArranger — Project Notes
 
-> **File ini untuk konteks development.** Setiap sesi chat baru, baca file ini dulu biar langsung paham status project.
+## Authoritative baseline
 
----
+- Current branch: fix/yamaha-panel-sustain-clean
+- Audited commit: f85ba7641fd73c34cdb57a4fc9984a05ac5d1b93
+- Repository: pulicarpus/YamahaArranger
+- main is stale relative to the current branch and must not be used as the engine baseline until this branch is promoted.
+- This audit did not modify application source code.
 
-## 🎯 TUJUAN PROJECT
+## Current architecture
 
-Membuat **aplikasi Android keyboard arranger** seperti ORG24 yang bisa:
-1. Memainkan **style Yamaha S/SX** (file `.sty`, `.prs`, `.bcs`, `.sct`)
-2. Menggunakan **PSR-E343** sebagai MIDI controller via USB OTG
-3. Sound engine berbasis **FluidSynth** + SoundFont (SF2)
-4. Output audio via speaker HP / TWS / AUX IN ke E343
+### Style pipeline
 
-**Target akhir:** User bisa memainkan style S/SX di E343 tanpa modifikasi hardware.
+Yamaha STY / PRS / SFF / SFF GE
+-> native SMF parser
+-> StyleSectionModel / StylePartModel
+-> CASM policy
+-> StyleSequencer
+-> AudioEngineManager
+-> BASSMIDI
+-> Oboe
 
----
+### MIDI/keyboard pipeline
 
-## 📱 DEVICE USER
+Android MIDI
+-> MidiInputManager
+-> chord/keyboard routing
+-> ArrangerBrain
+-> StyleSequencer and AudioEngineManager
 
-- **Tablet:** Redmi Pad (Android, tidak di-root)
-- **Keyboard:** Yamaha PSR-E343
-- **Koneksi:** USB OTG + kabel USB A-B
-- **Editor:** Acode (auto-push ke GitHub) + Termux (manual push untuk file besar)
-- **Audio Output:** TWS
+## Current authoritative files
 
----
+| File | Role |
+|---|---|
+| app/src/main/cpp/style_parser.cpp | SMF/style markers + CASM parser |
+| app/src/main/cpp/smf_reader.cpp | Standard MIDI parsing |
+| app/src/main/java/com/yourapp/yamahaarranger/style/StyleRepository.kt | Kotlin style model builder |
+| app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt | musical timeline, transitions, note ownership |
+| app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt | live arranger state, Auto Fill, keyboard routing |
+| app/src/main/java/com/yourapp/yamahaarranger/arranger/CasmNoteTransformer.kt | NTR/NTT/RTR note transformation |
+| app/src/main/java/com/yourapp/yamahaarranger/audio/AudioEngineManager.kt | Kotlin audio facade |
+| app/src/main/cpp/bassmidi_player.cpp | BASSMIDI, SF2 mapping, voice resolution |
+| app/src/main/cpp/audio_engine.cpp | Oboe output |
+| app/src/main/cpp/native_lib.cpp | JNI bridge |
 
-## 🏗️ ARSITEKTUR
+## Reference blueprint
 
-### C++ Native (`app/src/main/cpp/`)
-| File | Fungsi |
-|------|--------|
-| `native_lib.cpp` | JNI bridge + CASM finder |
-| `audio_engine.cpp` | Oboe stream + render loop |
-| `soundfont_player.cpp` | FluidSynth wrapper |
-| `style_parser.cpp` | Parse SMF + marker events |
-| `smf_reader.cpp` | Standard MIDI File reader |
-| `voice.cpp` | Fallback voice (sine wave) |
+See:
 
-### Kotlin (`app/src/main/java/com/yourapp/`)
-| File | Fungsi |
-|------|--------|
-| `MainViewModel.kt` | State management + DebugLog |
-| `MainScreen.kt` | UI Compose |
-| `MainActivity.kt` | Entry point + file picker |
-| `AudioEngineManager.kt` | Audio interface |
-| `NativeAudioBridge.kt` | JNI extern |
-| `ArrangerBrain.kt` | Transport control |
-| `StyleSequencer.kt` | Pattern playback |
-| `StyleRepository.kt` | Style loader |
-| `NativeStyleBridge.kt` | Style JNI |
-| `MidiInputManager.kt` | USB MIDI (package `com.yourapp.midi`) |
-| `ChordDetector.kt` | Chord detection |
+- docs/ARRANGER_ENGINE_AUDIT.md
+- docs/ARRANGER_ENGINE_BLUEPRINT.md
+- docs/MIDI_VOYAGER_PRO_5.4.11_AUDIO_RESEARCH.md
 
-### Native Libraries (`app/src/main/jniLibs/`)
-- **FluidSynth 2.6.0** prebuilt:
-  - `libfluidsynth.so`, `libfluidsynth-assetloader.so`
-  - `libFLAC.so`, `libogg.so`, `libopus.so`
-  - `libsndfile.so`, `libvorbis*.so`
-- 9 file per ABI (`arm64-v8a`, `armeabi-v7a`)
+External behavioral references:
 
-### Headers
-- `app/src/main/cpp/fluidsynth/include/` — FluidSynth headers
+- GigLad: https://www.deltarray.com/documentation/giglad/
+- vArranger: https://www.varranger.com/features/
+- One Man Band: https://www.1manband.nl/features.htm
+- Arranger Keyboard: https://www.audiosdroid.com/arranger-keyboard-support
+- Yamaha MIDI Song to Style: https://europe.yamaha.com/files/download/other_assets/4/2179884/MIDI_Song_to_Style_owners_manual_En_B0.pdf
+- Yamaha PSR-E343 MIDI Reference: https://usa.yamaha.com/files/download/other_assets/4/329464/psre343_en_mr_a0.pdf
 
----
+## What is already correct
 
-## 🔧 WORKFLOW
+### Transition architecture
 
-### Edit Kode
-- **Acode** untuk edit file biasa → auto-push ke GitHub
-- **Termux** untuk:
-  - Copy file binary besar (`.so`, headers)
-  - Overwrite file yang sulit di Acode
-  - Push fix kompleks
+- continuous master clock
+- pending transition queue
+- queued successor sections
+- no global allNotesOff during seamless section change
+- outgoing style note release is targeted
+- Auto Fill exists
+- Main A-D exists
+- Intro/Ending/Fill successor logic exists when the section change starts while playing
 
-### Build APK
-- **GitHub Actions** → `workflow_dispatch` manual (tidak auto-build)
-- Repo: `github.com/pulicarpus/YamahaArranger`
-- NDK: 26.3.11579264
-- CMake: 3.22.1
-- Gradle: 8.7
+### CASM
 
-### Git Credential
-- Sudah `credential.helper store` — tidak perlu login lagi
-- Jika push dari Termux: `git push origin main`
+- CSEG parsing
+- Ctab/Ctb2 parsing
+- Cntt overrides
+- NTR
+- NTT
+- RTR 0-5 representation
+- High Key
+- Note Limits
+- Bass-On
+- chord mute policy
+- CASM diagnostics
 
----
+### Audio
 
-## ✅ BUG YANG SUDAH DIFIX (18 BUG)
+- BASSMIDI live path
+- BASSMIDI NOTEOFF1
+- Yamaha MSB/LSB bank handling
+- Yamaha variation-bank normalization
+- melody/drum SF2 roles
+- async preload
+- drum routing restoration
+- voice-name-aware native resolver
+- channel mixer
+- master gain
 
-1. Theme Material3 → Material Components
-2. `mipmap/ic_launcher` → adaptive icon XML
-3. Oboe `find_package` → `prefab = true`
-4. `BuildConfig` unresolved → `buildConfig = true`
-5. `PianoKeyboard IntSize → Size`
-6. `MidiInputManager.connect()` hilang
-7. MIDI API: `openInputPort` → `openOutputPort`
-8. Import path `com.yourapp.yamahaarranger.midi` → `com.yourapp.midi`
-9. Emoji `✅` di import → parser Kotlin error
-10. `combine` max 5 flow → bungkus dengan `Triple`
-11. `tsf_channel_sounds_off_all` → butuh 2 argumen (loop 16 channel)
-12. TSF `undefined symbol` → `tsf_impl.cpp` + `#define TSF_IMPLEMENTATION`
-13. Channel mapping → extract dari status byte MIDI
-14. `g_jvm` di anonymous namespace → external linkage
-15. `@JvmStatic` di `DebugLog.add()` untuk JNI
-16. `fluid_synth_set_channel_volume` tidak ada → pakai `fluid_synth_cc(ch, 7, vol)`
-17. Duplicate `SoundFontPlayer::` symbols → audio_engine.cpp harus bersih
-18. Volume clipping → anti-clipping + master gain 0.7
+### Keyboard
 
----
+- split point
+- RIGHT 1/2/3
+- LEFT
+- transpose
+- sustain ledger
+- release time
+- MIDI OUT
+- E343-style MIDI input handling
 
-## 🔴 BUG TERCATAT BELUM DIFIX
+## Known bug sources
 
-### 1. Parser Main A-D
-- **File:** `style_parser.cpp` → `classifyMarkerText()`
-- **Masalah:** Semua Main A/B/C/D detect sebagai MainA
-- **Penyebab:** String `"main"` mengandung 'a', jadi `t.find('a')` selalu match
-- **Fix:** Cek huruf **setelah** kata "main", bukan di seluruh string
-- **Status:** ⏳ Sprint CASM Parser
+### P0.1 Voice resolver
 
-### 2. Voice Assignment
-- **Masalah:** Semua melodic channel main piano
-- **Penyebab:** Belum parse CASM untuk mapping channel → instrument
-- **Status:** ⏳ Sprint CASM Parser
+File:
+app/src/main/cpp/bassmidi_player.cpp
 
-### 3. Chord Transposition
-- **Masalah:** Style main pattern C-major mentah, tidak ikut chord user
-- **Penyebab:** NTR/NTT belum diimplementasi
-- **Status:** ⏳ Sprint CASM Parser
+Current order still prefers same numeric program before semantic category matching.
 
----
+Failure class:
+Strings can resolve to Piano/E.Piano instead of a String preset.
 
-## 🎼 CASM DEBUG PROGRESS
+Target order:
+exact bank/program -> explicit mapping -> semantic category -> family match -> compatible numeric fallback -> Piano final fallback.
 
-**File style yang di-test:** `LoveSong3.S687.prs`
+Do not modify CASM to fix this.
 
-**Hasil dump CASM:**
+### P0.2 Realtime mutex
+
+File:
+app/src/main/cpp/bassmidi_player.cpp
+
+render() and control/preload operations share mutex_.
+
+Risk:
+audio callback can wait during voice/program changes.
+
+Target:
+realtime render must not depend on a UI/file-operation mutex.
+
+### P0.3 Note instance identity
+
+File:
+app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt
+
+Current key:
+sourceChannel:sourceNote
+
+Risk:
+repeated identical notes collapse into one active record.
+
+Target:
+section generation + source track + source channel + event index or another unique instance token.
+
+### P0.4 Directional fills
+
+File:
+app/src/main/cpp/style_parser.cpp
+
+ArrangerBrain has directional FillAB/BA/etc concepts, but the native StyleSection model currently only represents FillAA/BB/CC/DD.
+
+Target:
+preserve source fill direction instead of reducing it to a generic fill.
+
+### P1.1 Idle Intro/Ending
+
+File:
+ArrangerBrain.kt
+
+Target:
+starting Intro while idle should execute Intro once then Main; starting Ending while idle should execute Ending once then Stop.
+
+### P1.2 Timing model
+
+Current:
+wall-clock next-bar quantization + coroutine scheduler + master tick.
+
+Target:
+one authoritative musical tick for quantization and section transitions.
+
+## Sustain
+
+Panel sustain is currently implemented as a keyboard note ledger in ArrangerBrain plus native release control.
+
+ACMP/chord notes are intentionally excluded from keyboard sustain.
+
+The PSR-E343 MIDI reference identifies:
+- CC64 = Sustain
+- CC72 = Release Time
+
+## Regression tests required before engine changes are considered safe
+
+1. Main A -> Main B
+2. Main B -> Main D
+3. Main D -> Main A
+4. Intro -> Main
+5. Fill -> Main
+6. Ending -> Stop
+7. repeated same-note events
+8. 2/4
+9. 3/4
+10. 4/4
+11. 6/8
+12. drum + melody
+13. Strings voice resolution
+14. Yamaha variation bank resolution
+15. SF2 reload
+16. sustain ON/OFF
+17. release time changes
+
+## Legacy documentation warning
+
+Older README/project notes described:
+
+- FluidSynth as the live engine;
+- sine-wave placeholder as the active SoundFont path;
+- incomplete CASM;
+- the old short StyleSequencer.
+
+Those statements are no longer authoritative for this branch.
+
+## Development rule
+
+Do not touch a subsystem merely because the old documentation says it is incomplete.
+
+Always inspect the current branch first.
+
+When a bug appears, classify it as:
+
+parser -> CASM -> transition -> note ownership -> voice resolver -> BASSMIDI state -> realtime audio -> UI state.
+
+Then change the smallest responsible boundary and add a regression test.
+
+## Current audit result
+
+The current branch is suitable to become the project main baseline after documentation promotion.
+
+The branch should not be treated as bug-free. The four P0 issues above are the primary stabilization targets.

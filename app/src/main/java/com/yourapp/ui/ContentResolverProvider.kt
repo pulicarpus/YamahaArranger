@@ -11,8 +11,11 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import timber.log.Timber
 import java.io.File
 import java.io.InputStream
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
+
+data class StyleFolder(val uri: Uri, val name: String, val styleCount: Int)
 
 @Singleton
 class ContentResolverProvider @Inject constructor(
@@ -20,6 +23,206 @@ class ContentResolverProvider @Inject constructor(
 ) {
     private val sf2RootDir: File
         get() = File(Environment.getExternalStorageDirectory(), "YamahaArranger/SF2")
+
+    private val styleRootDir: File
+        get() = File(Environment.getExternalStorageDirectory(), "YamahaArranger/Styles")
+
+    fun ensureStyleFolder() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
+                Timber.w("YamahaArranger Styles folder requires MANAGE_EXTERNAL_STORAGE")
+                return
+            }
+            styleRootDir.mkdirs()
+        } catch (e: Exception) {
+            Timber.w(e, "Could not create YamahaArranger/Styles folder")
+        }
+    }
+
+    /**
+     * Scan YamahaArranger/Styles without FileTreeWalk's silent SKIP behavior.
+     *
+     * On Android 11+ a directory can be visible while child enumeration is
+     * blocked by scoped-storage permissions. FileTreeWalk silently skips an
+     * unreadable directory, which made the UI report "0" with no useful clue.
+     * An explicit stack lets us log exactly where enumeration stops.
+     */
+    /** Yamaha style collections may use .STY, .PRS and .SST containers. */
+    private fun isStyleFile(file: File): Boolean {
+        if (!file.isFile) return false
+        return when (file.extension.lowercase(Locale.ROOT)) {
+            "sty", "prs", "sst" -> true
+            else -> false
+        }
+    }
+
+    private fun styleFilesUnder(dir: File): List<File> {
+        if (!dir.isDirectory) {
+            Timber.w("🎼 Style scan: not a directory: \u0024{dir.absolutePath}")
+            return emptyList()
+        }
+
+        val result = mutableListOf<File>()
+        val pending = ArrayDeque<File>()
+        pending.addLast(dir)
+
+        while (pending.isNotEmpty()) {
+            val current = pending.removeLast()
+            val children = try {
+                current.listFiles()
+            } catch (e: SecurityException) {
+                Timber.e(e, "🎼 Style scan denied: \u0024{current.absolutePath}")
+                null
+            }
+
+            if (children == null) {
+                Timber.w(
+                    "🎼 Style scan cannot enumerate: path=\u0024{current.absolutePath} " +
+                        "exists=\u0024{current.exists()} dir=\u0024{current.isDirectory} canRead=\u0024{current.canRead()}"
+                )
+                continue
+            }
+
+            for (child in children) {
+                if (child.isDirectory) {
+                    pending.addLast(child)
+                } else if (child.isFile && isStyleFile(child)) {
+                    result += child
+                }
+            }
+        }
+
+        if (result.isNotEmpty()) return result
+
+        // Fallback for devices where direct File.listFiles() cannot enumerate
+        // shared-storage children reliably. MANAGE_EXTERNAL_STORAGE also
+        // permits access to MediaStore.Files.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+            Environment.isExternalStorageManager()
+        ) {
+            val prefix = styleRootDir.absolutePath.trimEnd('/') + "/"
+            val mediaUri = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL)
+            val projection = arrayOf(
+                MediaStore.Files.FileColumns.DATA,
+                MediaStore.Files.FileColumns.DISPLAY_NAME
+            )
+            val mediaResult = mutableListOf<File>()
+
+            try {
+                context.contentResolver.query(
+                    mediaUri,
+                    projection,
+                    "(${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ? OR " +
+                        "${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ? OR " +
+                        "${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ?)",
+                    arrayOf("%.sty", "%.prs", "%.sst"),
+                    null
+                )?.use { cursor ->
+                    val dataIndex = cursor.getColumnIndex(MediaStore.Files.FileColumns.DATA)
+                    while (cursor.moveToNext()) {
+                        if (dataIndex < 0 || cursor.isNull(dataIndex)) continue
+                        val path = cursor.getString(dataIndex)
+                        val file = File(path)
+                        if (path.startsWith(prefix) &&
+                            file.absolutePath.startsWith(dir.absolutePath.trimEnd('/') + "/") &&
+                            file.isFile &&
+                            isStyleFile(file)
+                        ) {
+                            mediaResult += file
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "🎼 MediaStore Style fallback failed for \u0024{dir.absolutePath}")
+            }
+
+            if (mediaResult.isNotEmpty()) {
+                Timber.i(
+                    "🎼 MediaStore Style fallback found \u0024{mediaResult.size} files in \u0024{dir.absolutePath}"
+                )
+                return mediaResult.distinctBy { it.absolutePath }
+            }
+        }
+
+        return result
+    }
+
+    fun listStyleFolders(): List<StyleFolder> {
+        ensureStyleFolder()
+        val allFiles = Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()
+        val children = styleRootDir.listFiles()
+        Timber.i(
+            "🎼 Style root: path=\u0024{styleRootDir.absolutePath} exists=\u0024{styleRootDir.exists()} " +
+                "dir=\u0024{styleRootDir.isDirectory} canRead=\u0024{styleRootDir.canRead()} " +
+                "allFiles=\u0024allFiles children=\u0024{children?.size ?: -1}"
+        )
+        return children
+            ?.filter { it.isDirectory }
+            ?.sortedBy { it.name.lowercase() }
+            ?.map { dir ->
+                val count = styleFilesUnder(dir).size
+                Timber.i(
+                    "🎼 Style category: \u0024{dir.name} path=\u0024{dir.absolutePath} " +
+                        "canRead=\u0024{dir.canRead()} styCount=\u0024count"
+                )
+                StyleFolder(
+                    uri = Uri.fromFile(dir),
+                    name = dir.name,
+                    styleCount = count
+                )
+            }
+            ?: emptyList()
+    }
+
+    fun listAllStylesInFolders(): List<Pair<Uri, String>> {
+        ensureStyleFolder()
+        return styleRootDir.listFiles()
+            ?.filter { it.isDirectory }
+            ?.flatMap { styleFilesUnder(it) }
+            ?.sortedBy { it.absolutePath.lowercase() }
+            ?.map { Uri.fromFile(it) to it.name }
+            ?: emptyList()
+    }
+
+    fun listStyles(): List<Pair<Uri, String>> {
+        ensureStyleFolder()
+        return styleRootDir.listFiles { f -> f.isFile && isStyleFile(f) }
+            ?.sortedBy { it.name.lowercase() }
+            ?.map { Uri.fromFile(it) to it.name }
+            ?: emptyList()
+    }
+
+    fun listStylesInFolder(folderUri: Uri): List<Pair<Uri, String>> {
+        return try {
+            val rawPath = folderUri.path ?: return emptyList()
+            val path = Uri.decode(rawPath)
+            var dir = File(path)
+
+            // Uri paths can be encoded differently by Android/Compose. If the
+            // URI-derived File does not enumerate, resolve the folder again
+            // from the known YamahaArranger/Styles root by canonical path/name.
+            var files = styleFilesUnder(dir)
+            if (files.isEmpty()) {
+                val requestedName = dir.name
+                styleRootDir.listFiles()
+                    ?.firstOrNull { it.isDirectory && it.name == requestedName }
+                    ?.let {
+                        dir = it
+                        files = styleFilesUnder(it)
+                    }
+            }
+            files = files.sortedBy { it.name.lowercase() }
+            Timber.i(
+                "🎼 Style folder open: uri=\u0024folderUri path=\u0024{dir.absolutePath} " +
+                    "exists=\u0024{dir.exists()} dir=\u0024{dir.isDirectory} canRead=\u0024{dir.canRead()} " +
+                    "styCount=\u0024{files.size}"
+            )
+            files.map { Uri.fromFile(it) to it.name }
+        } catch (e: Exception) {
+            Timber.e(e, "Failed listing styles in $folderUri")
+            emptyList()
+        }
+    }
 
     fun readBytes(uri: Uri): ByteArray? = try {
         context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
