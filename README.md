@@ -1,102 +1,185 @@
-# YamahaArranger — Phase 1 (Fondasi) + Phase 2 (Style Engine/Arranger Brain)
+# YamahaArranger
 
-Ini adalah fondasi Phase 1 sesuai roadmap: struktur project, audio engine
-native (Oboe) dengan polyphony 64 + ADSR, parser SMF + pembaca section
-style Yamaha dasar, chord detection engine, dan UI Compose (keyboard +
-tombol section + LCD display).
+Android Yamaha-style arranger keyboard engine.
 
-## Yang sudah nyata jalan (bukan cuma kerangka)
-- **AudioEngine (C++/Oboe)**: benar-benar membuka stream low-latency,
-  punya 64 voice dengan ADSR dan resampling pitch — bisa menghasilkan
-  suara sungguhan begitu di-build & dijalankan di device.
-- **SilentPlaceholderSampleProvider**: generate satu sample sine wave
-  (C4) di Kotlin, dikirim ke native lewat direct ByteBuffer, supaya jalur
-  JNI → Oboe → speaker bisa langsung dites tanpa nunggu SoundFont player.
-- **SmfReader**: parser Standard MIDI File (Format 0/1) yang sungguhan —
-  baca header, variable-length delta time, running status, meta & sysex
-  event.
-- **StyleParser**: memakai SmfReader untuk memisahkan section (Main
-  A-D, Intro, Fill, dst) berdasarkan marker/text meta-event per track.
-  Ini menangani style yang section-nya ditandai via marker SMF biasa.
-- **ChordDetector**: pattern-matching akor sungguhan (bukan placeholder)
-  untuk Major/Minor/7th/9th/dim/aug/sus/6th/add9/dst, mode Single Finger
-  & Fingered.
-- **UI Compose**: keyboard on-screen yang benar-benar menghasilkan MIDI
-  note dari koordinat tap, LCD display, tombol section, transport row.
+## Current authoritative baseline
 
-## Tambahan Phase 2 (sungguhan, bukan stub)
-- **StyleRepository + JNI section/event bridge**: seluruh section & note
-  event dari StyleParser native sekarang benar-benar bisa ditarik ke
-  Kotlin (`nativeGetSectionNames`, `nativeGetPartEvents`, dst) — bukan
-  cuma tervalidasi bisa di-parse seperti Phase 1.
-- **StyleSequencer**: pemutar section sungguhan — jalan tick-by-tick,
-  loop di akhir bar, kirim note on/off ke AudioEngineManager.
-  **Keterbatasan yang diakui jujur**: ini pakai `delay()` di coroutine,
-  jadi TIDAK sample-accurate (bisa drift beberapa ms). Untuk bar-accurate
-  sequencing sungguhan, penjadwalan perlu dipindah ke audio callback
-  native — dicatat sebagai TODO Phase 2b, bukan diklaim selesai.
-- **NoteTransposer**: transposisi note mengikuti akor yang dimainkan
-  (root shift + snap ke interval chord quality) — pendekatan yang jauh
-  lebih sederhana dari NTT/NTR asli Yamaha (yang butuh reverse-engineer
-  chunk CASM proprietary), tapi cukup untuk kasus umum major/minor/7th.
-- **ArrangerBrain**: benar-benar menyatukan ChordDetector + StyleSequencer
-  + section switching, termasuk logika "ganti Main A→B saat playing =
-  mainkan Fill dulu" (auto-fill). Chaining fill→main yang presisi di
-  bar boundary masih TODO (lihat komentar di kode).
-- **MidiInputManager**: USB-MIDI & Bluetooth-MIDI INPUT yang sungguhan
-  jalan, pakai `android.media.midi` bawaan Android (bukan native/vendor
-  SDK) — device MIDI USB/BLE yang sudah dipasangkan otomatis masuk lewat
-  jalur chord+audio yang sama dengan keyboard on-screen.
-- **Registration Memory (Room)**: skema tabel 8 bank x 4 tombol sudah
-  ada (entity+DAO), tapi UI untuk save/recall belum dibuat — ini
-  fondasi datanya saja.
-- **Import style dari storage**: tombol "Import .sty..." pakai Storage
-  Access Framework (`OpenDocument`), bisa baca dari file lokal, SD card,
-  atau cloud docs provider manapun yang terdaftar di sistem.
+Branch: fix/yamaha-panel-sustain-clean
+Commit audited: f85ba7641fd73c34cdb57a4fc9984a05ac5d1b93
 
-## Yang MASIH kerangka/TODO
-- **CASM/NTT/NTR byte-exact** (lihat NoteTransposer) — pendekatan Phase 2
-  adalah aproksimasi, bukan implementasi lengkap format proprietary.
-- **SoundFont player (SF2/SFZ)** — SampleProvider masih placeholder sine
-  wave; TinySoundFont/FluidSynth belum di-embed.
-- **DSP effects** (Reverb/Chorus/Delay/EQ/Compressor), **voice
-  layering** (Right1/Right2/Left, split point) — kolom untuk voice
-  layering sudah dicadangkan di RegistrationMemoryEntity, tapi belum ada
-  implementasi audio-nya.
-- **RTP-MIDI (MIDI over WiFi)** — TIDAK dicakup oleh `android.media.midi`
-  (itu hanya USB & BLE); perlu implementasi protokol AppleMIDI/UDP
-  terpisah.
-- **Recording (MIDI + Audio)**, **Style browser UI berkategori**,
-  **Style converter**, **OTS per style**, **Song player (SMF/MP3/WAV)**,
-  **Performance mode**, **UI final ala ORG24**, **rilis Play Store** —
-  ini semua Phase 3-4 di roadmap Anda, belum digarap.
+This branch is the current development baseline. The old main branch is stale relative to this branch.
 
-## ⚠️ Penting soal cara kerja Anda (Acode di tablet, tanpa desktop)
-Proyek ini punya bagian **C++/NDK** yang butuh toolchain compile native
-(CMake + NDK). Ini **tidak bisa dites langsung dari Acode** seperti kode
-Kotlin biasa — Anda perlu build lewat CI, sama seperti alur
-`gereja_mobile` (GitHub Actions → APK).
+The current engine is no longer the original Phase-1/Phase-2 prototype described by older documentation. The live SoundFont path is BASSMIDI, the arranger has a continuous transition clock, CASM/NTR/NTT/RTR handling, Yamaha bank-aware preset routing, sustain/release controls, mixer overrides and an SF2/style inspector.
 
-Sudah saya siapkan `.github/workflows/build.yml` yang:
-1. Install JDK 17, Android SDK, NDK 26, CMake
-2. Build `assembleDebug` (termasuk compile native code)
-3. Upload hasil APK sebagai artifact (bisa juga diarahkan ke Telegram
-   seperti proyek gereja Anda — tinggal uncomment bagian di file yml)
+## Architecture
 
-**Catatan**: repo ini belum menyertakan `gradle-wrapper.jar` (file
-binary tidak ikut dalam zip dari chat ini) — workflow CI memakai
-`gradle/actions/setup-gradle` sehingga tetap bisa build tanpa wrapper.
-Kalau nanti Anda generate wrapper sendiri, bisa ganti ke `./gradlew`.
+Yamaha STY / PRS / SFF / SFF GE
+-> native SMF/Yamaha parser
+-> section + part model
+-> CASM policy
+-> StyleSequencer
+-> BASSMIDI
+-> Oboe
+-> Android audio
 
-Juga belum ada file icon (`mipmap/ic_launcher`) — tambahkan launcher
-icon sebelum build pertama, atau build akan gagal di resource linking.
+Keyboard/MIDI path:
 
-## Saran langkah berikutnya
-Bagian yang paling akan mengubah kualitas suara secara drastis adalah
-**SoundFont player (TinySoundFont)** — begitu itu ada, semua instrumen
-lain (Bass, Chord, Pad di style) langsung terdengar seperti alat musik
-sungguhan, bukan sine wave yang di-pitch-shift. Saran saya itu prioritas
-berikutnya, baru menyusul DSP effects & voice layering.
+Android MIDI / E343
+-> MidiInputManager
+-> chord detector / keyboard routing
+-> ArrangerBrain
+-> StyleSequencer + AudioEngineManager
+-> BASSMIDI / Oboe
 
-Build & jalankan dulu lewat CI untuk pastikan jalur audio + MIDI native
-ini beneran bunyi di device Anda, baru kita lanjut modul berikutnya.
+## Current engine capabilities
+
+### Yamaha style engine
+
+- Intro A/B/C
+- Main A/B/C/D
+- Fill AA/BB/CC/DD
+- directional Fill model in ArrangerBrain, pending full native parser representation
+- Ending A/B/C
+- continuous master musical clock
+- seamless section queueing
+- Auto Fill
+- CASM policy selection
+- NTR / NTT / RTR
+- note limits and high-key handling
+- Bass-On handling
+- style mixer/controller state
+- style channel overrides
+- 2/4, 3/4, 4/4 and 6/8 meter model
+
+Yamaha documents the standard arranger structure as Intro I-III, Main A-D, Fill In A-D, Break and Ending I-III, with eight style parts: Rhythm 1-2, Bass, Chord 1-2, Pad and Phrase 1-2.
+
+## Audio engine
+
+BASSMIDI is the current live SoundFont engine.
+
+Current features:
+
+- BASS + BASSMIDI
+- BASS_MIDI_NOTEOFF1
+- 1000 configured MIDI voices
+- PPQN 1920
+- configurable SRC quality
+- Yamaha bank MSB/LSB preservation
+- Yamaha variation-bank normalization
+- separate melody/drum SoundFont roles
+- one-SF2 melody + drum mode
+- BASSMIDI FONTEX2 mappings
+- asynchronous sample preload
+- preset enumeration
+- voice-name-aware preset resolution
+- channel volume/pan/expression/reverb/chorus
+- master gain
+- panel sustain
+- Yamaha-style release time on RIGHT voices
+
+FluidSynth remains in the repository as a legacy dependency and is not the authoritative live SoundFont path.
+
+## Current known high-priority problems
+
+These are documented in docs/ARRANGER_ENGINE_AUDIT.md.
+
+1. Voice resolver ordering can select the same numeric program before semantic String/category matching.
+2. BASSMIDI render and control operations share a mutex, creating realtime contention risk.
+3. Style note ownership uses source-channel/source-note instead of unique event identity.
+4. Directional fills are richer in ArrangerBrain than the current native StyleSection model.
+5. Intro/Ending selected while idle are not yet guaranteed to become one-shot successor sequences.
+6. Transition timing still combines wall-clock quantization with a coroutine-driven master clock.
+7. Regression tests for transitions, repeated notes, meters and voice resolution are incomplete.
+
+These are targeted stabilization items. The engine should not be rewritten from scratch.
+
+## Sustain / release
+
+The current design intentionally separates:
+
+- panel sustain for keyboard voices;
+- ACMP/chord notes;
+- style note lifecycle;
+- release time.
+
+The PSR-E343 MIDI reference identifies CC64 as Sustain and CC72 as Release Time.
+
+## Diagnostic tools
+
+- SF2/style inspector
+- String/CASM trace
+- exported DebugLog
+- native BASSMIDI voice-resolution logs
+- SF2 preset enumeration
+- style marker/CASM dumps
+
+MIDI Voyager reverse-engineering notes are stored at:
+
+docs/MIDI_VOYAGER_PRO_5.4.11_AUDIO_RESEARCH.md
+
+## Audit and blueprint
+
+Read these before modifying the engine:
+
+- docs/ARRANGER_ENGINE_AUDIT.md
+- docs/ARRANGER_ENGINE_BLUEPRINT.md
+
+The audit compares the current implementation against:
+
+- GigLad
+- vArranger
+- One Man Band
+- Android Arranger Keyboard
+- MIDI Voyager Pro
+- Yamaha arranger/SFF behavior
+
+## Regression strategy
+
+Before changing engine behavior, test at minimum:
+
+- Main A -> Main B
+- Main B -> Main D
+- Main D -> Main A
+- Intro -> Main
+- Fill -> Main
+- Ending -> Stop
+- repeated identical notes
+- drum + melody simultaneously
+- Strings voice resolution
+- 2/4
+- 3/4
+- 4/4
+- 6/8
+- SoundFont reload
+- sustain ON/OFF
+- release-time changes
+
+## Development rule
+
+Do not replace working arranger subsystems blindly.
+
+When a bug appears, identify which boundary is failing:
+
+1. parser
+2. CASM policy
+3. transition scheduler
+4. note ownership
+5. voice resolver
+6. BASSMIDI preset state
+7. realtime audio path
+8. UI/performance state
+
+Then fix only that boundary and add a regression case.
+
+## Build
+
+The project contains native C++/NDK code and should be built through GitHub Actions on the user's Android-only workflow.
+
+Build workflow:
+
+.github/workflows/build.yml
+
+SF2 inspection workflow:
+
+.github/workflows/inspect-sf2.yml
+
