@@ -28,7 +28,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -621,12 +620,14 @@ private fun SxSideMenu(
                 shape = androidx.compose.foundation.shape.CircleShape,
                 modifier = Modifier.size(dialSize)
                     .border(if (compact) 3.dp else 4.dp, SxBlue, androidx.compose.foundation.shape.CircleShape)
-                    .pointerInput(selectedParameter) {
-                        androidx.compose.foundation.gestures.detectDragGestures { _, dragAmount ->
-                            val vertical = -dragAmount.y
-                            if (kotlin.math.abs(vertical) >= 1.5f) onStep(if (vertical > 0f) 1 else -1)
-                        }
-                    }
+                    .draggable(
+                        state = androidx.compose.foundation.gestures.rememberDraggableState { delta ->
+                            if (kotlin.math.abs(delta) >= 1.5f) {
+                                onStep(if (delta < 0f) 1 else -1)
+                            }
+                        },
+                        orientation = androidx.compose.foundation.gestures.Orientation.Vertical
+                    )
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
