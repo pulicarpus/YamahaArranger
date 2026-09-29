@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.yourapp.yamahaarranger.arranger.ArrangerBrain
 import com.yourapp.yamahaarranger.arranger.ArrangerSection
 import com.yourapp.yamahaarranger.audio.AudioEngineManager
+import com.yourapp.audio.SoundFontInspector
 import com.yourapp.midi.MidiInputManager
 import com.yourapp.yamahaarranger.style.StyleRepository
 import com.yourapp.yamahaarranger.style.StyleChannelOverride
@@ -165,7 +166,9 @@ data class MainUiState(
     val availableSoundFonts: List<Pair<Uri, String>> = emptyList(),
     val styleFolders: List<StyleFolder> = emptyList(),
     val styleFiles: List<Pair<Uri, String>> = emptyList(),
-    val sf2Presets: List<AudioEngineManager.SfPreset> = emptyList()
+    val sf2Presets: List<AudioEngineManager.SfPreset> = emptyList(),
+    val sf2Reports: List<SoundFontInspector.Report> = emptyList(),
+    val sf2ScanInProgress: Boolean = false
 )
 
 @HiltViewModel
@@ -187,6 +190,8 @@ class MainViewModel @Inject constructor(
     private val _styleFolders = MutableStateFlow<List<StyleFolder>>(emptyList())
     private val _styleFiles = MutableStateFlow<List<Pair<Uri, String>>>(emptyList())
     private val _sf2Presets = MutableStateFlow<List<AudioEngineManager.SfPreset>>(emptyList())
+    private val _sf2Reports = MutableStateFlow<List<SoundFontInspector.Report>>(emptyList())
+    private val _sf2ScanInProgress = MutableStateFlow(false)
     private val _styleVolume = MutableStateFlow(100)
     private val _leftVolume = MutableStateFlow(100)
     private val _right1Volume = MutableStateFlow(100)
@@ -206,10 +211,19 @@ class MainViewModel @Inject constructor(
         _masterVolume
     ) { volumes, master -> volumes to master }
 
+    private val sf2InspectorState = combine(_sf2Reports, _sf2ScanInProgress) { reports, scanning ->
+        reports to scanning
+    }
+
     private val voiceAndSoundFontState = combine(
         combine(_activeBank, _activeRegSlot, _voiceAssignments) { b, r, v -> Triple(b, r, v) },
-        combine(_rightVoices, combine(_availableSoundFonts, combine(_styleFolders, _styleFiles) { folders, styles -> folders to styles }) { sf, folderAndStyles -> sf to folderAndStyles }, _sf2Presets) { rightVoices, filesAndStyles, presets ->
-            Triple(rightVoices, filesAndStyles, presets)
+        combine(
+            _rightVoices,
+            combine(_availableSoundFonts, combine(_styleFolders, _styleFiles) { folders, styles -> folders to styles }) { sf, folderAndStyles -> sf to folderAndStyles },
+            _sf2Presets,
+            sf2InspectorState
+        ) { rightVoices, filesAndStyles, presets, inspector ->
+            Triple(rightVoices, filesAndStyles, presets) to inspector
         }
     ) { voiceData, sfData -> voiceData to sfData }
 
@@ -226,11 +240,15 @@ class MainViewModel @Inject constructor(
         val (voiceVolumes, masterVol) = volumesMaster
         val (voiceData, sfData) = voiceDataSf
         val (bank, regSlot, voices) = voiceData
-        val rightVoices = sfData.first
-        val sfFiles = sfData.second.first
-        val styleFolders = sfData.second.second.first
-        val styleFiles = sfData.second.second.second
-        val sfPresets = sfData.third
+        val sfDataCore = sfData.first
+        val inspectorData = sfData.second
+        val rightVoices = sfDataCore.first
+        val sfFiles = sfDataCore.second.first
+        val styleFolders = sfDataCore.second.second.first
+        val styleFiles = sfDataCore.second.second.second
+        val sfPresets = sfDataCore.third
+        val sf2Reports = inspectorData.first
+        val sf2ScanInProgress = inspectorData.second
         MainUiState(
             styleName = styleName,
             styleFolders = styleFolders,
@@ -255,6 +273,8 @@ class MainViewModel @Inject constructor(
             right3Volume = voiceVolumes[4],
             masterVolume = masterVol,
             sf2Presets = sfPresets,
+            sf2Reports = sf2Reports,
+            sf2ScanInProgress = sf2ScanInProgress,
             activeBank = bank,
             activeRegSlot = regSlot,
             voiceName = rightVoices.getOrNull(0)?.displayName() ?: "OFF",
@@ -656,9 +676,40 @@ class MainViewModel @Inject constructor(
 
     fun refreshSoundFontList() {
         viewModelScope.launch(Dispatchers.IO) {
-            _availableSoundFonts.value = contentResolver.listSoundFonts()
+            val files = contentResolver.listSoundFonts()
+            _availableSoundFonts.value = files
+            _sf2ScanInProgress.value = true
+            try {
+                val reports = buildList {
+                    files.forEachIndexed { index, (uri, name) ->
+                        try {
+                            val size = uri.path?.let { File(it).length() } ?: -1L
+                            val report = contentResolver.openInputStream(uri)?.use { input ->
+                                SoundFontInspector.inspect(input, name, size)
+                            }
+                            if (report != null) {
+                                add(report)
+                                DebugLog.add(
+                                    "🔎 SF2 INSPECT ${index + 1}/${files.size}: $name " +
+                                        "valid=${report.validSf2} presets=${report.presets.size}"
+                                )
+                            } else {
+                                DebugLog.add("❌ SF2 INSPECT: cannot open $name")
+                            }
+                        } catch (t: Throwable) {
+                            DebugLog.add("❌ SF2 INSPECT failed: $name ${t.javaClass.simpleName}: ${t.message}")
+                        }
+                    }
+                }
+                _sf2Reports.value = reports
+            } finally {
+                _sf2ScanInProgress.value = false
+            }
             _sf2Presets.value = audioEngine.loadedSoundFontPresets()
-            DebugLog.add("📂 SF2 found: " + _availableSoundFonts.value.size + " presets=" + _sf2Presets.value.size)
+            DebugLog.add(
+                "📂 SF2 found=${files.size} inspected=${_sf2Reports.value.size} " +
+                    "loadedPresets=${_sf2Presets.value.size}"
+            )
         }
     }
 
