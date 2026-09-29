@@ -707,3 +707,43 @@ Regression utama:
 - drum + melody bersamaan;
 - reload SF2;
 - switching Main/Fill tanpa suara hilang.
+
+
+## Checkpoint audio Build 730 → Voice Resolver V3 — 2026-09-30
+
+Build 730 (971c155e3eb3975a99bbb11130b36aac2836fc6e) sudah menjadi baseline uji audio yang menghasilkan suara drum, bass, piano, dan string pada style Love Song menurut pengujian perangkat pengguna.
+
+Temuan penting:
+- 7 SF2 tersedia di folder managed: Yamaha melody, Yamaha drumkit, ColomboGMGS2, Merlin, Timbres Of Heaven, Tyros 4, dan CP80.
+- Inspector masih menampilkan bagian diagnostik Kotlin lama. Bagian tersebut bukan bukti bahwa native Voice Resolver V2 gagal.
+- Native C++ sudah memiliki pemetaan channel-specific BASS_MIDI_FONTEX2 dan log VOICE MAP; jalur ini dipertahankan.
+- Resolver native sudah memprioritaskan exact bank/program, MSB-only, semantic category/name, lalu fallback yang category-safe.
+- Karena Build 730 sudah menghasilkan beberapa instrumen dengan benar, perubahan berikutnya tidak boleh mengganti routing yang sudah bekerja hanya untuk memperbaiki satu style.
+
+### Target V3
+
+Tujuan V3 adalah meningkatkan kelengkapan/karakter suara secara global, bukan membuat mapping khusus Love Song.
+
+Urutan prinsip:
+1. exact Yamaha bank/program;
+2. normalized Yamaha bank;
+3. semantic voice category + voice-name evidence;
+4. program proximity sebagai tie-breaker;
+5. category-safe fallback;
+6. conservative fallback terakhir.
+
+Kategori harus mencegah kesalahan seperti Bass→Organ, Guitar→Drum, Piano→Strings.
+
+### Validasi perangkat berikutnya
+
+Regression minimum:
+- Love Song Main A/B/C/D;
+- Intro → Main;
+- Fill → Main;
+- beberapa style dengan karakter berbeda;
+- 2/4, 3/4, 4/4, 6/8;
+- drum + melody bersamaan;
+- Yamaha variation bank, terutama MSB 104;
+- SF2 reload.
+
+Build 730 diperlakukan sebagai audio baseline; jangan menyentuh CASM, scheduler, transition, atau drum routing tanpa bukti regresi.
