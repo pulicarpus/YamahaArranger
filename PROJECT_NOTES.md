@@ -519,3 +519,80 @@ Setelah inventory tersedia, langkah berikutnya:
 2. pisahkan role melodic vs drum secara eksplisit;
 3. ukur coverage exact-match dan near-match;
 4. baru desain fallback resolver yang tidak menukar Bass → Organ, Guitar → Piano, atau Drum → Flute.
+
+
+## Tahap 6 — Audit coverage Voice Resolver Multi-SF2 — 2026-09-30
+
+Setelah Inspector berhasil menginventarisasi seluruh managed SF2, dilakukan coverage audit terhadap corpus **569 factory style SX920**.
+
+### Data yang dibandingkan
+
+- 569 style.
+- 7.612 voice-setup entries.
+- 578 kombinasi unik **bank MSB:LSB + Program Change**.
+- 7 SF2 managed.
+- 1.624 preset terinspeksi.
+
+SF2 yang terinventarisasi:
+- ColomboGMGS2_BM.sf2 — 892 preset.
+- DRUMKIT YAMAHA PSR-SX700 & SX900 PRIME.sf2 — 21 preset.
+- MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2 — 93 preset.
+- merlin_GMpro(v3.15).sf2 — 136 preset.
+- Timbres Of Heaven GM_GS_XG_SFX V 3.4 Final.sf2 — 339 preset.
+- yamaha tyros 4_just_t4_fixed.sf2 — 142 preset.
+- Yamaha_PSR-SX700_CP80.sf2 — 1 preset.
+
+### Hasil coverage
+
+Aturan audit:
+- exact family = MSB request + PC tersedia pada SF2;
+- untuk rhythm MSB 126/127, diuji juga mapping eksplisit ke drum bank SF2 128;
+- same-PC lintas bank hanya dianggap kandidat, **bukan** match aman.
+
+Hasil dari 578 request unik:
+- 250/578 memiliki kandidat same-bank/MSB + PC.
+- 328/578 hanya memiliki kandidat same-PC di bank lain.
+- 0/578 benar-benar tanpa PC yang sama di seluruh inventory.
+
+Pada level semua 7.612 entry style:
+- 4.512 entry memiliki kandidat same-bank/MSB + PC menurut aturan audit.
+- 7.612/7.612 memiliki PC yang sama di suatu SF2, sehingga same-PC fallback secara statistik terlalu mudah lolos dan tidak cukup untuk menentukan suara.
+
+### Temuan penting
+
+**MSB 104 adalah gap terbesar.**
+- 2.342 entry style menggunakan MSB 104.
+- 282 request unik MSB 104.
+- Tidak ada kandidat same-MSB + PC pada tujuh SF2 yang diinspeksi.
+
+Artinya MSB 104 tidak boleh diselesaikan dengan fallback same-PC biasa. Resolver membutuhkan mapping variasi Yamaha/Tyros/semantic voice family.
+
+**MSB 126/127 harus dipisahkan sebagai role rhythm/SFX.**
+- Yamaha rhythm request tidak boleh bersaing dengan preset melodic yang kebetulan memiliki Program Change sama.
+- Inventory drum Yamaha berisi 21 preset pada SF2 bank 128.
+- Mapping 126/127 → drum bank 128 harus menjadi langkah resolver yang eksplisit, bukan efek samping fallback.
+
+### Keputusan engineering
+
+Jangan mengubah Voice Resolver hanya untuk mengejar angka coverage.
+
+Tahap berikutnya adalah membuat **candidate matrix 578 request unik** dengan urutan:
+
+1. role (DRUM vs MELODY/SFX);
+2. Yamaha bank family MSB;
+3. exact/variation candidate;
+4. semantic voice-name family;
+5. GM/XG fallback;
+6. same-PC lintas bank hanya sebagai kandidat terakhir dan harus tunduk pada role.
+
+Tujuan utamanya adalah menghilangkan kasus seperti:
+- Bass → Organ;
+- A.Guitar → Drum;
+- Bright Piano → Strings;
+- Drum → Flute.
+
+Artefak:
+- docs/SX920_SF2_VOICE_COVERAGE.md
+- commit: 25337e745e399dc629c4187c2c02784b381331b3
+
+**Status:** coverage audit selesai. Voice Resolver V2 belum diubah berdasarkan audit ini.
