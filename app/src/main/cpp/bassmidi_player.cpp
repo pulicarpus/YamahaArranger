@@ -1003,21 +1003,27 @@ void BassMidiPlayer::setChannelExpression(int channel, int expression) {
 }
 
 void BassMidiPlayer::setKeyboardSustain(bool enabled) {
+    // Keep the existing panel-SUSTAIN ledger behavior in ArrangerBrain.
+    // The Yamaha-style release parameter is controlled independently below.
+    LOGI("BASSMIDI panel sustain=%s; release time remains independently controlled",
+         enabled ? "ON" : "OFF");
+}
+
+void BassMidiPlayer::setKeyboardReleaseTime(int releaseTime) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (!stream_) return;
 
-    // The Yamaha front-panel SUSTAIN button is modeled as a release-time
-    // change, not MIDI CC64 pedal sustain. ArrangerBrain owns the actual
-    // note-off hold/release ledger so LEFT and ACMP are never latched.
-    // CC72 uses 64 as the normal/center value; 127 gives a long release.
-    const DWORD release = enabled ? 127 : 64;
+    const int value = std::max(0, std::min(127, releaseTime));
+    // Yamaha E-series Release Time is a continuous 0..127 parameter with
+    // 64 as the normal/default center. CC72 is explicitly Release Time,
+    // not the CC64 sustain pedal. Apply it only to RIGHT 1/2/3.
     for (int channel = 0; channel <= 2; ++channel) {
         BASS_MIDI_StreamEvent(
-            stream_, static_cast<DWORD>(channel), MIDI_EVENT_RELEASE, release);
+            stream_, static_cast<DWORD>(channel), MIDI_EVENT_RELEASE,
+            static_cast<DWORD>(value));
     }
 
-    LOGI("BASSMIDI panel sustain=%s channels=0..2; LEFT/ACMP manual",
-         enabled ? "ON" : "OFF");
+    LOGI("BASSMIDI RELEASE TIME=%d channels=0..2; LEFT/ACMP untouched", value);
 }
 
 
