@@ -646,3 +646,64 @@ Jangan langsung memuat semua 7 SF2. BASSMIDI memang mendukung stacking multiple 
 6. Same-PC lintas bank hanya fallback paling akhir dan harus ditolak bila role/category bertentangan.
 
 **Status:** candidate matrix selesai; default SF2 selection guard sudah di branch; runtime multi-SF2 resolver belum diubah.
+
+## Tahap 8 — Voice Resolver V2: channel-specific FONTEX2 routing — 2026-09-30
+
+Riset terhadap aplikasi arranger lain dan dokumentasi BASSMIDI mengubah desain runtime resolver.
+
+### Acuan riset
+
+- vArranger mendokumentasikan bahwa preset SF2 ditentukan oleh kombinasi BANK + PROGRAM dan duplicate BANK/PROGRAM harus dikendalikan agar tidak ambigu.
+- vArranger juga memiliki soundbank khusus untuk format Yamaha, sehingga kompatibilitas style dan soundbank diperlakukan sebagai pasangan yang sengaja dirancang, bukan sekadar same-PC fallback.
+- Dokumentasi resmi BASSMIDI BASS_MIDI_FONTEX2 mendukung source preset/bank (spreset, sbank), destination program/bank/LSB (dpreset, dbank, dbanklsb), dan pembatasan per channel (minchan, numchan).
+- BASSMIDI juga menerapkan priority berdasarkan urutan mapping ketika beberapa soundfont menyediakan tujuan yang sama.
+
+### Masalah runtime yang terbukti
+
+Multi-SF2 sudah dapat dimuat, tetapi resolver lama hanya menyimpan pilihan source secara internal lalu tetap mengirim destination Yamaha. Tanpa mapping EX2 per-channel, SF2 primary dapat memenangkan tujuan yang sama walaupun resolver telah memilih fallback SF2.
+
+Selain itu, same-PC lintas bank terbukti tidak aman:
+- Bass -> Organ;
+- A.Guitar -> Drum;
+- Piano -> preset drum/kit;
+- Piano -> Strings.
+
+### Implementasi
+
+Branch feat/voice-resolver-v2-multisf2 sekarang:
+
+1. Menyimpan melodySourceBank dan melodySourceProgram pada state tiap channel.
+2. Tidak lagi mengganti state.program dengan program source. Program destination Yamaha tetap dipertahankan.
+3. Membuat mapping BASS_MIDI_FONTEX2 khusus untuk setiap channel yang sudah berhasil di-resolve: source SF2 + source bank/program; destination Yamaha MSB/LSB + program; minchan=channel, numchan=1.
+4. Mapping channel-specific ditempatkan sebelum mapping generic sehingga pilihan resolver benar-benar menjadi source preset yang dipakai BASSMIDI.
+5. Preload sekarang menggunakan source bank/program yang sudah dipilih resolver; tidak lagi mencari ulang berdasarkan same-PC yang bisa memilih preset berbeda.
+6. Same-PC fallback dibatasi hanya jika kandidat masih berada dalam semantic instrument family yang sama.
+7. Arbitrary first-preset fallback dihapus; final fallback hanya piano-family Program 0 atau gagal secara aman.
+
+### Commit
+
+- 0921e113fb48bac57ac7c9e8b1ceae4777bde212 — simpan source bank/program resolver per channel.
+- eeda75fe7503adaa808276d3e28472672e99db95 — channel-specific FONTEX2 routing + semantic-safe fallback.
+- 3a6c8d3af4a4789a503620a480b7c0c831da4686 — compile fix untuk handle BASS.
+
+### Build
+
+GitHub Actions Build APK run #729 untuk commit 3a6c8d3af4a4789a503620a480b7c0c831da4686 sudah terpicu pada branch ini. Pada checkpoint penulisan, setup sampai NDK/CMake/BASS/BASSMIDI/Gradle selesai dan step Build debug APK masih berjalan.
+
+Jangan menganggap APK hijau sebelum run selesai dengan conclusion success.
+
+### Target verifikasi perangkat
+
+Inspector berikutnya harus memperlihatkan pola seperti:
+
+- Bass -> source preset kategori Bass, bukan Organ;
+- A.Guitar -> source preset kategori Guitar, bukan Drum;
+- Bright Piano/E.Grand Piano -> source preset kategori Piano/EP, bukan Strings;
+- Drum channel -> tetap hanya menggunakan drum font/role.
+
+Regression utama:
+- Love Song;
+- Yamaha variation MSB 8/104;
+- drum + melody bersamaan;
+- reload SF2;
+- switching Main/Fill tanpa suara hilang.
