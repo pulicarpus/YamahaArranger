@@ -40,8 +40,8 @@ Dokumen ini membedah engine file-per-file dan membandingkannya dengan GigLad, vA
 
 ## 6. bassmidi_player.cpp — Voice Resolver
 🟢 BASSMIDI aktif, bank MSB/LSB Yamaha, variation bank, melody/drum role, NOTEOFF1, preload NOWAIT, voice name dan preset enumeration sudah ada.
-🔴 Sumber bug P0: resolver dapat memilih program number yang sama di bank lain sebelum mencari kecocokan semantic String/category. Ini sangat cocok dengan gejala Strings→Piano/E.Piano.
-Urutan target: exact bank/program → explicit mapping → semantic name/category → family/category → numeric fallback yang masih kompatibel → Piano sebagai fallback melodic terakhir.
+🟢 DIPERBAIKI pada commit bb203f604b96c04ad43cbe42b1933b3b73a3c972: resolver sekarang memprioritaskan kecocokan semantic name/category sebelum fallback program numerik lintas bank. Exact bank/program dan MSB-only bank tetap menjadi prioritas pertama.
+Target fallback: exact bank/program → MSB-only bank/program → semantic name/category → same-program lintas bank → Piano/fallback terakhir.
 Jangan memperbaiki masalah ini di CASM.
 
 ## 7. bassmidi_player.cpp — Realtime
@@ -86,7 +86,7 @@ Target: callback realtime tidak boleh menunggu mutex UI/file/SF2.
 | Repeated note ownership | 🔴 |
 | CASM | 🟡 |
 | Yamaha bank identity | 🟢 |
-| Voice resolver | 🔴 |
+| Voice resolver | 🟢 tahap 1 selesai |
 | Drum routing | 🟢/🟡 |
 | Realtime audio mutex | 🔴 |
 | Sustain | 🟢 panel / 🟡 native |
@@ -96,7 +96,7 @@ Target: callback realtime tidak boleh menunggu mutex UI/file/SF2.
 
 ## Prioritas
 ### P0
-1. Voice Resolver.
+1. ~~Voice Resolver~~ — **selesai tahap 1**.
 2. Realtime BASSMIDI mutex.
 3. Unique note-instance ownership.
 4. Directional Fill parser/model.
