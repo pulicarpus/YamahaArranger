@@ -67,9 +67,9 @@ class ArrangerBrain @Inject constructor(
     // while a key is held cannot produce a mismatched NOTE_OFF.
     private val transposedNotes = mutableMapOf<Int, Int>()
     private var keyboardSustain = false
-    // Kotlin-side safety ledger: BASSMIDI CC64 handles RIGHT 1/2/3; LEFT
-    // channel 3 deliberately has no native sustain. ACMP/chord notes are
-    // excluded so arranger chord changes are never pedal-sustained.
+    // Kotlin-side safety ledger: panel SUSTAIN delays keyboard NOTE_OFF for
+    // RIGHT 1/2/3 and LEFT. ACMP/chord notes are excluded so arranger chord
+    // changes are never sustain-held.
     private val sustainHeldNotes = mutableSetOf<Pair<Int, Int>>()
     // Sustain is native for RIGHT 1/2/3; LEFT uses the ledger above.
     // Notes currently sounding through the dedicated LEFT VOICE channel.
