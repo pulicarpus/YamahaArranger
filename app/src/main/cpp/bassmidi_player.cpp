@@ -182,7 +182,7 @@ bool BassMidiPlayer::applyFonts() {
                 continue;
             }
 
-            HSOUNDFONT font = nullptr;
+            HSOUNDFONT font = 0;
             const std::vector<NormalizedBankMap>* maps = nullptr;
             const char* role = "PRIMARY";
             if (state.melodySource == 1 && melodyFallbackFont_) {
