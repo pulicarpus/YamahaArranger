@@ -266,6 +266,16 @@ bool BassMidiPlayer::loadRole(const std::string& path, bool drum) {
         melodyPath_.clear();
         melodyDrumPresetCache_.clear();
         melodyPresetCache_.clear();
+        // Replacing the primary melody font invalidates any previous
+        // secondary layer; the caller can attach a new controlled fallback.
+        if (melodyFallbackFont_) {
+            BASS_MIDI_FontFree(melodyFallbackFont_);
+            melodyFallbackFont_ = 0;
+        }
+        melodyFallbackPath_.clear();
+        melodyFallbackBassPath_.clear();
+        melodyFallbackPresetCache_.clear();
+        melodyFallbackNormalizedBanks_.clear();
     }
     if (target) {
         BASS_MIDI_FontFree(target);
