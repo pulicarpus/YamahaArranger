@@ -136,3 +136,60 @@ Membuat **aplikasi Android keyboard arranger** seperti ORG24 yang bisa:
 **File style yang di-test:** `LoveSong3.S687.prs`
 
 **Hasil dump CASM:**
+
+---
+
+## 🔬 2026-09-29 — ARRANGER ENGINE RESEARCH FREEZE
+
+**Status: RESEARCH ONLY — belum ada perubahan kode dari riset ini.**
+
+Setelah membedah GigLad, vArranger, One Man Band, Android Arranger Keyboard, Android MIDI Arranger, Yamaha SFF/CASM, Yamaha Style Studio, dan Korg Pa arranger, kita menetapkan blueprint sebelum menyentuh engine.
+
+### Keputusan arsitektur
+
+1. **Master musical timeline harus kontinu.** Main/Fill/Intro/Ending tidak boleh membuat clock baru atau reset timeline.
+2. **Section adalah state + successor.** Fill/Break adalah transition section, bukan Main loop pendek.
+3. **Chord switch dan section switch dipisahkan.** Tidak boleh memakai satu global NOTE_OFF untuk keduanya.
+4. **Note ownership wajib eksplisit.** NOTE_OFF harus ditargetkan berdasarkan section/track/source/destination/generation.
+5. **Drum/percussion bypass CASM transposition.** Jangan men-transpose drum mengikuti chord.
+6. **CASM adalah pipeline, bukan sekadar metadata.** Source Root/Chord → NTR → NTT → High Key/Note Limit → RTR → actual notes.
+7. **Yamaha bank mapping dipertahankan.** MSB/LSB/PGM harus melewati mapping sebelum BASSMIDI/SF2 lookup.
+8. **Audio path tidak boleh diblokir oleh transition.** SF2/resource loading harus preload/cache, bukan dilakukan di audio callback.
+9. **BASSMIDI tetap menjadi target engine.** Riset arranger tidak menjadi alasan untuk mengganti engine yang sudah bekerja.
+10. **Setiap fix wajib berbasis bukti.** Reproducer → log → hypothesis → patch kecil → build → APK test → regression.
+
+### Urutan kerja
+
+- Phase 0: baseline/freeze
+- Phase 1: section + successor model
+- Phase 2: master timeline
+- Phase 3: note ownership
+- Phase 4: CASM NTR/NTT/RTR
+- Phase 5: chord/section transition policy
+- Phase 6: bank/voice/audio boundary
+- Phase 7: 2/4, 3/4, 4/4, 6/8 regression
+- Phase 8: multifunction knob/controller
+- Phase 9: APK validation
+
+### Wajib diuji
+
+- Main A → Main B
+- Main A → Fill → Main A
+- Main A → Fill B → Main B
+- Main D → Fill → Main A
+- Intro → Main
+- Main → Ending
+- chord change during Fill
+- sustain during transition
+- drum + melody simultaneously
+- SF2 bank switch
+- style switch while playing
+- 2/4, 3/4, 4/4, 6/8
+
+### Dokumen lengkap
+
+Baca: **docs/ARRANGER_ENGINE_RESEARCH_PLAN.md**
+
+Dokumen GigLad sebelumnya: **docs/GIGLAD_ADAPTATION.md**
+
+**Aturan:** jangan menyentuh kode arranger/audio hanya karena membaca dokumen ini. Implementasi dimulai sebagai pekerjaan terpisah setelah baseline dan reproducer ditetapkan.
