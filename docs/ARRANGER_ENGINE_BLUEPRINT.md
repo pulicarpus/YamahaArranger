@@ -1,170 +1,123 @@
-# YamahaArranger — Unified Arranger Engine Blueprint
+# Blueprint Engine Arranger YamahaArranger
 
-Authoritative baseline:
-fix/yamaha-panel-sustain-clean
-f85ba7641fd73c34cdb57a4fc9984a05ac5d1b93
+## Baseline resmi
+Branch: main
+Commit: 52e5b7ea6f8ee4b1166f999e198fea07c8573ab1
 
-## Target runtime
+## 1. Jalur utama
+Yamaha STY / SFF / SFF GE
+↓
+Parser MIDI + Yamaha Style
+↓
+Section + Part
+↓
+CASM
+↓
+StyleSequencer
+↓
+Master Musical Clock
+↓
+Note Ownership + CASM Transformer
+↓
+Voice Resolver
+↓
+BASSMIDI
+↓
+Oboe
+↓
+Android Audio
 
-Yamaha STY / PRS / SFF / SFF GE
--> SMF + Yamaha parser
--> Section model
--> Part model
--> CASM policy
--> Style Transition Engine
--> continuous musical clock
--> Note ownership + CASM transformation
--> Voice Resolver
--> BASSMIDI
--> Oboe
--> Android audio
+## 2. Aturan section
+- Main → Main dapat menjadi Main → Fill → Main.
+- Fill hanya satu kali.
+- Intro hanya satu kali.
+- Ending hanya satu kali.
+- Pergantian section tidak boleh menghentikan engine.
+- Pergantian section tidak boleh memanggil global all-notes-off.
+- Hanya note style yang dimiliki section lama yang boleh direlease.
+- Master musical clock tidak di-reset saat seamless transition.
 
-## Transition model
+## 3. Directional Fill
+Main A → Main B berbeda dari Main B → Main A.
+Jika style menyediakan FillAB dan FillBA, parser wajib mempertahankan keduanya. Jangan mengubah semua Fill menjadi FillAA/BB/CC/DD jika informasi arah tersedia.
 
-A future transition object should explicitly carry:
+## 4. Note Ownership
+Setiap note style harus memiliki ID instance unik, misalnya sectionGeneration + track + channel + eventIndex.
+Dengan begitu C5 ON, C5 ON, C5 OFF, C5 OFF tetap dapat diperlakukan sebagai dua instance note berbeda.
 
-current section
-requested section
-switch precision
-fill direction
-fill section
-successor
-start tick
-one-shot or loop
+## 5. CASM
+CASM bertanggung jawab atas source channel, destination channel, NTR, NTT, High Key, Note Limit, RTR, Bass-On dan chord mute.
+CASM tidak memilih preset SF2.
 
-Rules:
+## 6. Voice Resolver
+Voice identity terdiri dari Bank MSB, Bank LSB, Program, Voice Name dan Category.
+Urutan resolver:
+1. Exact bank/program.
+2. Explicit mapping.
+3. Semantic name/category.
+4. Family/category.
+5. Numeric fallback yang masih semantically compatible.
+6. Piano sebagai fallback melodic terakhir.
+Drum tidak boleh jatuh ke preset melodic.
 
-- Main -> Main may become Main -> Fill -> Main.
-- Fill is one-shot.
-- Intro is one-shot.
-- Ending is one-shot.
-- Section changes never require stop/restart.
-- Section changes never call global all-notes-off.
-- Only outgoing style-owned notes are reconciled.
-- The musical clock never resets during a seamless transition.
+## 7. Audio realtime
+Callback Oboe/BASSMIDI tidak boleh membaca file, scan SF2, melakukan pekerjaan berat, menunggu mutex UI/file, preload sample synchronous, atau melakukan preset resolution mahal.
+Semua pekerjaan berat harus selesai sebelum note membutuhkan suara tersebut.
 
-GigLad documents section successors and switch precision; vArranger documents Auto Fill and live section control; One Man Band documents glitch-free style switching and live assignable controls. urlGigLad documentationhttps://www.deltarray.com/documentation/giglad/ urlvArranger featureshttps://www.varranger.com/features/ urlOne Man Band featureshttps://www.1manband.nl/features.htm
+## 8. Sustain dan Release
+Untuk Yamaha E343: CC64 = Sustain dan CC72 = Release Time.
+Panel sustain tetap dipisahkan dari ACMP. ACMP/chord tidak boleh ikut ditahan hanya karena sustain keyboard aktif.
+Release Time diterapkan pada RIGHT voices sesuai desain saat ini.
 
-## Yamaha section vocabulary
+## 9. Multifunction Knob
+Konsep:
+Knob → Selected Parameter → Performance State → Subsystem
 
-- Intro I / II / III
-- Main A / B / C / D
-- Fill In A / B / C / D
-- Break
-- Ending I / II / III
+Contoh:
+- Tempo → StyleSequencer
+- Transpose → keyboard output
+- Release → BASSMIDI RIGHT voices
+- Volume → master/channel mixer
+- Pan → mixer
+- Reverb → mixer
+- Chorus → mixer
 
-Modern Yamaha workflows also distinguish fill transitions. The parser must not throw away direction information when present. citeturn1search24turn1search26
+Knob tidak memiliki logika audio sendiri.
 
-## Note ownership
-
-Every sounding style note should eventually have a unique instance identity:
-
-section generation
-source track
-source channel
-source event index
-
-The ownership record should store:
-
-source note
-destination channel
-output note
-velocity
-CASM policy
-
-This prevents repeated identical notes from overwriting each other's NOTE_OFF state.
-
-## CASM boundary
-
-CASM owns:
-
-source channel
-destination channel
-source chord
-NTR
-NTT
-High Key
-Note Limits
-RTR
-Bass On
-chord mute rules
-
-CASM does not decide which SF2 preset is best.
-
-## Voice Resolver boundary
-
-Voice identity:
-
-source channel
-bank MSB
-bank LSB
-program
-voice name
-semantic category
-
-Resolution order:
-
-1. exact Yamaha bank/program;
-2. explicit user/style mapping;
-3. strong semantic name/category;
-4. same-family category;
-5. semantically compatible numeric fallback;
-6. final melodic Piano fallback.
-
-Percussion never falls through into a melodic preset.
-
-The existing MIDI Voyager research is the reference for this separation.
-
-## Realtime audio rules
-
-The Oboe callback must never:
-
-- parse files;
-- scan SF2 headers;
-- allocate large objects;
-- wait on a UI/file mutex;
-- synchronously load samples;
-- perform expensive preset resolution.
-
-Voice changes should be prepared before the first note where possible. Non-blocking preload is preferred.
-
-## Yamaha E343 performance controls
-
-The PSR-E343 MIDI reference identifies CC64 as Sustain and CC72 as Release Time, along with bank select, volume, pan, expression, effect depth and Program Change. urlYamaha PSR-E343 MIDI Referencehttps://usa.yamaha.com/files/download/other_assets/4/329464/psre343_en_mr_a0.pdf
-
-The current panel sustain ledger and CC72 release implementation remain the baseline.
-
-## Regression matrix
-
-| Test | Expected |
+## 10. Regression Matrix
+| Skenario | Harapan |
 |---|---|
-| Main A -> Main B | correct fill, no global NOTE_OFF |
-| Main B -> Main D | directional fill when available |
-| Main D -> Main A | no premature instrument stop |
-| Intro -> Main | Intro exactly once |
-| Fill -> Main | no audible pause |
-| Ending -> Stop | Ending exactly once |
-| 2/4 | correct bar boundary |
-| 3/4 | correct bar boundary |
-| 4/4 | correct bar boundary |
-| 6/8 | correct bar boundary |
-| repeated same note | independent NOTE_OFF |
-| drum + melody | both audible |
-| String variation | semantic String resolution |
-| missing drum kit | percussion-safe fallback |
-| SF2 reload | no stale routing |
+| Main A → Main B | transisi mulus |
+| Main B → Main D | Fill directional jika tersedia |
+| Main D → Main A | tidak ada note mati prematur |
+| Intro → Main | Intro satu kali |
+| Fill → Main | tidak ada pause |
+| Ending → Stop | Ending satu kali |
+| repeated C5 | kedua instance punya NOTE_OFF sendiri |
+| 2/4 | quantize benar |
+| 3/4 | quantize benar |
+| 4/4 | quantize benar |
+| 6/8 | quantize benar |
+| Drum + melody | keduanya berbunyi |
+| Strings | tidak berubah menjadi Piano |
+| Variation bank | MSB/LSB tetap benar |
+| SF2 reload | routing lama tidak bocor |
+| Sustain | hanya keyboard voice |
+| Release | RIGHT voice berubah sesuai parameter |
 
-## Definition of done
+## 11. Definisi selesai
+- Tidak ada stop/restart untuk section transition.
+- Tidak ada global all-notes-off saat transition.
+- Repeated notes tidak saling menimpa.
+- Intro/Ending deterministic.
+- Directional Fill tidak hilang.
+- CASM deterministic.
+- Voice Resolver mencatat alasan fallback.
+- Render callback tidak menunggu mutex operasi lambat.
+- 2/4, 3/4, 4/4 dan 6/8 lolos test.
+- Perilaku MIDI E343 tetap kompatibel.
 
-The arranger engine is stable when:
-
-- transitions never require stop/restart;
-- style transitions never call global all-notes-off;
-- repeated notes never collapse into one ownership record;
-- Intro/Ending one-shot behavior is deterministic;
-- directional fills are preserved;
-- CASM transformations are deterministic;
-- voice resolution logs exact/fallback reason;
-- BASSMIDI render path has no blocking UI/file mutex;
-- 2/4, 3/4, 4/4 and 6/8 pass transition tests;
-- E343 MIDI controls remain compatible.
+## Prinsip utama
+Jangan rewrite engine yang sudah bekerja.
+Jika ada bug, tentukan batas yang gagal: Parser → CASM → Transition → Note Ownership → Voice Resolver → BASSMIDI State → Realtime Audio → UI State.
+Baru ubah bagian yang memang bertanggung jawab atas bug tersebut.
