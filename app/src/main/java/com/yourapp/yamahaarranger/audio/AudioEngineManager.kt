@@ -112,6 +112,33 @@ class AudioEngineManager @Inject constructor(
         return result
     }
 
+    /**
+     * Load Yamaha melody + drum atomically, then attach one controlled
+     * secondary melody SF2 as a lower-priority resolver layer.
+     */
+    fun loadSoundFontPairWithFallback(
+        melodyPath: String,
+        fallbackMelodyPath: String?,
+        drumPath: String
+    ): Boolean {
+        val result = runBlocking { soundFontOperationMutex.withLock { withAudioStreamPausedUnsafe {
+            val melodyOk = bridge.nativeLoadMelodySoundFont(melodyPath)
+            if (!melodyOk) return@withAudioStreamPausedUnsafe false
+            val fallbackOk = fallbackMelodyPath.isNullOrBlank() ||
+                bridge.nativeLoadMelodyFallbackSoundFont(fallbackMelodyPath)
+            if (!fallbackOk) {
+                DebugLog.add("⚠️ Secondary melody SF2 failed; continuing with Yamaha primary")
+            }
+            val drumOk = bridge.nativeLoadDrumSoundFont(drumPath)
+            melodyOk && drumOk
+        } } }
+        soundFontLoaded = soundFontLoaded || result
+        if (result) DebugLog.add("✅ MELODY + FALLBACK + DRUM SF2 OK")
+        else DebugLog.add("❌ MELODY + FALLBACK + DRUM SF2 FAILED")
+        return result
+    }
+
+
 
     /**
      * Load one SF2 as the shared source for both melodic and drum channels.
