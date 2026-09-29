@@ -1005,19 +1005,19 @@ void BassMidiPlayer::setChannelExpression(int channel, int expression) {
 void BassMidiPlayer::setKeyboardSustain(bool enabled) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (!stream_) return;
-    const DWORD value = enabled ? 127 : 0;
-    // Keyboard sustain is handled separately by ArrangerBrain for LEFT (ch3),
-    // because ACMP/LEFT mode changes must be able to release LEFT immediately.
-    // Keep native BASSMIDI sustain only on RIGHT 1/2/3 (ch0..2).
+
+    // The Yamaha front-panel SUSTAIN button is modeled as a release-time
+    // change, not MIDI CC64 pedal sustain. ArrangerBrain owns the actual
+    // note-off hold/release ledger so LEFT and ACMP are never latched.
+    // CC72 uses 64 as the normal/center value; 127 gives a long release.
+    const DWORD release = enabled ? 127 : 64;
     for (int channel = 0; channel <= 2; ++channel) {
-        BASS_MIDI_StreamEvent(stream_, static_cast<DWORD>(channel), MIDI_EVENT_SUSTAIN, value);
+        BASS_MIDI_StreamEvent(
+            stream_, static_cast<DWORD>(channel), MIDI_EVENT_RELEASE, release);
     }
-    // Explicitly clear LEFT sustain so an earlier pedal state can never keep
-    // a LEFT note alive after ArrangerBrain sends NOTE_OFF.
-    if (!enabled) {
-        BASS_MIDI_StreamEvent(stream_, 3, MIDI_EVENT_SUSTAIN, 0);
-    }
-    // Intentionally only R1/R2/R3: LEFT and ACMP never receive sustain.\n    LOGI("BASSMIDI keyboard sustain=%s channels=0..2; LEFT ch3 manual", enabled ? "ON" : "OFF");
+
+    LOGI("BASSMIDI panel sustain=%s channels=0..2; LEFT/ACMP manual",
+         enabled ? "ON" : "OFF");
 }
 
 
