@@ -28,6 +28,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -80,6 +81,7 @@ fun SxMainScreen(
     var selectedVoiceLayer by remember { mutableStateOf(0) }
     var selectedStyleUri by remember { mutableStateOf<Uri?>(null) }
     var selectedStyleFolderUri by remember { mutableStateOf<Uri?>(null) }
+    var selectedDataParameter by remember { mutableStateOf("TEMPO") }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(SxBlack)) {
         val compact = maxHeight < 620.dp
@@ -114,7 +116,21 @@ fun SxMainScreen(
             ) {
                 SxSideMenu(
                     Modifier.weight(.18f).fillMaxHeight(),
-                    compact,
+                    compact = compact,
+                    selectedParameter = selectedDataParameter,
+                    parameterValue = when (selectedDataParameter) {
+                        "TEMPO" -> state.tempoBpm.toString()
+                        "TRANSPOSE" -> if (state.transpose >= 0) "+" + state.transpose else state.transpose.toString()
+                        "RELEASE" -> state.releaseTime.toString()
+                        else -> "—"
+                    },
+                    onStep = { delta ->
+                        when (selectedDataParameter) {
+                            "TEMPO" -> if (delta > 0) viewModel.onTempoUp() else viewModel.onTempoDown()
+                            "TRANSPOSE" -> if (delta > 0) viewModel.onTransposeUp() else viewModel.onTransposeDown()
+                            "RELEASE" -> if (delta > 0) viewModel.onReleaseUp() else viewModel.onReleaseDown()
+                        }
+                    },
                     onPickStyle = { stylePicker.launch(arrayOf("audio/*", "application/octet-stream", "*/*")) }
                 )
 
@@ -134,6 +150,8 @@ fun SxMainScreen(
                             lcdPage = "VOICE"
                         },
                         lcdPage = lcdPage,
+                        selectedDataParameter = selectedDataParameter,
+                        onDataParameterSelect = { selectedDataParameter = it },
                         styleFolders = state.styleFolders,
                         styleFiles = state.styleFiles,
                         selectedStyleUri = selectedStyleUri,
@@ -584,16 +602,58 @@ private fun SxEngineLogDialog(onDismiss: () -> Unit, onSaveAllLog: () -> Unit) {
 }
 
 @Composable
-private fun SxSideMenu(modifier: Modifier, compact: Boolean, onPickStyle: () -> Unit) {
-    val labels = listOf("STYLE SELECT", "FAVORITE", "STYLE CONTROL", "OTS LINK", "SYNC START", "STYLE SETTING")
+private fun SxSideMenu(
+    modifier: Modifier,
+    compact: Boolean,
+    selectedParameter: String,
+    parameterValue: String,
+    onStep: (Int) -> Unit,
+    onPickStyle: () -> Unit
+) {
     Surface(color = SxPanel, shape = RoundedCornerShape(5.dp), modifier = modifier.border(1.dp, Color(0xFF303942), RoundedCornerShape(5.dp))) {
-        Column(Modifier.fillMaxSize().padding(if (compact) 4.dp else 6.dp), verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 5.dp)) {
-            Text("STYLE", color = Color(0xFF55A9E6), fontSize = 9.sp, fontWeight = FontWeight.Bold)
-            labels.forEach { label ->
-                val click = if (label == "STYLE SELECT") Modifier.clickable(onClick = onPickStyle) else Modifier
-                Surface(color = Color(0xFF1D2329), shape = RoundedCornerShape(3.dp), modifier = Modifier.fillMaxWidth().weight(1f).then(click).border(1.dp, Color(0xFF343C45), RoundedCornerShape(3.dp))) {
-                    Box(contentAlignment = Alignment.Center) { Text(label, color = Color.White, fontSize = if (compact) 6.sp else 7.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        Column(Modifier.fillMaxSize().padding(if (compact) 5.dp else 7.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("DATA CONTROL", color = SxBlue, fontSize = if (compact) 8.sp else 9.sp, fontWeight = FontWeight.Bold, letterSpacing = .7.sp)
+            Text("TAP VALUE • DRAG", color = SxDim, fontSize = if (compact) 5.sp else 6.sp, maxLines = 1)
+            Spacer(Modifier.height(if (compact) 4.dp else 6.dp))
+            val dialSize = if (compact) 104.dp else 132.dp
+            Surface(
+                color = Color(0xFF080C10),
+                shape = androidx.compose.foundation.shape.CircleShape,
+                modifier = Modifier.size(dialSize)
+                    .border(if (compact) 3.dp else 4.dp, SxBlue, androidx.compose.foundation.shape.CircleShape)
+                    .pointerInput(selectedParameter) {
+                        androidx.compose.foundation.gestures.detectDragGestures { _, dragAmount ->
+                            val vertical = -dragAmount.y
+                            if (kotlin.math.abs(vertical) >= 1.5f) onStep(if (vertical > 0f) 1 else -1)
+                        }
+                    }
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(selectedParameter, color = SxDim, fontSize = if (compact) 7.sp else 8.sp, fontWeight = FontWeight.Bold)
+                        Text(parameterValue, color = Color.White, fontSize = if (compact) 24.sp else 30.sp, fontWeight = FontWeight.Bold)
+                        Text("DATA", color = SxBlue, fontSize = if (compact) 6.sp else 7.sp, letterSpacing = 1.sp)
+                    }
                 }
+            }
+            Spacer(Modifier.height(if (compact) 4.dp else 6.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Button(onClick = { onStep(-1) }, modifier = Modifier.weight(1f).height(if (compact) 31.dp else 36.dp), contentPadding = PaddingValues(0.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF252D35))) { Text("−", fontSize = if (compact) 15.sp else 18.sp) }
+                Button(onClick = { onStep(1) }, modifier = Modifier.weight(1f).height(if (compact) 31.dp else 36.dp), contentPadding = PaddingValues(0.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF252D35))) { Text("+", fontSize = if (compact) 15.sp else 18.sp) }
+            }
+            Spacer(Modifier.height(if (compact) 5.dp else 7.dp))
+            Text("SELECTED", color = SxDim, fontSize = 5.sp, fontWeight = FontWeight.Bold)
+            Row(Modifier.fillMaxWidth().height(if (compact) 35.dp else 42.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                listOf("TEMPO", "TRANSPOSE", "RELEASE").forEach { item ->
+                    val active = selectedParameter == item
+                    Surface(color = if (active) SxBlue else Color(0xFF1D2329), shape = RoundedCornerShape(3.dp), modifier = Modifier.fillMaxHeight().weight(1f).border(1.dp, if (active) SxGreen else Color(0xFF35404A), RoundedCornerShape(3.dp))) {
+                        Box(contentAlignment = Alignment.Center) { Text(item, color = Color.White, fontSize = if (compact) 5.sp else 6.sp, fontWeight = FontWeight.Bold) }
+                    }
+                }
+            }
+            Spacer(Modifier.weight(1f))
+            Surface(color = Color(0xFF1D2329), shape = RoundedCornerShape(3.dp), modifier = Modifier.fillMaxWidth().height(if (compact) 34.dp else 40.dp).clickable(onClick = onPickStyle).border(1.dp, Color(0xFF343C45), RoundedCornerShape(3.dp))) {
+                Box(contentAlignment = Alignment.Center) { Text("STYLE SELECT", color = Color.White, fontSize = if (compact) 6.sp else 7.sp, fontWeight = FontWeight.Bold) }
             }
         }
     }
@@ -641,6 +701,8 @@ private fun SxCenterDisplay(
     onPickStyle: () -> Unit,
     onPickRightVoice: (Int) -> Unit,
     lcdPage: String,
+    selectedDataParameter: String,
+    onDataParameterSelect: (String) -> Unit,
     styleFolders: List<StyleFolder>,
     styleFiles: List<Pair<Uri, String>>,
     selectedStyleUri: Uri?,
@@ -705,9 +767,9 @@ private fun SxCenterDisplay(
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     SxValue("CHORD", state.detectedChordLabel.ifBlank { "—" }, Modifier.weight(1f), null, null, compact)
-                    SxValue("TEMPO", state.tempoBpm.toString(), Modifier.weight(.8f), vm::onTempoDown, vm::onTempoUp, compact)
-                    SxValue("TRANSPOSE", if (state.transpose >= 0) "+${state.transpose}" else state.transpose.toString(), Modifier.weight(.9f), vm::onTransposeDown, vm::onTransposeUp, compact)
-                    SxValue("RELEASE", state.releaseTime.toString(), Modifier.weight(.8f), vm::onReleaseDown, vm::onReleaseUp, compact)
+                    SxValue("TEMPO", state.tempoBpm.toString(), Modifier.weight(.8f), vm::onTempoDown, vm::onTempoUp, compact, selectedDataParameter == "TEMPO") { onDataParameterSelect("TEMPO") }
+                    SxValue("TRANSPOSE", if (state.transpose >= 0) "+" + state.transpose else state.transpose.toString(), Modifier.weight(.9f), vm::onTransposeDown, vm::onTransposeUp, compact, selectedDataParameter == "TRANSPOSE") { onDataParameterSelect("TRANSPOSE") }
+                    SxValue("RELEASE", state.releaseTime.toString(), Modifier.weight(.8f), vm::onReleaseDown, vm::onReleaseUp, compact, selectedDataParameter == "RELEASE") { onDataParameterSelect("RELEASE") }
                     SxValue("SPLIT", state.splitPoint, Modifier.weight(.8f), null, null, compact)
                     Surface(color = Color(0xFF172029), shape = RoundedCornerShape(3.dp), modifier = Modifier.weight(1.25f).fillMaxHeight().border(1.dp, Color(0xFF34404C), RoundedCornerShape(3.dp))) {
                         Row(Modifier.fillMaxSize().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1032,42 +1094,22 @@ private fun SxVoiceLcdPage(
     modifier: Modifier,
     minus: (() -> Unit)?,
     plus: (() -> Unit)?,
-    compact: Boolean
+    compact: Boolean,
+    selected: Boolean = false,
+    onSelect: (() -> Unit)? = null
 ) {
     Surface(
-        color = SxPanel2,
+        color = if (selected) Color(0xFF263D52) else SxPanel2,
         shape = RoundedCornerShape(3.dp),
-        modifier = modifier
-            .fillMaxHeight()
-            .border(1.dp, Color(0xFF343B44), RoundedCornerShape(3.dp))
+        modifier = modifier.fillMaxHeight()
+            .clickable(enabled = onSelect != null) { onSelect?.invoke() }
+            .border(if (selected) 2.dp else 1.dp, if (selected) SxBlue else Color(0xFF343B44), RoundedCornerShape(3.dp))
     ) {
-        Column(
-            Modifier.fillMaxSize().padding(horizontal = 4.dp, vertical = 2.dp),
-            verticalArrangement = Arrangement.spacedBy(1.dp)
-        ) {
-            Text(
-                label,
-                color = SxDim,
-                fontSize = if (compact) 5.sp else 6.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.fillMaxWidth(),
-                maxLines = 1
-            )
-            Row(
-                Modifier.fillMaxWidth().weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(3.dp)
-            ) {
+        Column(Modifier.fillMaxSize().padding(horizontal = 4.dp, vertical = 2.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Text(label, color = if (selected) Color.White else SxDim, fontSize = if (compact) 5.sp else 6.sp, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), maxLines = 1)
+            Row(Modifier.fillMaxWidth().weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                 if (minus != null && plus != null) SmallKey("−", minus, compact)
-                Text(
-                    value,
-                    color = Color.White,
-                    fontSize = if (compact) 10.sp else 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Text(value, color = Color.White, fontSize = if (compact) 10.sp else 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (minus != null && plus != null) SmallKey("+", plus, compact)
             }
         }
