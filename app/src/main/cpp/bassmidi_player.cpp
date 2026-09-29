@@ -85,9 +85,15 @@ bool BassMidiPlayer::ensureEngine() {
     }
 
     if (!stream_) {
+        // Rapid playing can create overlapping instances of the same MIDI note
+        // (especially with layered String voices). BASSMIDI 2.4.16 provides
+        // BASS_MIDI_NOTEOFF1 specifically for this case: each NOTE_OFF releases
+        // the oldest matching instance instead of releasing every overlapping
+        // instance. Without it, a fast NOTE_ON/NOTE_OFF sequence can leave the
+        // note-instance bookkeeping out of sync and produce a stuck String note.
         stream_ = BASS_MIDI_StreamCreate(
             16,
-            BASS_STREAM_DECODE | BASS_SAMPLE_FLOAT,
+            BASS_STREAM_DECODE | BASS_SAMPLE_FLOAT | BASS_MIDI_NOTEOFF1,
             sampleRate_);
 
         if (!stream_) {
@@ -668,6 +674,23 @@ bool BassMidiPlayer::findMelodicPreset(
         }
     }
 
+    // Yamaha variation banks are not represented by a Bank-LSB field in SF2.
+    // If the requested Yamaha 14-bit bank has no exact SF2 entry, prefer the
+    // SAME PROGRAM before doing any name/category similarity search. This is
+    // important for fonts such as the current Yamaha melody bank where:
+    //   style 8:1 + PC49 (Strings) -> SF2 bank 0 + PC49 (String Yamaha)
+    // A category-only match can otherwise select bank 8 + PC2 ("12 String
+    // Guitar"), which is a different instrument even though its name contains
+    // a string/guitar category.
+    for (const auto& p : melodyPresetCache_) {
+        if (p.program == requestedProgram) {
+            sourceBank = p.bank;
+            sourceProgram = p.program;
+            matchedName = p.name;
+            return true;
+        }
+    }
+
     std::string lower = voiceName;
     std::transform(lower.begin(), lower.end(), lower.begin(),
                    [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
@@ -750,14 +773,34 @@ void BassMidiPlayer::preloadCurrentPreset(int channel) {
     // and let MIDI_EVENT_BANK_LSB select the variation through FONTEX2.
     int sourceBank = state.drum ? 128 : state.bankMsb;
     if (!state.drum && !melodyPresetCache_.empty()) {
+        bool sourceFound = false;
+
+        // First honor the requested Yamaha bank when the SF2 actually stores
+        // that bank (packed 14-bit form or MSB-only form).
         for (const auto& p : melodyPresetCache_) {
             if (p.program == state.program &&
                 (p.bank == state.bankMsb * 128 + state.bankLsb ||
                  p.bank == state.bankMsb)) {
                 sourceBank = p.bank;
+                sourceFound = true;
                 break;
             }
         }
+
+        // If the Yamaha variation bank is absent from SF2, use the same
+        // program from another SF2 bank. This must mirror findMelodicPreset()
+        // so the preset that was resolved for the channel is also the preset
+        // that gets preloaded. Example: Yamaha 8:1/PC49 -> SF2 0/PC49.
+        if (!sourceFound) {
+            for (const auto& p : melodyPresetCache_) {
+                if (p.program == state.program) {
+                    sourceBank = p.bank;
+                    sourceFound = true;
+                    break;
+                }
+            }
+        }
+
         const int rawSourceBank = sourceBank;
         for (const auto& m : normalizedBanks_) {
             if (m.rawBank == rawSourceBank) {
@@ -867,8 +910,12 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program, const 
     }
 
     ChannelState& state = channels_[channel];
-    state.bankMsb = bank >= 128 ? 128 : bank / 128;
-    state.bankLsb = bank >= 128 ? 0 : bank % 128;
+    // Yamaha packs Bank MSB/LSB into one 14-bit integer:
+    //   bank = MSB * 128 + LSB.
+    // Only Rhythm channels are percussion. A melodic variation such as
+    // 1025 (8:1), 1026 (8:2), or 1029 (8:5) must remain a melodic bank.
+    state.bankMsb = wantDrum ? 128 : bank / 128;
+    state.bankLsb = wantDrum ? 0 : bank % 128;
     state.program = program;
     state.drum = wantDrum;
     state.initialized = true;
@@ -955,7 +1002,42 @@ void BassMidiPlayer::setChannelExpression(int channel, int expression) {
     send(channel, MIDI_EVENT_EXPRESSION, std::clamp(expression, 0, 127));
 }
 
-void BassMidiPlayer::setMasterGain(float gain) {
+void BassMidiPlayer::setKeyboardSustain(bool enabled) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!stream_) return;
+
+    // Yamaha panel SUSTAIN is NOT the sustain pedal. Yamaha documents the
+    // panel button as making the RIGHT 1/2/3 keyboard Voices have a longer
+    // sustain; the pedal is the separate CC#64 Hold function.
+    //
+    // On Yamaha arrangers this panel action is represented on MIDI OUT as
+    // Release Time (CC#72). It does not hold key-up events: NOTE_OFF remains
+    // immediate and the voice then follows its longer release envelope.
+    //
+    // Important: only RIGHT 1/2/3 are affected. LEFT is deliberately excluded
+    // to match Yamaha's arranger behavior. ACMP/style channels are never touched.
+    //
+    // BASSMIDI's MIDI_EVENT_RELEASE uses 64 as the neutral point. We use a
+    // conservative Yamaha-like positive release-time offset rather than CC64.
+    constexpr DWORD PANEL_SUSTAIN_RELEASE = 112;
+    constexpr DWORD NORMAL_RELEASE = 64;
+
+    for (int channel = 0; channel <= 2; ++channel) {
+        const DWORD value = enabled ? PANEL_SUSTAIN_RELEASE : NORMAL_RELEASE;
+        if (!BASS_MIDI_StreamEvent(
+                stream_, static_cast<DWORD>(channel), MIDI_EVENT_RELEASE, value)) {
+            LOGE("BASSMIDI panel sustain release failed ch=%d value=%u error=%d",
+                 channel, static_cast<unsigned>(value), BASS_ErrorGetCode());
+        }
+    }
+
+    LOGI("BASSMIDI panel sustain=%s CC72 value=%u channels=R1,R2,R3; LEFT/ACMP untouched",
+         enabled ? "ON" : "OFF",
+         static_cast<unsigned>(enabled ? PANEL_SUSTAIN_RELEASE : NORMAL_RELEASE));
+}
+
+
+void BassMidiPlayer::setMasterGainvoid BassMidiPlayer::setMasterGain(float gain) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (!stream_) return;
     BASS_ChannelSetAttribute(stream_, BASS_ATTRIB_MIDI_VOL,

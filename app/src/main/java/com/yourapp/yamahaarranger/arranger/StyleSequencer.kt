@@ -503,9 +503,24 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             val audioBank = if (drum) 128 else styleBank
             val midiMsb = if (drum) 127 else sourcePart.bankMsb.coerceIn(0,127)
             val midiLsb = if (drum) 0 else sourcePart.bankLsb.coerceIn(0,127)
-            val volume = override?.volume ?: state.volume
+            val stringVoice = c.voiceName.lowercase().let {
+                it.contains("string") || it.contains("strg") || it.contains("strings")
+            }
+            val volume = if (override?.volume != null) {
+                override.volume
+            } else if (stringVoice && destination in 13..14) {
+                maxOf(state.volume, 100)
+            } else {
+                state.volume
+            }
             val pan = override?.pan ?: state.pan
-            val expression = override?.expression ?: state.expression
+            val expression = if (override?.expression != null) {
+                override.expression
+            } else if (stringVoice && destination in 13..14) {
+                maxOf(state.expression, 100)
+            } else {
+                state.expression
+            }
             val reverb = override?.reverbSend ?: state.reverbSend
             val chorus = override?.chorusSend ?: state.chorusSend
             val nativeState = AppliedChannelState(prog, audioBank, volume.coerceIn(0,127), pan.coerceIn(0,127),
@@ -515,9 +530,6 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             // another section/Program Change has touched the destination channel.
             // Re-apply the native preset for explicit string destinations so the
             // soundfont state is authoritative at every section activation.
-            val stringVoice = c.voiceName.lowercase().let {
-                it.contains("string") || it.contains("strg") || it.contains("strings")
-            }
             val forceNativePreset = stringVoice && destination in 13..14
             if (forceNativePreset || appliedChannelStates[destination] != nativeState) {
                 audioEngine.setChannelProgram(destination, prog, audioBank, c.voiceName)

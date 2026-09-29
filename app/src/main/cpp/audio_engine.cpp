@@ -202,6 +202,9 @@ std::string AudioEngine::sfPresetList() const {
 void AudioEngine::sfSetChannelExpression(int channel, int expression) {
     soundFont_.setChannelExpression(channel, expression);
 }
+void AudioEngine::sfSetKeyboardSustain(bool enabled) {
+    soundFont_.setKeyboardSustain(enabled);
+}
 
 void AudioEngine::sfSetMasterGain(float gain) {
     soundFont_.setMasterGain(gain);
