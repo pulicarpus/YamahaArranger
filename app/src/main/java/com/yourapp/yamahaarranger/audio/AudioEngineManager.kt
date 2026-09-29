@@ -187,6 +187,12 @@ class AudioEngineManager @Inject constructor(
         bridge.nativeSetKeyboardSustain(enabled)
     }
 
+    fun setKeyboardReleaseTime(releaseTime: Int) {
+        val value = releaseTime.coerceIn(0, 127)
+        DebugLog.add("🎹 RELEASE TIME = $value (CC72) R1/R2/R3")
+        bridge.nativeSetKeyboardReleaseTime(value)
+    }
+
     fun setMasterVolume(volume: Int) {
         val v = volume.coerceIn(0, 127)
         // Keep 100 as unity; 0 is silent and 127 gives modest headroom above unity.
