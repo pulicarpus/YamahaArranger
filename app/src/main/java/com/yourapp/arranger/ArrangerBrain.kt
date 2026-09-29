@@ -67,6 +67,7 @@ class ArrangerBrain @Inject constructor(
     // while a key is held cannot produce a mismatched NOTE_OFF.
     private val transposedNotes = mutableMapOf<Int, Int>()
     private var keyboardSustain = false
+    private var keyboardReleaseTime = 64
     // Kotlin-side safety ledger: panel SUSTAIN delays keyboard NOTE_OFF for
     // RIGHT 1/2/3 and LEFT. ACMP/chord notes are excluded so arranger chord
     // changes are never sustain-held.
@@ -125,6 +126,12 @@ class ArrangerBrain @Inject constructor(
         sequencer.setVoiceMap(style.voiceMap)
         _state.update { it.copy(tempoBpm = style.defaultTempoBpm) }
         Timber.i("Style loaded: ${style.fileName}, voices=${style.voiceMap.size}")
+    }
+
+    fun setKeyboardReleaseTime(value: Int) {
+        keyboardReleaseTime = value.coerceIn(0, 127)
+        DebugLog.add("🎹 RELEASE TIME = $keyboardReleaseTime")
+        audioEngine.setKeyboardReleaseTime(keyboardReleaseTime)
     }
 
     fun setKeyboardSustain(enabled: Boolean) {
