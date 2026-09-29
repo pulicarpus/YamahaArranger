@@ -1,185 +1,193 @@
 # YamahaArranger
 
-Android Yamaha-style arranger keyboard engine.
+Aplikasi Android arranger keyboard bergaya Yamaha.
 
-## Current authoritative baseline
+## Baseline resmi saat ini
 
-Branch: fix/yamaha-panel-sustain-clean
-Commit audited: f85ba7641fd73c34cdb57a4fc9984a05ac5d1b93
+- Branch utama: `main`
+- Commit baseline engine/dokumentasi: `52e5b7ea6f8ee4b1166f999e198fea07c8573ab1`
+- Repository: `pulicarpus/YamahaArranger`
+- Audit engine dan blueprint tersedia di folder `docs/`.
 
-This branch is the current development baseline. The old main branch is stale relative to this branch.
+**Catatan:** dokumentasi lama yang masih menyebut branch `fix/yamaha-panel-sustain-clean` atau commit audit lama tidak lagi menjadi acuan. Baseline resmi sekarang adalah `main`.
 
-The current engine is no longer the original Phase-1/Phase-2 prototype described by older documentation. The live SoundFont path is BASSMIDI, the arranger has a continuous transition clock, CASM/NTR/NTT/RTR handling, Yamaha bank-aware preset routing, sustain/release controls, mixer overrides and an SF2/style inspector.
+## Arsitektur
 
-## Architecture
+### Jalur style
 
 Yamaha STY / PRS / SFF / SFF GE
--> native SMF/Yamaha parser
--> section + part model
--> CASM policy
--> StyleSequencer
--> BASSMIDI
--> Oboe
--> Android audio
+→ parser SMF/Yamaha native
+→ model section + part
+→ kebijakan CASM
+→ StyleSequencer
+→ BASSMIDI
+→ Oboe
+→ audio Android
 
-Keyboard/MIDI path:
+### Jalur MIDI/keyboard
 
-Android MIDI / E343
--> MidiInputManager
--> chord detector / keyboard routing
--> ArrangerBrain
--> StyleSequencer + AudioEngineManager
--> BASSMIDI / Oboe
+Android MIDI / Yamaha E343
+→ MidiInputManager
+→ deteksi chord / routing keyboard
+→ ArrangerBrain
+→ StyleSequencer + AudioEngineManager
+→ BASSMIDI / Oboe
 
-## Current engine capabilities
+## Kemampuan engine saat ini
 
-### Yamaha style engine
+### Style Yamaha
 
 - Intro A/B/C
 - Main A/B/C/D
 - Fill AA/BB/CC/DD
-- directional Fill model in ArrangerBrain, pending full native parser representation
+- konsep Fill directional di ArrangerBrain; representasi native lengkap masih perlu diperbaiki
 - Ending A/B/C
-- continuous master musical clock
-- seamless section queueing
+- master musical clock kontinu
+- antrean perpindahan section seamless
 - Auto Fill
-- CASM policy selection
+- kebijakan CASM
 - NTR / NTT / RTR
-- note limits and high-key handling
-- Bass-On handling
-- style mixer/controller state
-- style channel overrides
-- 2/4, 3/4, 4/4 and 6/8 meter model
+- High Key dan Note Limit
+- Bass-On
+- state mixer/controller style
+- override channel style
+- model meter 2/4, 3/4, 4/4 dan 6/8
 
-Yamaha documents the standard arranger structure as Intro I-III, Main A-D, Fill In A-D, Break and Ending I-III, with eight style parts: Rhythm 1-2, Bass, Chord 1-2, Pad and Phrase 1-2.
+Struktur arranger Yamaha yang menjadi acuan meliputi Intro I-III, Main A-D, Fill In A-D, Break, Ending I-III, serta part Rhythm 1-2, Bass, Chord 1-2, Pad dan Phrase 1-2.
 
 ## Audio engine
 
-BASSMIDI is the current live SoundFont engine.
+**BASSMIDI adalah jalur SoundFont aktif saat ini.**
 
-Current features:
+Fitur utama:
 
 - BASS + BASSMIDI
 - BASS_MIDI_NOTEOFF1
-- 1000 configured MIDI voices
+- hingga 1000 MIDI voices yang dikonfigurasi
 - PPQN 1920
-- configurable SRC quality
-- Yamaha bank MSB/LSB preservation
-- Yamaha variation-bank normalization
-- separate melody/drum SoundFont roles
-- one-SF2 melody + drum mode
-- BASSMIDI FONTEX2 mappings
-- asynchronous sample preload
-- preset enumeration
-- voice-name-aware preset resolution
-- channel volume/pan/expression/reverb/chorus
+- kualitas SRC yang dapat dikonfigurasi
+- preservasi Bank MSB/LSB Yamaha
+- normalisasi Yamaha variation bank
+- role SoundFont melody dan drum yang terpisah
+- mode satu SF2 untuk melody + drum
+- BASSMIDI FONTEX2 mapping
+- preload sample asynchronous
+- enumerasi preset
+- resolver preset berdasarkan nama voice
+- volume/pan/expression/reverb/chorus per channel
 - master gain
 - panel sustain
-- Yamaha-style release time on RIGHT voices
+- release time bergaya Yamaha untuk RIGHT voices
 
-FluidSynth remains in the repository as a legacy dependency and is not the authoritative live SoundFont path.
+FluidSynth masih ada sebagai dependency legacy, tetapi bukan jalur SoundFont aktif yang menjadi acuan.
 
-## Current known high-priority problems
+## Masalah prioritas yang sudah diketahui
 
-These are documented in docs/ARRANGER_ENGINE_AUDIT.md.
+Detail lengkap ada di `docs/ARRANGER_ENGINE_AUDIT.md`.
 
-1. Voice resolver ordering can select the same numeric program before semantic String/category matching.
-2. BASSMIDI render and control operations share a mutex, creating realtime contention risk.
-3. Style note ownership uses source-channel/source-note instead of unique event identity.
-4. Directional fills are richer in ArrangerBrain than the current native StyleSection model.
-5. Intro/Ending selected while idle are not yet guaranteed to become one-shot successor sequences.
-6. Transition timing still combines wall-clock quantization with a coroutine-driven master clock.
-7. Regression tests for transitions, repeated notes, meters and voice resolution are incomplete.
+1. Urutan Voice Resolver masih dapat memilih program numerik yang sama sebelum kecocokan semantic String/category.
+2. `render()` BASSMIDI dan operasi kontrol masih berbagi mutex sehingga ada risiko contention pada audio realtime.
+3. Kepemilikan note style masih memakai source-channel/source-note, bukan identitas event yang unik.
+4. Fill directional di ArrangerBrain lebih lengkap daripada model StyleSection native.
+5. Intro/Ending yang dipilih ketika idle belum dijamin menjadi urutan one-shot yang benar.
+6. Timing transisi masih menggabungkan quantization wall-clock dengan scheduler coroutine/master tick.
+7. Regression test untuk transisi, repeated notes, meter dan voice resolution masih belum lengkap.
 
-These are targeted stabilization items. The engine should not be rewritten from scratch.
+Ini adalah target stabilisasi. **Engine tidak perlu ditulis ulang dari nol.**
 
-## Sustain / release
+## Sustain dan Release
 
-The current design intentionally separates:
+Desain saat ini memisahkan:
 
-- panel sustain for keyboard voices;
-- ACMP/chord notes;
-- style note lifecycle;
+- sustain panel untuk keyboard voices;
+- note ACMP/chord;
+- lifecycle note style;
 - release time.
 
-The PSR-E343 MIDI reference identifies CC64 as Sustain and CC72 as Release Time.
+Untuk Yamaha E343, acuan MIDI yang digunakan adalah:
 
-## Diagnostic tools
+- CC64 = Sustain
+- CC72 = Release Time
+
+Sustain keyboard tidak boleh ikut menahan note ACMP/style.
+
+## Alat diagnostik
 
 - SF2/style inspector
 - String/CASM trace
-- exported DebugLog
-- native BASSMIDI voice-resolution logs
-- SF2 preset enumeration
-- style marker/CASM dumps
+- DebugLog export
+- log Voice Resolver native BASSMIDI
+- enumerasi preset SF2
+- dump marker style/CASM
 
-MIDI Voyager reverse-engineering notes are stored at:
+Catatan riset MIDI Voyager:
 
-docs/MIDI_VOYAGER_PRO_5.4.11_AUDIO_RESEARCH.md
+`docs/MIDI_VOYAGER_PRO_5.4.11_AUDIO_RESEARCH.md`
 
-## Audit and blueprint
+## Audit dan blueprint
 
-Read these before modifying the engine:
+Sebelum mengubah engine, baca:
 
-- docs/ARRANGER_ENGINE_AUDIT.md
-- docs/ARRANGER_ENGINE_BLUEPRINT.md
+- `docs/ARRANGER_ENGINE_AUDIT.md`
+- `docs/ARRANGER_ENGINE_BLUEPRINT.md`
+- `docs/MIDI_VOYAGER_PRO_5.4.11_AUDIO_RESEARCH.md`
 
-The audit compares the current implementation against:
+Audit membandingkan implementasi dengan:
 
 - GigLad
 - vArranger
 - One Man Band
 - Android Arranger Keyboard
 - MIDI Voyager Pro
-- Yamaha arranger/SFF behavior
+- perilaku arranger/SFF Yamaha
 
-## Regression strategy
+## Regression yang wajib diperiksa
 
-Before changing engine behavior, test at minimum:
+Sebelum perubahan engine dianggap aman:
 
-- Main A -> Main B
-- Main B -> Main D
-- Main D -> Main A
-- Intro -> Main
-- Fill -> Main
-- Ending -> Stop
+- Main A → Main B
+- Main B → Main D
+- Main D → Main A
+- Intro → Main
+- Fill → Main
+- Ending → Stop
 - repeated identical notes
-- drum + melody simultaneously
+- drum + melody bersamaan
 - Strings voice resolution
+- Yamaha variation bank
 - 2/4
 - 3/4
 - 4/4
 - 6/8
-- SoundFont reload
+- reload SoundFont
 - sustain ON/OFF
-- release-time changes
+- perubahan release time
 
-## Development rule
+## Aturan pengembangan
 
-Do not replace working arranger subsystems blindly.
+Jangan mengganti subsystem yang sudah bekerja secara membabi buta.
 
-When a bug appears, identify which boundary is failing:
+Jika ada bug, tentukan batas yang gagal:
 
 1. parser
-2. CASM policy
+2. CASM
 3. transition scheduler
 4. note ownership
-5. voice resolver
-6. BASSMIDI preset state
-7. realtime audio path
+5. Voice Resolver
+6. state BASSMIDI
+7. realtime audio
 8. UI/performance state
 
-Then fix only that boundary and add a regression case.
+Kemudian ubah hanya batas yang bertanggung jawab dan tambahkan regression test.
 
 ## Build
 
-The project contains native C++/NDK code and should be built through GitHub Actions on the user's Android-only workflow.
+Karena proyek memiliki native C++/NDK, build dilakukan melalui GitHub Actions dalam workflow Android-only.
 
-Build workflow:
+Workflow build:
 
-.github/workflows/build.yml
+`.github/workflows/build.yml`
 
-SF2 inspection workflow:
+Workflow inspeksi SF2:
 
-.github/workflows/inspect-sf2.yml
-
+`.github/workflows/inspect-sf2.yml`
