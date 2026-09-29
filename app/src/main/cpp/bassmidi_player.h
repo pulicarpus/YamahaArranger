@@ -65,6 +65,9 @@ private:
     bool findMelodicPreset(const std::string& path, int requestedBank, int requestedProgram,
                            const std::string& voiceName, int& sourceBank, int& sourceProgram,
                            std::string& matchedName, int& sourceFont) const;
+    bool findMelodicPresetFallback(const std::string& path, int requestedBank, int requestedProgram,
+                           const std::string& voiceName, int& sourceBank, int& sourceProgram,
+                           std::string& matchedName, int& sourceFont) const;
     bool findDrumPreset(const std::string& path, int requestedProgram,
                         int& sourceBank, int& sourceProgram) const;
     HSTREAM stream_ = 0;
