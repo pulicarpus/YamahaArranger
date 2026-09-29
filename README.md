@@ -85,7 +85,7 @@ FluidSynth masih ada sebagai dependency legacy, tetapi bukan jalur SoundFont akt
 
 Detail lengkap ada di `docs/ARRANGER_ENGINE_AUDIT.md`.
 
-1. Urutan Voice Resolver masih dapat memilih program numerik yang sama sebelum kecocokan semantic String/category.
+1. **Voice Resolver tahap 1 sudah diperbaiki:** semantic name/category sekarang diprioritaskan sebelum fallback program numerik lintas bank.
 2. `render()` BASSMIDI dan operasi kontrol masih berbagi mutex sehingga ada risiko contention pada audio realtime.
 3. Kepemilikan note style masih memakai source-channel/source-note, bukan identitas event yang unik.
 4. Fill directional di ArrangerBrain lebih lengkap daripada model StyleSection native.
@@ -93,7 +93,7 @@ Detail lengkap ada di `docs/ARRANGER_ENGINE_AUDIT.md`.
 6. Timing transisi masih menggabungkan quantization wall-clock dengan scheduler coroutine/master tick.
 7. Regression test untuk transisi, repeated notes, meter dan voice resolution masih belum lengkap.
 
-Ini adalah target stabilisasi. **Engine tidak perlu ditulis ulang dari nol.**
+Ini adalah target stabilisasi. **Engine tidak perlu ditulis ulang dari nol.** Tahap 1 Voice Resolver sudah dikerjakan; berikutnya kita bergerak ke P0.2 realtime mutex.
 
 ## Sustain dan Release
 
