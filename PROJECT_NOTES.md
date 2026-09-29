@@ -408,3 +408,30 @@ Jangan memperbaiki masalah directional Fill di CASM atau Voice Resolver; sumber 
 - `SX920_Factory_Styles_Audit/native_parser_audit_summary.json`
 
 Artefak ini adalah snapshot audit, bukan source engine.
+
+
+## Tahap 3 — Implementasi parser directional Fill — 2026-09-29
+
+Tahap 3A/3B selesai. Source engine sekarang mempertahankan directional Fill di batas parser native.
+
+Perubahan yang dilakukan:
+- StyleSection native diperluas dari Fill AA/BB/CC/DD menjadi seluruh 16 kombinasi AA..DD: FillAA, FillAB, FillAC, FillAD, FillBA, FillBB, FillBC, FillBD, FillCA, FillCB, FillCC, FillCD, FillDA, FillDB, FillDC, FillDD.
+- StyleParser::classifyMarkerText() sekarang membaca kode dua huruf setelah marker Fill dan mempertahankan arahnya.
+- Fill In BA tidak lagi dipetakan ke BreakDown; hasilnya FillBA.
+- styleSectionToString() dan styleSectionFromString() diperluas agar JNI dapat membawa semua directional Fill ke Kotlin.
+- ArrangerBrain tidak perlu diubah karena enum dan fillForTransition() sudah mendukung directional Fill.
+- CASM, Voice Resolver, StyleSequencer, BASSMIDI, sustain, dan keyboard routing tidak disentuh.
+
+Commit source:
+- 0ae5fcb680100310fced4d1fd62a77a9c84be9c0 — style_parser.h
+- 43820fed77ed92b1e6cb401b0eb5bf3a4f93c0a3 — style_parser.cpp
+
+Verifikasi corpus sebelum build:
+- 569/569 style tetap menjadi corpus utama.
+- Fill In BA terbukti ada pada 569/569 style pada audit sebelumnya.
+- Dengan klasifikasi dua-huruf baru, marker Fill In BA diarahkan ke FillBA, bukan BreakDown.
+
+Status:
+- Implementasi parser selesai.
+- Build APK belum diverifikasi dari commit ini karena workflow .github/workflows/build.yml saat ini hanya trigger otomatis pada beberapa branch fitur/fix dan tidak mencantumkan main.
+- Tahap berikutnya: verifikasi build native/Gradle, lalu audit ulang 569 style terhadap section names/length/CASM dan regression transisi Main→Fill→Main.
