@@ -115,8 +115,16 @@ private fun Sf2Inspector(
     onQuery: (String) -> Unit,
     onRefresh: () -> Unit
 ) {
-    Text("Loaded SF2: ${state.soundFontName}", color = InspectorText, fontWeight = FontWeight.Bold)
-    Text("Presets=${state.sf2Presets.size} • managed files=${state.availableSoundFonts.size}", color = InspectorDim, fontSize = 11.sp)
+    Text("Managed SF2 files: ${state.availableSoundFonts.size}", color = InspectorText, fontWeight = FontWeight.Bold)
+    Text(
+        if (state.sf2ScanInProgress) {
+            "Scanning all SF2 files… ${state.sf2Reports.size}/${state.availableSoundFonts.size}"
+        } else {
+            "Inspected=${state.sf2Reports.size} • Loaded-engine presets=${state.sf2Presets.size}"
+        },
+        color = InspectorDim,
+        fontSize = 11.sp
+    )
     Spacer(Modifier.height(6.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
         OutlinedTextField(
@@ -124,32 +132,82 @@ private fun Sf2Inspector(
             onValueChange = onQuery,
             modifier = Modifier.weight(1f),
             singleLine = true,
-            label = { Text("Filter name / bank / program") }
+            label = { Text("Filter file / preset / bank / program") }
         )
-        Button(onClick = onRefresh) { Text("REFRESH") }
+        Button(enabled = !state.sf2ScanInProgress, onClick = onRefresh) {
+            Text(if (state.sf2ScanInProgress) "SCANNING…" else "SCAN ALL SF2")
+        }
     }
     Spacer(Modifier.height(6.dp))
 
-    val filtered = state.sf2Presets.filter {
-        query.isBlank() || it.name.contains(query, true) ||
-            it.bank.toString().contains(query) || it.program.toString().contains(query)
-    }
-
-    Row(Modifier.fillMaxWidth().background(InspectorPanel).padding(7.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text("ROLE", color = InspectorDim, modifier = Modifier.width(70.dp), fontSize = 10.sp)
-        Text("BANK", color = InspectorDim, modifier = Modifier.width(110.dp), fontSize = 10.sp)
-        Text("PC", color = InspectorDim, modifier = Modifier.width(45.dp), fontSize = 10.sp)
-        Text("PRESET", color = InspectorDim, fontSize = 10.sp)
+    val reports = state.sf2Reports
+    if (reports.isEmpty()) {
+        if (state.sf2ScanInProgress) {
+            Text("Reading SF2 metadata without loading sample audio into RAM…", color = InspectorDim, fontSize = 11.sp)
+        } else {
+            Text("Press SCAN ALL SF2 to inspect every managed .sf2 file.", color = InspectorDim, fontSize = 11.sp)
+            Spacer(Modifier.height(6.dp))
+            val filtered = state.sf2Presets.filter {
+                query.isBlank() || it.name.contains(query, true) ||
+                    it.bank.toString().contains(query) || it.program.toString().contains(query)
+            }
+            LazyColumn(Modifier.fillMaxSize()) {
+                items(filtered) { p ->
+                    val bankText = if (p.bank >= 128) "packed=${p.bank} / ${p.bank / 128}:${p.bank % 128}" else "${p.bank} / ${p.bank}:0"
+                    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(p.role, color = InspectorDim, modifier = Modifier.width(70.dp), fontSize = 11.sp)
+                        Text(bankText, color = InspectorText, modifier = Modifier.width(110.dp), fontSize = 11.sp)
+                        Text(p.program.toString(), color = InspectorText, modifier = Modifier.width(45.dp), fontSize = 11.sp)
+                        Text(p.name.ifBlank { "(unnamed)" }, color = InspectorText, fontSize = 11.sp)
+                    }
+                }
+            }
+        }
+        return
     }
 
     LazyColumn(Modifier.fillMaxSize()) {
-        items(filtered) { p ->
-            val bankText = if (p.bank >= 128) "packed=${p.bank} / ${p.bank / 128}:${p.bank % 128}" else "${p.bank} / ${p.bank}:0"
-            Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(p.role, color = InspectorDim, modifier = Modifier.width(70.dp), fontSize = 11.sp)
-                Text(bankText, color = InspectorText, modifier = Modifier.width(110.dp), fontSize = 11.sp)
-                Text(p.program.toString(), color = InspectorText, modifier = Modifier.width(45.dp), fontSize = 11.sp)
-                Text(p.name.ifBlank { "(unnamed)" }, color = InspectorText, fontSize = 11.sp)
+        reports.forEach { report ->
+            val matching = report.presets.filter {
+                query.isBlank() ||
+                    report.fileName.contains(query, true) ||
+                    it.name.contains(query, true) ||
+                    it.bank.toString().contains(query) ||
+                    it.program.toString().contains(query)
+            }
+            if (query.isBlank() || matching.isNotEmpty()) {
+                item(key = "header:${report.fileName}") {
+                    Column(Modifier.fillMaxWidth().background(InspectorPanel).padding(9.dp)) {
+                        Text(
+                            "${if (report.validSf2) "✓" else "✗"} ${report.fileName}",
+                            color = if (report.validSf2) InspectorGood else InspectorBad,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                        Text(
+                            "${report.fileSize / 1024.0 / 1024.0} MB • presets=${report.presets.size} • instruments=${report.instrumentCount} • samples=${report.sampleCount}",
+                            color = InspectorDim,
+                            fontSize = 10.sp
+                        )
+                        report.soundFontName?.takeIf { it.isNotBlank() }?.let {
+                            Text("Name: $it", color = InspectorText, fontSize = 10.sp)
+                        }
+                        report.engine?.takeIf { it.isNotBlank() }?.let {
+                            Text("Engine: $it", color = InspectorDim, fontSize = 10.sp)
+                        }
+                    }
+                }
+                items(
+                    items = matching,
+                    key = { "${report.fileName}:${it.bank}:${it.program}:${it.name}" }
+                ) { p ->
+                    val bankText = if (p.bank >= 128) "${p.bank / 128}:${p.bank % 128} (packed=${p.bank})" else "${p.bank}:0"
+                    Row(Modifier.fillMaxWidth().padding(start = 8.dp, top = 5.dp, bottom = 5.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(bankText, color = InspectorText, modifier = Modifier.width(105.dp), fontSize = 10.sp)
+                        Text(p.program.toString(), color = InspectorText, modifier = Modifier.width(35.dp), fontSize = 10.sp)
+                        Text(p.name.ifBlank { "(unnamed)" }, color = InspectorText, fontSize = 10.sp)
+                    }
+                }
             }
         }
     }
@@ -228,6 +286,22 @@ private fun saveInspectorReport(context: Context, state: MainUiState): String? {
         appendLine("Managed SF2 files: ${state.availableSoundFonts.size}")
         state.availableSoundFonts.forEach { appendLine("  FILE: $it") }
         appendLine()
+        appendLine("=== ALL MANAGED SF2 INVENTORY ===")
+        appendLine("Inspected files: ${state.sf2Reports.size}")
+        state.sf2Reports.forEach { report ->
+            appendLine()
+            appendLine("FILE: ${report.fileName}")
+            appendLine("  sizeBytes=${report.fileSize}")
+            appendLine("  validSf2=${report.validSf2}")
+            appendLine("  name='${report.soundFontName.orEmpty()}'")
+            appendLine("  engine='${report.engine.orEmpty()}'")
+            appendLine("  instruments=${report.instrumentCount} samples=${report.sampleCount} presets=${report.presets.size}")
+            report.presets.forEach { p ->
+                appendLine("  PRESET bank=${p.bank} pc=${p.program} name='${p.name}'")
+            }
+        }
+        appendLine()
+        appendLine("=== LOADED ENGINE SF2 PRESETS ===")
         state.sf2Presets.forEach { p ->
             val msb = if (p.bank >= 128) p.bank / 128 else p.bank
             val lsb = if (p.bank >= 128) p.bank % 128 else 0
