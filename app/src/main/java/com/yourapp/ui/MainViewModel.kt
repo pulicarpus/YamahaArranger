@@ -651,29 +651,43 @@ class MainViewModel @Inject constructor(
         val melody = preferredPair?.first
         val drum = preferredPair?.second
         if (melody != null && drum != null) {
-            DebugLog.add("🔄 Auto-loading MELODY + DRUM SF2 as one transaction")
+            DebugLog.add("🔄 Auto-loading MELODY + FALLBACK + DRUM SF2 as one transaction")
+            val fallback = files
+                .filter { it != melody && it != drum }
+                .maxByOrNull { fallbackMelodyScore(it.second) }
+                ?.takeIf { fallbackMelodyScore(it.second) > 0 }
+            if (fallback != null) {
+                DebugLog.add("🧩 Secondary melody SF2: ${fallback.second}")
+            }
             val melodyCache = withContext(Dispatchers.IO) {
                 contentResolver.copySoundFontToCache(melody.first, melody.second)
             }
+            val fallbackCache = if (fallback != null) withContext(Dispatchers.IO) {
+                contentResolver.copySoundFontToCache(fallback.first, fallback.second)
+            } else null
             val drumCache = withContext(Dispatchers.IO) {
                 contentResolver.copySoundFontToCache(drum.first, drum.second)
             }
             if (melodyCache != null && drumCache != null) {
                 val ok = withContext(Dispatchers.Default) {
-                    // Fresh app process: the native synth has not been started yet.
-                    // Do NOT call unloadSoundFont() here; unloading before nativeStart()
-                    // can dereference an uninitialized FluidSynth instance and crash
-                    // the process during cold startup.
-                    audioEngine.loadSoundFontPair(melodyCache.absolutePath, drumCache.absolutePath)
+                    audioEngine.loadSoundFontPairWithFallback(
+                        melodyCache.absolutePath,
+                        fallbackCache?.absolutePath,
+                        drumCache.absolutePath
+                    )
                 }
                 if (ok) {
-                    _soundFontName.value = melody.second + " + " + drum.second
-                    DebugLog.add("✅ Auto SF2 pair loaded")
+                    _soundFontName.value = buildString {
+                        append(melody.second)
+                        if (fallback != null) append(" + ").append(fallback.second)
+                        append(" + ").append(drum.second)
+                    }
+                    DebugLog.add("✅ Auto SF2 stack loaded")
                 }
             } else {
-                DebugLog.add("❌ Auto SF2 pair cache failed")
+                DebugLog.add("❌ Auto SF2 stack cache failed")
             }
-        } else if (files.size == 1) {
+        }        } else if (files.size == 1) {
             // A style-specific SF2 is often shipped as a single file. Keep the
             // same font available to both melodic and Yamaha rhythm channels.
             val single = files.first()
@@ -783,41 +797,84 @@ class MainViewModel @Inject constructor(
             val preferredPair = preferredSoundFontPair(files)
             val melody = preferredPair?.first
             val drum = preferredPair?.second
+
             if (melody != null && drum != null) {
-                DebugLog.add("🔄 Auto-loading MELODY + FALLBACK + DRUM SF2 as one transaction")
-                val fallback = files
-                    .filter { it != melody && it != drum }
-                    .maxByOrNull { fallbackMelodyScore(it.second) }
-                    ?.takeIf { fallbackMelodyScore(it.second) > 0 }
-                if (fallback != null) {
-                    DebugLog.add("🧩 Secondary melody SF2: ${fallback.second}")
-                }
                 val melodyCache = withContext(Dispatchers.IO) {
                     contentResolver.copySoundFontToCache(melody.first, melody.second)
                 }
-                val fallbackCache = if (fallback != null) withContext(Dispatchers.IO) {
-                    contentResolver.copySoundFontToCache(fallback.first, fallback.second)
-                } else null
                 val drumCache = withContext(Dispatchers.IO) {
                     contentResolver.copySoundFontToCache(drum.first, drum.second)
                 }
+
                 if (melodyCache != null && drumCache != null) {
                     val ok = withContext(Dispatchers.Default) {
-                        audioEngine.loadSoundFontPairWithFallback(
+                        audioEngine.loadSoundFontPair(
                             melodyCache.absolutePath,
-                            fallbackCache?.absolutePath,
                             drumCache.absolutePath
                         )
                     }
-                    if (ok) {
-                        _soundFontName.value = buildString {
-                            append(melody.second)
-                            if (fallback != null) append(" + ").append(fallback.second)
-                            append(" + ").append(drum.second)
-                        }
-                        DebugLog.add("✅ Auto SF2 stack loaded")
-                    }
-                } else {
-                    DebugLog.add("❌ Auto SF2 stack cache failed")
+                    _soundFontName.value = if (ok) name else "Load failed"
+                    DebugLog.add(
+                        if (ok) "✅ MELODY + DRUM SF2 reloaded; selected=$name"
+                        else "❌ MELODY + DRUM SF2 reload failed"
+                    )
+                    return@launch
                 }
-            }}
+
+                DebugLog.add("❌ MELODY + DRUM SF2 cache failed")
+                _soundFontName.value = "Load failed"
+                return@launch
+            }
+
+            // Only one managed SF2 exists: use it for both melodic and
+            // Yamaha rhythm channels.
+            loadSoundFontUri(uri, name, role = null, replaceAll = true)
+        }
+    }
+
+    fun onSoundFontFilePicked(uri: Uri) {
+        viewModelScope.launch {
+            DebugLog.add("📂 SF2 picker…")
+            val sourceName = contentResolver.fileName(uri) ?: "font.sf2"
+            val safeName = sourceName.substringAfterLast('/').ifBlank { "font.sf2" }
+                .let { if (it.lowercase().endsWith(".sf2")) it else "$it.sf2" }
+
+            // If the picker already returned a file from our managed SF2 folder,
+            // do NOT copy it again. Re-importing such a URI used to create
+            // MELODY (1), (2), … duplicates and could even delete the source
+            // before copying because saveSoundFont replaces an existing name.
+            val alreadyStored = withContext(Dispatchers.IO) {
+                contentResolver.isSoundFontInManagedFolder(uri)
+            }
+            val storedUri = if (alreadyStored) {
+                DebugLog.add("📂 SF2 already in managed folder; no copy needed")
+                uri
+            } else {
+                withContext(Dispatchers.IO) {
+                    contentResolver.saveSoundFont(uri, safeName)
+                }
+            }
+            if (storedUri == null) {
+                DebugLog.add("❌ Could not store SF2 in /storage/emulated/0/YamahaArranger/SF2")
+                return@launch
+            }
+            DebugLog.add(if (alreadyStored) {
+                "📂 Using existing SF2: /storage/emulated/0/YamahaArranger/SF2/$safeName"
+            } else {
+                "📂 SF2 stored: /storage/emulated/0/YamahaArranger/SF2/$safeName"
+            })
+            DebugLog.add("🔄 Loading SF2 directly…")
+            loadSoundFontUri(storedUri, safeName)
+        }
+    }
+
+    companion object {
+        private val SECTION_BUTTON_MAP = mapOf(
+            "Intro 1" to ArrangerSection.IntroA, "Intro 2" to ArrangerSection.IntroB, "Intro 3" to ArrangerSection.IntroC,
+            "Main A" to ArrangerSection.MainA, "Main B" to ArrangerSection.MainB, "Main C" to ArrangerSection.MainC, "Main D" to ArrangerSection.MainD,
+            "Fill A" to ArrangerSection.FillAA, "Fill B" to ArrangerSection.FillBB, "Fill C" to ArrangerSection.FillCC, "Fill D" to ArrangerSection.FillDD,
+            "Ending 1" to ArrangerSection.EndingA, "Ending 2" to ArrangerSection.EndingB, "Ending 3" to ArrangerSection.EndingC)
+        private val MAIN_VARIATIONS = setOf(ArrangerSection.MainA, ArrangerSection.MainB, ArrangerSection.MainC, ArrangerSection.MainD)
+        private fun displayLabelFor(section: ArrangerSection): String = SECTION_BUTTON_MAP.entries.firstOrNull { it.value == section }?.key ?: section.name
+    }
+}
