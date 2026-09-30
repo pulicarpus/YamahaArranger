@@ -11,7 +11,6 @@ if old not in s:
     raise SystemExit("expected resolver fallback block not found; refusing to modify source")
 s = s.replace(old, new, 1)
 
-# Add a few Yamaha/common aliases without changing existing category precedence.
 old_alias = '''        if (n.find("brass") != std::string::npos ||\n            n.find("trumpet") != std::string::npos ||\n            n.find("trombone") != std::string::npos) return 7;'''
 new_alias = '''        if (n.find("brass") != std::string::npos ||\n            n.find("trumpet") != std::string::npos ||\n            n.find("trombone") != std::string::npos ||\n            n.find("horn") != std::string::npos) return 7;'''
 if old_alias not in s:
