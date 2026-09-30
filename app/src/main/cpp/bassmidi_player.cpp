@@ -213,9 +213,9 @@ bool BassMidiPlayer::applyFonts() {
             selected.numchan = 1;
             cfg.push_back(selected);
 
-            LOGI("VOICE MAP ch=%d role=%s srcBank=%d srcProg=%d -> dstBank=%d:%d dstProg=%d",
+            LOGI("VOICE MAP ch=%d role=%s srcBank=%d srcProg=%d srcName='%s' -> dstBank=%d:%d dstProg=%d",
                  ch, role, state.melodySourceBank, state.melodySourceProgram,
-                 state.bankMsb, state.bankLsb, state.program);
+                 state.melodySourceName.c_str(), state.bankMsb, state.bankLsb, state.program);
         }
     };
 
@@ -1202,7 +1202,6 @@ void BassMidiPlayer::preloadCurrentPreset(int channel) {
     const std::string& path = state.drum
         ? (drumFont_ ? drumPath_ : melodyPath_)
         : (useFallbackMelody ? melodyFallbackPath_ : melodyPath_);
-    const auto& presetCache = useFallbackMelody ? melodyFallbackPresetCache_ : melodyPresetCache_;
     const auto& bankMaps = useFallbackMelody ? melodyFallbackNormalizedBanks_ : normalizedBanks_;
     if (!font) return;
 
@@ -1252,18 +1251,18 @@ void BassMidiPlayer::preloadCurrentPreset(int channel) {
         }
     } else {
         if (!BASS_MIDI_FontLoadEx(
-                font, state.program, sourceBank, 0,
+                font, sourceProgram, sourceBank, 0,
                 BASS_MIDI_FONTLOAD_NOWAIT)) {
             LOGI("BASSMIDI async preload skipped ch=%d bank=%d prog=%d err=%d",
-                 channel, sourceBank, state.program, BASS_ErrorGetCode());
+                 channel, sourceBank, sourceProgram, BASS_ErrorGetCode());
             return;
         }
     }
 
-    LOGI("BASSMIDI preload ch=%d sf2bank=%d rawYamahaBank=%d midi=%d:%d prog=%d",
-         channel, sourceBank,
+    LOGI("BASSMIDI preload ch=%d role=%s sf2bank=%d rawYamahaBank=%d midi=%d:%d srcProg=%d srcName='%s' dstProg=%d",
+         channel, state.drum ? "DRUM" : (useFallbackMelody ? "FALLBACK" : "PRIMARY"), sourceBank,
          state.drum ? 128 : (state.bankMsb * 128 + state.bankLsb),
-         state.bankMsb, state.bankLsb, sourceProgram);
+         state.bankMsb, state.bankLsb, sourceProgram, state.melodySourceName.c_str(), state.program);
 }
 
 void BassMidiPlayer::noteOn(int channel, int key, float velocity) {
@@ -1338,6 +1337,7 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program, const 
     state.melodySource = 0;
     state.melodySourceBank = -1;
     state.melodySourceProgram = -1;
+    state.melodySourceName.clear();
     state.initialized = true;
 
     if (state.drum) {
@@ -1369,6 +1369,7 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program, const 
         if (resolved) {
             state.melodySourceBank = sourceBank;
             state.melodySourceProgram = sourceProgram;
+            state.melodySourceName = matchedName;
             if (sourceBank != requestedSourceBank || sourceProgram != requestedProgram) {
                 LOGI("VOICE RESOLVE ch=%d requested bank=%d prog=%d name='%s' -> sourceRole=%d bank=%d prog=%d '%s'",
                      channel, requestedBank14, requestedProgram, voiceName.c_str(),
@@ -1383,10 +1384,10 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program, const 
         }
     }
 
-    LOGI("SET PRESET ch=%d requestedBank=%d effectiveBank=%d lsb=%d prog=%d drum=%d voice='%s' sourceRole=%d sourceBank=%d sourceProg=%d",
+    LOGI("SET PRESET ch=%d requestedBank=%d effectiveBank=%d lsb=%d prog=%d drum=%d voice='%s' sourceRole=%d sourceBank=%d sourceProg=%d sourceName='%s'",
          channel, requestedBank, state.bankMsb, state.bankLsb, state.program,
          state.drum ? 1 : 0, voiceName.c_str(), state.melodySource,
-         state.melodySourceBank, state.melodySourceProgram);
+         state.melodySourceBank, state.melodySourceProgram, state.melodySourceName.c_str());
 
     if (!state.drum && !applyFonts()) {
         LOGI("VOICE MAP apply failed ch=%d; generic SF2 mapping retained", channel);
