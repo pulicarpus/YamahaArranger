@@ -36,6 +36,7 @@ private:
         int melodySource = 0;
         int melodySourceBank = -1;
         int melodySourceProgram = -1;
+        std::string melodySourceName;
         int program = 0;
         bool drum = false;
         bool initialized = false;
