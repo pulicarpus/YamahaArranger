@@ -747,3 +747,43 @@ Regression minimum:
 - SF2 reload.
 
 Build 730 diperlakukan sebagai audio baseline; jangan menyentuh CASM, scheduler, transition, atau drum routing tanpa bukti regresi.
+
+## Checkpoint Video Mute-Per-Channel + Source Preload Fix — 2026-09-30
+
+Pengujian video perangkat pengguna berdurasi sekitar 83 detik dilakukan dengan memute channel satu per satu pada Style Mixer. Video menunjukkan setiap part tetap dapat memengaruhi audio ketika channel lain diuji; tidak ada bukti dari video bahwa seluruh jalur channel mati. Label voice yang tampil juga tidak boleh dianggap sebagai bukti identitas sample yang benar.
+
+Urutan channel yang diuji:
+- CH8 Perc
+- CH9 Drums
+- CH10 Bass (UI saat ini menampilkan "B3 Org")
+- CH11 Piano ("Yamaha ConcertGrand")
+- CH12 A.Guitar ("Yamaha Bright Piano")
+- CH13 Bright Piano ("String Yamaha")
+- CH14 E.Grand Piano ("String Yamaha")
+
+Temuan penting:
+- CH10 memang secara UI diberi label "B3 Org", tetapi CH10 adalah destination Bass track. Audio video menunjukkan energi low/mid yang konsisten dengan adanya bagian bass; video saja belum cukup untuk membuktikan bahwa source SF2 yang dipilih native adalah Organ.
+- Karena diagnostic Kotlin lama pernah menunjukkan mapping same-PC yang salah, bukti yang harus dipercaya untuk resolver adalah log native VOICE RESOLVE, VOICE MAP, SET PRESET, dan BASSMIDI preload.
+- Dengan demikian, langkah berikutnya adalah membuat source voice native dapat diaudit langsung: source bank, source program, source role, dan source preset name harus tercatat pada channel state/log.
+
+### Fix native setelah video
+
+1. Menambahkan melodySourceName pada ChannelState agar nama preset source hasil resolver tidak hilang setelah findMelodicPreset.
+2. Log VOICE MAP sekarang menyertakan srcName.
+3. Log SET PRESET sekarang menyertakan sourceName.
+4. Log preload sekarang menyertakan role, source program, source name, dan destination program.
+5. Perbaikan penting: preloadCurrentPreset() sebelumnya memanggil BASS_MIDI_FontLoadEx() melodic menggunakan state.program (destination program), padahal resolver sudah memilih state.melodySourceProgram. Sekarang preload menggunakan sourceProgram yang benar-benar dipilih resolver. Ini menghindari preload preset berbeda dari source yang dipakai mapping.
+6. Variabel presetCache yang tidak digunakan pada preload dihapus.
+
+Commit:
+- 0230a7708d15c12355ab28df9550c987269c746b — retain resolved source voice name in channel state.
+- 1db6cc50486a6442d6bdad58928411cd38869a1d — preload resolved source preset and log source voice.
+
+### Aturan verifikasi
+
+Jangan mengubah mapping Bass→Bass secara paksa hanya berdasarkan label UI. APK berikutnya harus diuji dengan exported log dan dicari pasangan:
+- VOICE RESOLVE ch=10 ... sourceRole=... sourceBank=... sourceProg=...
+- VOICE MAP ch=10 ... srcBank=... srcProg=... srcName=... -> dstBank=8:4 dstProg=17
+- BASSMIDI preload ch=10 ... srcProg=... srcName=... dstProg=17
+
+Targetnya adalah membuktikan source preset aktual terlebih dahulu, baru melakukan perubahan resolver jika source category memang terbukti salah.
