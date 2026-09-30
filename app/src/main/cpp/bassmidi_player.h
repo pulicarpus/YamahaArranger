@@ -37,6 +37,7 @@ private:
         int melodySourceBank = -1;
         int melodySourceProgram = -1;
         std::string melodySourceName;
+        std::string requestedVoiceName;
         int program = 0;
         bool drum = false;
         bool initialized = false;
@@ -56,26 +57,32 @@ private:
         int program = 0;
         std::string name;
     };
+    struct SecondaryMelody {
+        HSOUNDFONT font = 0;
+        std::string path;
+        std::string bassPath;
+        std::vector<MelodicPresetEntry> presets;
+        std::vector<NormalizedBankMap> banks;
+    };
+    std::vector<SecondaryMelody> secondaryMelodies_;
     bool ensureEngine();
     bool loadRole(const std::string& path, bool drum);
     bool applyFonts();
+    void refreshMelodicChannels();
+    void invalidateMelodicChannels();
     bool normalizeMelodySf2(const std::string& sourcePath, const std::string& outputPath);
     void send(int channel, DWORD event, DWORD param);
     void preloadCurrentPreset(int channel);
     void rebuildDrumPresetCache(const std::string& path,
                                 std::vector<DrumPresetEntry>& cache);
     void rebuildMelodyPresetCache(const std::string& path);
-    bool findMelodicPreset(const std::string& path, int requestedBank, int requestedProgram,
-                           const std::string& voiceName, int& sourceBank, int& sourceProgram,
-                           std::string& matchedName, int& sourceFont) const;
-    bool findMelodicPresetFallback(const std::string& path, int requestedBank, int requestedProgram,
+    bool findMelodicPreset(int requestedBank, int requestedProgram,
                            const std::string& voiceName, int& sourceBank, int& sourceProgram,
                            std::string& matchedName, int& sourceFont) const;
     bool findDrumPreset(const std::string& path, int requestedProgram,
                         int& sourceBank, int& sourceProgram) const;
     HSTREAM stream_ = 0;
     HSOUNDFONT melodyFont_ = 0;
-    HSOUNDFONT melodyFallbackFont_ = 0;
     HSOUNDFONT drumFont_ = 0;
     bool bassInitialized_ = false;
     mutable std::mutex mutex_;
@@ -88,11 +95,8 @@ private:
     std::vector<DrumPresetEntry> drumDrumPresetCache_;
     std::vector<MelodicPresetEntry> melodyPresetCache_;
     std::vector<NormalizedBankMap> normalizedBanks_;
-    std::vector<MelodicPresetEntry> melodyFallbackPresetCache_;
-    std::vector<NormalizedBankMap> melodyFallbackNormalizedBanks_;
     std::string melodyPath_;
     std::string melodyBassPath_;
-    std::string melodyFallbackPath_;
-    std::string melodyFallbackBassPath_;
     std::string drumPath_;
 };
+

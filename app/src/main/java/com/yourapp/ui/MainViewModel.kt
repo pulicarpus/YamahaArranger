@@ -406,7 +406,7 @@ class MainViewModel @Inject constructor(
             if (slot.layer == layer) slot.copy(program = p, bank = b, name = presetName ?: GM_VOICES.firstOrNull { it.second == p }?.first)
             else slot
         }
-        audioEngine.setChannelProgram(layer, p, b)
+        audioEngine.setChannelProgram(layer, p, b, presetName)
         // Keep the external E343 patch in sync with the RIGHT 1/2/3 selection.
         midiInputManager.sendProgramChange(layer, p, b)
         DebugLog.add("🎹 " + _rightVoices.value.first { it.layer == layer }.label + " → prog" + p + " bank" + b)
@@ -503,7 +503,8 @@ class MainViewModel @Inject constructor(
     fun setChannelVoice(channel: Int, program: Int, bank: Int) {
         val updated = _voiceAssignments.value.map { slot ->
             if (slot.channel == channel) {
-                audioEngine.setChannelProgram(channel, program, bank)
+                audioEngine.setChannelProgram(channel, program, bank,
+                    _sf2Presets.value.firstOrNull { it.bank == bank && it.program == program }?.name)
                 midiInputManager.sendProgramChange(channel, program, bank)
                 DebugLog.add("🎼 Ch$channel → prog$program (bank$bank)")
                 slot.copy(program = program, bank = bank, sf2Name = _sf2Presets.value.firstOrNull { it.bank == bank && it.program == program }?.name)
@@ -604,8 +605,8 @@ class MainViewModel @Inject constructor(
         fun scoreMelody(name: String): Int {
             val n = name.lowercase()
             return when {
-                n.contains("melodi") && n.contains("yamaha") && n.contains("sx700") -> 100
-                n.contains("melodi") && n.contains("yamaha") -> 95
+                (n.contains("melodi") || n.contains("melody")) && n.contains("yamaha") && (n.contains("sx700") || n.contains("sx900")) -> 100
+                (n.contains("melodi") || n.contains("melody")) && n.contains("yamaha") -> 95
                 n.contains("yamaha") && n.contains("tyros") -> 90
                 n.contains("tyros") -> 85
                 n.contains("colombo") -> 80
@@ -631,9 +632,15 @@ class MainViewModel @Inject constructor(
     private fun fallbackMelodyScore(name: String): Int {
         val n = name.lowercase()
         return when {
+            // ColomboGMGS2_BM is the broad BASSMIDI/GM2/GS compatibility
+            // layer (892 presets in the audited user inventory). Keep the
+            // Yamaha SX700/SX900 font as PRIMARY, but prefer Colombo for the
+            // first optional pool slot. Tyros may occupy a second slot;
+            // source load order does not decide the resolver winner.
+            n.contains("colombo") && (n.contains("bm") || n.contains("bassmidi")) -> 100
+            n.contains("colombo") -> 98
             n.contains("yamaha") && n.contains("tyros") -> 90
             n.contains("tyros") -> 85
-            n.contains("colombo") -> 80
             n.contains("timbres") -> 70
             n.contains("merlin") -> 50
             n.contains("cp80") -> 40
@@ -659,11 +666,19 @@ class MainViewModel @Inject constructor(
             if (fallback != null) {
                 DebugLog.add("🧩 Secondary melody SF2: ${fallback.second}")
             }
+            val additional = files.firstOrNull {
+                it != melody && it != drum && it != fallback && it.second.lowercase().contains("tyros") &&
+                    !it.second.lowercase().contains("drum")
+            }
+            if (additional != null) DebugLog.add("🧩 Yamaha alternate SF2: ${additional.second}")
             val melodyCache = withContext(Dispatchers.IO) {
                 contentResolver.copySoundFontToCache(melody.first, melody.second)
             }
             val fallbackCache = if (fallback != null) withContext(Dispatchers.IO) {
                 contentResolver.copySoundFontToCache(fallback.first, fallback.second)
+            } else null
+            val additionalCache = if (additional != null) withContext(Dispatchers.IO) {
+                contentResolver.copySoundFontToCache(additional.first, additional.second)
             } else null
             val drumCache = withContext(Dispatchers.IO) {
                 contentResolver.copySoundFontToCache(drum.first, drum.second)
@@ -673,13 +688,15 @@ class MainViewModel @Inject constructor(
                     audioEngine.loadSoundFontPairWithFallback(
                         melodyCache.absolutePath,
                         fallbackCache?.absolutePath,
-                        drumCache.absolutePath
+                        drumCache.absolutePath,
+                        additionalCache?.absolutePath
                     )
                 }
                 if (ok) {
                     _soundFontName.value = buildString {
                         append(melody.second)
                         if (fallback != null) append(" + ").append(fallback.second)
+                        if (additional != null) append(" + ").append(additional.second)
                         append(" + ").append(drum.second)
                     }
                     DebugLog.add("✅ Auto SF2 stack loaded")
@@ -799,6 +816,19 @@ class MainViewModel @Inject constructor(
             val drum = preferredPair?.second
 
             if (melody != null && drum != null) {
+                val fallback = files.filter { it != melody && it != drum }
+                    .maxByOrNull { fallbackMelodyScore(it.second) }
+                    ?.takeIf { fallbackMelodyScore(it.second) > 0 }
+                val additional = files.firstOrNull {
+                    it != melody && it != drum && it != fallback && it.second.lowercase().contains("tyros") &&
+                        !it.second.lowercase().contains("drum")
+                }
+                val fallbackCache = if (fallback != null) withContext(Dispatchers.IO) {
+                    contentResolver.copySoundFontToCache(fallback.first, fallback.second)
+                } else null
+                val additionalCache = if (additional != null) withContext(Dispatchers.IO) {
+                    contentResolver.copySoundFontToCache(additional.first, additional.second)
+                } else null
                 val melodyCache = withContext(Dispatchers.IO) {
                     contentResolver.copySoundFontToCache(melody.first, melody.second)
                 }
@@ -808,9 +838,11 @@ class MainViewModel @Inject constructor(
 
                 if (melodyCache != null && drumCache != null) {
                     val ok = withContext(Dispatchers.Default) {
-                        audioEngine.loadSoundFontPair(
+                        audioEngine.loadSoundFontPairWithFallback(
                             melodyCache.absolutePath,
-                            drumCache.absolutePath
+                            fallbackCache?.absolutePath,
+                            drumCache.absolutePath,
+                            additionalCache?.absolutePath
                         )
                     }
                     _soundFontName.value = if (ok) name else "Load failed"

@@ -3,6 +3,9 @@ on:
   push:
     branches:
       - feat/colombo-primary-fallback
+    paths-ignore:
+      - "docs/**"
+      - "PROJECT_NOTES.md"
   workflow_dispatch: {}
 jobs:
   build:
@@ -14,12 +17,8 @@ jobs:
       BASSMIDI_URL: https://www.un4seen.com/files/bassmidi24-android.zip
     steps:
       - uses: actions/checkout@v4
-      - name: Apply category resolver
-        run: python3 tools/apply_category_preserving_resolver_test.py
-      - name: Apply fallback load order
-        run: python3 tools/apply_fallback_load_order_fix.py
-      - name: Prefer Colombo fallback
-        run: python3 tools/apply_colombo_fallback_priority.py
+      - name: Test family-preserving resolver
+        run: python3 tools/test_voice_resolver.py
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -61,3 +60,4 @@ jobs:
         with:
           name: YamahaArranger-Colombo-Fallback
           path: app/build/outputs/apk/debug/app-debug.apk
+

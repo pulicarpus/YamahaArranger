@@ -9,6 +9,10 @@ on:
       - feat/sf2-style-inspector
       - fix/yamaha-panel-sustain-clean
       - feat/voice-resolver-v2-multisf2
+      - feat/family-preserving-multisf2
+    paths-ignore:
+      - "docs/**"
+      - "PROJECT_NOTES.md"
   workflow_dispatch: {}
 jobs:
   build:
@@ -21,10 +25,8 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-      - name: Apply category-preserving resolver test patch
-        run: python3 tools/apply_category_preserving_resolver_test.py
-      - name: Apply fallback load-order safety fix
-        run: python3 tools/apply_fallback_load_order_fix.py
+      - name: Test family-preserving resolver
+        run: python3 tools/test_voice_resolver.py
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -88,3 +90,4 @@ jobs:
             🎹 *YamahaArranger BASSMIDI Build!*
             🔊 BASSMIDI native engine
             🧪 Build #${{ github.run_number }}
+

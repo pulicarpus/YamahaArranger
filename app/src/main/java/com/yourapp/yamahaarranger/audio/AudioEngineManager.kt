@@ -113,24 +113,43 @@ class AudioEngineManager @Inject constructor(
     }
 
     /**
-     * Load Yamaha melody + drum atomically, then attach one controlled
-     * secondary melody SF2 as a lower-priority resolver layer.
+     * Establish the core melody/drum pair, then attach at most two optional
+     * melodic sources (Colombo and Tyros) for one family-gated candidate pool.
      */
     fun loadSoundFontPairWithFallback(
         melodyPath: String,
         fallbackMelodyPath: String?,
-        drumPath: String
+        drumPath: String,
+        additionalMelodyPath: String? = null
     ): Boolean {
         val result = runBlocking { soundFontOperationMutex.withLock { withAudioStreamPausedUnsafe {
+            // Establish the essential Yamaha pair first. The previous order
+            // loaded the large secondary melody font before the drum font; if
+            // that consumed too much native/SF2 memory, the subsequent drum
+            // load could fail and the whole startup transaction was reported
+            // failed even though fallback itself is optional.
             val melodyOk = bridge.nativeLoadMelodySoundFont(melodyPath)
             if (!melodyOk) return@withAudioStreamPausedUnsafe false
+            val drumOk = bridge.nativeLoadDrumSoundFont(drumPath)
+            if (!drumOk) return@withAudioStreamPausedUnsafe false
+
+            DebugLog.add("✅ Core MELODY + DRUM SF2 established; attaching secondary melody")
             val fallbackOk = fallbackMelodyPath.isNullOrBlank() ||
                 bridge.nativeLoadMelodyFallbackSoundFont(fallbackMelodyPath)
             if (!fallbackOk) {
-                DebugLog.add("⚠️ Secondary melody SF2 failed; continuing with Yamaha primary")
+                // Fallback is deliberately non-fatal. BassMidiPlayer rolls a
+                // failed fallback mapping back without discarding the already
+                // valid primary+drum pair.
+                DebugLog.add("⚠️ Secondary melody SF2 failed; core Yamaha pair remains active")
+            } else if (!fallbackMelodyPath.isNullOrBlank()) {
+                DebugLog.add("✅ Secondary melody SF2 attached")
             }
-            val drumOk = bridge.nativeLoadDrumSoundFont(drumPath)
-            melodyOk && drumOk
+            if (!additionalMelodyPath.isNullOrBlank()) {
+                val additionalOk = bridge.nativeLoadMelodyFallbackSoundFont(additionalMelodyPath)
+                DebugLog.add(if (additionalOk) "✅ Yamaha alternate SF2 attached"
+                    else "⚠️ Yamaha alternate failed; established SF2 pool remains active")
+            }
+            true
         } } }
         soundFontLoaded = soundFontLoaded || result
         if (result) DebugLog.add("✅ MELODY + FALLBACK + DRUM SF2 OK")
