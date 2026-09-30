@@ -1,0 +1,24 @@
+bank,lsb,program,entries,gm_category,semantic_score,recommended_source
+13312,0,2,4,Piano,6,ColomboGMGS2_BM.sf2:XP-50 Grand Piano
+13312,0,4,8,E.Piano,6,ColomboGMGS2_BM.sf2:Wurlitzer EP
+13312,0,5,2,E.Piano,6,ColomboGMGS2_BM.sf2:Yamaha DX EP
+13312,0,9,14,Chromatic,0,yamaha tyros 4_just_t4_fixed.sf2:glokenspiel
+13312,0,12,14,Chromatic,0,merlin_GMpro(v3.15).sf2:Marimba
+13312,0,15,2,Organ,6,ColomboGMGS2_BM.sf2:Percussive Organ
+13312,0,17,10,Organ,6,MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2:B3 Org
+13312,0,18,14,Organ,6,ColomboGMGS2_BM.sf2:Rock Organ
+13312,0,19,2,Organ,6,MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2:Church Org
+13312,0,32,4,Guitar,3,ColomboGMGS2_BM.sf2:Acoustic Bass
+13312,0,39,6,Bass,6,ColomboGMGS2_BM.sf2:Monster Bass
+13312,0,46,15,Strings,3,MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2:Yamaha Clavinova
+13312,0,50,2,Synth,6,ColomboGMGS2_BM.sf2:JP8 Synth Strings
+13312,0,51,40,Synth,6,MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2:String Yamaha
+13312,0,57,28,Synth,6,MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2:Tenor Sax
+13312,0,58,7,Synth,3,yamaha tyros 4_just_t4_fixed.sf2:tuba
+13312,0,60,40,Brass,6,ColomboGMGS2_BM.sf2:French Horns
+13312,0,67,23,Sax,6,MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2:Baritone Vib BV
+13312,0,68,6,Sax,3,merlin_GMpro(v3.15).sf2:Oboe
+13312,0,70,2,Reed,6,ColomboGMGS2_BM.sf2:Bassoon
+13312,0,71,6,Reed,3,ColomboGMGS2_BM.sf2:Clarinet
+13312,0,73,31,Flute,6,MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2:Suling S770
+13312,0,83,2,Synth,6,merlin_GMpro(v3.15).sf2:Chiffer Lead
