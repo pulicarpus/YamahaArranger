@@ -2,13 +2,13 @@
 
 ## Latest checkpoint — Runtime evidence and drum-zone candidate (2026-10-01)
 
-- Branch `diag/audio-path-presence`; baseline APK #755 source `cf5e41565c1f8668795b850bf594ac4a7c48a348`, baseline docs HEAD `b1ae2a23d1788094cece469293543504c6b4a597`. New candidate SHA/build are recorded after CI completes.
+- Branch `diag/audio-path-presence`; baseline APK #755 source `cf5e41565c1f8668795b850bf594ac4a7c48a348`, baseline docs HEAD `b1ae2a23d1788094cece469293543504c6b4a597`. Commit source/APK terbaru `8def797ace9da1646784e74c7f1019b278eee7ab`; **Build #756 SUKSES**, run36799888326 / job110171617935. Checkpoint HEAD sesudahnya hanya dokumentasi.
 - Raw AllLog063648 and diagnostic AllLog074808 + Inspector074819 are now analyzed. Full evidence, file hashes, line references, architectural boundary and test instructions: [runtime evidence](docs/AUDIO_RUNTIME_EVIDENCE_20261001.md).
 - Proven: dedicated drum SF2 has21 presets and noPC73; native fallback selects STANDAR PSR-SX128/0. Colombo Alternative73 belongs to a different source. All251 sampled drum NOTE_ONs are accepted and not remapped. Matching sample zones/Yamaha snare semantics remain unproven because Inspector contains no zone metadata.
 - Proven: all775 sampled notes sent and map matches;521 positive-id source/native pairs preserve velocity. Low strings26/33–34 in MainD come from raw style. BassCC7=52 versus Piano81 are style data. String13 activation100 is later reset to62 by full mixer updates on CC11; this is an existing state inconsistency, not proof of the entire presence root cause. No hardcoded gain added.
 - DROP_NO_POLICY_WITH_CHORD affects auxiliary src2 Piano rt → intendeddst11, at least114 notes in completed summaries; mask2ffc7c50 excludes currently played major/minor types. It does not drop the rhythm/Bass/Strings parts. No CASM bypass added.
 - Candidate only adds read-only cached SF2 drum key/velocity zone/sample-name audit, complete style note histograms and explicit drop mask/type evidence. No family resolver, kit selection, remap, mixer values, timing, sustain/release, keyboard or UI change.
-- Host validation:210 family +29 native +22 audio diagnostic +16 SF2 metadata checks (277 total). Android build/runtime status follows below.
+- Host validation:210 family +29 native +22 audio diagnostic +16 SF2 metadata checks (277 total). CI mengulang277 checks, kompilasi Android dua ABI/SDK BASS asli, upload artifact dan langkah Telegram sukses. [APK #756](https://github.com/pulicarpus/YamahaArranger/actions/runs/36799888326/artifacts/11134429464), archive12,483,868 bytes. Ini diagnostic candidate; cakupan sample perangkat belum diuji.
 - Next: test same four fonts/Love Song MainD then MainA/MainC and FillCC/FillDD; match every drum key to DRUM ZONE liveVerified/metadataKnown and matchingZones. A compatible replacement kit/key-map fix requires that evidence or actual SF2 sample/zone inspection.
 
 ## Latest checkpoint — Runtime audio-path diagnostic (2026-10-01)

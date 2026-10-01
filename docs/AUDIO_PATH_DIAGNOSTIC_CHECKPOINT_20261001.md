@@ -81,3 +81,9 @@ Stop making builds until this evidence is reviewed. Fix only an observed, reprod
 - Historical #755 completion: raw device AllLog was unavailable then. Current runtime evidence and the next zone-audit candidate are documented in AUDIO_RUNTIME_EVIDENCE_20261001.md and PROJECT_NOTES.md; do not repeat the old investigation or claim key/sample compatibility is already proven.
 - BASS preset readback/sample counters around the first cold note may be incomplete while NOWAIT loading proceeds. Compare repeated warm bars and sample memory changes before treating a single liveOk=0/infoOk=0 as definitive failure. Preset identity/API acceptance/font sample-memory are not audible-energy or key-zone proof.
 - Local workspace `/workspace/YamahaArrangerAudioDiag` is a text inspection snapshot for diff/tests, not a full remote clone; local baseline git SHA is not the published SHA. Read GitHub branch/commit/build identity when resuming.
+
+## Follow-up after diagnostic Android evidence
+
+AllLog063648 and diagnostic AllLog074808 + Inspector074819 have now been audited. See [complete runtime evidence and zone follow-up](AUDIO_RUNTIME_EVIDENCE_20261001.md) for hashes, all note/drop/controller findings and the separation of source music data from application behavior.
+
+Zone-audit implementation/APK `8def797ace9da1646784e74c7f1019b278eee7ab` on the same diagnostic branch, **Build #756 SUCCESS** run36799888326/job110171617935, artifact11134429464.277 CI checks and real Android compilation pass; remote11-file diff and122 unrelated blobs verified. Next Android test must verify actual kit0 key/velocity/sample-zone coverage for the extended drum keys. No remap/gain/preset/CASM fix is claimed; family gate and runtime boundary remain intact. Latest docs checkpoint HEAD can be newer than this APK SHA.
