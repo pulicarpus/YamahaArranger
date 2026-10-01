@@ -209,6 +209,15 @@ int main(int argc, char** argv) {
           "compact export does not send MIDI or change any FONTEX2 mapping");
     check(compactPreload==std::make_tuple(mock_bass::preloadedFont,mock_bass::preloadBank,mock_bass::preloadProgram,mock_bass::preloadFlags) &&
           (mock_bass::streamFlags & BASS_MIDI_NOTEOFF1),"compact export preserves preload NOWAIT and stream NOTEOFF1");
+    const auto focusedDrum=player.drumCompatibilityReport({{0,9,60,26,1},{1,9,31,110,8}},{{128,1},{128,0}});
+    check(focusedDrum.find("DRUM COMPARE v2")!=std::string::npos && focusedDrum.find("KEY ch=9 key=31 hits=8 activeMissingHits=8")!=std::string::npos,
+          "focused export prioritizes actual gaps, not ascending keys or preset names");
+    check(player.drumCompatibilityReport({{0,9,60,26,1},{1,9,31,110,8}})==drumCompact,
+          "blank/default candidate selection keeps original v1 export unchanged");
+    check(mock_bass::history==compactHistory && mock_bass::events==compactEvents &&
+          mock_bass::mappings.size()==compactMaps.size() && std::memcmp(mock_bass::mappings.data(),compactMaps.data(),compactMaps.size()*sizeof(BASS_MIDI_FONTEX2))==0 &&
+          compactPreload==std::make_tuple(mock_bass::preloadedFont,mock_bass::preloadBank,mock_bass::preloadProgram,mock_bass::preloadFlags),
+          "focused export leaves every MIDI/controller/mapping/preload state unchanged");
     mock_bass::mismatchPreset=true;
     check(player.drumCompatibilityReport({{0,9,60,26,1}}).find("fallbackReason=unknown_actual_differs_from_existing_cache_result")!=std::string::npos,
           "actual preset mismatch is not relabelled as verified fallback");

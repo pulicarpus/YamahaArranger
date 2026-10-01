@@ -47,5 +47,6 @@ class NativeAudioBridge @Inject constructor() {
     external fun nativeGetNoteZoneReport(): String
     external fun nativeGetDrumKitCoverage(histogram: IntArray): String
     external fun nativeGetDrumCompatibilityReport(histogram: IntArray): String
+    external fun nativeGetDrumCompatibilityComparison(histogram: IntArray, kits: IntArray): String
 }
 

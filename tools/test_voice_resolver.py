@@ -45,3 +45,8 @@ with tempfile.TemporaryDirectory(prefix="yamaha-resolver-") as directory:
                     "-I", str(root / "app/src/main/cpp"),
                     str(root / "tests/drum_compatibility_report_test.cpp"), "-o", str(compact_executable)], check=True)
     subprocess.run([str(compact_executable)], check=True)
+    comparison_executable = Path(directory) / "drum_compatibility_comparison_test"
+    subprocess.run([compiler, "-std=c++17", "-Wall", "-Wextra", "-Werror", "-O2",
+                    "-I", str(root / "app/src/main/cpp"),
+                    str(root / "tests/drum_compatibility_comparison_test.cpp"), "-o", str(comparison_executable)], check=True)
+    subprocess.run([str(comparison_executable), str(root / "tests/fixtures/drum_demand_766.csv")], check=True)

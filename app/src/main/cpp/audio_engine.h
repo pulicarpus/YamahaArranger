@@ -40,7 +40,7 @@ public:
     std::vector<unsigned char> sfDiagnosticDrumWav(int bank,int pc,int key,int velocity);
     std::string sfNoteZoneReport() const;
     std::string sfDrumKitCoverage(const std::vector<drum_audit::Hit>& hits) const;
-    std::string sfDrumCompatibilityReport(const std::vector<drum_compat::Demand>& demand) const;
+    std::string sfDrumCompatibilityReport(const std::vector<drum_compat::Demand>& demand, const std::vector<std::pair<int,int>>& comparisonKits = {}) const;
     oboe::DataCallbackResult onAudioReady(oboe::AudioStream*,void*,int32_t) override;
 private:
     std::shared_ptr<oboe::AudioStream> stream_;

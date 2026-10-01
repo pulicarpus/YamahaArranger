@@ -114,6 +114,22 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_Nativ
     const auto report=g_engine->sfDrumCompatibilityReport(demand);
     return env->NewStringUTF(sanitizeUtf8ForJni(report.c_str()).c_str());
 }
+extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeGetDrumCompatibilityComparison(JNIEnv* env,jobject,jintArray histogram,jintArray kits){
+    if(!g_engine || !histogram || !kits) return env->NewStringUTF("DRUM COMPARE unavailable: engine/demand/candidates absent\n");
+    const jsize n=env->GetArrayLength(histogram),k=env->GetArrayLength(kits);
+    if(n%5 || n>327680 || k<2 || k>8 || k%2) return env->NewStringUTF("DRUM COMPARE unavailable: invalid input length\n");
+    std::vector<jint> values(n),selected(k);
+    if(n) env->GetIntArrayRegion(histogram,0,n,values.data());
+    if(env->ExceptionCheck()) return nullptr;
+    env->GetIntArrayRegion(kits,0,k,selected.data());
+    if(env->ExceptionCheck()) return nullptr;
+    std::vector<drum_compat::Demand> demand;
+    for(jsize i=0;i<n;i+=5) demand.push_back({values[i],values[i+1],values[i+2],values[i+3],values[i+4]});
+    std::vector<std::pair<int,int>> candidates;
+    for(jsize i=0;i<k;i+=2) candidates.emplace_back(selected[i],selected[i+1]);
+    const auto report=g_engine->sfDrumCompatibilityReport(demand,candidates);
+    return env->NewStringUTF(sanitizeUtf8ForJni(report.c_str()).c_str());
+}
 extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeGetDrumKitCoverage(JNIEnv* env,jobject,jintArray histogram){
     if(!g_engine) return env->NewStringUTF("DRUM KIT AUDIT unavailable: audio engine absent\n");
     if(!histogram) return env->NewStringUTF("DRUM KIT AUDIT unavailable: histogram absent\n");

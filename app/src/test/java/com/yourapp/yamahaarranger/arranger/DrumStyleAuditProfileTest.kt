@@ -103,5 +103,21 @@ class DrumStyleAuditProfileTest {
         assertEquals(0L,p.chordMuteMask)
     }
 
+    @Test fun comparisonSelectionIsExplicitGenericAndCanonical() {
+        assertArrayEquals(intArrayOf(127,5,128,3,128,99),DrumCompatibilityProfile.comparisonKits("128:99, 127:5, 128:3,128:3"))
+        assertArrayEquals(intArrayOf(),DrumCompatibilityProfile.comparisonKits("  "))
+    }
+    @Test fun comparisonRejectsMalformedAndExcessiveInputs() {
+        for (value in listOf("1", "128:1,", "-1:3", "128:128", "65536:1", "x:1", "0:1,0:2,0:3,0:4,0:5"))
+            assertNull(value,DrumCompatibilityProfile.comparisonKits(value))
+    }
+    @Test fun comparisonInputCannotChangeSourceHistogramOrVoiceSetup() {
+        val part=StylePartModel("Rhythm2",listOf(on(7,17)),program=73,bankMsb=127)
+        val parsed=style(listOf(part));val before=DrumCompatibilityProfile.from(parsed)
+        DrumCompatibilityProfile.comparisonKits("128:0,128:1,128:24")
+        assertArrayEquals(before.histogram,DrumCompatibilityProfile.from(parsed).histogram)
+        assertEquals(73,part.program);assertEquals(127,part.bankMsb)
+    }
+
 }
 

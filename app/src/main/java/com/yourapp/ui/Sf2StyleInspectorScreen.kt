@@ -71,6 +71,7 @@ fun Sf2StyleInspectorDialog(
     var query by remember { mutableStateOf("") }
     val exportScope = rememberCoroutineScope()
     var exportBusy by remember { mutableStateOf(false) }
+    var comparisonKits by remember { mutableStateOf("") }
     var auditionBank by remember { mutableStateOf("128") }
     var auditionPc by remember { mutableStateOf("1") }
     var auditionKey by remember { mutableStateOf("31") }
@@ -137,11 +138,15 @@ fun Sf2StyleInspectorDialog(
                     }
                 }) { Text("SAVE CHORD (SMALL)") }
 
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(comparisonKits, { comparisonKits = it }, enabled = !exportBusy,
+                    label = { Text("Compare 1–4 kits: bank:PC,bank:PC (blank = all kits)") },
+                    modifier = Modifier.weight(1f), singleLine = true)
                 OutlinedButton(enabled = !exportBusy && !state.isPlaying, onClick = {
                     exportBusy = true
                     exportScope.launch {
                         try {
-                            val report = viewModel.compactDrumCompatibilityReport()
+                            val report = viewModel.compactDrumCompatibilityReport(comparisonKits)
                             val fileName = withContext(Dispatchers.IO) {
                                 saveChordReport(chordContext, report, "YamahaArranger_DrumCompatibility")
                             }
@@ -151,6 +156,7 @@ fun Sf2StyleInspectorDialog(
                         } finally { exportBusy = false }
                     }
                 }) { Text("SAVE DRUM (SMALL)") }
+                }
                 Text("STOP first. Source demand / active preset / eligible zones; musical identity unknown. Max 48 KiB.",
                     color = InspectorDim, fontSize = 10.sp)
 
@@ -198,7 +204,28 @@ fun Sf2StyleInspectorDialog(
                             }
                         }
                     }) { Text("AUDITION (STOP)") }
-                    Text("Separate 2s sample; default controllers, no kit installed.", color = InspectorDim, fontSize = 10.sp)
+                    OutlinedButton(enabled = !exportBusy && !state.isPlaying, onClick = {
+                        val bank = auditionBank.toIntOrNull()
+                        val pc = auditionPc.toIntOrNull()
+                        val key = auditionKey.toIntOrNull()
+                        val velocity = auditionVelocity.toIntOrNull()
+                        if (bank != null && pc != null && key != null && velocity != null) {
+                            exportBusy = true
+                            exportScope.launch {
+                                try {
+                                    val wav = viewModel.diagnosticDrumWav(bank, pc, key, velocity)
+                                    val name = if (wav.isEmpty()) null else withContext(Dispatchers.IO) {
+                                        saveDrumAuditionWav(context, wav, bank, pc, key, velocity)
+                                    }
+                                    Toast.makeText(context, if (name != null) "WAV: Downloads/YamahaArranger/$name"
+                                        else "WAV unavailable: STOP, actual style bin and valid zone required", Toast.LENGTH_LONG).show()
+                                } catch (error: Exception) {
+                                    Toast.makeText(context, "WAV failed: ${error.message}", Toast.LENGTH_LONG).show()
+                                } finally { exportBusy = false }
+                            }
+                        }
+                    }) { Text("SAVE WAV") }
+                    Text("Isolated 2s / default CC; no kit installed.", color = InspectorDim, fontSize = 10.sp)
                 }
 
                 TabRow(selectedTabIndex = tab) {
@@ -480,6 +507,27 @@ private fun saveChordReport(context: Context, report: String, prefix: String = "
         target = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: return null
         val stream = context.contentResolver.openOutputStream(target!!) ?: error("output stream unavailable")
         stream.use { it.write(bytes) }
+        name
+    } catch (_: Exception) {
+        target?.let { runCatching { context.contentResolver.delete(it, null, null) } }
+        null
+    }
+}
+
+/** Preserve the existing verified isolated audition PCM without normalization or replay changes. */
+private fun saveDrumAuditionWav(context: Context, wav: ByteArray, bank: Int, pc: Int, key: Int, velocity: Int): String? {
+    val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+    val name = "YamahaArranger_DrumAudition_B${bank}_PC${pc}_K${key}_V${velocity}_$stamp.wav"
+    var target: android.net.Uri? = null
+    return try {
+        val values = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, name)
+            put(MediaStore.MediaColumns.MIME_TYPE, "audio/wav")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/YamahaArranger")
+        }
+        target = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: return null
+        val stream = context.contentResolver.openOutputStream(target!!) ?: error("output stream unavailable")
+        stream.use { it.write(wav) }
         name
     } catch (_: Exception) {
         target?.let { runCatching { context.contentResolver.delete(it, null, null) } }

@@ -7,6 +7,22 @@ internal object DrumCompatibilityProfile {
     data class Profile(val histogram: IntArray, val header: String, val complete: Boolean)
     private fun label(s: String) = s.take(96).map { if (it < ' ' || it == '\'') '?' else it }.joinToString("")
 
+    /** Explicit comparison input, never stored as a playback preset/override. */
+    fun comparisonKits(text: String): IntArray? {
+        if (text.isBlank()) return intArrayOf()
+        val parsed = mutableSetOf<Pair<Int, Int>>()
+        for (token in text.split(',')) {
+            val fields = token.trim().split(':')
+            if (fields.size != 2) return null
+            val bank = fields[0].trim().toIntOrNull() ?: return null
+            val pc = fields[1].trim().toIntOrNull() ?: return null
+            if (bank !in 0..65535 || pc !in 0..127) return null
+            parsed += bank to pc
+        }
+        if (parsed.size !in 1..4) return null
+        return parsed.sortedWith(compareBy({ it.first }, { it.second })).flatMap { listOf(it.first, it.second) }.toIntArray()
+    }
+
     fun from(style: ParsedStyle): Profile {
         val rows = mutableListOf<String>()
         val values = mutableListOf<Int>()

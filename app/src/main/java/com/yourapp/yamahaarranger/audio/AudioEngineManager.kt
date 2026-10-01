@@ -254,6 +254,7 @@ class AudioEngineManager @Inject constructor(
     fun noteZoneReport(): String = bridge.nativeGetNoteZoneReport()
     fun drumKitCoverage(histogram: IntArray): String = bridge.nativeGetDrumKitCoverage(histogram)
     fun drumCompatibilityReport(histogram: IntArray): String = bridge.nativeGetDrumCompatibilityReport(histogram)
+    fun drumCompatibilityComparison(histogram: IntArray, kits: IntArray): String = bridge.nativeGetDrumCompatibilityComparison(histogram, kits)
     fun setKeyboardSustain(enabled: Boolean) {
         DebugLog.add(if (enabled) "🎹 SUSTAIN: ON" else "🎹 SUSTAIN: OFF")
         bridge.nativeSetKeyboardSustain(enabled)

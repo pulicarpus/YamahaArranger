@@ -1447,7 +1447,7 @@ std::string BassMidiPlayer::drumKitCoverage(const std::vector<drum_audit::Hit>& 
     return "Dedicated sourceSF2='" + source + "'\n" + drum_audit::report(snapshot, hits);
 }
 
-std::string BassMidiPlayer::drumCompatibilityReport(const std::vector<drum_compat::Demand>& demand) const {
+std::string BassMidiPlayer::drumCompatibilityReport(const std::vector<drum_compat::Demand>& demand, const std::vector<std::pair<int,int>>& comparisonKits) const {
     sf2_zones::Inventory snapshot;
     std::string source;
     std::vector<drum_compat::Live> lives;
@@ -1488,6 +1488,7 @@ std::string BassMidiPlayer::drumCompatibilityReport(const std::vector<drum_compa
         }
     }
     // Formatting/cache scanning outside mutex, no StreamEvent/SetFonts/FontLoad calls.
+    if(!comparisonKits.empty()) return drum_compat::comparisonReport(snapshot,source,demand,lives,comparisonKits);
     return drum_compat::report(snapshot,source,demand,lives);
 }
 
