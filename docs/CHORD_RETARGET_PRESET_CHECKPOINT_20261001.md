@@ -37,7 +37,7 @@ New targeted Kotlin class exercises the real chord setter/held-note ledger for C
 
 12 protected native functions remain text-identical to baseline: findMelodicPreset, findDrumPreset, normalizeMelodySf2, preloadCurrentPreset, ensureEngine, setChannelMixer, setChannelExpression, setKeyboardSustain, setKeyboardReleaseTime, render, setChannelPreset, applyFonts. Changes to noteOn/noteOff/send only add observation/readback. Family policy, SF2 zone parser, drum audit code and native libraries are unchanged. Scheduler/transform/policy scoring and controller behavior remain unchanged. Source workspace is a partial inspection snapshot; remote base tree is authoritative, not local git HEAD.
 
-Local Android/Kotlin toolchain is unavailable. CI must confirm targeted JVM tests, both real-SDK Android ABIs and APK assembly before this candidate is declared successful. Publication/build identity is appended below after CI.
+Local Android/Kotlin toolchain is unavailable. CI has now confirmed targeted JVM tests, both real-SDK Android ABIs and APK assembly; publication/build evidence is recorded below. Device timbre/root cause remains unproven until the new Android capture is supplied.
 
 ## Short Android procedure
 
@@ -49,4 +49,9 @@ Local Android/Kotlin toolchain is unavailable. CI must confirm targeted JVM test
 
 - Initial source commit `2fbbb02ce569675a7b623983d5baf2cf25393ce6`, run36858030678 / job110355103539, **Build #760 failed** at one new Kotlin test assertion (line72). Production and test Kotlin compiled;18 tests executed,17 passed. No APK artifact was produced.
 - The failing expected `listOf(5,60,1029,200L)` inferred Long values for all numeric literals, while the observed JNI boundary has Int/Int/Int/Long. Corrected to explicit `listOf<Any>` to check the real mixed types. This is a test-only correction; no production/audio/diagnostic logic is changed by the retry.
-- Final successful build/run/commit/artifact is recorded after CI in the documentation commit.
+- **Build #761 SUCCESS**, [run36858495778](https://github.com/pulicarpus/YamahaArranger/actions/runs/36858495778), job110356623775. Source/APK commit `29122e0d8707c88d7e4a0aa0b0a1b1b0dd1d45ff`; diagnostic application code is identical to initial2fbbb02, with only the expected test types and failure record corrected.
+- [app-debug APK artifact](https://github.com/pulicarpus/YamahaArranger/actions/runs/36858495778/artifacts/11160042224), artifact11160042224, ZIP12,596,391bytes, archive digest `sha256:c3378b1a99b418447e23872427b6ba30a656f6d3ff47842ef803d28d3412457e`. This is the artifact ZIP digest, not a separately downloaded APK hash.
+- CI independently passes all340 host checks, compileDebugKotlin/compileDebugUnitTestKotlin and targeted testDebugUnitTest (18 cases in three source classes:5 expression,6 drum-profile,7 chord diagnostic). Both arm64-v8a and armeabi-v7a configureCMake/buildCMake tasks pass against the real BASS/BASSMIDI SDK. assembleDebug succeeds in30s. Artifact upload and inherited workflow delivery succeed.
+- Remote tree review:22 intended blobs match the reviewed local bytes.127 other existing blobs, including18 native libraries, are unchanged. Four new paths comprise the two capture observers, the Kotlin test class and this checkpoint. The retry changes exactly one test path plus this document; all application source blobs are identical across760/761.
+- Final checkpoint publication changes only PROJECT_NOTES.md and this document. Source/APK remains29122e0; paths-ignore avoids another APK. No main update, PR or merge. No sound tuning/kit/remap/gain/resolver/CASM fix was made.
+- Android capture overhead, real-font identity at chord replacement, Piano source and root cause remain to be verified on the device. Successful CI proves build/regression checks, not audible correctness.
