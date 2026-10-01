@@ -50,4 +50,9 @@ Warm the same fonts/style, MainD/full mix. Arm CAPTURE once with C already playi
 
 ## Publication
 
-Source commit, successful APK build and artifact identity will be recorded after CI. The new APK is diagnostic, not an audible fix.
+- Source/APK commit `a8da9819a89411923e33fa57de5d138df2dcf2b1` on `diag/audio-path-presence`.
+- **Build #763 SUCCESS**, run `36869697146`, job `110393988433`. CI repeats all 363 host checks successfully; the three targeted JVM classes (23 source test cases:5 expression,6 drum profile,12 chord) pass. Both Android ABIs `arm64-v8a` and `armeabi-v7a` compile with the real BASS/BASSMIDI SDK; APK assembly, artifact upload and existing delivery succeed. No retry needed.
+- [APK app-debug #763](https://github.com/pulicarpus/YamahaArranger/actions/runs/36869697146/artifacts/11166467561) / [workflow](https://github.com/pulicarpus/YamahaArranger/actions/runs/36869697146). Artifact `11166467561`, ZIP 12,638,487 bytes, GitHub archive SHA256 `f209c48d8e9fc333958e0f8a33edfe568d5c7cd5a6b64e7458324b4543bf62d7`.
+- Published source tree: exactly10 intended files changed; payload hashes all match; 141 other blobs including all18 library blobs unchanged. The workflow is unchanged. Final follow-up commit updates only PROJECT_NOTES.md and this checkpoint; APK source remains `a8da981`.
+- The local workspace is a partial inspection snapshot, not a full authoritative checkout. This APK adds diagnostics only. Runtime source ownership/request ages and the audible difference from Yamaha remain to be evaluated on Android; passing mock tests and compilation do not establish PCM behavior.
+
