@@ -566,6 +566,12 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             else -> return
         }
         val ov = channelOverrides[destinationChannel]
+        // An expression event must not resend cached raw CC7 over the effective
+        // volume already installed at section activation (e.g. Strings 100).
+        if (event.note == 11) {
+            audioEngine.setChannelExpression(destinationChannel, ov?.expression ?: state.expression)
+            return
+        }
         audioEngine.setChannelMixer(
             destinationChannel,
             volume = if (ov?.muted == true) 0 else state.volume,
