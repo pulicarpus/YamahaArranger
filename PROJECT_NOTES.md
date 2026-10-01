@@ -1,5 +1,14 @@
 # YamahaArranger — Catatan Proyek
 
+## Latest checkpoint — Compact drum compatibility export, stage 1 (2026-10-01)
+
+- Isolated branch `diag/drum-compatibility-compact`, authoritative GitHub parent `10d82dc60acbe760791541a03f37639c5e3da0f7` / protected #765 baseline. Source/APK `f0116dd258d8946952641e69493414ec6231d0e7`. [Checkpoint, report contract, limitations and complete file list](docs/DRUM_COMPACT_EXPORT_CHECKPOINT_20261001.md).
+- **Build #766 SUCCESS**, run36897983219/job110489716677. **400 host checks +31 targeted JVM tests PASS**; real-SDK Android builds arm64-v8a/armeabi-v7a, artifact upload and existing delivery succeed. [APK app-debug #766](https://github.com/pulicarpus/YamahaArranger/actions/runs/36897983219/artifacts/11181031108). One build, no retry. Final checkpoint is documentation only.
+- Inspector **SAVE DRUM (SMALL)** after STOP creates `YamahaArranger_DrumCompatibility_*.txt`, max48KiB UTF-8: original parsed bank/PC/source routes, current native request vs actual BASS preset, verified existing fallback explanation, cross-section key+velocity histogram, dedicated-kit coverage/missing bins and eligible sample/zone evidence. Coverage, musical identity UNKNOWN and unavailable metadata are separate. Actual getter is an export-time snapshot; source demand is each raw section once, not runtime sent counts or PCM. Dynamic identities/masks/mutes/ambiguous routes and export omissions are explicit. No recommendation or name-based selection.
+- Key21/31/110 are only regression fixtures; arbitrary key7/velocity17 also passes. No gain/voice/drum/fallback/playback/resolver/CASM/RTR/mixer/sustain/release change. #765 owner lifecycle/valid-owner/scheduler, CC11, FONTEX2/NOTEOFF1/NOWAIT and all existing native production bodies remain byte-identical.21 kit summaries survive a large demand stress report; omitted detail never means missing zone.
+- Remote source publication changes16 intended files, retains139 baseline blobs including18 native libraries;3 new source/test paths. Earlier partial local workspace is untouched and not the publication base. Workflow changes only permit this isolated branch; SDK/test/build steps unchanged. Historical #759 full inspector, audition and Strings2 solo remain.
+- Test **#766**: load same fonts/style, warm MainD/full mix, play one section, STOP without changing preset/style, Inspector→SAVE DRUM (SMALL). Send only the small DrumCompatibility file plus export success/playback-unchanged observation. No large Inspector or repeated AllLog. **STOP at export stage; algorithm changes require the user's next approval.**
+
 ## Latest checkpoint — Stale G→C retarget owner fix (2026-10-01)
 
 - Branch `diag/audio-path-presence`; parent `0637cb6e4211fa3a7a6049464b557962d2eaf639`, baseline app **#763 / a8da981**. [Checkpoint](docs/STALE_RETARGET_OWNER_FIX_CHECKPOINT_20261001.md).
