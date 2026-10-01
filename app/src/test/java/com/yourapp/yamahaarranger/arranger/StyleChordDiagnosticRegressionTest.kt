@@ -38,13 +38,14 @@ class StyleChordDiagnosticRegressionTest {
             }
         }
         @Suppress("UNCHECKED_CAST")
-        fun seed(policy: CasmPolicyModel, alternatives: List<CasmPolicyModel> = listOf(policy), output: Int = 60) {
+        fun seed(policy: CasmPolicyModel, alternatives: List<CasmPolicyModel> = listOf(policy), output: Int = 60,
+                 src:Int=5, destination:Int=13, onId:Long=100L) {
             val field = StyleSequencer::class.java.getDeclaredField("activeTransposedNotes").apply { isAccessible = true }
             val cls = Class.forName("com.yourapp.yamahaarranger.arranger.StyleSequencer\$ActiveTransposedNote")
             val constructor = cls.declaredConstructors.single { it.parameterCount == 13 }.apply { isAccessible = true }
-            val active = constructor.newInstance(5, 60, 13, output, 26, policy, alternatives,
-                "Strings source", "MainD", 1029, 49, 200L, 100L)
-            (field.get(sequencer) as MutableMap<String, Any>)["5:60"] = active
+            val active = constructor.newInstance(src, 60, destination, output, 26, policy, alternatives,
+                "Strings source", "MainD", 1029, 49, 200L, onId)
+            (field.get(sequencer) as MutableMap<String, Any>)["$src:60"] = active
         }
     }
     private fun run(armed: Boolean, p: CasmPolicyModel, chords: List<DetectedChord>, output: Int = 60,
@@ -136,6 +137,40 @@ class StyleChordDiagnosticRegressionTest {
         assertTrue(report.toByteArray(Charsets.UTF_8).size<=48*1024)
         assertTrue(report.contains("STYLE chordId=7 id=8"));assertTrue(report.contains("NOTE_POST"))
         assertFalse(report.contains("exportOmittedRows=0 "))
+    }
+    @Test fun coalescingSourceNotesAreObservedWithoutDeduplicationOrAdditionalSends() {
+        fun collision(armed:Boolean):Fixture {
+            val t=Fixture();t.sequencer.currentChord=c
+            t.seed(policy(dst=11),src=11,destination=11,onId=100L)
+            t.seed(policy(dst=11),src=12,destination=11,onId=101L)
+            if(armed)t.sequencer.armChordDiagnostic()
+            clearInvocations(t.audio,t.midi);t.sequencer.currentChord=f;t.collect();return t
+        }
+        val plain=collision(false);val observed=collision(true)
+        assertEquals(plain.events,observed.events)
+        assertEquals(2,observed.events.count { it.startsWith("ON 11 65 ") })
+        val report=observed.sequencer.chordDiagnosticReport()
+        assertTrue(report.contains("RTR=1 stage=REPLACE method=OFF_ON"))
+        assertTrue(report.contains("targetPeers=0"));assertTrue(report.contains("targetPeers=1"))
+        assertTrue(report.contains("owners='11:60:100'") || report.contains("owners='12:60:101'"))
+        assertTrue(report.contains("originTick=200"))
+    }
+    @Test fun compactPrioritizesLateRetargetAboveNormalContextAndPreservesPreChordTiming() {
+        var now=1L;val t=ChordChangeDiagnostic { now };t.arm()
+        t.record { "SCHEDULED id=77 dst=11 src=11 original=60 output=60 tick=240 lagUs=0 stage=FORWARD" }
+        now+=100_000_000L;val chord=t.begin("C","F",1)
+        assertTrue(t.compactReport().contains("id='77'"))
+        assertTrue(t.compactReport().contains("tick='240' lagUs='0'"))
+        assertTrue(t.compactReport().contains("contextId='$chord'"))
+        repeat(1000) { t.record { "SCHEDULED id=$it dst=11 part='${"界".repeat(64)}' stage=FORWARD" } }
+        t.record { "RETARGET id=99999 chordId=$chord dst=11 originTick=240 RTR=1 stage=REPLACE method=OFF_ON targetPeers=1 owners='11:63:78'" }
+        val report=t.compactReport()
+        assertTrue(report.contains("id='99999'"));assertTrue(report.contains("targetPeers='1' owners='11:63:78'"))
+        assertTrue(report.indexOf("id='99999'")<report.indexOf("id='77'"))
+        assertTrue(report.toByteArray(Charsets.UTF_8).size<=16*1024)
+        now+=800_000_000L
+        t.record { "RETARGET id=99998 dst=11 stage=SCHEDULED_OFF method=decision_or_off targetPeers=0" }
+        assertFalse(t.compactReport().contains("id='99998'"))
     }
     @Test fun captureDefaultsOffExpiresBoundsAndRetainsReportAfterStop() {
         var now=1L;val t=ChordChangeDiagnostic { now }

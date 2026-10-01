@@ -1686,6 +1686,7 @@ void BassMidiPlayer::captureChordState(const char* stage,int channel,int key,int
         row.dstPc=BASS_MIDI_StreamGetEvent(stream_,channel,MIDI_EVENT_PROGRAM);
         row.cc7=BASS_MIDI_StreamGetEvent(stream_,channel,MIDI_EVENT_VOLUME);
         row.cc11=BASS_MIDI_StreamGetEvent(stream_,channel,MIDI_EVENT_EXPRESSION);
+        if(channel==11) row.cc64=BASS_MIDI_StreamGetEvent(stream_,channel,MIDI_EVENT_SUSTAIN);
         BASS_MIDI_FONT live{}; row.liveOk=BASS_MIDI_StreamGetPreset(stream_,channel,&live);
         if(row.liveOk) {
             row.liveFont=live.font; row.liveBank=live.bank; row.livePc=live.preset;

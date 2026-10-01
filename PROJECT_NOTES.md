@@ -1,5 +1,14 @@
 # YamahaArranger — Catatan Proyek
 
+## Latest checkpoint — Chord onset / coalescing source-note diagnostic (2026-10-01)
+
+- Branch `diag/audio-path-presence`; parent HEAD `c10f4b490316d7b577f37021cf5302a04bd0ac22`; app baseline **Build #762** / `f102b2bdfb5df0204b3a4ce33c7c6bf070d87aab`. Candidate source/build follows CI. [Checkpoint](docs/CHORD_RETRIGGER_DIAGNOSTIC_CHECKPOINT_20261001.md).
+- ChordCapture200429 (47,040 bytes, SHA2564f7bb01d…): six exact replacement OFF/ON pairs on ch11 retain requested Piano and actual ConcertGrand before/after, all accepted/matched. The first C→F repeats notes only120–126ms old at original velocity81/86/80. Distinct source63/65 both produce65; normal style also does this. No same-event duplicate or transient preset fallback is established. #762 export omitted191 style/320 native rows; other channels and G→C are unproven.
+- Source calls RTR1/2 pitch shift but changed notes use the same OFF/ON onset path as RTR3/4; retrigger changes only log labels. Fresh onsets are a plausible accent mechanism, not a measured Yamaha/PCM root cause. Do not suppress same-key sources, remap voice, remove ch11 or tune gain.
+- Small report v2 prioritizes actual ch11 retarget, pairs PRE/POST with independent state dictionary references, observes source-ledger pitch owners, normal ticks/lag, accepted MIDI request age/overlap/repeat and read-only ch11 sustain. Hard48KiB cap remains; counters distinguish omitted records and capture/ledger overflow. Counts are not BASS voices or PCM evidence.
+- Host363 checks pass; 15 native playback and8 sequencer methods unchanged from#762. CI targets23 JVM cases. No playback/family/resolver/drum/CASM/scheduler/timing/sustain/release/library/workflow change. APK identity follows CI.
+- Test: warm MainD/full mix, arm once, C→F→G→C2–3s each, hold final C2s, END→STOP→SAVE CHORD (SMALL). Send only small ChordCapture plus which transition has the loud attack versus held C.
+
 ## Latest checkpoint — Small focused CHORD CAPTURE export (2026-10-01)
 
 - Branch `diag/audio-path-presence`; parent `7827e4612657b219cbcd176f501a61169915ff61`, app baseline **Build #761** / `29122e0d8707c88d7e4a0aa0b0a1b1b0dd1d45ff`. Source/APK `f102b2bdfb5df0204b3a4ce33c7c6bf070d87aab`, **Build #762 SUCCESS**, run36864012417/job110374902180. Final checkpoint commit changes documentation only. [Checkpoint](docs/CHORD_COMPACT_REPORT_CHECKPOINT_20261001.md).

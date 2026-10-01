@@ -177,12 +177,14 @@ int main(int argc, char** argv) {
           "chord instrumentation retains the proven family/mapping rejection");
     const auto messagesBeforeCompact=mock_bass::history;
     const auto small=player.compactChordDiagnosticReport();
-    check(small.size()<=30*1024 && small.find("NOTE_PRE")!=std::string::npos && small.find("NOTE_POST")!=std::string::npos,
+    check(small.size()<=30*1024 && small.find("NOTE_PRE/POST dst=")!=std::string::npos && small.find(" b=")!=std::string::npos && small.find(" a=")!=std::string::npos,
           "compact native report retains exact before/after evidence within30KiB");
     check(small.find("control=PROGRAM value=49")!=std::string::npos && small.find("request=1029:49")!=std::string::npos,
           "compact report carries requested program and labelled control attempt");
+    mock_bass::events[{11,MIDI_EVENT_SUSTAIN}]=1;
     player.markChordDiagnostic(702);
     check(mock_bass::history==messagesBeforeCompact,"compact export/window marker send no MIDI and do not alter playback state");
+    check(player.compactChordDiagnosticReport().find("CC=127/127/1")!=std::string::npos,"ch11 sustain state is read back without sending CC64");
     player.stopChordDiagnostic(); const auto stoppedReport=player.chordDiagnosticReport();
     player.noteOn(13,60,26.0f/127.0f);
     check(player.chordDiagnosticReport()==stoppedReport,"explicit stop freezes the native evidence");
@@ -215,4 +217,3 @@ int main(int argc, char** argv) {
     mock_bass::failMapping=false;
     std::cout << "PASS: " << checks << " native routing checks (mock BASS; no audio assertion)\n";
 }
-

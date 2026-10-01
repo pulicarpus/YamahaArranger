@@ -67,6 +67,34 @@ int main() {
     check(compact.size()<=30*1024 && compact.find("exportOmittedRows=0 ")==std::string::npos,"compact native report hard byte cap exposes omissions");
     check(compact.find("id=999")<compact.find("dst=13"),"ch11 survives report overflow ahead of other parts");
     check(compact.find("family=PIANO")!=std::string::npos && compact.find("...")!=std::string::npos,"readback family and explicit name truncation remain available");
+    chord_diagnostic::Capture ledger;ledger.arm(1);ledger.mark(50,2);
+    chord_diagnostic::Row piano; piano.channel=11;piano.key=65;piano.mono=1000000;piano.stage="NOTE_POST";piano.sent=1;piano.origin.id=10;
+    ledger.append(piano);piano.mono=4000000;piano.origin.id=11;piano.origin.operation=1;ledger.append(piano);
+    check(ledger.rows.back().keyBefore==1 && ledger.rows.back().keyAfter==2 && ledger.rows.back().previousOnId==10 && ledger.rows.back().previousOnAgeMs==3,
+          "distinct accepted normal/retarget ons to one key expose overlap and elapsed time");
+    check(!ledger.rows.back().sameEventRepeat,"different event identities must not be labelled duplicate event");
+    piano.mono=5000000;ledger.append(piano);
+    check(ledger.rows.back().sameEventRepeat==1,"same key/event accepted twice is explicitly flagged, without suppressing send");
+    piano.stage="OFF_POST";piano.sent=0;piano.mono=6000000;ledger.append(piano);
+    check(ledger.rows.back().keyBefore==3 && ledger.rows.back().keyAfter==3,"rejected off does not remove accepted MIDI request");
+    piano.sent=1;piano.mono=7000000;ledger.append(piano);
+    check(ledger.rows.back().keyAfter==2 && ledger.rows.back().oldestOnAgeMs==6,"accepted off updates FIFO observer only");
+    chord_diagnostic::Capture pair;pair.arm(1);pair.mark(90,2);
+    piano.stage="NOTE_PRE";piano.mono=3;piano.sent=-1;piano.liveName="Strings";piano.livePc=49;piano.mappingMatch=1;piano.origin.chordId=90;
+    pair.append(piano);piano.stage="NOTE_POST";piano.mono=4;piano.sent=1;piano.liveName="ConcertGrand";piano.livePc=0;piano.mappingMatch=0;pair.append(piano);
+    auto paired=chord_diagnostic::compactReport(pair);
+    check(paired.find("b=1 a=2")!=std::string::npos && paired.find("S s=1")!=std::string::npos && paired.find("S s=2")!=std::string::npos,
+          "state dictionary preserves changed PRE/POST independently in one whole event unit");
+    pair.rows[1].origin.id=999;
+    auto unmatched=chord_diagnostic::compactReport(pair);
+    check(unmatched.find("b=-1")!=std::string::npos && unmatched.find("NOTE_PRE/POST dst=")==std::string::npos,
+          "different identities never form a synthetic paired event");
+    chord_diagnostic::Capture contextFlood;contextFlood.arm(1);contextFlood.mark(91,2);
+    piano.stage="NOTE_POST";piano.origin.operation=0;piano.liveName="ConcertGrand";piano.livePc=0;piano.mappingMatch=1;piano.mono=3;
+    for(int n=0;n<1000;++n) {piano.origin.id=n;contextFlood.append(piano);}
+    piano.origin.operation=1;piano.origin.chordId=91;piano.origin.id=99999;contextFlood.append(piano);
+    auto focused=chord_diagnostic::compactReport(contextFlood);
+    check(focused.find("id=99999")<focused.find("id=0 "),"late actual ch11 retarget has priority above earlier normal Piano context");
+    check(focused.size()<=30*1024 && focused.find("not voice/PCM counts")!=std::string::npos,"hard report cap and MIDI-ledger limitation are explicit");
     std::cout<<"PASS: "<<checks<<" audio-path diagnostic checks (observation only)\n";
 }
-

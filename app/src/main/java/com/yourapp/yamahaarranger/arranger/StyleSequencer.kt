@@ -473,7 +473,18 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     }
 
     private fun chordEvent(active:ActiveTransposedNote,id:Long,stage:String,target:Int) {
-        chordTrace.record { "RETARGET id=$id chordId=${chordTrace.chordId()} onId=${active.onId} section='${active.sourceSection}' part='${active.sourcePart}' src=${active.sourceChannel} original=${active.sourceNote} dst=${active.destinationChannel} oldOutput=${active.outputNote} output=$target velocity=${active.velocity} sourceBank=${active.sourceBank} sourceHeaderPC=${active.sourceHeaderPC} originTick=${active.sourceTick} voice='${active.policy.voiceName}' stage=$stage" }
+        chordTrace.record { "RETARGET id=$id chordId=${chordTrace.chordId()} onId=${active.onId} section='${active.sourceSection}' part='${active.sourcePart}' src=${active.sourceChannel} original=${active.sourceNote} dst=${active.destinationChannel} oldOutput=${active.outputNote} output=$target velocity=${active.velocity} sourceBank=${active.sourceBank} sourceHeaderPC=${active.sourceHeaderPC} originTick=${active.sourceTick} voice='${active.policy.voiceName}' NTR=${active.policy.ntr and 0x7f} NTT=${active.policy.ntt and 0x7f} RTR=${active.policy.rtr and 0x7f} stage=$stage method=${if(stage=="REPLACE") "OFF_ON" else "decision_or_off"} ${if(stage=="ACTIVE") "" else chordOwnerEvidence(active.destinationChannel,active.outputNote,target,active.onId)}" }
+    }
+    // Read-only snapshot of the existing source ledger, never a voice count or
+    // a deduplication/gate. Concurrent mutation makes evidence unknown.
+    private fun chordOwnerEvidence(dst:Int,old:Int,target:Int,selfId:Long):String {
+        if(dst!=11) return ""
+        val snapshot=try { activeTransposedNotes.values.toList() } catch (_: RuntimeException) {
+            return "oldPeers=-1 targetPeers=-1 owners='CONCURRENT_UNKNOWN'"
+        }
+        val peers=snapshot.filter { it.destinationChannel==dst && it.onId!=selfId }
+        val targetPeers=peers.filter { it.outputNote==target }
+        return "oldPeers=${peers.count { it.outputNote==old }} targetPeers=${targetPeers.size} owners='${targetPeers.take(4).joinToString(",") { "${it.sourceChannel}:${it.sourceNote}:${it.onId}" }}'"
     }
     private fun chordOff(active:ActiveTransposedNote,id:Long,operation:Int,stage:String) {
         chordEvent(active,id,stage,active.outputNote)
@@ -857,7 +868,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             val diagId = if (s.event.isNoteOn) audioPath.observe(diagChannel) else 0L
             val diagBank = dynamicBankBySource[s.event.channel] ?: (s.part.bankMsb * 128 + s.part.bankLsb)
             fun diagnostic(stage: String, output: Int = -1, detail: String = ""): Boolean {
-                chordTrace.record { "SCHEDULED id=$diagId chordId=${chordTrace.chordId()} section='${section.name}' part='${s.part.name}' src=${s.event.channel} original=${s.event.note} output=$output dst=$diagChannel velocity=${s.event.velocity} sourceBank=$diagBank sourceHeaderPC=${s.part.program} tick=$absoluteTick voice='${policy?.voiceName}' stage=$stage $detail" }
+                chordTrace.record { "SCHEDULED id=$diagId chordId=${chordTrace.chordId()} section='${section.name}' part='${s.part.name}' partIndex=${section.parts.indexOf(s.part)} src=${s.event.channel} original=${s.event.note} output=$output dst=$diagChannel velocity=${s.event.velocity} sourceBank=$diagBank sourceHeaderPC=${s.part.program} tick=$absoluteTick lagUs=${(System.nanoTime()-targetNanos)/1000} voice='${policy?.voiceName}' stage=$stage ${if(stage=="FORWARD") chordOwnerEvidence(diagChannel,-1,output,diagId) else ""} $detail" }
                 return audioPath.event(
                 diagId, diagChannel, s.event.channel, s.event.note, output, s.event.velocity,
                 diagBank, absoluteTick, policy?.voiceName ?: "UNKNOWN", stage, detail)
@@ -939,4 +950,3 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
 
     private fun ticksToMillis(ticks:Int,ppq:Int,bpm:Int):Long=if(ppq<=0||bpm<=0)0 else((ticks*(60000.0/bpm))/ppq).toLong().coerceAtLeast(0)
 }
-
