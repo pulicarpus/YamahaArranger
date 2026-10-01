@@ -67,6 +67,8 @@ fun Sf2StyleInspectorDialog(
     viewModel: MainViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+    var managedAudition by remember { mutableStateOf(false) }
+    if (managedAudition) ManagedSf2AuditionDialog(viewModel) { managedAudition = false }
     var tab by remember { mutableStateOf(0) }
     var query by remember { mutableStateOf("") }
     val exportScope = rememberCoroutineScope()
@@ -179,6 +181,10 @@ fun Sf2StyleInspectorDialog(
                 }
                 Text("STOP first. All managed SF2 files; compact semantic index max 48 KiB. Full ZIP optional. Reading large fonts may take time.",
                     color = InspectorDim, fontSize = 10.sp)
+
+                OutlinedButton(enabled = !exportBusy && !state.isPlaying, onClick = { managedAudition = true }) {
+                    Text("MANAGED SF2 AUDITION (WAV + SIDECAR)")
+                }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(enabled = !exportBusy, onClick = viewModel::diagnosticSoloStrings2) { Text("SOLO STRINGS2") }

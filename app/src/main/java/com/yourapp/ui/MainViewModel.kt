@@ -617,6 +617,27 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    /** File-only selection and independent JNI backend; no production audio/arranger calls. */
+    suspend fun managedAuditionFonts(): List<com.yourapp.audio.ManagedSf2Audition.Font> {
+        check(!uiState.value.isPlaying) { "STOP before scanning audition fingerprints" }
+        return withContext(Dispatchers.IO) {
+            com.yourapp.audio.ManagedSf2Audition.fonts(contentResolver.sf2MetadataSources())
+        }
+    }
+
+    suspend fun managedSf2Audition(
+        request: com.yourapp.audio.ManagedSf2Audition.Request,
+        scratch: java.io.File,
+        backend: (java.io.File, com.yourapp.audio.ManagedSf2Audition.Request) -> com.yourapp.audio.ManagedSf2Audition.NativeResult =
+            com.yourapp.audio.ManagedSf2AuditionNative::decode
+    ): com.yourapp.audio.ManagedSf2Audition.Result {
+        check(!uiState.value.isPlaying) { "STOP before diagnostic audition" }
+        return withContext(Dispatchers.IO) {
+            com.yourapp.audio.ManagedSf2Audition.render(request, contentResolver.sf2MetadataSources(), scratch,
+                { !uiState.value.isPlaying }, backend)
+        }
+    }
+
     suspend fun compactDrumCompatibilityReport(comparison: String = ""): String {
         if (uiState.value.isPlaying) return "DRUM COMPATIBILITY unavailable: STOP before export\n"
         val style = drumAuditStyle ?: return "DRUM COMPATIBILITY unavailable: load a style first\n"

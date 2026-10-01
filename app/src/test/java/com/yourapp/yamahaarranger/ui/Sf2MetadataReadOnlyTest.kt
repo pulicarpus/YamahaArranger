@@ -65,4 +65,39 @@ class Sf2MetadataReadOnlyTest {
         val result=f.vm.exportSf2Metadata(ByteArrayOutputStream(),false)
         assertEquals(1,result.failed);f.assertReadOnly()
     }
+    @Test fun auditionFingerprintScanDoesNotTouchProductionAudioOrArrangerState() = runBlocking {
+        val f=Fixture();val fonts=f.vm.managedAuditionFonts()
+        assertEquals(1,fonts.size);assertEquals(64,fonts.single().sha256.length);f.assertReadOnly()
+    }
+    @Test fun managedCrossKeyAuditionCallsOnlyIsolatedBackendAndKeepsArrangerState() = runBlocking {
+        val f=Fixture();val font=f.vm.managedAuditionFonts().single()
+        val dir=kotlin.io.path.createTempDirectory("vm-audition-test").toFile();var calls=0
+        try {
+            val request=com.yourapp.audio.ManagedSf2Audition.Request(font,128,36,62,42)
+            val result=f.vm.managedSf2Audition(request,dir) { file,req ->
+                calls++;assertTrue(file.isFile);assertEquals(request,req)
+                com.yourapp.audio.ManagedSf2Audition.NativeResult("RIFF".toByteArray()+ByteArray(40),"actual verified")
+            }
+            assertEquals(1,calls);assertTrue(result.sidecar.contains("sourceKey=62"))
+            assertTrue(dir.listFiles()!!.isEmpty());f.assertReadOnly()
+        } finally {dir.deleteRecursively()}
+    }
+    @Test fun managedAuditionWhilePlayingRejectsBeforeDiscoveryOrNative() = runBlocking {
+        val f=Fixture(true);var calls=0;val dir=kotlin.io.path.createTempDirectory("vm-audition-test").toFile()
+        try {
+            val font=com.yourapp.audio.ManagedSf2Audition.Font("id","test.sf2","a".repeat(64))
+            try { f.vm.managedSf2Audition(com.yourapp.audio.ManagedSf2Audition.Request(font,128,36,62,42),dir) { _,_ ->
+                calls++;error("must not render") };fail() } catch (_: IllegalStateException) {}
+            assertEquals(0,calls);verifyNoInteractions(f.files);f.assertReadOnly();assertTrue(dir.listFiles()!!.isEmpty())
+        } finally {dir.deleteRecursively()}
+    }
+    @Test fun rejectedManagedAuditionDoesNotLoadPresetSendNoteOrMutateState() = runBlocking {
+        val f=Fixture();val font=f.vm.managedAuditionFonts().single();var calls=0
+        val dir=kotlin.io.path.createTempDirectory("vm-audition-test").toFile()
+        try {
+            try { f.vm.managedSf2Audition(com.yourapp.audio.ManagedSf2Audition.Request(font,128,36,21,42),dir) { _,_ ->
+                calls++;error("must not render") };fail() } catch (_: IllegalStateException) {}
+            assertEquals(0,calls);f.assertReadOnly();assertTrue(dir.listFiles()!!.isEmpty())
+        } finally {dir.deleteRecursively()}
+    }
 }

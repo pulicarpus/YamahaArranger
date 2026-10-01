@@ -307,7 +307,7 @@ object Sf2SemanticInventory {
         add("TARGET Yamaha MSB127 LSB0 rawPC73 displayPC74 PopDrumKit; numbering=CLOSED")
         for ((key, name) in targets) add("TARGET key=$key name='$name' search=ALL_SOURCE_KEYS_ALL_PRESETS_ALL_MANAGED_FONTS")
         add("INDEX compactLeads=32_per_target_per_font_before_byte_cap full=all_relations; priority=name_articulation_hint_then_name_family_hint_then_same_key_drum_then_other_drum_then_same_key_other; NOT_selection. Omission != missing_zone.")
-        add("PG/IG op:value retain global/local inheritance separately;43/44=packed_ranges,41=instrument,53=sample,51/52=tuning,56=fixed_key,57=fixed_velocity,58=root,54=loop,57/58_unsigned; default_modulators/engine_overrides UNKNOWN")
+        add("PG/IG op:value retain global/local inheritance separately;43/44=packed_ranges,41=instrument,53=sample,51/52=tuning,46=fixed_key,47=fixed_velocity,56=scaleTuning,57=exclusiveClass,58=root,54=loop,57/58_unsigned; default_modulators/engine_overrides UNKNOWN")
         val fileIds = mutableListOf<Int>()
         for ((i, pair) in scans.withIndex()) {
             val (source, scan) = pair

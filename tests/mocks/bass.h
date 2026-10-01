@@ -12,11 +12,12 @@ constexpr DWORD BASS_CONFIG_UPDATEPERIOD=10, BASS_ATTRIB_BUFFER=11;
 inline bool BASS_Init(int, int, DWORD, void*, void*) { return true; }
 inline bool BASS_SetConfig(DWORD, DWORD) { return true; }
 inline bool BASS_ChannelSetAttribute(HSTREAM, DWORD, float) { return true; }
-namespace mock_bass { inline std::vector<HSTREAM> freedStreams; }
+namespace mock_bass { inline std::vector<HSTREAM> freedStreams; inline bool failDecode=false; }
 inline bool BASS_StreamFree(HSTREAM stream) { mock_bass::freedStreams.push_back(stream); return true; }
 inline bool BASS_Free() { return true; }
 inline int BASS_ErrorGetCode() { return 0; }
 inline DWORD BASS_ChannelGetData(HSTREAM stream, void* data, DWORD bytes) {
+    if(mock_bass::failDecode) return static_cast<DWORD>(-1);
     if(stream==1) return 0;
     bytes &= ~BASS_DATA_FLOAT;
     std::fill_n(static_cast<float*>(data),bytes/sizeof(float),0.0f); return bytes;
