@@ -36,4 +36,9 @@ Load the same fonts/style and wait. Play MainD/full mix with C. Arm CAPTURE CHOR
 
 ## Publication
 
-Candidate source/build identity and successful CI/artifact will be recorded after the build finishes.
+- Source/APK commit: `f102b2bdfb5df0204b3a4ce33c7c6bf070d87aab` on `diag/audio-path-presence`.
+- **Build #762 SUCCESS**: run `36864012417`, job `110374902180`. Host CI repeats all 353 passing checks. The existing Gradle invocation runs all three targeted classes successfully (21 source test cases: 5 expression, 6 drum profile, 10 chord). Both `arm64-v8a` and `armeabi-v7a` native targets compile with the real BASS/BASSMIDI Android SDK; `assembleDebug`, artifact upload and existing delivery complete successfully.
+- [APK app-debug #762](https://github.com/pulicarpus/YamahaArranger/actions/runs/36864012417/artifacts/11162738633) / [workflow](https://github.com/pulicarpus/YamahaArranger/actions/runs/36864012417). Artifact `11162738633`, ZIP 12,619,951 bytes, GitHub archive SHA256 `30396332f217085573ae658c93fdd42c81b394330f1c47b4b2d5fd3bf32ac8c7`.
+- Published tree verification: all 18 intended file blobs match the UTF-8 payload hashes; 132 other blobs, including all 18 library blobs, remain identical to the parent. No workflow change or speculative sound fix. One successful build; no retry needed.
+- Final follow-up commit updates only this checkpoint and PROJECT_NOTES.md. APK source remains `f102b2b`; the local workspace is still a partial inspection snapshot, not a full Git clone. Device preset identity at the exact Piano retarget sends remains to be verified by the small Android report.
+
