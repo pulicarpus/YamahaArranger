@@ -213,6 +213,10 @@ std::string AudioEngine::sfPresetList() const {
 void AudioEngine::sfSetChannelExpression(int channel, int expression) {
     soundFont_.setChannelExpression(channel, expression);
 }
+std::vector<unsigned char> AudioEngine::sfDiagnosticDrumWav(int bank,int pc,int key,int velocity) {
+    return soundFont_.diagnosticDrumWav(bank,pc,key,velocity);
+}
+std::string AudioEngine::sfNoteZoneReport() const { return soundFont_.noteZoneReport(); }
 std::string AudioEngine::sfDrumKitCoverage(const std::vector<drum_audit::Hit>& hits) const {
     return soundFont_.drumKitCoverage(hits);
 }
@@ -266,4 +270,5 @@ void AudioEngine::allNotesOff() {
     }
     soundFont_.allNotesOff();
 }
+
 

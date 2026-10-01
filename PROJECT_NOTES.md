@@ -1,5 +1,13 @@
 # YamahaArranger — Catatan Proyek
 
+## Latest checkpoint — Actual note-zone / isolated audition diagnostic (2026-10-01)
+
+- Branch `diag/audio-path-presence`, parent `e7049cc4bca5ef87a421a064c322284d4ae138b1`; source candidate and APK run will be recorded after CI. This is instrumentation, not tuning or a musical fix.
+- [Full checkpoint](docs/NOTE_ZONE_DIAGNOSTIC_CHECKPOINT_20261001.md): actual Bass/Strings NOTE_ON identity captured against live BASS preset; SAVE REPORT expands original-bank SF2 layers, attenuation/envelope generators and modulators. BASS voice sample ID is unavailable, so all matching layers are labelled eligibility evidence, not PCM proof.
+- Drum audit keeps MainD baseline and adds all-section key/velocity coverage plus complete candidate zone/generator detail. Optional Inspector audition uses a separate decode stream/WAV at STOP; never installs a kit or sends normal arranger/external MIDI notes.
+- SOLO STRINGS2 explicitly unmutes14/mutes8–13/15. Wait a new full section for noteOns. Existing mute/controller behavior retained.
+- Local322 host checks pass;14 protected native functions and whole StyleSequencer unchanged. CI must verify11 targeted Kotlin cases and both Android ABIs. No family/resolver/CASM/scheduler/gain/sustain/release/native library/workflow change. Device timbre remains unverified.
+
 ## Latest checkpoint — Build #758 warm solo evidence (2026-10-01)
 
 - [Warm/solo checkpoint](docs/BUILD758_WARM_SOLO_CHECKPOINT_20261001.md) records AllLog120026 hash and line evidence. APK/source remains #758/1fd6a82. All372 sampled notes accepted/matched;248 source/native velocity pairs unchanged, maximum gap11ms; full MainD~13.71s. Cold loading does not explain all remaining warm-session symptoms.
@@ -122,4 +130,5 @@ Jika keluarga tersebut benar-benar tidak tersedia di SF2 primary, resolver harus
 ### Catatan penting
 
 Jangan mengubah CASM, StyleSequencer, timing, transition, atau routing drum untuk memperbaiki masalah ini. Bukti Build 743 menunjukkan event audio sudah masuk. Fokus tahap ini hanya pada voice resolver dan pemilihan source SF2.
+
 

@@ -31,7 +31,7 @@ inline std::string report(const sf2_zones::Inventory& inventory,
             return "DRUM KIT AUDIT unavailable: invalid style histogram\n";
         bins[{h.channel,h.key,h.velocity}]+=h.count;
     }
-    if(bins.empty()) return "DRUM KIT AUDIT unavailable: no MainD rhythm NOTE_ON histogram\n";
+    if(bins.empty()) return "DRUM KIT AUDIT unavailable: no rhythm NOTE_ON histogram\n";
     std::vector<Score> scores;
     for(const auto& preset:inventory.presets) {
         Score s; s.bank=preset.first.first; s.pc=preset.first.second;
@@ -97,6 +97,9 @@ inline std::string report(const sf2_zones::Inventory& inventory,
                          << ",vel=" << z.velLow << '-' << z.velHigh << ",frames="
                          << (z.end>=z.start?z.end-z.start:0) << ",type=" << z.sampleType << "];";
                 rows << '\n';
+                rows << "KIT ZONE DETAIL bank=" << s.bank << " PC=" << s.pc << " ch=" << channel
+                     << " key=" << key << " velocity=" << v.first << '\n'
+                     << sf2_zones::detailedMatch(inventory,s.bank,s.pc,key,v.first);
             }
         }
         s.rows=rows.str(); scores.push_back(std::move(s));
@@ -109,7 +112,7 @@ inline std::string report(const sf2_zones::Inventory& inventory,
     });
     std::ostringstream out;
     out << "DRUM KIT AUDIT presets=" << scores.size()
-        << " evidence=cached_loaded_dedicated_SF2_metadata raw_MainD_one_section channelNumbers=zero_based\n"
+        << " evidence=cached_loaded_dedicated_SF2_metadata raw_style_section_profile channelNumbers=zero_based\n"
         << "Coverage is key/velocity eligibility, NOT timbre/PCM audibility. Playback unchanged; ranking selects nothing.\n"
         << "Covered unique key requires ALL actual velocities on both rhythm parts. missingKeys includes partial coverage.\n";
     for(size_t i=0;i<scores.size();++i) {
@@ -125,3 +128,4 @@ inline std::string report(const sf2_zones::Inventory& inventory,
     return out.str();
 }
 } // namespace drum_audit
+

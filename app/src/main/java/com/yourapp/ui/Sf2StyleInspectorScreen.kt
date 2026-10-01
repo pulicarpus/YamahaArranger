@@ -5,6 +5,9 @@ import android.content.Context
 import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Toast
+import android.media.MediaPlayer
+import java.io.File
+import androidx.compose.runtime.DisposableEffect
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -68,6 +71,15 @@ fun Sf2StyleInspectorDialog(
     var query by remember { mutableStateOf("") }
     val exportScope = rememberCoroutineScope()
     var exportBusy by remember { mutableStateOf(false) }
+    var auditionBank by remember { mutableStateOf("128") }
+    var auditionPc by remember { mutableStateOf("1") }
+    var auditionKey by remember { mutableStateOf("31") }
+    var auditionVelocity by remember { mutableStateOf("110") }
+    val auditionPlayer = remember { arrayOfNulls<MediaPlayer>(1) }
+    val auditionFile = remember { arrayOfNulls<File>(1) }
+    DisposableEffect(Unit) {
+        onDispose { auditionPlayer[0]?.release(); auditionFile[0]?.delete() }
+    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -103,6 +115,53 @@ fun Sf2StyleInspectorDialog(
                     }) { Text(if (exportBusy) "EXPORTING…" else "SAVE REPORT") }
                     Spacer(Modifier.width(6.dp))
                     OutlinedButton(onClick = onDismiss) { Text("CLOSE") }
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedButton(enabled = !exportBusy, onClick = viewModel::diagnosticSoloStrings2) { Text("SOLO STRINGS2") }
+                    Text("Unmutes ch14, mutes ch8–13/15. Play a full MainD section; restore mix with existing mute controls.",
+                        color = InspectorDim, fontSize = 10.sp)
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(auditionBank, { auditionBank = it }, label = { Text("Bank") }, modifier = Modifier.width(82.dp), singleLine = true)
+                    OutlinedTextField(auditionPc, { auditionPc = it }, label = { Text("Kit PC") }, modifier = Modifier.width(82.dp), singleLine = true)
+                    OutlinedTextField(auditionKey, { auditionKey = it }, label = { Text("Key") }, modifier = Modifier.width(82.dp), singleLine = true)
+                    OutlinedTextField(auditionVelocity, { auditionVelocity = it }, label = { Text("Velocity") }, modifier = Modifier.width(90.dp), singleLine = true)
+                    val context = LocalContext.current
+                    OutlinedButton(enabled = !exportBusy && !state.isPlaying, onClick = {
+                        val bank = auditionBank.toIntOrNull()
+                        val pc = auditionPc.toIntOrNull()
+                        val key = auditionKey.toIntOrNull()
+                        val velocity = auditionVelocity.toIntOrNull()
+                        if (bank != null && pc != null && key != null && velocity != null) {
+                            auditionPlayer[0]?.release(); auditionPlayer[0] = null
+                            auditionFile[0]?.delete(); auditionFile[0] = null
+                            exportBusy = true
+                            exportScope.launch {
+                                try {
+                                    val wav = viewModel.diagnosticDrumWav(bank, pc, key, velocity)
+                                    if (wav.isEmpty()) Toast.makeText(context, "Audition unavailable: STOP, load style/fonts, use an actual event and a kit with a valid zone", Toast.LENGTH_LONG).show()
+                                    else {
+                                        val file = withContext(Dispatchers.IO) {
+                                            File.createTempFile("drum-audition-", ".wav", context.cacheDir).also { it.writeBytes(wav) }
+                                        }
+                                        auditionFile[0] = file
+                                        val player = MediaPlayer()
+                                        auditionPlayer[0] = player
+                                        player.setDataSource(file.absolutePath)
+                                        player.setOnCompletionListener { it.release(); auditionPlayer[0] = null; file.delete(); auditionFile[0] = null }
+                                        player.prepare(); player.start()
+                                    }
+                                } catch (error: Exception) {
+                                    auditionPlayer[0]?.release(); auditionPlayer[0] = null
+                                    auditionFile[0]?.delete(); auditionFile[0] = null
+                                    Toast.makeText(context, "Audition failed: ${error.message}", Toast.LENGTH_LONG).show()
+                                } finally { exportBusy = false }
+                            }
+                        }
+                    }) { Text("AUDITION (STOP)") }
+                    Text("Separate 2s sample; default controllers, no kit installed.", color = InspectorDim, fontSize = 10.sp)
                 }
 
                 TabRow(selectedTabIndex = tab) {
@@ -294,7 +353,7 @@ private fun saveInspectorReport(context: Context, state: MainUiState, kitAudit: 
         appendLine("YAMAHA ARRANGER — SF2 / STYLE INSPECTOR")
         appendLine("Generated: $stamp")
         appendLine()
-        appendLine("=== ALL LOADED DEDICATED DRUM KITS / MAIND COVERAGE ===")
+        appendLine("=== NOTE ZONES / ALL DEDICATED KITS PER SECTION ===")
         appendLine(kitAudit)
         appendLine()
         appendLine("=== SF2 ===")
@@ -367,3 +426,4 @@ private fun saveInspectorReport(context: Context, state: MainUiState, kitAudit: 
         null
     }
 }
+

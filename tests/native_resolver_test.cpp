@@ -1,4 +1,5 @@
 #include "bassmidi_player.h"
+#include "sf2_rich_fixture.h"
 #include <jni.h>
 #include <android/log.h>
 #include <cstdlib>
@@ -116,6 +117,43 @@ int main(int argc, char** argv) {
     player.setChannelExpression(13,126);
     check(mock_bass::events[{13,MIDI_EVENT_VOLUME}]==100 && mock_bass::events[{13,MIDI_EVENT_EXPRESSION}]==126,
           "Native expression-only boundary preserves effective CC7=100");
+    const auto richBytes=rich_fixture::font(0,49,"t4 strings slow");
+    const auto richPath=dir+"/Rich Tyros.sf2";
+    { std::ofstream out(richPath,std::ios::binary);out.write(reinterpret_cast<const char*>(richBytes.data()),richBytes.size()); }
+    // Detailed observations use the original player with richer font metadata.
+    check(player.loadMelody(richPath),"real richer melodic metadata loaded at original font bank");
+    player.setChannelPreset(13,1029,49,"Strings1");
+    player.setChannelMixer(13,127,64,127,0,0);
+    const int onsBeforeZone=mock_bass::noteOns;
+    player.noteOn(13,60,26.0f/127.0f,AudioPathOrigin{13,60,1029,100,500,true});
+    const auto report=player.noteZoneReport();
+    check(mock_bass::noteOns==onsBeforeZone+1 && report.find("key=60 velocity=26")!=std::string::npos,"observer captures the one actual note without injecting more");
+    check(report.find("Quiet sample")!=std::string::npos && report.find("attenuationCb=220")!=std::string::npos,"native live preset maps to cached original-bank zone and effective generators");
+    const auto eventsAfterNote=mock_bass::events;
+    player.noteZoneReport();
+    check(mock_bass::events==eventsAfterNote && mapping(13).font==mock_bass::mappings.front().font,"export does not send controllers or change selected font");
+    player.noteOn(13,60,61.0f/127.0f);
+    check(player.noteZoneReport().find("Loud sample")!=std::string::npos,"a changed actual velocity audits its distinct eligible layer");
+    const auto richDrum=rich_fixture::font(128,1,"Audition Kit");
+    const auto richDrumPath=dir+"/Rich Drum.sf2";
+    { std::ofstream out(richDrumPath,std::ios::binary);out.write(reinterpret_cast<const char*>(richDrum.data()),richDrum.size()); }
+    check(player.loadDrum(richDrumPath),"dedicated richer drum fixture loaded");
+    const auto savedEvents=mock_bass::events;
+    const auto savedFont=mapping(13).font;
+    const int savedOns=mock_bass::noteOns;
+    const auto wav=player.diagnosticDrumWav(128,1,60,26);
+    check(wav.size()==384044 && std::memcmp(wav.data(),"RIFF",4)==0,"isolated stream creates two-second stereo WAV without normalization");
+    check(mock_bass::events==savedEvents && mapping(13).font==savedFont && mock_bass::noteOns==savedOns,"audition leaves arranger MIDI controller/note/mapping state intact");
+    check(!mock_bass::freedStreams.empty() && mock_bass::freedStreams.back()>1,"isolated audition stream is freed");
+    check(player.diagnosticDrumWav(128,1,31,110).empty(),"audition rejects key without eligible zone instead of falling back/remapping");
+    mock_bass::mismatchPreset=true;
+    check(player.diagnosticDrumWav(128,1,60,26).empty(),"audition refuses live preset mismatch");
+    mock_bass::mismatchPreset=false;
+    mock_bass::failNote=true;
+    const auto freedBeforeFailure=mock_bass::freedStreams.size();
+    check(player.diagnosticDrumWav(128,1,60,26).empty() && mock_bass::freedStreams.size()==freedBeforeFailure+1,"failed audition note frees temporary stream without modifying playback");
+    mock_bass::failNote=false;
+    check(mock_bass::auditionNoteOns==2,"only requested successful/mismatched auditions send an isolated test note");
     mock_bass::failMapping=true;
     player.setChannelPreset(12,1040,1,"A.Guitar");
     const int failed=mock_bass::noteOns; player.noteOn(12,60,1);
@@ -125,3 +163,4 @@ int main(int argc, char** argv) {
     mock_bass::failMapping=false;
     std::cout << "PASS: " << checks << " native routing checks (mock BASS; no audio assertion)\n";
 }
+

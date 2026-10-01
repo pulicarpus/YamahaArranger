@@ -3,6 +3,7 @@
 #include <mutex>
 #include <array>
 #include <vector>
+#include <memory>
 #include "audio_path_diagnostic.h"
 #include "sf2_zone_diagnostic.h"
 #include "drum_kit_audit.h"
@@ -32,6 +33,8 @@ public:
     void setKeyboardReleaseTime(int releaseTime);
     void setMasterGain(float gain);
     std::string presetList() const;
+    std::vector<unsigned char> diagnosticDrumWav(int bank,int pc,int key,int velocity);
+    std::string noteZoneReport() const;
     std::string drumKitCoverage(const std::vector<drum_audit::Hit>& hits) const;
 private:
     struct ChannelState {
@@ -82,6 +85,15 @@ private:
     uint64_t fontMappingGeneration_ = 0;
     std::map<std::string, sf2_zones::Inventory> drumZoneInventories_;
     std::array<std::array<std::string, 128>, 2> drumZoneSignatures_{};
+    void auditNoteZone(int channel,int key,int velocity,bool sent,const AudioPathOrigin& origin);
+    struct NoteZoneObservation {
+        std::string header;
+        std::shared_ptr<const sf2_zones::Inventory> inventory;
+        int bank=0,pc=0,key=0,velocity=0;
+    };
+    std::map<std::string, std::shared_ptr<const sf2_zones::Inventory>> melodicZoneInventories_;
+    std::map<std::string,NoteZoneObservation> noteZoneRows_;
+    bool noteZoneLimit_=false;
     void preloadCurrentPreset(int channel);
     void rebuildDrumPresetCache(const std::string& path,
                                 std::vector<DrumPresetEntry>& cache);
@@ -109,3 +121,4 @@ private:
     std::string melodyBassPath_;
     std::string drumPath_;
 };
+

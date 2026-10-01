@@ -6,9 +6,9 @@ import com.yourapp.yamahaarranger.style.ParsedStyle
 internal object DrumStyleAuditProfile {
     data class Profile(val histogram: IntArray, val header: String)
 
-    fun from(style: ParsedStyle): Profile {
-        val section = style.sections["MainD"]
-            ?: return Profile(intArrayOf(), "DRUM STYLE PROFILE unavailable: MainD absent\n")
+    fun from(style: ParsedStyle, sectionName: String = "MainD"): Profile {
+        val section = style.sections[sectionName]
+            ?: return Profile(intArrayOf(), "DRUM STYLE PROFILE unavailable: $sectionName absent\n")
         val bins = linkedMapOf<Triple<Int, Int, Int>, Int>()
         val requestedKits = linkedSetOf<String>()
         for (part in section.parts) {
@@ -42,3 +42,4 @@ internal object DrumStyleAuditProfile {
         return Profile(histogram, header)
     }
 }
+

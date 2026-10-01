@@ -329,6 +329,7 @@ bool BassMidiPlayer::loadRole(const std::string& path, bool drum) {
         melodyPath_.clear();
         melodyDrumPresetCache_.clear();
         melodyPresetCache_.clear();
+        melodicZoneInventories_.clear(); noteZoneRows_.clear(); noteZoneLimit_=false;
         // Replacing the primary melody font invalidates any previous
         // secondary layer; the caller can attach a new controlled fallback.
         for (const auto& secondary : secondaryMelodies_) BASS_MIDI_FontFree(secondary.font);
@@ -497,6 +498,7 @@ void BassMidiPlayer::unload() {
     for (auto& ch : channels_) ch = ChannelState{};
     audioDiagnostics_ = {};
     drumZoneInventories_.clear();
+    melodicZoneInventories_.clear(); noteZoneRows_.clear(); noteZoneLimit_=false;
     drumZoneSignatures_ = {};
     melodyPath_.clear();
     melodyBassPath_.clear();
@@ -778,6 +780,8 @@ bool BassMidiPlayer::findDrumPreset(const std::string& path,
 }
 
 void BassMidiPlayer::rebuildMelodyPresetCache(const std::string& path) {
+    melodicZoneInventories_.erase(path);
+    noteZoneRows_.clear(); noteZoneLimit_=false;
     melodyPresetCache_.clear();
     if (path.empty()) return;
     std::ifstream file(path, std::ios::binary);
@@ -797,6 +801,8 @@ void BassMidiPlayer::rebuildMelodyPresetCache(const std::string& path) {
         return;
     }
 
+    melodicZoneInventories_[path] = std::make_shared<const sf2_zones::Inventory>(sf2_zones::parse(data,true));
+    noteZoneRows_.clear(); noteZoneLimit_=false;
     const size_t count = phdrSize / 38;
     for (size_t n = 0; n + 1 < count; ++n) {
         const unsigned char* rec = phdrData + n * 38;
@@ -1016,6 +1022,7 @@ void BassMidiPlayer::logAudioPath(int channel, int key, int velocity, bool sent,
             }
         }
     }
+    auditNoteZone(channel,key,velocity,sent,origin);
     const bool special = drum && (audio_path::snare(key) || audio_path::snare(origin.sourceNote));
     if (d.sample(now, special) || origin.sampled) {
         HSOUNDFONT expected = drum ? (drumFont_ ? drumFont_ : melodyFont_) : melodyFont_;
@@ -1305,6 +1312,113 @@ void BassMidiPlayer::setMasterGain(float gain) {
                              std::max(0.0f, std::min(1.0f, gain)));
 }
 
+void BassMidiPlayer::auditNoteZone(int channel,int key,int velocity,bool sent,const AudioPathOrigin& origin) {
+    if(channel!=10 && channel!=13 && channel!=14) return;
+    BASS_MIDI_FONT live{};
+    const bool liveOk=stream_ && BASS_MIDI_StreamGetPreset(stream_,channel,&live);
+    std::string path; int rawBank=live.bank;
+    const std::vector<NormalizedBankMap>* banks=nullptr;
+    if(liveOk && live.font==melodyFont_) { path=melodyPath_; banks=&normalizedBanks_; }
+    for(const auto& secondary:secondaryMelodies_) if(liveOk && live.font==secondary.font) {
+        path=secondary.path; banks=&secondary.banks;
+    }
+    bool bankKnown=false;
+    if(banks) for(const auto& bank:*banks) if(bank.virtualBank==live.bank) { rawBank=bank.rawBank; bankKnown=true; break; }
+    const int cc7=BASS_MIDI_StreamGetEvent(stream_,channel,MIDI_EVENT_VOLUME);
+    const int cc11=BASS_MIDI_StreamGetEvent(stream_,channel,MIDI_EVENT_EXPRESSION);
+    const auto signature=std::to_string(channel)+":"+path+":"+std::to_string(rawBank)+":"+std::to_string(live.preset)+":"+
+        std::to_string(key)+":"+std::to_string(velocity)+":"+std::to_string(cc7)+":"+std::to_string(cc11)+":"+std::to_string(sent);
+    if(noteZoneRows_.count(signature)) return;
+    if(noteZoneRows_.size()>=512) { noteZoneLimit_=true; return; }
+    std::ostringstream row;
+    row << "NOTE ZONE id=" << origin.id << " ch=" << channel << " key=" << key << " velocity=" << velocity
+        << " NOTE_ON_SENT=" << sent << " liveVerified=" << (liveOk && bankKnown && !path.empty())
+        << " sourceSF2='" << path << "' rawBank=" << rawBank << " normalizedBank=" << live.bank << " PC=" << live.preset
+        << " CC7=" << cc7 << " CC11=" << cc11 << " pan=" << BASS_MIDI_StreamGetEvent(stream_,channel,MIDI_EVENT_PAN)
+        << " reverb=" << BASS_MIDI_StreamGetEvent(stream_,channel,MIDI_EVENT_REVERB)
+        << " chorus=" << BASS_MIDI_StreamGetEvent(stream_,channel,MIDI_EVENT_CHORUS)
+        << " releaseController=" << BASS_MIDI_StreamGetEvent(stream_,channel,MIDI_EVENT_RELEASE);
+    BASS_MIDI_FONTINFO info{};
+    float streamVolume=0;
+    const bool attrOk=stream_ && BASS_ChannelGetAttribute(stream_,BASS_ATTRIB_MIDI_VOL,&streamVolume);
+    const bool infoOk=liveOk && BASS_MIDI_FontGetInfo(live.font,&info);
+    row << " fontVolume=" << (liveOk?BASS_MIDI_FontGetVolume(live.font):-1) << " streamMidiVolume=" << streamVolume
+        << " attrOk=" << attrOk << " fontInfoOk=" << infoOk << " wholeFontSamload=" << info.samload
+        << " wholeFontSamsize=" << info.samsize << '\n';
+    const auto it=melodicZoneInventories_.find(path);
+    const auto metadata=(liveOk && bankKnown && it!=melodicZoneInventories_.end())?it->second:nullptr;
+    // Only capture immutable metadata identity here. Zone scan/format occurs at explicit export.
+    noteZoneRows_[signature]={row.str(),metadata,rawBank,live.preset,key,velocity};
+    LOGI("NOTE ZONE OBSERVED id=%lld ch=%d key=%d velocity=%d liveVerified=%d CC7=%d CC11=%d fullEvidence=Inspector_SAVE_REPORT",
+        static_cast<long long>(origin.id),channel,key,velocity,liveOk && bankKnown && !path.empty(),cc7,cc11);
+}
+
+// Explicit STOP-only audition caller. Separate decode stream; never touches arranger stream/channel state.
+std::vector<unsigned char> BassMidiPlayer::diagnosticDrumWav(int bank,int pc,int key,int velocity) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if(!drumFont_ || pc<0 || pc>127 || key<0 || key>127 || velocity<1 || velocity>127) return {};
+    const auto it=drumZoneInventories_.find(drumPath_);
+    if(it==drumZoneInventories_.end() || !sf2_zones::match(it->second,bank,pc,key,velocity).zones) {
+        LOGI("DRUM AUDITION refused bank=%d PC=%d key=%d velocity=%d reason=no_verified_metadata_zone",bank,pc,key,velocity);
+        return {};
+    }
+    const HSTREAM audition=BASS_MIDI_StreamCreate(1,BASS_SAMPLE_FLOAT|BASS_STREAM_DECODE,sampleRate_);
+    if(!audition) return {};
+    struct Release { HSTREAM stream; ~Release() { BASS_StreamFree(stream); } } release{audition};
+    BASS_MIDI_FONTEX2 mapping{};
+    mapping.font=drumFont_; mapping.sbank=bank; mapping.spreset=pc;
+    mapping.dbank=128; mapping.dpreset=pc; mapping.minchan=0; mapping.numchan=1;
+    if(!BASS_MIDI_StreamSetFonts(audition,&mapping,1|BASS_MIDI_FONT_EX2) ||
+       !BASS_MIDI_StreamEvent(audition,0,MIDI_EVENT_DRUMS,1) ||
+       !BASS_MIDI_StreamEvent(audition,0,MIDI_EVENT_BANK,128) ||
+       !BASS_MIDI_StreamEvent(audition,0,MIDI_EVENT_PROGRAM,pc) ||
+       !BASS_MIDI_StreamEvent(audition,0,MIDI_EVENT_NOTE,key|(velocity<<8))) return {};
+    BASS_MIDI_FONT live{};
+    if(!BASS_MIDI_StreamGetPreset(audition,0,&live) || live.font!=drumFont_ || live.bank!=bank || live.preset!=pc) {
+        LOGI("DRUM AUDITION refused reason=live_preset_mismatch"); return {};
+    }
+    // 2 seconds at native rate. Default controllers, existing font volume; no normalization/gain/FX.
+    const size_t samples=static_cast<size_t>(sampleRate_)*2*2;
+    std::vector<float> pcm(samples);
+    size_t offset=0;
+    while(offset<samples) {
+        const DWORD requested=static_cast<DWORD>(std::min<size_t>(2048,samples-offset)*sizeof(float));
+        const DWORD received=BASS_ChannelGetData(audition,pcm.data()+offset,requested|BASS_DATA_FLOAT);
+        if(received==static_cast<DWORD>(-1) || !received || received>requested || received%sizeof(float)) return {};
+        offset+=received/sizeof(float);
+    }
+    std::vector<unsigned char> wav(44+samples*2);
+    auto word=[&](size_t p,uint16_t value) { wav[p]=value&255; wav[p+1]=value>>8; };
+    auto dword=[&](size_t p,uint32_t value) { word(p,value&65535); word(p+2,value>>16); };
+    std::memcpy(wav.data(),"RIFF",4); dword(4,wav.size()-8); std::memcpy(wav.data()+8,"WAVEfmt ",8);
+    dword(16,16); word(20,1); word(22,2); dword(24,sampleRate_); dword(28,sampleRate_*4);
+    word(32,4); word(34,16); std::memcpy(wav.data()+36,"data",4); dword(40,samples*2);
+    double energy=0; float peak=0;
+    for(size_t n=0;n<samples;++n) {
+        const float sample=std::isfinite(pcm[n])?pcm[n]:0;
+        peak=std::max(peak,std::abs(sample)); energy+=double(sample)*sample;
+        word(44+n*2,static_cast<uint16_t>(static_cast<int16_t>(std::clamp(sample,-1.0f,1.0f)*32767)));
+    }
+    LOGI("DRUM AUDITION bank=%d PC=%d key=%d velocity=%d liveVerified=1 peak=%.6f rms=%.6f durationMs=2000 evidence=isolated_decode_not_style_mix",bank,pc,key,velocity,peak,std::sqrt(energy/samples));
+    return wav;
+}
+
+std::string BassMidiPlayer::noteZoneReport() const {
+    std::map<std::string,NoteZoneObservation> snapshot; bool limited;
+    { std::lock_guard<std::mutex> lock(mutex_); snapshot=noteZoneRows_; limited=noteZoneLimit_; }
+    std::ostringstream report;
+    report << "=== ACTUAL BASS / STRINGS NOTE ZONES ===\nuniqueObservations=" << snapshot.size()
+        << " limitReached=" << limited << " cap=512 cached_at_font_load no_PCM_or_voice_sample_ID\n";
+    if(snapshot.empty()) report << "unavailable: play Bass/Strings after all fonts finish loading\n";
+    for(const auto& row:snapshot) {
+        const auto& observation=row.second;
+        report << observation.header;
+        if(observation.inventory) report << sf2_zones::detailedMatch(*observation.inventory,observation.bank,observation.pc,observation.key,observation.velocity);
+        else report << "metadataKnown=0 reason=live_or_cache_unavailable\n";
+    }
+    return report.str();
+}
+
 std::string BassMidiPlayer::drumKitCoverage(const std::vector<drum_audit::Hit>& hits) const {
     sf2_zones::Inventory snapshot;
     std::string source;
@@ -1512,3 +1626,4 @@ void BassMidiPlayer::render(float* out, int numFrames) {
         std::fill(out + samples, out + numFrames * 2, 0.0f);
     }
 }
+

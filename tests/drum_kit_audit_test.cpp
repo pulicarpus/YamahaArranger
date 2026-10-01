@@ -30,6 +30,7 @@ int main() {
     check(report.find("PC=2 | ch=9 | key=21 | velocity=42 | hits=16 | matchingZones=1")!=std::string::npos,"exact covered velocity exported");
     check(report.find("PC=1 | ch=9 | key=31 | velocity=110 | hits=8 | matchingZones=2")!=std::string::npos,"multiple sample layers exposed");
     check(report.find("samples=Instrument/Sample[key=31-31,vel=0-127,frames=0,type=0]")!=std::string::npos,"sample names and ranges exported");
+    check(report.find("KIT ZONE DETAIL bank=128 PC=1 ch=9 key=31 velocity=110")!=std::string::npos && report.find("attenuationCb=")!=std::string::npos,"candidate backbeat gets exact layer generator evidence beyond coverage score");
     check(inventory.presets.size()==original.size() && inventory.presets.at({128,0}).size()==original.at({128,0}).size(),"audit does not mutate metadata");
     check(drum_audit::report(inventory,{}).find("unavailable")!=std::string::npos,"no style data cannot rank kits");
     check(drum_audit::report(inventory,{{9,31,0,1}}).find("invalid")!=std::string::npos,"velocity zero is not NOTE_ON coverage");
@@ -38,3 +39,4 @@ int main() {
     check(drum_audit::report(inventory,hits).find("unavailable")!=std::string::npos,"invalid metadata is unknown, not missing coverage");
     std::cout<<"PASS "<<checks<<" all-kit coverage checks (metadata only)\n";
 }
+

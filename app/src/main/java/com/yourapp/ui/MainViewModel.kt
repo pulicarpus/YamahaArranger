@@ -568,11 +568,53 @@ class MainViewModel @Inject constructor(
     // Does not record inside the note/timing loop or modify ArrangerBrain.
     private var drumAuditStyle: com.yourapp.yamahaarranger.style.ParsedStyle? = null
 
+    suspend fun diagnosticDrumWav(bank: Int, pc: Int, key: Int, velocity: Int): ByteArray {
+        if (uiState.value.isPlaying) return byteArrayOf()
+        val style = drumAuditStyle ?: return byteArrayOf()
+        val profiles = style.sections.keys.map {
+            com.yourapp.yamahaarranger.arranger.DrumStyleAuditProfile.from(style, it)
+        }
+        // Only audition an event key/velocity present in the loaded raw style; no guessed remap.
+        if (profiles.none { profile -> profile.histogram.toList().chunked(4).any { it[1] == key && it[2] == velocity } })
+            return byteArrayOf()
+        return withContext(Dispatchers.IO) {
+            if (uiState.value.isPlaying) byteArrayOf() else audioEngine.diagnosticDrumWav(bank, pc, key, velocity)
+        }
+    }
+
+    fun diagnosticSoloStrings2() {
+        for (channel in 8..15) {
+            val muted = channel != 14
+            _voiceAssignments.value = _voiceAssignments.value.map {
+                if (it.channel == channel) it.copy(styleMuted = muted) else it
+            }
+            arrangerBrain.setStyleChannelMute(channel, muted)
+        }
+        DebugLog.add("DIAGNOSTIC SOLO Strings2 ch14=UNMUTED otherStyleChannels=MUTED; wait a full MainD section for new notes")
+    }
+
     suspend fun drumKitAuditReport(): String {
         val style = drumAuditStyle ?: return "DRUM KIT AUDIT unavailable: load a style first\n"
         return withContext(Dispatchers.Default) {
-            val profile = com.yourapp.yamahaarranger.arranger.DrumStyleAuditProfile.from(style)
-            profile.header + audioEngine.drumKitCoverage(profile.histogram)
+            buildString {
+                appendLine(audioEngine.noteZoneReport())
+                appendLine("=== ALL LOADED DEDICATED DRUM KITS / STYLE SECTION COVERAGE ===")
+                val profiles = style.sections.keys.sorted().map { sectionName ->
+                    com.yourapp.yamahaarranger.arranger.DrumStyleAuditProfile.from(style, sectionName)
+                }
+                val mainD = com.yourapp.yamahaarranger.arranger.DrumStyleAuditProfile.from(style)
+                appendLine("=== MAIND BASELINE (one raw section) ===")
+                appendLine(mainD.header)
+                if (mainD.histogram.isNotEmpty()) appendLine(audioEngine.drumKitCoverage(mainD.histogram))
+                appendLine("=== ALL STYLE SECTIONS (each once; source keys/velocities, not PCM) ===")
+                profiles.forEach { appendLine(it.header) }
+                if (profiles.any { it.header.contains("ambiguous") }) {
+                    appendLine("ALL SECTION AUDIT unavailable: ambiguous rhythm routing; no invented union")
+                } else {
+                    val allBins = profiles.flatMap { it.histogram.toList() }.toIntArray()
+                    appendLine(audioEngine.drumKitCoverage(allBins))
+                }
+            }
         }
     }
 
@@ -923,3 +965,4 @@ class MainViewModel @Inject constructor(
         private fun displayLabelFor(section: ArrangerSection): String = SECTION_BUTTON_MAP.entries.firstOrNull { it.value == section }?.key ?: section.name
     }
 }
+

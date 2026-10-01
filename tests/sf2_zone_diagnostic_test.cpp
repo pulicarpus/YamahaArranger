@@ -1,4 +1,5 @@
 #include "sf2_zone_diagnostic.h"
+#include "sf2_rich_fixture.h"
 #include <cstdlib>
 #include <iostream>
 using Bytes=std::vector<unsigned char>;
@@ -50,5 +51,23 @@ int main() {
     Bytes bad=data;bad[8]='x';check(!sf2_zones::parse(bad).valid,"non-SF2 unknown");
     Bytes named=data;std::memcpy(named.data()+32,"CLOW D'ACADEMY",std::strlen("CLOW D'ACADEMY"));
     check(sf2_zones::parse(named).presetNames.at({128,0})=="CLOW D'ACADEMY","preset apostrophe preserved in Inspector inventory");
+    const auto rich=sf2_zones::parse(rich_fixture::font(),true);
+    check(rich.valid && rich.presets.count({0,49}),"original melodic bank metadata is retained for live virtual-bank reversal");
+    check(sf2_zones::parse(rich_fixture::font()).presets.empty(),"default drum-only inventory does not admit melody to drum coverage");
+    const auto low=sf2_zones::detailedMatch(rich,0,49,60,26);
+    check(low.find("Quiet sample")!=std::string::npos && low.find("Loud sample")==std::string::npos,"actual low velocity chooses eligible quiet layer only");
+    const auto high=sf2_zones::detailedMatch(rich,0,49,60,61);
+    check(high.find("Loud sample")!=std::string::npos && high.find("Quiet sample")==std::string::npos,"actual high velocity selects separate eligible layer");
+    const auto& z=rich.presets.at({0,49}).front();
+    check(sf2_zones::effective(z,48)==220,"instrument local overrides global attenuation then preset offset adds");
+    check(sf2_zones::effective(z,34)==-2200,"signed instrument attack plus local preset attack override");
+    check(sf2_zones::effective(z,37)==100 && sf2_zones::effective(z,38)==0,"sustain uses centibels and release uses timecents");
+    check(z.instrumentGenerators.modsKnown && z.instrumentGenerators.mods.size()==1 && z.instrumentGenerators.mods.front().amount==0,"identical local modulator with zero amount cancels own global");
+    check(z.presetGenerators.modsKnown && z.presetGenerators.mods.size()==1 && z.presetGenerators.mods.front().amount==60,"preset modulator retained separately from instrument");
+    check(low.find("rate=44100")!=std::string::npos && low.find("pitchCorrection=-2")!=std::string::npos,"sample rate and signed pitch correction exported");
+    check(low.find("BASS_voice_sample_ID_unavailable")!=std::string::npos,"eligible layers never mislabeled as actual BASS voice sample ID");
+    sf2_zones::Zone defaults;
+    check(sf2_zones::effective(defaults,34)==-12000 && sf2_zones::effective(defaults,37)==0 && sf2_zones::effective(defaults,31)==0,"SF2 envelope defaults are not doubled or confused with key scaling");
     std::cout<<"PASS "<<checks<<" SF2 zone metadata checks\n";
 }
+

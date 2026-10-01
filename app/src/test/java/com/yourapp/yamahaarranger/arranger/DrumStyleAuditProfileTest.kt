@@ -39,4 +39,12 @@ class DrumStyleAuditProfileTest {
         val part = StylePartModel("Rhythm2",listOf(on(31,110)),casmPolicies=listOf(p,p.copy(destinationChannel=8)))
         assertTrue(DrumStyleAuditProfile.from(style(listOf(part))).header.contains("ambiguous"))
     }
+    @Test fun explicitSectionExportsActualFillVelocityWithoutAssumingMainD() {
+        val part = StylePartModel("Rhythm2", listOf(on(31,110),on(21,28)), program=73)
+        val parsed = style(listOf(part),"FillDD")
+        assertArrayEquals(intArrayOf(9,21,28,1,9,31,110,1),DrumStyleAuditProfile.from(parsed,"FillDD").histogram)
+        assertTrue(DrumStyleAuditProfile.from(parsed,"FillDD").header.contains("section='FillDD'"))
+    }
+
 }
+

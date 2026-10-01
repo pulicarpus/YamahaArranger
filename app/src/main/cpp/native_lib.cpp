@@ -90,6 +90,18 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_Nativ
     const std::string safePresets = sanitizeUtf8ForJni(presets.c_str());
     return env->NewStringUTF(safePresets.c_str());
 }
+extern "C" JNIEXPORT jbyteArray JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeDiagnosticDrumWav(JNIEnv* env,jobject,jint bank,jint pc,jint key,jint velocity){
+    if(!g_engine) return env->NewByteArray(0);
+    const auto wav=g_engine->sfDiagnosticDrumWav(bank,pc,key,velocity);
+    auto result=env->NewByteArray(static_cast<jsize>(wav.size()));
+    if(result && !wav.empty()) env->SetByteArrayRegion(result,0,wav.size(),reinterpret_cast<const jbyte*>(wav.data()));
+    return result;
+}
+extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeGetNoteZoneReport(JNIEnv* env,jobject){
+    if(!g_engine) return env->NewStringUTF("NOTE ZONES unavailable: audio engine absent\n");
+    const auto report=g_engine->sfNoteZoneReport();
+    return env->NewStringUTF(sanitizeUtf8ForJni(report.c_str()).c_str());
+}
 extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeGetDrumKitCoverage(JNIEnv* env,jobject,jintArray histogram){
     if(!g_engine) return env->NewStringUTF("DRUM KIT AUDIT unavailable: audio engine absent\n");
     if(!histogram) return env->NewStringUTF("DRUM KIT AUDIT unavailable: histogram absent\n");
@@ -155,3 +167,4 @@ extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAu
         env->DeleteLocalRef(text);
     }
 }
+
