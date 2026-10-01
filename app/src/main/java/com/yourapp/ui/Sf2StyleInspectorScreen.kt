@@ -118,6 +118,12 @@ fun Sf2StyleInspectorDialog(
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedButton(enabled = !exportBusy, onClick = viewModel::armChordDiagnostic) { Text("CAPTURE CHORD (60s)") }
+                    OutlinedButton(enabled = !exportBusy, onClick = viewModel::stopChordDiagnostic) { Text("END CAPTURE") }
+                }
+                Text("Play C → F → G → C, end capture, then STOP and SAVE REPORT.", color = InspectorDim, fontSize = 10.sp)
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(enabled = !exportBusy, onClick = viewModel::diagnosticSoloStrings2) { Text("SOLO STRINGS2") }
                     Text("Unmutes ch14, mutes ch8–13/15. Play a full MainD section; restore mix with existing mute controls.",
                         color = InspectorDim, fontSize = 10.sp)

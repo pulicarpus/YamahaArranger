@@ -75,7 +75,7 @@ jobs:
           gradle-version: 8.7
       - name: Build debug APK
         run: |
-          gradle testDebugUnitTest --tests '*StyleExpressionRegressionTest' --tests '*DrumStyleAuditProfileTest' --stacktrace
+          gradle testDebugUnitTest --tests '*StyleExpressionRegressionTest' --tests '*DrumStyleAuditProfileTest' --tests '*StyleChordDiagnosticRegressionTest' --stacktrace
           gradle assembleDebug --stacktrace
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
@@ -93,4 +93,5 @@ jobs:
             🎹 *YamahaArranger BASSMIDI Build!*
             🔊 BASSMIDI native engine
             🧪 Build #${{ github.run_number }}
+
 

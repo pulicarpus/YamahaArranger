@@ -134,6 +134,50 @@ int main(int argc, char** argv) {
     check(mock_bass::events==eventsAfterNote && mapping(13).font==mock_bass::mappings.front().font,"export does not send controllers or change selected font");
     player.noteOn(13,60,61.0f/127.0f);
     check(player.noteZoneReport().find("Loud sample")!=std::string::npos,"a changed actual velocity audits its distinct eligible layer");
+    // Chord instrumentation must preserve the exact normal event sequence.
+    player.noteOn(13,60,26.0f/127.0f,AudioPathOrigin{5,60,1029,100,600,false,700,1});
+    check(player.chordDiagnosticReport().find("rows=0 ")!=std::string::npos,"native chord capture remains off by default");
+    mock_bass::history.clear();
+    player.noteOff(13,60); player.noteOn(13,65,26.0f/127.0f); player.noteOff(13,65);
+    const auto unobservedHistory=mock_bass::history;
+    player.armChordDiagnostic(); mock_bass::history.clear();
+    const AudioPathOrigin retarget{5,60,1029,100,601,false,700,1};
+    player.noteOff(13,60,retarget); player.noteOn(13,65,26.0f/127.0f,retarget); player.noteOff(13,65,retarget);
+    const auto chordReport=player.chordDiagnosticReport();
+    check(mock_bass::history==unobservedHistory,"armed observation sends identical ordered messages/key/velocity as normal note path");
+    check(chordReport.find("id=601 chordId=700 op=RETARGET stage=NOTE_PRE ch=13 src=5 original=60 output=65 velocity=26")!=std::string::npos,
+          "pre-send capture carries same retarget event/source identity");
+    check(chordReport.find("stage=OFF_POST")<chordReport.find("stage=NOTE_PRE"),"replacement off is recorded before the new on");
+    check(chordReport.find("livePreset='t4 strings slow' liveFamilyByName=STRINGS mappingMatch=1")!=std::string::npos,
+          "captured live SF2 name/family comes from BASS independently of source part label");
+    const auto historyBeforeExport=mock_bass::history; player.chordDiagnosticReport();
+    check(mock_bass::history==historyBeforeExport,"report export emits no MIDI/control messages");
+    mock_bass::presets[{mapping(13).font,mapping(13).sbank,0}]="ConcertGrand";
+    mock_bass::changePresetOnNote=true;
+    player.noteOn(13,67,26.0f/127.0f,AudioPathOrigin{5,60,1029,100,602,false,701,1});
+    const auto changedReport=player.chordDiagnosticReport();
+    const auto changedStart=changedReport.find("id=602 chordId=701 op=RETARGET stage=NOTE_PRE");
+    const auto changedPost=changedReport.find("id=602 chordId=701 op=RETARGET stage=NOTE_POST");
+    check(changedStart<changedPost && changedReport.substr(changedStart,changedPost-changedStart).find("livePC=49")!=std::string::npos &&
+          changedReport.substr(changedPost).find("livePreset='ConcertGrand' liveFamilyByName=PIANO mappingMatch=0")!=std::string::npos,
+          "pre/post independently detect synthetic Piano switch during a note send without inventing/fixing it");
+    mock_bass::changePresetOnNote=false; mock_bass::forcedLivePc=-1;
+    mock_bass::failNote=true;
+    player.noteOn(13,69,0.5f,AudioPathOrigin{5,60,1029,100,603,false,701,1}); mock_bass::failNote=false;
+    check(player.chordDiagnosticReport().find("stage=NOTE_POST ch=13 src=5 original=60 output=69 velocity=64 styleBank=1029 tick=100 sent=0")!=std::string::npos,
+          "actual send failure is recorded rather than claiming sound was played");
+    mock_bass::failProgram=true; player.setChannelPreset(13,1029,49,"Strings1"); mock_bass::failProgram=false;
+    const auto controls=player.chordDiagnosticReport();
+    check(controls.find("midiType=BANK_MSB")!=std::string::npos && controls.find("midiType=BANK_LSB")!=std::string::npos &&
+          controls.find("sent=0 error=0 midiType=PROGRAM param=49")!=std::string::npos,"bank/program send order and API success are explicit");
+    player.setChannelPreset(14,1029,56,"Horns");
+    const int rejectedBefore=mock_bass::noteOns;
+    player.noteOn(14,60,0.5f,AudioPathOrigin{5,60,1029,100,604,false,701,1});
+    check(mock_bass::noteOns==rejectedBefore && player.chordDiagnosticReport().find("stage=NOTE_POST ch=14 src=5 original=60 output=60 velocity=64 styleBank=1029 tick=100 sent=0")!=std::string::npos,
+          "chord instrumentation retains the proven family/mapping rejection");
+    player.stopChordDiagnostic(); const auto stoppedReport=player.chordDiagnosticReport();
+    player.noteOn(13,60,26.0f/127.0f);
+    check(player.chordDiagnosticReport()==stoppedReport,"explicit stop freezes the native evidence");
     const auto richDrum=rich_fixture::font(128,1,"Audition Kit");
     const auto richDrumPath=dir+"/Rich Drum.sf2";
     { std::ofstream out(richDrumPath,std::ios::binary);out.write(reinterpret_cast<const char*>(richDrum.data()),richDrum.size()); }

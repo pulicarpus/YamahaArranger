@@ -582,6 +582,15 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    fun armChordDiagnostic() {
+        arrangerBrain.armChordDiagnostic()
+        DebugLog.add("CHORD CAPTURE armed for 60s; play C -> F -> G -> C, then END CAPTURE and SAVE REPORT")
+    }
+    fun stopChordDiagnostic() {
+        arrangerBrain.stopChordDiagnostic()
+        DebugLog.add("CHORD CAPTURE ended; SAVE REPORT includes style + native correlation")
+    }
+
     fun diagnosticSoloStrings2() {
         for (channel in 8..15) {
             val muted = channel != 14
@@ -597,6 +606,8 @@ class MainViewModel @Inject constructor(
         val style = drumAuditStyle ?: return "DRUM KIT AUDIT unavailable: load a style first\n"
         return withContext(Dispatchers.Default) {
             buildString {
+                appendLine(arrangerBrain.chordDiagnosticReport())
+                appendLine(audioEngine.chordDiagnosticReport())
                 appendLine(audioEngine.noteZoneReport())
                 appendLine("=== ALL LOADED DEDICATED DRUM KITS / STYLE SECTION COVERAGE ===")
                 val profiles = style.sections.keys.sorted().map { sectionName ->

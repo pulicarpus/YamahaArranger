@@ -9,6 +9,8 @@ struct AudioPathOrigin {
     int sourceChannel = -1, sourceNote = -1, styleBank = -1;
     int64_t tick = -1, id = 0;
     bool sampled = false;
+    int64_t chordId = 0;
+    int operation = 0; // 0 scheduled/legacy, 1 retarget; identity only
 };
 namespace audio_path {
 inline bool snare(int note) { return note == 38 || note == 40; }

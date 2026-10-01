@@ -513,11 +513,16 @@ bool BassMidiPlayer::send(int channel, DWORD event, DWORD param) {
     if (!stream_) return false;
     channel = std::max(0, std::min(15, channel));
 
+    ++chordMidiOrder_; // Observation order under the existing synth mutex.
     const bool sent = BASS_MIDI_StreamEvent(stream_, static_cast<DWORD>(channel), event, param);
+    const int eventError = sent ? 0 : BASS_ErrorGetCode();
+    if (event == MIDI_EVENT_BANK || event == MIDI_EVENT_BANK_LSB || event == MIDI_EVENT_PROGRAM ||
+        event == MIDI_EVENT_DRUMS || event == MIDI_EVENT_NOTESOFF)
+        captureChordState("CONTROL_POST",channel,-1,0,sent ? 1 : 0,eventError,{},event,param);
     if (!sent) {
         LOGE("MIDI event failed ch=%d event=%u param=%u error=%d",
              channel, static_cast<unsigned>(event),
-             static_cast<unsigned>(param), BASS_ErrorGetCode());
+             static_cast<unsigned>(param), eventError);
     }
     if (sent && channel >= 4) {
         auto& d = audioDiagnostics_[channel];
@@ -992,7 +997,8 @@ void BassMidiPlayer::preloadCurrentPreset(int channel) {
 
 void BassMidiPlayer::logAudioPath(int channel, int key, int velocity, bool sent, int error,
                                   const AudioPathOrigin& origin, const char* reason, uint64_t now) {
-    if (channel < 4 || channel > 15) return; // Keyboard parts are untouched.
+    captureChordState("NOTE_POST",channel,key,velocity,sent ? 1 : 0,error,origin);
+    if (channel < 4 || channel > 15) return; // Existing keyboard diagnostics are untouched.
     if (!now) now = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now().time_since_epoch()).count());
     auto& d = audioDiagnostics_[channel];
@@ -1096,6 +1102,8 @@ void BassMidiPlayer::noteOn(int channel, int key, float velocity, const AudioPat
     const int vel = std::max(1, std::min(127,
         static_cast<int>(std::lround(velocity * 127.0f))));
 
+    captureChordState("NOTE_PRE",channel,key,vel,-1,0,origin);
+
     // A failed family gate must not fall through to BASSMIDI's generic font
     // mappings/default Piano. Dedicated Rhythm channels keep their old path.
     if (channel != 8 && channel != 9 && channels_[channel].initialized &&
@@ -1113,13 +1121,16 @@ void BassMidiPlayer::noteOn(int channel, int key, float velocity, const AudioPat
     logAudioPath(channel, key, vel, sent, error, origin, sent ? "bass_event_accepted" : "bass_event_failed", 0);
 }
 
-void BassMidiPlayer::noteOff(int channel, int key) {
+void BassMidiPlayer::noteOff(int channel, int key, const AudioPathOrigin& origin) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (!stream_) return;
 
     channel = std::max(0, std::min(15, channel));
     key = std::max(0, std::min(127, key));
+    captureChordState("OFF_PRE",channel,key,0,-1,0,origin);
     const bool sent = send(channel, MIDI_EVENT_NOTE, static_cast<DWORD>(key));
+    const int offError = sent ? 0 : BASS_ErrorGetCode();
+    captureChordState("OFF_POST",channel,key,0,sent ? 1 : 0,offError,origin);
     if (channel >= 4) {
         const auto now = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::steady_clock::now().time_since_epoch()).count());
@@ -1627,3 +1638,99 @@ void BassMidiPlayer::render(float* out, int numFrames) {
     }
 }
 
+
+void BassMidiPlayer::armChordDiagnostic() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    chordCapture_.arm();
+    // Baseline all channels, including keyboard; later control rows show changes.
+    for(int ch=0;ch<16;++ch) captureChordState("BASELINE",ch,-1,0,-1,0);
+}
+void BassMidiPlayer::stopChordDiagnostic() {
+    std::lock_guard<std::mutex> lock(mutex_); chordCapture_.stop();
+}
+void BassMidiPlayer::captureChordState(const char* stage,int channel,int key,int velocity,int sent,int error,
+                                     const AudioPathOrigin& origin,DWORD event,DWORD param) {
+    if(!chordCapture_.armed) return;
+    const auto now=chord_diagnostic::monoNs();
+    if(!chordCapture_.active(now)) { chordCapture_.stop(); return; }
+    if(channel<0 || channel>15) return;
+    if(chordCapture_.rows.size()==chord_diagnostic::Capture::cap) { ++chordCapture_.dropped; return; }
+    chord_diagnostic::Row row; row.stage=stage; row.origin=origin;
+    row.mono=now; row.wall=chord_diagnostic::wallMs(); row.midiOrder=chordMidiOrder_;
+    row.channel=channel; row.key=key; row.velocity=velocity; row.sent=sent; row.error=error;
+    row.event=event; row.param=param; row.mapGeneration=fontMappingGeneration_;
+    const auto& state=channels_[channel]; const auto& request=audioDiagnostics_[channel];
+    row.initialized=state.initialized; row.drum=state.drum;
+    row.requestedBank=request.requestedBank>=0 ? request.requestedBank :
+        state.initialized ? state.bankMsb*128+state.bankLsb : -1;
+    row.requestedPc=request.requestedPc>=0 ? request.requestedPc : state.initialized ? state.program : -1;
+    row.requestedName=state.requestedVoiceName; row.selectedName=state.melodySourceName;
+    row.sourceRawBank=state.melodySourceBank; row.sourcePc=state.melodySourceProgram;
+    HSOUNDFONT expected=state.drum ? (drumFont_ ? drumFont_ : melodyFont_) : melodyFont_;
+    const auto* banks=&normalizedBanks_;
+    if(!state.drum && state.melodySource>0 && size_t(state.melodySource)<=secondaryMelodies_.size()) {
+        const auto& source=secondaryMelodies_[state.melodySource-1]; expected=source.font; banks=&source.banks;
+    }
+    row.expectedFont=expected; row.expectedBank=state.melodySourceBank;
+    if(state.drum) {
+        row.expectedBank=128; row.sourcePc=state.program;
+        findDrumPreset(drumFont_ ? drumPath_ : melodyPath_,state.program,row.expectedBank,row.sourcePc);
+        row.sourceRawBank=row.expectedBank;
+    } else for(const auto& bank:*banks) if(bank.rawBank==row.expectedBank) { row.expectedBank=bank.virtualBank; break; }
+    if(stream_) {
+        row.dstMsb=BASS_MIDI_StreamGetEvent(stream_,channel,MIDI_EVENT_BANK);
+        row.dstLsb=BASS_MIDI_StreamGetEvent(stream_,channel,MIDI_EVENT_BANK_LSB);
+        row.dstPc=BASS_MIDI_StreamGetEvent(stream_,channel,MIDI_EVENT_PROGRAM);
+        row.cc7=BASS_MIDI_StreamGetEvent(stream_,channel,MIDI_EVENT_VOLUME);
+        row.cc11=BASS_MIDI_StreamGetEvent(stream_,channel,MIDI_EVENT_EXPRESSION);
+        BASS_MIDI_FONT live{}; row.liveOk=BASS_MIDI_StreamGetPreset(stream_,channel,&live);
+        if(row.liveOk) {
+            row.liveFont=live.font; row.liveBank=live.bank; row.livePc=live.preset;
+            const char* name=BASS_MIDI_FontGetPreset(live.font,live.preset,live.bank);
+            row.liveName=name ? name : "UNAVAILABLE";
+            std::string path="UNAVAILABLE";
+            if(live.font==melodyFont_) path=melodyPath_;
+            if(live.font==drumFont_) path=drumPath_;
+            for(const auto& source:secondaryMelodies_) if(live.font==source.font) path=source.path;
+            row.liveSf2=path.substr(path.find_last_of("/\\")+1);
+            row.mappingMatch=state.initialized && row.sourcePc>=0 && live.font==expected &&
+                live.preset==row.sourcePc && live.bank==row.expectedBank;
+        }
+    }
+    chordCapture_.append(std::move(row));
+}
+std::string BassMidiPlayer::chordDiagnosticReport() const {
+    chord_diagnostic::Capture snapshot;
+    { std::lock_guard<std::mutex> lock(mutex_); snapshot=chordCapture_; }
+    std::ostringstream out;
+    out << "=== CHORD NATIVE PRESET CAPTURE ===\nrows=" << snapshot.rows.size()
+        << " cap=" << chord_diagnostic::Capture::cap << " dropped=" << snapshot.dropped
+        << " active=" << snapshot.active() << " timedOut=" << (snapshot.deadline && chord_diagnostic::monoNs()>=snapshot.deadline)
+        << " durationLimitMs=60000 channelNumbers=zero_based\n"
+        << "NOTE_PRE follows ensureEngine and precedes family gate/send; POST follows exact send under same mutex. midiOrder counts all send() attempts. "
+        << "CONTROL_POST event uses BASS SDK numeric enum plus labelled MIDI type. live preset is font identity, not per-voice sample/PCM proof.\n";
+    for(const auto& row:snapshot.rows) {
+        const char* midiType=row.event==MIDI_EVENT_BANK ? "BANK_MSB" : row.event==MIDI_EVENT_BANK_LSB ? "BANK_LSB" :
+            row.event==MIDI_EVENT_PROGRAM ? "PROGRAM" : row.event==MIDI_EVENT_DRUMS ? "DRUM_MODE" :
+            row.event==MIDI_EVENT_NOTESOFF ? "NOTES_OFF" : "NOTE_OR_BASELINE";
+        out << "NATIVE order=" << row.captureOrder << " midiOrder=" << row.midiOrder << " wallMs=" << row.wall
+            << " monoNs=" << row.mono << " id=" << row.origin.id << " chordId=" << row.origin.chordId
+            << " op=" << (row.origin.operation==1 ? "RETARGET" : "SCHEDULED_OR_LEGACY")
+            << " stage=" << row.stage << " ch=" << row.channel << " src=" << row.origin.sourceChannel
+            << " original=" << row.origin.sourceNote << " output=" << row.key << " velocity=" << row.velocity
+            << " styleBank=" << row.origin.styleBank << " tick=" << row.origin.tick
+            << " sent=" << row.sent << " error=" << row.error << " midiType=" << midiType << " param=" << row.param
+            << " mapGen=" << row.mapGeneration << " initialized=" << row.initialized
+            << " requestBank=" << row.requestedBank << " requestPC=" << row.requestedPc << " requestVoice='" << row.requestedName
+            << "' requestFamily=" << voice_resolver::familyName(voice_resolver::Request{row.requestedBank,row.requestedPc,row.requestedName}.family())
+            << " selected='" << row.selectedName << "' selectedFamily=" << voice_resolver::familyName(voice_resolver::namedFamily(row.selectedName))
+            << " sourceRawBank=" << row.sourceRawBank << " sourcePC=" << row.sourcePc
+            << " expectedFont=" << row.expectedFont << " expectedBank=" << row.expectedBank
+            << " dstBank=" << row.dstMsb << ':' << row.dstLsb << " dstPC=" << row.dstPc
+            << " liveOk=" << row.liveOk << " liveFont=" << row.liveFont << " liveBank=" << row.liveBank << " livePC=" << row.livePc
+            << " liveSF2='" << row.liveSf2 << "' livePreset='" << row.liveName << "' liveFamilyByName="
+            << voice_resolver::familyName(voice_resolver::namedFamily(row.liveName)) << " mappingMatch=" << row.mappingMatch
+            << " CC7=" << row.cc7 << " CC11=" << row.cc11 << '\n';
+    }
+    return out.str();
+}

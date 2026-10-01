@@ -12,7 +12,7 @@ internal class StyleAudioPathDiagnostic(private val section: String) {
 
     fun observe(ch: Int): Long {
         if (ch in 0..15) seen[ch]++
-        return ids.incrementAndGet()
+        return nextId()
     }
     fun event(id: Long, ch: Int, src: Int, original: Int, output: Int, velocity: Int,
               bank: Int, tick: Long, voice: String, stage: String, detail: String = ""): Boolean {
@@ -30,6 +30,7 @@ internal class StyleAudioPathDiagnostic(private val section: String) {
     }
     companion object {
         private val ids = AtomicLong()
+        fun nextId(): Long = ids.incrementAndGet()
         private val windows = LongArray(16)
         private val normal = IntArray(16)
         private val snares = IntArray(16)
@@ -56,3 +57,4 @@ internal class StyleAudioPathDiagnostic(private val section: String) {
         }
     }
 }
+

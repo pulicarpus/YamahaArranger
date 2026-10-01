@@ -1,4 +1,5 @@
 #include "audio_path_diagnostic.h"
+#include "chord_change_diagnostic.h"
 #include <iostream>
 #include <cstdlib>
 static int checks=0;
@@ -28,5 +29,21 @@ int main() {
     c.allOff(); check(c.pending()==0,"all notes off observation clears pending only");
     for(int i=0;i<50;++i) c.on(50,80,true,127,127,4000+i);
     check(c.pending()==16&&c.stats.ledgerOverflow==34,"diagnostic ledger bounded for one-shot drums");
+    chord_diagnostic::Capture capture;
+    check(!capture.active(1),"chord capture defaults off");
+    capture.arm(100);
+    check(capture.active(59999999999ULL) && !capture.active(60000000100ULL),"capture expires at sixty seconds");
+    chord_diagnostic::Row row; row.mono=101; row.origin={5,60,1029,10,42,false,41,1};
+    for(size_t n=0;n<chord_diagnostic::Capture::cap+2;++n) capture.append(row);
+    check(capture.rows.size()==4096 && capture.dropped==2 && capture.rows.front().captureOrder==1,
+          "bounded capture retains original event order and explicitly counts overflow");
+    check(capture.rows.back().origin.id==42 && capture.rows.back().origin.chordId==41,"event and chord identities survive capture");
+    capture.stop(); capture.append(row);
+    check(capture.rows.size()==4096 && !capture.active(102),"stop retains evidence and prevents additional rows");
+    capture.arm(200);
+    check(capture.rows.empty() && capture.dropped==0,"explicit rearm clears only diagnostic evidence");
+    row.mono=60000000200ULL; capture.append(row);
+    check(capture.rows.empty(),"late record is rejected after deadline");
     std::cout<<"PASS: "<<checks<<" audio-path diagnostic checks (observation only)\n";
 }
+

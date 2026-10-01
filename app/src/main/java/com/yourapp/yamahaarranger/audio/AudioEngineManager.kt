@@ -217,13 +217,23 @@ class AudioEngineManager @Inject constructor(
     }
 
     fun noteOnStyleChannel(channel: Int, note: Int, velocity: Float, sourceChannel: Int,
-        sourceNote: Int, styleBank: Int, tick: Long, id: Long, sampled: Boolean) {
+        sourceNote: Int, styleBank: Int, tick: Long, id: Long, sampled: Boolean, chordId: Long = 0L, operation: Int = 0) {
         if (soundFontLoaded) bridge.nativeSfNoteOnStyleChannel(channel, note, velocity,
-            sourceChannel, sourceNote, styleBank, tick, id, sampled)
+            sourceChannel, sourceNote, styleBank, tick, id, sampled, chordId, operation)
         else {
-            if (sampled) DebugLog.add("AUDIO BRIDGE id=$id ch=$channel NOTE_ON_NATIVE=0 reason=sf2_not_loaded existing_sample_fallback=1")
+            if (sampled || chordId != 0L) DebugLog.add("AUDIO BRIDGE id=$id ch=$channel NOTE_ON_NATIVE=0 reason=sf2_not_loaded existing_sample_fallback=1")
             noteOnChannel(channel, note, velocity)
         }
+    }
+
+    fun armChordDiagnostic() = bridge.nativeArmChordDiagnostic()
+    fun stopChordDiagnostic() = bridge.nativeStopChordDiagnostic()
+    fun chordDiagnosticReport(): String = bridge.nativeChordDiagnosticReport()
+    fun noteOffStyleChannel(channel: Int, note: Int, sourceChannel: Int, sourceNote: Int,
+        bank: Int, tick: Long, id: Long, chordId: Long, operation: Int) {
+        if (soundFontLoaded) bridge.nativeSfNoteOffStyleChannel(channel, note,
+            sourceChannel, sourceNote, bank, tick, id, chordId, operation)
+        else noteOffChannel(channel, note)
     }
 
     fun noteOffChannel(channel: Int, midiNote: Int) {

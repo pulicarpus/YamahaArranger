@@ -29,12 +29,18 @@ inline std::map<HSTREAM,std::vector<BASS_MIDI_FONTEX2>> otherMappings;
 inline std::map<std::tuple<HSTREAM,int,DWORD>,DWORD> otherEvents;
 inline int auditionNoteOns=0;
 inline bool failMapping=false, failNote=false, mismatchPreset=false;
+inline int forcedLivePc=-1;
+inline bool changePresetOnNote=false, failProgram=false;
+inline std::vector<std::tuple<HSTREAM,DWORD,DWORD,DWORD>> history;
 inline std::map<std::pair<int,DWORD>,DWORD> events;
 inline std::map<std::tuple<HSOUNDFONT,int,int>,std::string> presets;
 }
 inline HSTREAM BASS_MIDI_StreamCreate(int, DWORD flags, int) { mock_bass::streamFlags=flags; return mock_bass::nextStream++; }
 inline bool BASS_MIDI_StreamEvent(HSTREAM stream, DWORD chan, DWORD event, DWORD value) {
+    mock_bass::history.emplace_back(stream,chan,event,value);
+    if (event==MIDI_EVENT_PROGRAM && mock_bass::failProgram) return false;
     if (event==MIDI_EVENT_NOTE && mock_bass::failNote) return false;
+    if (stream==1 && event==MIDI_EVENT_NOTE && value>>8 && mock_bass::changePresetOnNote) mock_bass::forcedLivePc=0;
     if(stream!=1) {
         if(event==MIDI_EVENT_NOTE && value>>8) ++mock_bass::auditionNoteOns;
         mock_bass::otherEvents[{stream,chan,event}]=value; return true;
@@ -83,6 +89,7 @@ inline bool BASS_MIDI_StreamGetPreset(HSTREAM stream, DWORD ch, BASS_MIDI_FONT* 
         if (!BASS_MIDI_FontGetPreset(m.font,sourcePc,m.sbank)) continue;
         *live={m.font,sourcePc,m.sbank};
         if (mock_bass::mismatchPreset) live->preset=127;
+        if (stream==1 && mock_bass::forcedLivePc>=0) live->preset=mock_bass::forcedLivePc;
         return true;
     }
     return false;

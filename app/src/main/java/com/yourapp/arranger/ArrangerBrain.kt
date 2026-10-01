@@ -525,6 +525,10 @@ class ArrangerBrain @Inject constructor(
         sequencer.setChannelVolume(channel, volume)
     }
 
+    fun armChordDiagnostic() { if (::sequencer.isInitialized) sequencer.armChordDiagnostic() }
+    fun stopChordDiagnostic() { if (::sequencer.isInitialized) sequencer.stopChordDiagnostic() }
+    fun chordDiagnosticReport(): String = if (::sequencer.isInitialized) sequencer.chordDiagnosticReport() else "CHORD STYLE unavailable: load style first"
+
     fun setStyleChannelMute(channel: Int, muted: Boolean) {
         ensureSequencer()
         sequencer.setChannelMute(channel, muted)
@@ -629,3 +633,4 @@ private fun DetectedChord.label(): String {
     }
     return if (bassNote != rootNote) "$rootName$qualityName/${NOTE_NAMES[bassNote]}" else "$rootName$qualityName"
 }
+

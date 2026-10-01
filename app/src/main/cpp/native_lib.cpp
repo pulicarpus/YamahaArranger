@@ -156,9 +156,9 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_style_Nativ
 // Diagnostic metadata accompanies the same native NOTE_ON; no extra MIDI event.
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSfNoteOnStyleChannel(
     JNIEnv* env, jobject, jint channel, jint note, jfloat velocity, jint sourceChannel,
-    jint sourceNote, jint styleBank, jlong tick, jlong id, jboolean sampled) {
+    jint sourceNote, jint styleBank, jlong tick, jlong id, jboolean sampled, jlong chordId, jint operation) {
     if (g_engine) g_engine->sfNoteOnStyleChannel(channel, note, velocity,
-        AudioPathOrigin{sourceChannel, sourceNote, styleBank, tick, id, sampled == JNI_TRUE});
+        AudioPathOrigin{sourceChannel, sourceNote, styleBank, tick, id, sampled == JNI_TRUE, chordId, operation});
     else if (sampled == JNI_TRUE && g_debugLogClass && g_debugLogAddMethod) {
         char message[160];
         snprintf(message, sizeof(message), "AUDIO PATH id=%lld ch=%d note=%d NOTE_ON_SENT=0 reason=native_engine_absent", static_cast<long long>(id), channel, note);
@@ -168,3 +168,18 @@ extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAu
     }
 }
 
+
+extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSfNoteOffStyleChannel(
+    JNIEnv*,jobject,jint channel,jint note,jint sourceChannel,jint sourceNote,jint bank,jlong tick,jlong id,jlong chordId,jint operation) {
+    if(g_engine) g_engine->sfNoteOffStyleChannel(channel,note,AudioPathOrigin{sourceChannel,sourceNote,bank,tick,id,false,chordId,operation});
+}
+extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeArmChordDiagnostic(JNIEnv*,jobject) {
+    if(g_engine) g_engine->sfArmChordDiagnostic();
+}
+extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeStopChordDiagnostic(JNIEnv*,jobject) {
+    if(g_engine) g_engine->sfStopChordDiagnostic();
+}
+extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeChordDiagnosticReport(JNIEnv* env,jobject) {
+    const auto report=g_engine ? g_engine->sfChordDiagnosticReport() : "CHORD NATIVE unavailable: engine absent\n";
+    return env->NewStringUTF(sanitizeUtf8ForJni(report.c_str()).c_str());
+}

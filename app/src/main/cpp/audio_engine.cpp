@@ -272,3 +272,8 @@ void AudioEngine::allNotesOff() {
 }
 
 
+
+void AudioEngine::sfNoteOffStyleChannel(int channel,int note,const AudioPathOrigin& origin) { soundFont_.noteOff(channel,note,origin); }
+void AudioEngine::sfArmChordDiagnostic() { soundFont_.armChordDiagnostic(); }
+void AudioEngine::sfStopChordDiagnostic() { soundFont_.stopChordDiagnostic(); }
+std::string AudioEngine::sfChordDiagnosticReport() const { return soundFont_.chordDiagnosticReport(); }

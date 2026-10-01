@@ -1,5 +1,13 @@
 # YamahaArranger — Catatan Proyek
 
+## Latest checkpoint — Chord retarget / pre-send active preset capture (2026-10-01)
+
+- Branch `diag/audio-path-presence`, parent `a32a7c14ff166d657b31a448ca823827a349d2a6`; app baseline **Build #759** / `9b1a3a8a1c6e6de18dfd07eaf13bc2b9cea4fbd5`. Candidate is diagnostic only; source/build identity follows after CI.
+- [Full checkpoint](docs/CHORD_RETARGET_PRESET_CHECKPOINT_20261001.md). New observation: unintended Piano during chord changes. Source proves retarget lacked scheduled-event correlation and pre-send live preset evidence; no Android Piano/fallback root cause is proven yet.
+- Explicit Inspector CAPTURE CHORD (60s)/END CAPTURE records bounded source/CASM/retarget/old OFF/new ON IDs and native bank/program order, API success, pre/post active font/preset/family/controller state. SAVE REPORT contains both layers. No new permanent per-event UI logging.
+- Retarget destination changes without activating a preset in that handler; existing message/gate behavior is retained and observed, not fixed speculatively. No note remap, kit/gain change, family/resolver/CASM/scheduler/timing/sustain/release change. #759 zone/audition/solo diagnostics preserved.
+- Host340 checks pass. Added real chord-setter Kotlin regression class is included in CI beside existing CC11/drum tests. Android procedure: warm MainD/full mix, arm, C → F → G → C twice, END CAPTURE, STOP, export complete Inspector + AllLog and note the audible transition.
+
 ## Latest checkpoint — Actual note-zone / isolated audition diagnostic (2026-10-01)
 
 - Branch `diag/audio-path-presence`, parent `e7049cc4bca5ef87a421a064c322284d4ae138b1`; source/APK `9b1a3a8a1c6e6de18dfd07eaf13bc2b9cea4fbd5`, **Build #759 SUCCESS**, run36820172797/job110233839617. Final checkpoint only updates docs; APK source remains9b1a3a8. This is instrumentation, not tuning or a musical fix.

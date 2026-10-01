@@ -28,10 +28,10 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                 old==null&&value!=null -> {
                     // The first detected chord must immediately retarget notes that
                     // started while the arranger was still in the no-chord state.
-                    handleChordChange(value)
+                    handleChordChange(value,old)
                     com.yourapp.yamahaarranger.ui.DebugLog.add("🎹 FIRST CHORD: " + value.rootNote + " " + value.quality)
                 }
-                old!=null&&value!=null&&old!=value -> handleChordChange(value)
+                old!=null&&value!=null&&old!=value -> handleChordChange(value,old)
                 old!=null&&value==null -> handleNoChord()
             }
         }
@@ -64,8 +64,15 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         var outputNote:Int,
         val velocity:Int,
         var policy:CasmPolicyModel,
-        val policies:List<CasmPolicyModel>
+        val policies:List<CasmPolicyModel>,
+        val sourcePart:String, val sourceSection:String, val sourceBank:Int,
+        val sourceHeaderPC:Int, val sourceTick:Long, val onId:Long
     )
+    private val chordTrace = ChordChangeDiagnostic()
+    fun armChordDiagnostic() { audioEngine.armChordDiagnostic(); chordTrace.arm() }
+    fun stopChordDiagnostic() { chordTrace.stop(); audioEngine.stopChordDiagnostic() }
+    fun chordDiagnosticReport(): String = chordTrace.report()
+
     private val activeTransposedNotes=mutableMapOf<String,ActiveTransposedNote>()
 
     // Long-running diagnostic recorder for String/CASM lifecycle.
@@ -392,13 +399,15 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     }
 
     private fun handleNoChord(){
+        chordTrace.begin("previous", "NONE", activeTransposedNotes.size)
         stringTrace("NO_CHORD active="+activeTransposedNotes.size)
         val snapshot=activeTransposedNotes.values.toList()
         snapshot.forEach{releaseActive(it)}
         if(snapshot.isNotEmpty())com.yourapp.yamahaarranger.ui.DebugLog.add("🎹 NO CHORD: released ${snapshot.size} held style notes")
     }
 
-    private fun handleChordChange(newChord:DetectedChord){
+    private fun handleChordChange(newChord:DetectedChord,oldChord:DetectedChord?){
+        chordTrace.begin("${oldChord?.rootNote}/${oldChord?.quality}", "${newChord.rootNote}/${newChord.quality}",activeTransposedNotes.size)
         stringTrace("CHORD_CHANGE new="+newChord.rootNote+"/"+newChord.quality+" active="+activeTransposedNotes.size)
         if(activeTransposedNotes.isEmpty()){
             stringTrace("CHORD_CHANGE no-active-notes")
@@ -406,18 +415,22 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         }
         val snapshot=activeTransposedNotes.values.toList()
         snapshot.forEach{active->
+            val eventId=if(chordTrace.active()) StyleAudioPathDiagnostic.nextId() else 0L
+            chordEvent(active,eventId,"ACTIVE",active.outputNote)
             stringTrace("ACTIVE src"+active.sourceChannel+":"+active.sourceNote+" dst="+active.destinationChannel+" note="+active.outputNote+" NTR="+(active.policy.ntr and 0x7f)+" NTT="+(active.policy.ntt and 0x7f)+" RTR="+(active.policy.rtr and 0x7f))
             val selectedPolicy=selectPolicy(active.policies,active.sourceNote,newChord)
             if(selectedPolicy==null){
                 stringTrace("POLICY_MISS src"+active.sourceChannel+":"+active.sourceNote+" chord="+newChord.rootNote+"/"+newChord.quality+" -> RELEASE")
-                releaseActive(active)
+                chordEvent(active,eventId,"POLICY_MISS_RELEASE",-1)
+                releaseActive(active,eventId)
                 com.yourapp.yamahaarranger.ui.DebugLog.add(
                     "🔇 CASM CHORD MUTE src${active.sourceChannel}:${active.sourceNote} chord=${newChord.rootNote}/${newChord.quality}"
                 )
                 return@forEach
             }
+            chordTrace.record { "RETARGET_SELECT id=$eventId chordId=${chordTrace.chordId()} src=${active.sourceChannel} original=${active.sourceNote} oldDst=${active.destinationChannel} newDst=${selectedPolicy.destinationChannel} oldVoice='${active.policy.voiceName}' voice='${selectedPolicy.voiceName}' NTR=${selectedPolicy.ntr and 0x7f} NTT=${selectedPolicy.ntt and 0x7f} RTR=${selectedPolicy.rtr and 0x7f} locked=${selectedPolicy.destinationChannel in lockedChannels} muted=${channelOverrides[selectedPolicy.destinationChannel]?.muted} reserved=${selectedPolicy.destinationChannel in 0..3} decision=existing_policy_selected" }
             if(selectedPolicy.destinationChannel!=active.destinationChannel){
-                audioEngine.noteOffChannel(active.destinationChannel,active.outputNote)
+                chordOff(active,eventId,1,"DESTINATION_CHANGE_OFF")
                 midiInputManager.sendNoteOff(active.destinationChannel,active.outputNote)
                 active.destinationChannel=selectedPolicy.destinationChannel
             }
@@ -430,27 +443,40 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             )
             val rtr=active.policy.rtr and 0x7f
             when(rtr){
-                0->{releaseActive(active);com.yourapp.yamahaarranger.ui.DebugLog.add("🎹 RTR STOP src${active.sourceChannel}:${active.sourceNote}")}
-                1->updateHeldPitch(active,newChord,rootOnly=false,retrigger=false)
-                2->updateHeldPitch(active,newChord,rootOnly=true,retrigger=false)
-                3->updateHeldPitch(active,newChord,rootOnly=false,retrigger=true)
-                4->updateHeldPitch(active,newChord,rootOnly=true,retrigger=true)
-                5->com.yourapp.yamahaarranger.ui.DebugLog.add("ℹ RTR NOTE GENERATOR src${active.sourceChannel}:${active.sourceNote}: deferred")
-                else->updateHeldPitch(active,newChord,rootOnly=false,retrigger=true)
+                0->{chordEvent(active,eventId,"RTR_STOP",-1);releaseActive(active,eventId);com.yourapp.yamahaarranger.ui.DebugLog.add("🎹 RTR STOP src${active.sourceChannel}:${active.sourceNote}")}
+                1->updateHeldPitch(active,newChord,rootOnly=false,retrigger=false,eventId=eventId)
+                2->updateHeldPitch(active,newChord,rootOnly=true,retrigger=false,eventId=eventId)
+                3->updateHeldPitch(active,newChord,rootOnly=false,retrigger=true,eventId=eventId)
+                4->updateHeldPitch(active,newChord,rootOnly=true,retrigger=true,eventId=eventId)
+                5->{chordEvent(active,eventId,"RTR_DEFERRED_NO_SEND",active.outputNote);com.yourapp.yamahaarranger.ui.DebugLog.add("ℹ RTR NOTE GENERATOR src${active.sourceChannel}:${active.sourceNote}: deferred")}
+                else->updateHeldPitch(active,newChord,rootOnly=false,retrigger=true,eventId=eventId)
             }
         }
     }
 
-    private fun updateHeldPitch(active:ActiveTransposedNote,chord:DetectedChord,rootOnly:Boolean,retrigger:Boolean){
+    private fun updateHeldPitch(active:ActiveTransposedNote,chord:DetectedChord,rootOnly:Boolean,retrigger:Boolean,eventId:Long){
         val target=if(rootOnly) rootPitchForHeld(active,chord) else CasmNoteTransformer.transform(active.sourceNote,chord,active.policy)
+        chordEvent(active,eventId,if(target==null) "TRANSFORM_NULL_NO_SEND" else if(target==active.outputNote) "UNCHANGED_NO_SEND" else "REPLACE",target?:-1)
         if(target==null||target==active.outputNote)return
         if(!retrigger)com.yourapp.yamahaarranger.ui.DebugLog.add("🎹 RTR PITCH SHIFT src${active.sourceChannel}:${active.sourceNote} ${active.outputNote}→$target (note replacement)")
         else com.yourapp.yamahaarranger.ui.DebugLog.add("🎹 RTR RETRIGGER src${active.sourceChannel}:${active.sourceNote} ${active.outputNote}→$target")
-        audioEngine.noteOffChannel(active.destinationChannel,active.outputNote)
+        chordOff(active,eventId,1,"REPLACEMENT_OFF")
         midiInputManager.sendNoteOff(active.destinationChannel,active.outputNote)
-        audioEngine.noteOnChannel(active.destinationChannel,target,active.velocity/127f)
+        if(chordTrace.active()) audioEngine.noteOnStyleChannel(active.destinationChannel,target,active.velocity/127f,
+            active.sourceChannel,active.sourceNote,active.sourceBank,active.sourceTick,eventId,false,chordTrace.chordId(),1)
+        else audioEngine.noteOnChannel(active.destinationChannel,target,active.velocity/127f)
         midiInputManager.sendNoteOn(active.destinationChannel,target,active.velocity)
         active.outputNote=target
+    }
+
+    private fun chordEvent(active:ActiveTransposedNote,id:Long,stage:String,target:Int) {
+        chordTrace.record { "RETARGET id=$id chordId=${chordTrace.chordId()} onId=${active.onId} section='${active.sourceSection}' part='${active.sourcePart}' src=${active.sourceChannel} original=${active.sourceNote} dst=${active.destinationChannel} oldOutput=${active.outputNote} output=$target velocity=${active.velocity} sourceBank=${active.sourceBank} sourceHeaderPC=${active.sourceHeaderPC} originTick=${active.sourceTick} voice='${active.policy.voiceName}' stage=$stage" }
+    }
+    private fun chordOff(active:ActiveTransposedNote,id:Long,operation:Int,stage:String) {
+        chordEvent(active,id,stage,active.outputNote)
+        if(chordTrace.active()) audioEngine.noteOffStyleChannel(active.destinationChannel,active.outputNote,
+            active.sourceChannel,active.sourceNote,active.sourceBank,active.sourceTick,id,chordTrace.chordId(),operation)
+        else audioEngine.noteOffChannel(active.destinationChannel,active.outputNote)
     }
 
     private fun rootPitchForHeld(active:ActiveTransposedNote,chord:DetectedChord):Int{
@@ -458,9 +484,9 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         return (oldOctave*12+chord.rootNote.coerceIn(0,11)).coerceIn(0,127)
     }
 
-    private fun releaseActive(active:ActiveTransposedNote){
+    private fun releaseActive(active:ActiveTransposedNote,eventId:Long=active.onId){
         val key="${active.sourceChannel}:${active.sourceNote}"
-        audioEngine.noteOffChannel(active.destinationChannel,active.outputNote)
+        chordOff(active,eventId,1,"RELEASE_OFF")
         midiInputManager.sendNoteOff(active.destinationChannel,active.outputNote)
         activeTransposedNotes.remove(key)
     }
@@ -532,6 +558,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             // soundfont state is authoritative at every section activation.
             val forceNativePreset = stringVoice && destination in 13..14
             if (forceNativePreset || appliedChannelStates[destination] != nativeState) {
+                chordTrace.record { "SECTION_PRESET section='${section.name}' part='${sourcePart.name}' dst=$destination requestBank=$audioBank requestPC=$prog voice='${c.voiceName}'" }
                 audioEngine.setChannelProgram(destination, prog, audioBank, c.voiceName)
                 audioEngine.setChannelMixer(destination, nativeState.volume, nativeState.pan, nativeState.expression,
                     nativeState.reverbSend, nativeState.chorusSend)
@@ -800,6 +827,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                             }
                             else -> applyStyleController(destination, s.event)
                         }
+                        if(s.event.note==0 || s.event.note==32) chordTrace.record { "SOURCE_BANK chordId=${chordTrace.chordId()} src=${s.event.channel} dst=$destination controller=${s.event.note} value=${s.event.velocity} bank=${dynamicBankBySource[s.event.channel]} tick=$absoluteTick nativeSend=0_until_PROGRAM" }
                     } else if (s.event.isProgramChange) {
                         val drum = destination == 8 || destination == 9 ||
                             (policy != null && isDrumVoice(policy.voiceName))
@@ -810,6 +838,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                         val msb = if (drum) 127 else (bank ushr 7).coerceIn(0, 127)
                         val lsb = if (drum) 0 else (bank and 0x7f)
                         val program = s.event.note.coerceIn(0, 127)
+                        chordTrace.record { "DYNAMIC_PROGRAM chordId=${chordTrace.chordId()} section='${section.name}' part='${s.part.name}' src=${s.event.channel} dst=$destination requestBank=$bank requestPC=$program tick=$absoluteTick" }
                         audioEngine.setChannelProgram(destination, program, bank)
                         midiInputManager.sendProgramChange(destination, program, msb, lsb)
                         com.yourapp.yamahaarranger.ui.DebugLog.add(
@@ -824,9 +853,12 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             val diagChannel = policy?.destinationChannel ?: s.event.channel
             val diagId = if (s.event.isNoteOn) audioPath.observe(diagChannel) else 0L
             val diagBank = dynamicBankBySource[s.event.channel] ?: (s.part.bankMsb * 128 + s.part.bankLsb)
-            fun diagnostic(stage: String, output: Int = -1, detail: String = ""): Boolean = audioPath.event(
+            fun diagnostic(stage: String, output: Int = -1, detail: String = ""): Boolean {
+                chordTrace.record { "SCHEDULED id=$diagId chordId=${chordTrace.chordId()} section='${section.name}' part='${s.part.name}' src=${s.event.channel} original=${s.event.note} output=$output dst=$diagChannel velocity=${s.event.velocity} sourceBank=$diagBank sourceHeaderPC=${s.part.program} tick=$absoluteTick voice='${policy?.voiceName}' stage=$stage $detail" }
+                return audioPath.event(
                 diagId, diagChannel, s.event.channel, s.event.note, output, s.event.velocity,
                 diagBank, absoluteTick, policy?.voiceName ?: "UNKNOWN", stage, detail)
+            }
             if(policy==null&&chord!=null&&s.event.isNoteOn&&!isRhythmSource(s.event.channel)) {
                 val candidates=s.part.casmPolicies.ifEmpty { listOfNotNull(s.part.casm) }
                 val rules=candidates.map { "${it.sourceNoteLow}-${it.sourceNoteHigh}:mask=${it.chordMuteMask.toString(16)}" }
@@ -844,7 +876,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                 val active=activeTransposedNotes.remove(key)
                 if(active!=null){
                     if(active.destinationChannel==13)com.yourapp.yamahaarranger.ui.DebugLog.add("🎻 STRING NOTEOFF src"+active.sourceChannel+":"+active.sourceNote+" dst13 note="+active.outputNote)
-                    audioEngine.noteOffChannel(active.destinationChannel,active.outputNote)
+                    chordOff(active,active.onId,0,"SCHEDULED_OFF")
                     midiInputManager.sendNoteOff(active.destinationChannel,active.outputNote)
                 } else {
                     diagnostic("OFF_NO_ACTIVE_LEDGER", detail = "NOTE_OFF_FORWARDED=0 oneShotDrumMayBeNormal=1")
@@ -867,7 +899,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             val previousActive=activeTransposedNotes[key]
             if(previousActive!=null){
                 if(previousActive.destinationChannel==13)com.yourapp.yamahaarranger.ui.DebugLog.add("🎻 STRING REPLACE src"+previousActive.sourceChannel+":"+previousActive.sourceNote+" oldNote="+previousActive.outputNote)
-                audioEngine.noteOffChannel(previousActive.destinationChannel,previousActive.outputNote)
+                chordOff(previousActive,previousActive.onId,0,"SCHEDULED_REPLACE_OFF")
                 midiInputManager.sendNoteOff(previousActive.destinationChannel,previousActive.outputNote)
                 activeTransposedNotes.remove(key)
             }
@@ -882,7 +914,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
 
             if(policy!=null&&!isDrumPart){
                 val policyList=s.part.casmPolicies.ifEmpty{listOfNotNull(s.part.casm)}
-                activeTransposedNotes[key]=ActiveTransposedNote(sourceChannel,s.event.note,destinationChannel,note,velocity,policy,policyList)
+                activeTransposedNotes[key]=ActiveTransposedNote(sourceChannel,s.event.note,destinationChannel,note,velocity,policy,policyList,s.part.name,section.name,diagBank,s.part.program,absoluteTick,diagId)
                 if(destinationChannel==13)com.yourapp.yamahaarranger.ui.DebugLog.add("🎻 STRING NOTEON src"+sourceChannel+":"+s.event.note+" dst13 note="+note+" NTR="+(policy.ntr and 0x7f)+" NTT="+(policy.ntt and 0x7f)+" RTR="+(policy.rtr and 0x7f))
                 if(destinationChannel==13)com.yourapp.yamahaarranger.ui.DebugLog.add("🎼 CASM SELECT src"+sourceChannel+":"+s.event.note+" chord="+chord?.rootNote+"/"+chord?.quality+" → dst"+destinationChannel+" NTR="+(policy.ntr and 0x7f)+" NTT="+(policy.ntt and 0x7f)+" SRC="+policy.sourceChordRoot+"/"+policy.sourceChordType+" range="+policy.sourceNoteLow+"-"+policy.sourceNoteHigh+" RTR="+(policy.rtr and 0x7f))
             }
@@ -890,7 +922,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             val sampled = diagnostic("FORWARD", note,
                 "transformAsMelody=${!isDrumPart} nativeRhythmChannel=${destinationChannel == 8 || destinationChannel == 9} transpose=${channelOverride?.transpose ?: 0}")
             audioEngine.noteOnStyleChannel(destinationChannel,note,velocity/127f,
-                sourceChannel,s.event.note,diagBank,absoluteTick,diagId,sampled)
+                sourceChannel,s.event.note,diagBank,absoluteTick,diagId,sampled,chordTrace.chordId())
             midiInputManager.sendNoteOn(destinationChannel,note,velocity)
         }
         audioPath.finish()
@@ -904,3 +936,4 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
 
     private fun ticksToMillis(ticks:Int,ppq:Int,bpm:Int):Long=if(ppq<=0||bpm<=0)0 else((ticks*(60000.0/bpm))/ppq).toLong().coerceAtLeast(0)
 }
+

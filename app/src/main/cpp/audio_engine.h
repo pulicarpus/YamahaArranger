@@ -23,6 +23,10 @@ public:
     void sfNoteOnChannel(int channel,int midiNote,float velocity01);
     void sfNoteOnStyleChannel(int channel,int midiNote,float velocity01,const AudioPathOrigin& origin);
     void sfNoteOffChannel(int channel,int midiNote);
+    void sfNoteOffStyleChannel(int channel,int midiNote,const AudioPathOrigin& origin);
+    void sfArmChordDiagnostic();
+    void sfStopChordDiagnostic();
+    std::string sfChordDiagnosticReport() const;
     void sfSetChannelPreset(int channel,int bank,int program);
     void sfSetChannelPresetWithName(int channel,int bank,int program,const std::string& voiceName);
     void sfSetChannelMixer(int channel,int volume,int pan,int expression,int reverbSend,int chorusSend);

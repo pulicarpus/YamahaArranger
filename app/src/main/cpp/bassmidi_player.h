@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 #include "audio_path_diagnostic.h"
+#include "chord_change_diagnostic.h"
 #include "sf2_zone_diagnostic.h"
 #include "drum_kit_audit.h"
 #include <bass.h>
@@ -24,7 +25,10 @@ public:
     bool isDrumLoaded() const { return stream_ != 0 && drumFont_ != 0; }
     void render(float* out, int numFrames);
     void noteOn(int channel, int key, float velocity, const AudioPathOrigin& origin = {});
-    void noteOff(int channel, int key);
+    void noteOff(int channel, int key, const AudioPathOrigin& origin = {});
+    void armChordDiagnostic();
+    void stopChordDiagnostic();
+    std::string chordDiagnosticReport() const;
     void allNotesOff();
     void setChannelPreset(int channel, int bank, int program, const std::string& voiceName = {});
     void setChannelMixer(int channel, int volume, int pan, int expression, int reverbSend, int chorusSend);
@@ -83,6 +87,10 @@ private:
                       const AudioPathOrigin& origin, const char* reason, uint64_t now);
     std::array<audio_path::Channel, 16> audioDiagnostics_{};
     uint64_t fontMappingGeneration_ = 0;
+    chord_diagnostic::Capture chordCapture_;
+    uint64_t chordMidiOrder_=0;
+    void captureChordState(const char* stage,int channel,int key,int velocity,int sent,int error,
+                           const AudioPathOrigin& origin={},DWORD event=0,DWORD param=0);
     std::map<std::string, sf2_zones::Inventory> drumZoneInventories_;
     std::array<std::array<std::string, 128>, 2> drumZoneSignatures_{};
     void auditNoteZone(int channel,int key,int velocity,bool sent,const AudioPathOrigin& origin);
@@ -121,4 +129,3 @@ private:
     std::string melodyBassPath_;
     std::string drumPath_;
 };
-
