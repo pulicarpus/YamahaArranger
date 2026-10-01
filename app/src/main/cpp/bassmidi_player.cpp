@@ -496,6 +496,8 @@ void BassMidiPlayer::unload() {
 
     for (auto& ch : channels_) ch = ChannelState{};
     audioDiagnostics_ = {};
+    drumZoneInventories_.clear();
+    drumZoneSignatures_ = {};
     melodyPath_.clear();
     melodyBassPath_.clear();
     drumPath_.clear();
@@ -691,6 +693,8 @@ void BassMidiPlayer::rebuildDrumPresetCache(
     const std::string& path,
     std::vector<DrumPresetEntry>& cache) {
     cache.clear();
+    drumZoneInventories_.erase(path);
+    drumZoneSignatures_ = {};
     if (path.empty()) return;
 
     std::ifstream file(path, std::ios::binary);
@@ -702,6 +706,13 @@ void BassMidiPlayer::rebuildDrumPresetCache(
     std::vector<unsigned char> data(
         (std::istreambuf_iterator<char>(file)),
         std::istreambuf_iterator<char>());
+
+    // Reuse the bytes already read during font loading. No file I/O or SF2
+    // parsing in noteOn/render; this metadata never participates in routing.
+    drumZoneInventories_[path] = sf2_zones::parse(data);
+    LOGI("DRUM ZONE CACHE valid=%d reason=%s presets=%u path=%s",
+         drumZoneInventories_[path].valid ? 1 : 0, drumZoneInventories_[path].reason.c_str(),
+         static_cast<unsigned>(drumZoneInventories_[path].presets.size()), path.c_str());
 
     const unsigned char* phdrData = nullptr;
     uint32_t phdrSize = 0;
@@ -984,6 +995,27 @@ void BassMidiPlayer::logAudioPath(int channel, int key, int velocity, bool sent,
     d.on(key, velocity, sent, cc7, cc11, now, channel == 8 || channel == 9);
     const auto& state = channels_[channel];
     const bool drum = channel == 8 || channel == 9;
+    if (drum) {
+        const std::string& path = drumFont_ ? drumPath_ : melodyPath_;
+        int bank=128, pc=state.program;
+        findDrumPreset(path, state.program, bank, pc);
+        const auto inventory=drumZoneInventories_.find(path);
+        if(inventory!=drumZoneInventories_.end()) {
+            const auto coverage=sf2_zones::match(inventory->second,bank,pc,key,velocity);
+            const auto signature=path+":"+std::to_string(bank)+":"+std::to_string(pc)+":"+
+                std::to_string(coverage.known)+":"+std::to_string(coverage.zones)+":"+coverage.names;
+            auto& previous=drumZoneSignatures_[channel-8][key];
+            if(previous!=signature) {
+                previous=signature;
+                BASS_MIDI_FONT live{};
+                const bool liveOk=BASS_MIDI_StreamGetPreset(stream_,channel,&live);
+                const bool verified=liveOk && live.font==(drumFont_?drumFont_:melodyFont_) && live.bank==bank && live.preset==pc;
+                LOGI("DRUM ZONE ch=%d key=%d vel=%d requestedKitPC=%d bank=%d pc=%d liveVerified=%d metadataKnown=%d matchingZones=%u names='%.230s' NOTE_ON_SENT=%d reason=%s evidence=key_velocity_zone_metadata_not_pcm_or_XG_semantics",
+                     channel,key,velocity,d.requestedPc,bank,pc,verified?1:0,coverage.known?1:0,
+                     static_cast<unsigned>(coverage.zones),coverage.names.c_str(),sent?1:0,inventory->second.reason.c_str());
+            }
+        }
+    }
     const bool special = drum && (audio_path::snare(key) || audio_path::snare(origin.sourceNote));
     if (d.sample(now, special) || origin.sampled) {
         HSOUNDFONT expected = drum ? (drumFont_ ? drumFont_ : melodyFont_) : melodyFont_;

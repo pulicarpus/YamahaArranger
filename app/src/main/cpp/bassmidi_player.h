@@ -4,6 +4,7 @@
 #include <array>
 #include <vector>
 #include "audio_path_diagnostic.h"
+#include "sf2_zone_diagnostic.h"
 #include <bass.h>
 #include <bassmidi.h>
 
@@ -77,6 +78,8 @@ private:
                       const AudioPathOrigin& origin, const char* reason, uint64_t now);
     std::array<audio_path::Channel, 16> audioDiagnostics_{};
     uint64_t fontMappingGeneration_ = 0;
+    std::map<std::string, sf2_zones::Inventory> drumZoneInventories_;
+    std::array<std::array<std::string, 128>, 2> drumZoneSignatures_{};
     void preloadCurrentPreset(int channel);
     void rebuildDrumPresetCache(const std::string& path,
                                 std::vector<DrumPresetEntry>& cache);
@@ -104,4 +107,3 @@ private:
     std::string melodyBassPath_;
     std::string drumPath_;
 };
-

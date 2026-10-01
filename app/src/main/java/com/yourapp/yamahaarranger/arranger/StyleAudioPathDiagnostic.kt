@@ -50,6 +50,7 @@ internal class StyleAudioPathDiagnostic(private val section: String) {
             section.parts.take(24).forEachIndexed { index, part ->
                 val on = part.events.filter { it.isNoteOn }
                 val policies = part.casmPolicies.ifEmpty { listOfNotNull(part.casm) }
+                DebugLog.add("STYLE NOTE MAP section='${section.name}' part=$index src=${on.map { it.channel }.distinct()} dst=${policies.map { it.destinationChannel }.distinct()} keys=${on.groupingBy { it.note }.eachCount().toSortedMap()} velocities=${on.groupingBy { it.velocity }.eachCount().toSortedMap()} evidence=raw_style_not_remapped")
                 DebugLog.add("STYLE INVENTORY section='${section.name}' part=$index src=${on.map { it.channel }.distinct()} dst=${policies.map { it.destinationChannel }.distinct()} voices='${policies.map { it.voiceName }.distinct().joinToString()}' headerBank=${part.bankMsb}:${part.bankLsb} headerPC=${part.program} noteOns=${on.size} noteOffs=${part.events.count { ((it.status and 0xF0) == 0x80 || ((it.status and 0xF0) == 0x90 && !it.isNoteOn)) }} raw38=${on.count { it.note == 38 }} raw40=${on.count { it.note == 40 }} velocityMin=${on.minOfOrNull { it.velocity }} velocityMax=${on.maxOfOrNull { it.velocity }}")
             }
         }

@@ -97,6 +97,13 @@ int main(int argc, char** argv) {
     mock_bass::logs.clear();
     player.noteOn(9,38,0.8f,AudioPathOrigin{9,38,126*128,1237,45,true});
     check(logged("expected=GM_ACOUSTIC_SNARE")&&logged("NOTE_ON_SENT=1"),"Dedicated snare trace includes actual delivery");
+    mock_bass::logs.clear();
+    player.setChannelPreset(9,128,73,"Drums");
+    const int beforeExtended=mock_bass::noteOns;
+    player.noteOn(9,21,42.0f/127.0f,AudioPathOrigin{9,21,127*128,1238,47,true});
+    check(mock_bass::noteOns==beforeExtended+1,"Zone audit never drops/remaps an extended drum note");
+    check(logged("requestedKitPC=73 kitFallback=1")&&logged("livePC=0"),"Existing missing-kit fallback remains observable and unchanged");
+    check(logged("DRUM ZONE ch=9 key=21 vel=42")&&logged("metadataKnown=0"),"Incomplete SF2 zone metadata cannot be claimed as missing sample proof");
     player.noteOn(9,40,0.6f,AudioPathOrigin{9,38,126*128,1238,46,true});
     check(logged("original=38 remapped=1"),"Drum note changes are observed without introducing remap");
     mock_bass::failMapping=true;

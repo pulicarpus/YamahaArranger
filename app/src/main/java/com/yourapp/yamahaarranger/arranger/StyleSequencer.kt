@@ -822,7 +822,9 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                 diagId, diagChannel, s.event.channel, s.event.note, output, s.event.velocity,
                 diagBank, absoluteTick, policy?.voiceName ?: "UNKNOWN", stage, detail)
             if(policy==null&&chord!=null&&s.event.isNoteOn&&!isRhythmSource(s.event.channel)) {
-                diagnostic("DROP_NO_POLICY_WITH_CHORD")
+                val candidates=s.part.casmPolicies.ifEmpty { listOfNotNull(s.part.casm) }
+                val rules=candidates.map { "${it.sourceNoteLow}-${it.sourceNoteHigh}:mask=${it.chordMuteMask.toString(16)}" }
+                diagnostic("DROP_NO_POLICY_WITH_CHORD", detail="candidateDst=${candidates.map { it.destinationChannel }.distinct()} chord=${chord.rootNote}/${chord.quality} yamahaType=${yamahaChordType(chord)} rules=$rules evidence=policy_rejection_not_missing_part")
                 continue
             }
             if(s.event.isNoteOn&&isUnsupportedArticulation(policy)){
