@@ -71,7 +71,7 @@ class StyleChordDiagnosticRegressionTest {
         }
         fun normalPianoOn(p:CasmPolicyModel) {
             val complete=CountDownLatch(1)
-            val section=StyleSectionModel("MainD",0,listOf(StylePartModel("Piano",
+            val section=StyleSectionModel("MainD",1,listOf(StylePartModel("Piano",
                 listOf(StyleNoteEvent(0,true,65,81,11)),casm=p,program=0,bankMsb=104,bankLsb=21)))
             sequencer.playSeamless(section,1920,loopLimit=1,onComplete={ complete.countDown() })
             assertTrue("real scheduler completes",complete.await(5,TimeUnit.SECONDS))
