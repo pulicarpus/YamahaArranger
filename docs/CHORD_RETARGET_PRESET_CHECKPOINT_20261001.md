@@ -47,4 +47,6 @@ Local Android/Kotlin toolchain is unavailable. CI must confirm targeted JVM test
 
 ## Published build evidence
 
-Pending CI at source publication; final build/run/commit/artifact is recorded in the final documentation commit.
+- Initial source commit `2fbbb02ce569675a7b623983d5baf2cf25393ce6`, run36858030678 / job110355103539, **Build #760 failed** at one new Kotlin test assertion (line72). Production and test Kotlin compiled;18 tests executed,17 passed. No APK artifact was produced.
+- The failing expected `listOf(5,60,1029,200L)` inferred Long values for all numeric literals, while the observed JNI boundary has Int/Int/Int/Long. Corrected to explicit `listOf<Any>` to check the real mixed types. This is a test-only correction; no production/audio/diagnostic logic is changed by the retry.
+- Final successful build/run/commit/artifact is recorded after CI in the documentation commit.

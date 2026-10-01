@@ -69,7 +69,7 @@ class StyleChordDiagnosticRegressionTest {
         val t = run(true, policy(), listOf(f))
         assertEquals(listOf("OFF 13 60", "ON 13 65 ${26/127f}"), t.events)
         val on = t.identities.single()
-        assertEquals(listOf(5,60,1029,200L), on.subList(3,7))
+        assertEquals(listOf<Any>(5,60,1029,200L), on.subList(3,7))
         assertTrue((on[7] as Long)>0); assertTrue((on[9] as Long)>0); assertEquals(1,on[10])
         val off = mockingDetails(t.audio).invocations.single { it.method.name == "noteOffStyleChannel" }.arguments
         assertEquals(on[7], off[6]); assertEquals(on[9],off[7])
