@@ -1,6 +1,6 @@
 # Checkpoint diagnostic seluruh kit drum dan fix CC11 — 2026-10-01
 
-Branch: `diag/audio-path-presence`. Parent remote: `882505d44cf0f08a2834c067cb62ba2c246455da`. Baseline Android adalah Build #756, source `8def797ace9da1646784e74c7f1019b278eee7ab`. Commit fix CC11 terpisah: `8344604838cd9e4cae903c45218592f80d1d486d`. SHA commit kandidat audit, nomor build dan artifact akan dicatat setelah CI selesai. Tidak ada PR atau merge.
+Branch: `diag/audio-path-presence`. Parent remote: `882505d44cf0f08a2834c067cb62ba2c246455da`. Baseline Android adalah Build #756, source `8def797ace9da1646784e74c7f1019b278eee7ab`. Commit fix CC11 terpisah: `8344604838cd9e4cae903c45218592f80d1d486d`. Commit audit `3a4150a891f4f8295c62b10ef9292be067dcf78e`; source kandidat terbaru `1fd6a820555b93b9e8a11bb2faa5261b4286ff92` setelah perbaikan import tes lama. Build **#758 SUKSES**, run `36806478056`, job `110191835224`. [APK app-debug](https://github.com/pulicarpus/YamahaArranger/actions/runs/36806478056/artifacts/11138395281). Archive ZIP 12,530,404 bytes; SHA256 `ac4db8005820e3e9c38b9a3db908043b1472121f7966643b6deabb6ccae9f445`. HEAD checkpoint sesudahnya hanya dokumentasi; source/APK tetap1fd6a82. Tidak ada PR atau merge.
 
 ## Bukti sebelum perubahan
 
@@ -32,6 +32,8 @@ Audit: `drum_kit_audit.h`, `sf2_zone_diagnostic.h`, `bassmidi_player.cpp/.h`, `a
 
 Validasi: `drum_kit_audit_test.cpp`, `native_resolver_test.cpp`, `sf2_zone_diagnostic_test.cpp`, `DrumStyleAuditProfileTest.kt`, `tools/test_voice_resolver.py`, `.github/workflows/build.yml` (menjalankan dua kelas JUnit sasaran sebelum assembleDebug). Workflow tetap mengompilasi checkout source; tidak ada script patch resolver CI.
 
+Perbaikan build terukur: satu import `com.yourapp.yamahaarranger.chord.AcmpChordAnalyzer` ditambahkan pada tes lama `app/src/test/java/com/yourapp/chord/AcmpChordAnalyzerTest.kt`; source analyzer/CASM tetap identik.
+
 Dokumen: checkpoint ini, audit/CSV Build756 dan PROJECT_NOTES.
 
 ## Regression boundary dan validasi
@@ -42,7 +44,7 @@ Tidak ada perubahan RIGHT/LEFT, bank Yamaha preservation, FONTEX2, NOTEOFF1, NOW
 
 Host suite: family resolver210, native routing32, observer22, metadata18, coverage21kit14 =296 checks. Native tests membuktikan getter tidak mengubah MIDI events/FONTEX2 pada metadata unknown, dan setter expression tidak mengubah CC7. Pure coverage tests membuktikan seluruh21preset diranking, actual velocity holes/partial keys dihitung, missing21/31 terlihat, sample layers tidak menggandakan hits, nama/ranges muncul, metadata invalid tidak dianggap missing.
 
-JUnit targeted10cases: 5 memanggil metode controller produksi melalui reflection dengan mocked AudioEngineManager boundary (volume100 tetap, explicitCC7 bekerja, mute0 tetap, volume pengguna tetap, override expression dan controllerinvalid); 5 menguji profil style produksi (velocity histogram, routing metadata readonly, MainD absent, alternatif tidak double count, ambiguity ditolak). Mockito adalah dependency test saja, tidak masuk APK. Compiler Kotlin lokal tidak tersedia dan proxy shell tidak tersambung; tes JVM/native ABI aktual akan diverifikasi oleh CI, bukan diklaim sudah lulus lokal.
+JUnit targeted10cases: 5 memanggil metode controller produksi melalui reflection dengan mocked AudioEngineManager boundary (volume100 tetap, explicitCC7 bekerja, mute0 tetap, volume pengguna tetap, override expression dan controllerinvalid); 5 menguji profil style produksi (velocity histogram, routing metadata readonly, MainD absent, alternatif tidak double count, ambiguity ditolak). Mockito adalah dependency test saja, tidak masuk APK. Compiler Kotlin lokal tidak tersedia dan proxy shell tidak tersambung. **CI #758 memverifikasi 296 hostchecks, compileDebugUnitTestKotlin dan testDebugUnitTest untuk dua kelas targeted10cases, kemudian CMake/assembleDebug pada arm64-v8a dan armeabi-v7a memakai SDK BASS/BASSMIDI asli. Semua lulus.** Build berhasil belum membuktikan output Inspector di SF2 asli atau hasil audio perangkat.
 
 ## Instruksi tes Android
 
@@ -53,3 +55,13 @@ JUnit targeted10cases: 5 memanggil metode controller produksi melalui reflection
 5. Kirim Inspector lengkap dan AllLog. Tidak diperlukan file SF2.
 
 Langkah berikut: bandingkan21rank khusus missing31/21, audit sample/zone semantic perkit, lalu hanya pilih mapping PC73 bila compatible terbukti. Tidak ada perubahan kit/remap/gain pada kandidat ini. Risiko yang tersisa: deep-copy cache mengambil mutex sebentar saat export; format/ranking sesudahnya di luar mutex, jadi export saat STOP direkomendasikan. Pemetaan source yang ambiguous sengaja tidak ditebak. Tes perangkat untuk report data asli dan CC7 runtime masih wajib.
+
+## Riwayat build kandidat
+
+- #757, run36806096726, source3a4150a:296hostchecks lulus, `compileDebugKotlin` aplikasi berhasil. Gagal `compileDebugUnitTestKotlin` karena13 unresolved references AcmpChordAnalyzer pada tes lama yang masih berada di package com.yourapp.chord. JNI/native ABI belum diuji pada attempt ini; assembleAPK belum berjalan. Tidak ada APK757.
+- Commit1fd6a82 hanya memperbaiki import tes tersebut. Tidak ada perubahan audio/profile/resolver antara #757 dan #758. Ini koreksi berdasarkan error CI konkret, bukan percobaan kit/gain.
+- #758, run36806478056/job110191835224, kandidat source1fd6a82: **SUCCESS**. JVM test build1m17s; assembleAPK28s;296hostchecks lulus; kedua ABI lulus; artifact11138395281 app-debug ZIP12,530,404bytes/digest di atas. Upload dan inherited Telegram step sukses. Total satu diagnostic implementation dan satu koreksi import tes berdasarkan failureCI; tidak ada perubahan audio spekulatif.
+
+## Review tree akhir
+
+Baseline882505d→kandidat1fd6a82:26path yang disengaja berubah (25candidate paths +1import tes lama),115blob lama lain termasuk18native library tetap identik, tidak ada penghapusan file. Diff candidate direview sebelum push; protected native playback dan StyleSequencer di luarCC11 tetap byte-identik. Checkpoint akhir hanya menyentuh dokumen dan tidak memicu APK lain karena paths-ignore workflow. Tidak ada PR/merge/main update. Source saat CI compile identik dengan commit1fd6a82, tanpa patch CI.

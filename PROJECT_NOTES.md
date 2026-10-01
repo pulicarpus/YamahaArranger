@@ -1,12 +1,13 @@
 # YamahaArranger — Catatan Proyek
 
-## Kandidat berikutnya — audit seluruh kit drum / fix CC11
+## Latest checkpoint — Build #758 audit seluruh kit drum / fix CC11
 
-- Branch `diag/audio-path-presence`; parent HEAD `882505d44cf0f08a2834c067cb62ba2c246455da`, baseline APK #756 `8def797ace9da1646784e74c7f1019b278eee7ab`. Commit fix CC11 `8344604838cd9e4cae903c45218592f80d1d486d`; commit/build/artifact kandidat audit dicatat setelah CI selesai.
+- Branch `diag/audio-path-presence`; parent HEAD `882505d44cf0f08a2834c067cb62ba2c246455da`, baseline APK #756 `8def797ace9da1646784e74c7f1019b278eee7ab`. Commit fix CC11 `8344604838cd9e4cae903c45218592f80d1d486d`; audit `3a4150a891f4f8295c62b10ef9292be067dcf78e`; source kandidat terbaru `1fd6a820555b93b9e8a11bb2faa5261b4286ff92`; **Build #758 SUKSES**, run `36806478056`/job `110191835224`. #757 gagal hanya pada import tes AcmpChordAnalyzer lama; satu import diperbaiki tanpa perubahan source analyzer/audio. HEAD checkpoint berikutnya hanya dokumen; source/APK tetap1fd6a82.
 - [Checkpoint lengkap](docs/DRUM_ALL_KIT_CHECKPOINT_20261001.md) mencakup file, keputusan, boundary, bukti/hipotesis, tes Android dan langkah lanjut. [Histogram baseline](docs/BUILD756_MAIND_DRUM_HISTOGRAM.csv).
 - SAVE REPORT mengekspor coverage/ranking semua kit dari cache dedicated SF2 yang sudah loaded terhadap seluruh bin key/velocity MainD. Tidak mengirim test notes, mengganti kit, meremap31/38/40 atau mengubah gain. Coverage bukan bukti timbre. SF2 tidak perlu diupload.
 - Fix terpisah yang terbukti: style CC11 memakai expression-only setter existing sehingga tidak resend raw CC7=62 di atas effective100. Event CC7 baru tetap bekerja; mute/volume pengguna dan override expression dipertahankan.
-- 296 host checks lulus pada source; CI menjalankan dua kelas JUnit targeted10tests sebelum APK. Family gate/native playback/CASM/scheduler/timing tetap.
+- 296 host checks lulus pada source; CI mengulang296hostchecks, meluluskan dua kelas JUnit targeted10tests, lalu build APK keduaABI dengan SDK BASS asli. [APK app-debug](https://github.com/pulicarpus/YamahaArranger/actions/runs/36806478056/artifacts/11138395281) (ZIP12,530,404bytes, artifact11138395281; SHA256ac4db8005820e3e9c38b9a3db908043b1472121f7966643b6deabb6ccae9f445). Family gate/native playback/CASM/scheduler/timing tetap.
+- Runtime SF2 asli21kit, kecocokan timbre, dan CC7 sesudahCC11 masih perlu tes Android; build hijau bukan bukti suara benar. Review remote26path/115blob lain/18library tetap; tidak ada perubahan playback drum/CASM/scheduler/family gate.
 - Android: load font yang sama +Love Song, STOP, Inspector SAVE REPORT; harapkan21kits/213hits/10keys dengan Rhythm1=117,Rhythm2=96. Lalu MainD, exportAllLog untuk memeriksa Strings1CC7=100 tetap saatCC11 berubah. Kirim kedua report, bukanSF2.
 
 
