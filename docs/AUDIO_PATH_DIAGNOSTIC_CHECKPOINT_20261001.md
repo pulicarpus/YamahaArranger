@@ -3,7 +3,7 @@
 ## Identity and purpose
 
 Branch: `diag/audio-path-presence`. Source parent: `ba56c263bdad4c4f9fb00fa59d9ce2d3463656b9`, family-preserving APK Build #754, run `36749544403`.
-Diagnostic implementation commit and APK build evidence: pending publication/build; update the evidence section below after CI. This is an observation build, not a subjective sound improvement or a preset/gain fix. No merge/PR is made.
+Diagnostic implementation/APK commit: `cf5e41565c1f8668795b850bf594ac4a7c48a348`. Build #755 / run `36797178721` completed SUCCESS. Branch HEAD after the final checkpoint commit changes documentation only; compiled source remains this APK SHA. This is an observation build, not a subjective sound improvement or a preset/gain fix. No merge/PR is made.
 
 User Android evidence after #754: family gate works; A.Guitar -> Wide Piano 2 is fixed. Piano dominates, Bass is audible but buried, Strings practically absent despite Tyros t4 strings slow mapping, Drum audible but snare missing/wrong; arrangement sounds empty. These are reported device observations, not independently measured amplitudes. The raw newest AllLog is not attached, in the workspace, or tracked in the inspected branch; requested its location asynchronously. Do not claim its contents were independently analyzed. Root cause of presence is NOT proven yet.
 
@@ -15,13 +15,13 @@ Earlier final #754 checkpoint updates existed only locally because remote write 
 
 ## Audited chain and source findings (hypotheses, not fixes)
 
-1. StyleSequencer selects a policy, checks no-policy/chord, unsupported articulation, reserved keyboard, locked/muted, and null transform before dispatch. Old native logs did not quantify all these drops. Inventory can reveal that a supposed part has no NOTE_ON events in the selected section.
+1. StyleSequencer selects a policy, checks no-policy/chord, unsupported articulation, reserved keyboard, locked/muted, and the historical transform-null fallback before dispatch. Old native logs did not quantify all these drops. Inventory can reveal that a supposed part has no NOTE_ON events in the selected section.
 2. CASM/style setup carries Yamaha MSB/LSB and program, but drum setup passes bank128 to native and native can select a default available kit when requested program is absent. A correct dedicated font name alone does not prove the desired snare sample exists in that kit.
 3. Native always treats channel8/9 as drums. In playOnce, `isDrumPart` is `destination==9 || isDrumVoice(policy.voiceName)`; channel8 with a policy name not recognized as drum can enter melodic transform. This is a concrete classification asymmetry in source, NOT proof that Love Song snare traverses it. Do not change it without a matching trace.
 4. Drum events generally bypass activeTransposedNotes. A source NOTE_OFF without an entry is skipped; this can be normal for one-shot percussion. The diagnostic marks OFF_NO_ACTIVE_LEDGER, not a universal drum bug.
 5. Selected preset can be correct yet native NOTE_ON suppressed by an unresolved/failed mapping gate. Old event logs did not expose actual API success. Family gate remains mandatory.
 6. setChannelMixer sends CC7/CC11, and style controllers may send later changes. Existing setChannelVolume calls the complete mixer method with default expression/pan/etc. A mixer control can therefore overwrite another controller. Whether this causes the reported presence issue must be shown in actual controller trace.
-7. Strings setup already floors CC7/CC11 to 100 for strings channels13/14 unless overridden; adding gain blindly is not justified. Dynamic controllers, mute/lock, failed dispatch or short notes may still make them silent.
+7. Strings setup already floors CC7/CC11 to 100 for strings channels13/14 unless overridden; adding gain blindly is not justified. Dynamic controllers, mute/lock, no matching per-note policy, failed dispatch or short notes may still make them silent.
 8. Event ordering at equal ticks places NOTE_ON before NOTE_OFF. The existing duplicate-source-note replacement/ownership code can yield short logical note durations; slow strings attack could make short notes inaudible. Actual duration evidence and real SF2 envelopes are required before blaming timing or changing scheduler.
 9. Bass/Piano relative presence requires actual velocity/controller/event comparisons. A high control-level proxy is not measured audio energy; Piano can dominate because other parts are absent, because levels differ, or because source samples/envelopes differ. No hardcoded gain or replacement preset is added.
 
@@ -70,4 +70,14 @@ Stop making builds until this evidence is reviewed. Fix only an observed, reprod
 
 ## Final APK evidence
 
-Pending CI; add implementation SHA, run/build/job IDs, artifact URL/size/digest and actual CI results after completion. Green build is not Android audio proof.
+- Branch `diag/audio-path-presence`; implementation/APK SHA `cf5e41565c1f8668795b850bf594ac4a7c48a348`; parent `ba56c263bdad4c4f9fb00fa59d9ce2d3463656b9`.
+- **Build #755 SUCCESS**: [workflow run36797178721](https://github.com/pulicarpus/YamahaArranger/actions/runs/36797178721), job110163179470, completed2026-10-01. Checkout compiles this exact source with no CI resolver mutation.
+- [Download app-debug](https://github.com/pulicarpus/YamahaArranger/actions/runs/36797178721/artifacts/11134221355). Artifact11134221355; archive12,459,240 bytes; SHA256 archive digest `cc954e2e38f73ed13d578a91b56c0c02103598d06f2c60b5f140e878bd06b9fa`. This digest is not a separately measured APK-file digest. Current artifact expiry2026-12-30.
+- CI printed PASS210 resolver +PASS26 native mock routing +PASS22 diagnostic checks. Real Android SDK C++/JNI/Kotlin compilation and both configured ABIs passed; BUILD SUCCESSFUL in1m4s. Artifact upload succeeded; inherited Telegram step succeeded.
+- One diagnostic candidate build, no failure/retry and no gain/preset/scheduler fix.
+- Reviewed remote diff: exactly19 expected paths,111 unrelated existing blobs unchanged, all18 native libraries retained, resolver header SHA unchanged. Ten protected native function bodies were verified byte-identical locally (resolver, drum lookup, bank normalization, preload, engine setup, mixer/expression, sustain/release, render).
+- CI reports existing unused fields/parameters plus an observation warning: `transformed == null` is always false. Existing `chord?.let { transform(...) } ?: sourceNote` already makes this value nonnullable; the observer's DROP_TRANSFORM_NULL branch cannot fire in this build. The old Elvis-continue was similarly ineffective. **Do not use absence of this drop log to prove the transformer returned a usable note**: null-transform results can be masked by the existing source-note fallback. This is source/compiler evidence, not proof of the Android presence root cause. No second cosmetic build or CASM semantic change was made.
+- This checkpoint update changes only PROJECT_NOTES.md and docs. The branch HEAD may therefore be newer than the APK implementation commit; no new APK is claimed for that docs HEAD.
+- Root cause of missing Strings/snare/weak Bass is still unproven; newest raw device AllLog was unavailable. The required next action is the exact Android full-mix/solo trace procedure above, then one evidence-based scoped fix if justified.
+- BASS preset readback/sample counters around the first cold note may be incomplete while NOWAIT loading proceeds. Compare repeated warm bars and sample memory changes before treating a single liveOk=0/infoOk=0 as definitive failure. Preset identity/API acceptance/font sample-memory are not audible-energy or key-zone proof.
+- Local workspace `/workspace/YamahaArrangerAudioDiag` is a text inspection snapshot for diff/tests, not a full remote clone; local baseline git SHA is not the published SHA. Read GitHub branch/commit/build identity when resuming.

@@ -3,7 +3,11 @@
 ## Latest checkpoint — Runtime audio-path diagnostic (2026-10-01)
 
 - Branch: `diag/audio-path-presence`; parent/source baseline `ba56c263bdad4c4f9fb00fa59d9ce2d3463656b9` (Build #754).
-- Implementation commit/build: pending publication; final APK evidence will be appended after CI.
+- Commit source/APK: `cf5e41565c1f8668795b850bf594ac4a7c48a348`. HEAD checkpoint sesudahnya hanya dokumentasi; source aplikasi identik dengan SHA APK.
+- **Build #755 SUKSES**, run36797178721 / job110163179470. Tes258 checks, kompilasi Android, upload artifact dan Telegram berhasil. Satu build; tidak ada retry/fix spekulatif.
+- [APK app-debug](https://github.com/pulicarpus/YamahaArranger/actions/runs/36797178721/artifacts/11134221355) / [workflow](https://github.com/pulicarpus/YamahaArranger/actions/runs/36797178721); archive12,459,240 bytes, artifact11134221355.
+- Remote diff19 path sesuai rencana;111 blob lain/18 native library tetap; family resolver tidak berubah. sepuluh fungsi native yang dilindungi identik.
+- Catatan compiler: DROP_TRANSFORM_NULL tidak dapat terjadi karena fallback source-note yang sudah ada membuat transformed nonnullable. Ini bukan bukti root cause dan tidak diubah; lihat checkpoint lengkap.
 - Device report now confirms the family gate fix works. Remaining subjective issues: Piano dominant, Bass buried, Strings barely audible with Tyros t4 strings slow, snare missing/wrong. Raw latest AllLog was not available; root cause is not proven.
 - This candidate adds correlated STYLE PATH -> AUDIO PATH/LIVE/DRUM diagnostics, actual BASS preset/controller readback, sent/rejected counters, snare38/40 and lifecycle/duration evidence. It does not change gain, preset selection, drum mapping, CASM transforms, Main/Fill timing, sustain, keyboard voices or UI.
 - Tests:210 family policy +26 native routing +22 diagnostic checks pass; audio still requires Android traces.
