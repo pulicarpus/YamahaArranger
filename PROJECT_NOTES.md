@@ -1,5 +1,15 @@
 # YamahaArranger — Catatan Proyek
 
+## Latest checkpoint — Build #758 runtime verified / 21-kit results (2026-10-01)
+
+- Branch `diag/audio-path-presence`; read-only baseline HEAD `ee74bf507bbbcf360dee2a84d570150623f7ed49`. Source/APK tetap `1fd6a820555b93b9e8a11bb2faa5261b4286ff92`, **Build #758 SUCCESS**, run36806478056. Continuation ini hanya dokumen; tidak ada source fix/build baru.
+- [Checkpoint runtime lengkap + ranking21kit](docs/BUILD758_RUNTIME_CHECKPOINT_20261001.md) merekam hash/line evidence AllLog104259 + Inspector104309, batas bukti, startup overlap, dan tes berikutnya.
+- Fix CC11 terbukti di sesi Android: hanya satu CC7=100 perStrings13/14,553/81successful expression records,50sampled String notes semuanyaCC7=100; tidak ada reset62. Jangan rollback8344604. Mute/explicitvolume runtime belum diuji terpisah di trace ini.
+- Semua21rank cocok dengan recomputation bin velocity aktual213hits/10keys. PC36=205/213(missing54),PC1/24=181/213(missing21),PC0=173/213(missing21/31); tidak ada kit213/213. Sample numerik tidak membuktikan timbre/YamahaPC73; key21PC36 memakai sample yang sama namanya dengan81. Belum memilih kit, menggabungkan mapping, meremap note atau menambah gain.
+- Semua488sampled notes accepted/live mapping matched;382positive-idpairs preserve velocity. MainDStrings26/33–34 danBassCC7=52 versusPiano81 berasal dari style. Strings sampled offs2.378–3.438s; summaries0shortoffs. Sample/envelope/PCM/solo presence belum terbukti. Auxiliary src2→Piano11 mask tetap menolakmajor; jangan bypassCASM.
+- Bukti baru: PLAY dimulai saat fonts reload/optionalattach masih berjalan; correlated STYLE→AUDIO awal berjeda1–14s dan stream reopen. Catch-up awal didukung trace, lock/thread root cause belum diukur. Jangan generalisasi durasiBass awal atau mengubahscheduler. STOP/tunggu semuaattachments,clearlog,warmMainD8bars lalu soloStrings/Bass/Rhythm2 pada#758 adalah tes pembeda berikutnya.
+- Regression boundary family gate/dedicateddrum/CC11/CASM/timing/sustain/release/keyboard/native libraries tetap. Tidak ada APK baru yang diklaim; source#758 dipakai sampai prerequisite compatibility/solo/runtime evidence cukup untuk fix minimal.
+
 ## Latest checkpoint — Build #758 audit seluruh kit drum / fix CC11
 
 - Branch `diag/audio-path-presence`; parent HEAD `882505d44cf0f08a2834c067cb62ba2c246455da`, baseline APK #756 `8def797ace9da1646784e74c7f1019b278eee7ab`. Commit fix CC11 `8344604838cd9e4cae903c45218592f80d1d486d`; audit `3a4150a891f4f8295c62b10ef9292be067dcf78e`; source kandidat terbaru `1fd6a820555b93b9e8a11bb2faa5261b4286ff92`; **Build #758 SUKSES**, run `36806478056`/job `110191835224`. #757 gagal hanya pada import tes AcmpChordAnalyzer lama; satu import diperbaiki tanpa perubahan source analyzer/audio. HEAD checkpoint berikutnya hanya dokumen; source/APK tetap1fd6a82.
