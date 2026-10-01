@@ -1447,6 +1447,50 @@ std::string BassMidiPlayer::drumKitCoverage(const std::vector<drum_audit::Hit>& 
     return "Dedicated sourceSF2='" + source + "'\n" + drum_audit::report(snapshot, hits);
 }
 
+std::string BassMidiPlayer::drumCompatibilityReport(const std::vector<drum_compat::Demand>& demand) const {
+    sf2_zones::Inventory snapshot;
+    std::string source;
+    std::vector<drum_compat::Live> lives;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        source=drumPath_;
+        const auto metadata=drumZoneInventories_.find(source);
+        if(drumFont_ && metadata!=drumZoneInventories_.end()) snapshot=metadata->second;
+        else snapshot.reason=drumFont_?"dedicated_metadata_cache_absent":"dedicated_drum_SF2_not_loaded";
+        for(int ch=8;ch<=9;++ch) {
+            drum_compat::Live row;
+            row.channel=ch; row.generation=fontMappingGeneration_;
+            row.initialized=channels_[ch].initialized;
+            row.requestBank=audioDiagnostics_[ch].requestedBank;
+            row.requestPc=audioDiagnostics_[ch].requestedPc;
+            row.effectivePc=row.initialized?channels_[ch].program:-1;
+            BASS_MIDI_FONT live{};
+            row.verified=stream_ && BASS_MIDI_StreamGetPreset(stream_,ch,&live);
+            if(row.verified) {
+                row.bank=live.bank; row.pc=live.preset;
+                row.inCandidateSource=drumFont_ && live.font==drumFont_;
+                row.source=row.inCandidateSource?drumPath_:live.font==melodyFont_?melodyPath_:"unknown_font";
+                for(const auto& secondary:secondaryMelodies_) if(live.font==secondary.font) row.source=secondary.path;
+                const char* name=BASS_MIDI_FontGetPreset(live.font,live.preset,live.bank);
+                row.name=name?name:"unknown_name";
+            }
+            const std::string& expectedPath=drumFont_?drumPath_:melodyPath_;
+            int expectedBank=-1,expectedPc=-1;
+            // Consult existing immutable cache ONLY to explain the established fallback.
+            const bool known=row.initialized && row.requestPc>=0 && findDrumPreset(expectedPath,row.requestPc,expectedBank,expectedPc);
+            if(!row.initialized) row.reason="unknown_channel_not_initialized";
+            else if(!row.verified) row.reason="unknown_live_preset_unavailable";
+            else if(!known) row.reason="unknown_existing_drum_cache_unresolved";
+            else if(live.font!=(drumFont_?drumFont_:melodyFont_) || live.bank!=expectedBank || live.preset!=expectedPc)
+                row.reason="unknown_actual_differs_from_existing_cache_result";
+            else row.reason=expectedPc==row.requestPc?"same_PC_in_existing_cache_not_Yamaha_identity_proof":"requested_PC_absent_existing_first_available";
+            lives.push_back(row);
+        }
+    }
+    // Formatting/cache scanning outside mutex, no StreamEvent/SetFonts/FontLoad calls.
+    return drum_compat::report(snapshot,source,demand,lives);
+}
+
 std::string BassMidiPlayer::presetList() const {
     std::lock_guard<std::mutex> lock(mutex_);
 

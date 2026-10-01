@@ -102,6 +102,18 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_Nativ
     const auto report=g_engine->sfNoteZoneReport();
     return env->NewStringUTF(sanitizeUtf8ForJni(report.c_str()).c_str());
 }
+extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeGetDrumCompatibilityReport(JNIEnv* env,jobject,jintArray histogram){
+    if(!g_engine || !histogram) return env->NewStringUTF("DRUM COMPATIBILITY unavailable: engine or demand absent\n");
+    const jsize n=env->GetArrayLength(histogram);
+    if(n%5 || n>327680) return env->NewStringUTF("DRUM COMPATIBILITY unavailable: invalid demand length\n");
+    std::vector<jint> values(n);
+    env->GetIntArrayRegion(histogram,0,n,values.data());
+    if(env->ExceptionCheck()) return nullptr;
+    std::vector<drum_compat::Demand> demand;
+    for(jsize i=0;i<n;i+=5) demand.push_back({values[i],values[i+1],values[i+2],values[i+3],values[i+4]});
+    const auto report=g_engine->sfDrumCompatibilityReport(demand);
+    return env->NewStringUTF(sanitizeUtf8ForJni(report.c_str()).c_str());
+}
 extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeGetDrumKitCoverage(JNIEnv* env,jobject,jintArray histogram){
     if(!g_engine) return env->NewStringUTF("DRUM KIT AUDIT unavailable: audio engine absent\n");
     if(!histogram) return env->NewStringUTF("DRUM KIT AUDIT unavailable: histogram absent\n");

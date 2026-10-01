@@ -253,6 +253,7 @@ class AudioEngineManager @Inject constructor(
     fun diagnosticDrumWav(bank: Int, pc: Int, key: Int, velocity: Int): ByteArray = bridge.nativeDiagnosticDrumWav(bank, pc, key, velocity)
     fun noteZoneReport(): String = bridge.nativeGetNoteZoneReport()
     fun drumKitCoverage(histogram: IntArray): String = bridge.nativeGetDrumKitCoverage(histogram)
+    fun drumCompatibilityReport(histogram: IntArray): String = bridge.nativeGetDrumCompatibilityReport(histogram)
     fun setKeyboardSustain(enabled: Boolean) {
         DebugLog.add(if (enabled) "🎹 SUSTAIN: ON" else "🎹 SUSTAIN: OFF")
         bridge.nativeSetKeyboardSustain(enabled)

@@ -46,5 +46,62 @@ class DrumStyleAuditProfileTest {
         assertTrue(DrumStyleAuditProfile.from(parsed,"FillDD").header.contains("section='FillDD'"))
     }
 
+    @Test fun compactProfilesAllSectionsExactlyOnceWithStableIds() {
+        val rhythm = StylePartModel("Rhythm2",listOf(on(31,110),on(31,110)),program=73,bankMsb=127,bankLsb=2)
+        val fill = StylePartModel("Rhythm2",listOf(on(21,28),on(21,42)),program=24)
+        val parsed = ParsedStyle("Synthetic.prs",480, linkedMapOf(
+            "MainD" to StyleSectionModel("MainD",1920,listOf(rhythm)),
+            "FillDD" to StyleSectionModel("FillDD",480,listOf(fill))))
+        val result = DrumCompatibilityProfile.from(parsed)
+        assertTrue(result.complete)
+        assertArrayEquals(intArrayOf(0,9,21,28,1,0,9,21,42,1,1,9,31,110,2),result.histogram)
+        assertTrue(result.header.contains("SECTION id=0 name='FillDD'"))
+        assertTrue(result.header.contains("headerBank=127:2 headerPC=73"))
+        assertEquals(31,rhythm.events.first().note)
+        assertEquals(127,rhythm.bankMsb)
+    }
+    @Test fun compactAmbiguousSectionInvalidatesUnionRatherThanInventingMissingZones() {
+        val p=CasmPolicyModel(9,9,"Drums",0,0,0,0,127,0,127,0,false)
+        val bad=StylePartModel("Rhythm2",listOf(on(31,110)),casmPolicies=listOf(p,p.copy(destinationChannel=8)))
+        val good=StylePartModel("Rhythm2",listOf(on(7,17)))
+        val parsed=ParsedStyle("Synthetic",480,mapOf("MainA" to StyleSectionModel("MainA",1,listOf(good)),
+            "MainD" to StyleSectionModel("MainD",1,listOf(bad))))
+        val result=DrumCompatibilityProfile.from(parsed)
+        assertFalse(result.complete)
+        assertEquals(0,result.histogram.size)
+        assertTrue(result.header.contains("UNKNOWN section="))
+        assertTrue(result.header.contains("demandComplete=false"))
+    }
+    @Test fun compactPreservesSourcesAndMarksDynamicIdentityUnknown() {
+        val p=CasmPolicyModel(3,8,"Drums",0,0,0,0,127,0,127,0,false)
+        val part=StylePartModel("Rhythm1",listOf(on(7,17,3),
+            StyleNoteEvent(200,false,24,0,3,0xC3)),casm=p,program=-1,bankMsb=126,bankLsb=5)
+        val result=DrumCompatibilityProfile.from(style(listOf(part)))
+        assertArrayEquals(intArrayOf(0,8,7,17,1),result.histogram)
+        assertTrue(result.header.contains("src=3 dst=8 headerBank=126:5 headerPC=-1 PCknown=false dynamicBankPC=true identity=UNKNOWN"))
+        assertEquals(3,p.sourceChannel)
+    }
+    @Test fun compactUnicodeHeaderIsBoundedAndOmissionsAreExplicit() {
+        val part=StylePartModel("鼓".repeat(200),listOf(on(7,17)),program=1)
+        val parsed=ParsedStyle("音".repeat(10000),480,(0..250).associate {
+            "Section $it" to StyleSectionModel("Section $it",1,listOf(part)) })
+        val result=DrumCompatibilityProfile.from(parsed)
+        assertTrue(result.complete)
+        assertEquals(251*5,result.histogram.size)
+        assertTrue(result.header.toByteArray(Charsets.UTF_8).size <= 8*1024)
+        assertFalse(result.header.contains("exportOmittedRows=0 "))
+        assertTrue(result.header.contains("routingUnknown is separate."))
+    }
+    @Test fun compactHonorsDuplicatePolicyAndZeroVelocityExclusionWithoutMaskEvaluation() {
+        val p=CasmPolicyModel(9,9,"Drums",0,0,0,0,127,0,127,0,false,chordMuteMask=0)
+        val part=StylePartModel("Rhythm2",listOf(on(31,110),on(21,0),StyleNoteEvent(300,false,31,0,9)),
+            casmPolicies=listOf(p,p.copy(chordMuteMask=-1)))
+        val result=DrumCompatibilityProfile.from(style(listOf(part)))
+        assertTrue(result.complete)
+        assertArrayEquals(intArrayOf(0,9,31,110,1),result.histogram)
+        assertTrue(result.header.contains("Masks/mutes/overrides and actual sent/sample voices are UNKNOWN"))
+        assertEquals(0L,p.chordMuteMask)
+    }
+
 }
 

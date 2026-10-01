@@ -137,6 +137,23 @@ fun Sf2StyleInspectorDialog(
                     }
                 }) { Text("SAVE CHORD (SMALL)") }
 
+                OutlinedButton(enabled = !exportBusy && !state.isPlaying, onClick = {
+                    exportBusy = true
+                    exportScope.launch {
+                        try {
+                            val report = viewModel.compactDrumCompatibilityReport()
+                            val fileName = withContext(Dispatchers.IO) {
+                                saveChordReport(chordContext, report, "YamahaArranger_DrumCompatibility")
+                            }
+                            Toast.makeText(chordContext, if (fileName != null)
+                                "DRUM ${(report.toByteArray(Charsets.UTF_8).size + 1023) / 1024} KiB: Downloads/YamahaArranger/$fileName"
+                                else "Gagal menyimpan DRUM", Toast.LENGTH_LONG).show()
+                        } finally { exportBusy = false }
+                    }
+                }) { Text("SAVE DRUM (SMALL)") }
+                Text("STOP first. Source demand / active preset / eligible zones; musical identity unknown. Max 48 KiB.",
+                    color = InspectorDim, fontSize = 10.sp)
+
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(enabled = !exportBusy, onClick = viewModel::diagnosticSoloStrings2) { Text("SOLO STRINGS2") }
                     Text("Unmutes ch14, mutes ch8–13/15. Play a full MainD section; restore mix with existing mute controls.",
@@ -448,11 +465,11 @@ private fun saveInspectorReport(context: Context, state: MainUiState, kitAudit: 
 }
 
 
-private fun saveChordReport(context: Context, report: String): String? {
+private fun saveChordReport(context: Context, report: String, prefix: String = "YamahaArranger_ChordCapture"): String? {
     val bytes = report.toByteArray(Charsets.UTF_8)
     if(bytes.size > 48 * 1024) return null
     val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-    val name = "YamahaArranger_ChordCapture_$stamp.txt"
+    val name = "${prefix}_$stamp.txt"
     var target: android.net.Uri? = null
     return try {
         val values = ContentValues().apply {

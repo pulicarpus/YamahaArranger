@@ -192,6 +192,30 @@ int main(int argc, char** argv) {
     const auto richDrumPath=dir+"/Rich Drum.sf2";
     { std::ofstream out(richDrumPath,std::ios::binary);out.write(reinterpret_cast<const char*>(richDrum.data()),richDrum.size()); }
     check(player.loadDrum(richDrumPath),"dedicated richer drum fixture loaded");
+    player.setChannelPreset(9,128,73,"Drums");
+    const auto compactHistory=mock_bass::history;
+    const auto compactEvents=mock_bass::events;
+    const auto compactMaps=mock_bass::mappings;
+    const auto compactPreload=std::make_tuple(mock_bass::preloadedFont,mock_bass::preloadBank,mock_bass::preloadProgram,mock_bass::preloadFlags);
+    const auto drumCompact=player.drumCompatibilityReport({{0,9,60,26,1},{1,9,31,110,8}});
+    check(drumCompact.find("requestPC=73 effectivePC=1 actualKnown=1 actualBank=128 actualPC=1")!=std::string::npos,
+          "compact export reads actual getter separately from request and existing fallback");
+    check(drumCompact.find("fallbackReason=requested_PC_absent_existing_first_available")!=std::string::npos,
+          "compact reason proves missing PC fallback from unchanged cache and actual getter");
+    check(drumCompact.find("Quiet sample")!=std::string::npos && drumCompact.find("key=31 vel=110 activeGap=1 status=MISSING_ZONE")!=std::string::npos,
+          "native compact export binds cached real SF2 zones to actual source and velocity");
+    check(mock_bass::history==compactHistory && mock_bass::events==compactEvents &&
+          mock_bass::mappings.size()==compactMaps.size() && std::memcmp(mock_bass::mappings.data(),compactMaps.data(),compactMaps.size()*sizeof(BASS_MIDI_FONTEX2))==0,
+          "compact export does not send MIDI or change any FONTEX2 mapping");
+    check(compactPreload==std::make_tuple(mock_bass::preloadedFont,mock_bass::preloadBank,mock_bass::preloadProgram,mock_bass::preloadFlags) &&
+          (mock_bass::streamFlags & BASS_MIDI_NOTEOFF1),"compact export preserves preload NOWAIT and stream NOTEOFF1");
+    mock_bass::mismatchPreset=true;
+    check(player.drumCompatibilityReport({{0,9,60,26,1}}).find("fallbackReason=unknown_actual_differs_from_existing_cache_result")!=std::string::npos,
+          "actual preset mismatch is not relabelled as verified fallback");
+    mock_bass::mismatchPreset=false;
+    player.setChannelPreset(9,128,1,"Drums");
+    check(player.drumCompatibilityReport({{0,9,60,26,1}}).find("fallbackReason=same_PC_in_existing_cache_not_Yamaha_identity_proof")!=std::string::npos,
+          "same PC is not represented as exact Yamaha musical identity");
     const auto savedEvents=mock_bass::events;
     const auto savedFont=mapping(13).font;
     const int savedOns=mock_bass::noteOns;

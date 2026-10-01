@@ -46,5 +46,6 @@ class NativeAudioBridge @Inject constructor() {
     external fun nativeDiagnosticDrumWav(bank: Int, pc: Int, key: Int, velocity: Int): ByteArray
     external fun nativeGetNoteZoneReport(): String
     external fun nativeGetDrumKitCoverage(histogram: IntArray): String
+    external fun nativeGetDrumCompatibilityReport(histogram: IntArray): String
 }
 

@@ -280,3 +280,7 @@ std::string AudioEngine::sfChordDiagnosticReport() const { return soundFont_.cho
 
 void AudioEngine::sfMarkChordDiagnostic(int64_t id) { soundFont_.markChordDiagnostic(id); }
 std::string AudioEngine::sfCompactChordDiagnosticReport() const { return soundFont_.compactChordDiagnosticReport(); }
+
+std::string AudioEngine::sfDrumCompatibilityReport(const std::vector<drum_compat::Demand>& demand) const {
+    return soundFont_.drumCompatibilityReport(demand);
+}

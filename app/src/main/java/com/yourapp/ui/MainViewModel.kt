@@ -608,6 +608,16 @@ class MainViewModel @Inject constructor(
         DebugLog.add("DIAGNOSTIC SOLO Strings2 ch14=UNMUTED otherStyleChannels=MUTED; wait a full MainD section for new notes")
     }
 
+    suspend fun compactDrumCompatibilityReport(): String {
+        if (uiState.value.isPlaying) return "DRUM COMPATIBILITY unavailable: STOP before export\n"
+        val style = drumAuditStyle ?: return "DRUM COMPATIBILITY unavailable: load a style first\n"
+        return withContext(Dispatchers.Default) {
+            val profile = com.yourapp.yamahaarranger.arranger.DrumCompatibilityProfile.from(style)
+            // Capture after STOP; no resets, audition, preset activation or controller writes.
+            profile.header + audioEngine.drumCompatibilityReport(profile.histogram)
+        }
+    }
+
     suspend fun drumKitAuditReport(): String {
         val style = drumAuditStyle ?: return "DRUM KIT AUDIT unavailable: load a style first\n"
         return withContext(Dispatchers.Default) {

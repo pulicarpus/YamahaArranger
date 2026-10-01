@@ -8,6 +8,7 @@
 #include "chord_change_diagnostic.h"
 #include "sf2_zone_diagnostic.h"
 #include "drum_kit_audit.h"
+#include "drum_compatibility_report.h"
 #include <bass.h>
 #include <bassmidi.h>
 
@@ -42,6 +43,7 @@ public:
     std::vector<unsigned char> diagnosticDrumWav(int bank,int pc,int key,int velocity);
     std::string noteZoneReport() const;
     std::string drumKitCoverage(const std::vector<drum_audit::Hit>& hits) const;
+    std::string drumCompatibilityReport(const std::vector<drum_compat::Demand>& demand) const;
 private:
     struct ChannelState {
         int bankMsb = 0;

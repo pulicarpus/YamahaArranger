@@ -11,6 +11,7 @@ on:
       - feat/voice-resolver-v2-multisf2
       - feat/family-preserving-multisf2
       - diag/audio-path-presence
+      - diag/drum-compatibility-compact
     paths-ignore:
       - "docs/**"
       - "PROJECT_NOTES.md"
