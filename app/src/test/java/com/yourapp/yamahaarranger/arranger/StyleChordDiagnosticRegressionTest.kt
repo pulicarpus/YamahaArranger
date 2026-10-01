@@ -5,8 +5,17 @@ import com.yourapp.yamahaarranger.audio.AudioEngineManager
 import com.yourapp.yamahaarranger.chord.ChordQuality
 import com.yourapp.yamahaarranger.chord.DetectedChord
 import com.yourapp.yamahaarranger.style.CasmPolicyModel
+import com.yourapp.yamahaarranger.style.StyleNoteEvent
+import com.yourapp.yamahaarranger.style.StylePartModel
+import com.yourapp.yamahaarranger.style.StyleSectionModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
+import java.util.Collections
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
+import kotlin.concurrent.thread
 import org.junit.Assert.*
 import org.junit.Test
 import org.mockito.Mockito.*
@@ -39,13 +48,33 @@ class StyleChordDiagnosticRegressionTest {
         }
         @Suppress("UNCHECKED_CAST")
         fun seed(policy: CasmPolicyModel, alternatives: List<CasmPolicyModel> = listOf(policy), output: Int = 60,
-                 src:Int=5, destination:Int=13, onId:Long=100L) {
+                 src:Int=5, destination:Int=13, onId:Long=100L, sourceNote:Int=60,
+                 velocity:Int=26, sourceBank:Int=1029, headerPc:Int=49):Any {
             val field = StyleSequencer::class.java.getDeclaredField("activeTransposedNotes").apply { isAccessible = true }
             val cls = Class.forName("com.yourapp.yamahaarranger.arranger.StyleSequencer\$ActiveTransposedNote")
             val constructor = cls.declaredConstructors.single { it.parameterCount == 13 }.apply { isAccessible = true }
-            val active = constructor.newInstance(src, 60, destination, output, 26, policy, alternatives,
-                "Strings source", "MainD", 1029, 49, 200L, onId)
-            (field.get(sequencer) as MutableMap<String, Any>)["$src:60"] = active
+            val active = constructor.newInstance(src, sourceNote, destination, output, velocity, policy, alternatives,
+                "Strings source", "MainD", sourceBank, headerPc, 200L, onId)
+            (field.get(sequencer) as MutableMap<String, Any>)["$src:$sourceNote"] = active
+            return active
+        }
+        fun retarget(owner:Any, chord:DetectedChord) {
+            StyleSequencer::class.java.getDeclaredMethod("retargetActive",owner.javaClass,DetectedChord::class.java)
+                .apply { isAccessible=true }.invoke(sequencer,owner,chord)
+        }
+        fun scheduledOff(src:Int, note:Int):Boolean =
+            StyleSequencer::class.java.getDeclaredMethod("endScheduledNote",Int::class.javaPrimitiveType,Int::class.javaPrimitiveType)
+                .apply { isAccessible=true }.invoke(sequencer,src,note) as Boolean
+        fun release(owner:Any,id:Long) {
+            StyleSequencer::class.java.getDeclaredMethod("releaseActive",owner.javaClass,Long::class.javaPrimitiveType)
+                .apply { isAccessible=true }.invoke(sequencer,owner,id)
+        }
+        fun normalPianoOn(p:CasmPolicyModel) {
+            val complete=CountDownLatch(1)
+            val section=StyleSectionModel("MainD",0,listOf(StylePartModel("Piano",
+                listOf(StyleNoteEvent(0,true,65,81,11)),casm=p,program=0,bankMsb=104,bankLsb=21)))
+            sequencer.playSeamless(section,1920,loopLimit=1,onComplete={ complete.countDown() })
+            assertTrue("real scheduler completes",complete.await(5,TimeUnit.SECONDS))
         }
     }
     private fun run(armed: Boolean, p: CasmPolicyModel, chords: List<DetectedChord>, output: Int = 60,
@@ -181,5 +210,73 @@ class StyleChordDiagnosticRegressionTest {
         val after=t.report();t.record { "LATE" };assertEquals(after,t.report())
         t.stop();assertTrue(t.report().contains("CHORD_CHANGE"))
         t.arm();assertTrue(t.report().contains("rows=0 cap=2048 dropped=0"))
+    }
+    private fun pianoPolicy()=CasmPolicyModel(11,11,"Piano",0,0,1,2,11,0,127,1,false)
+    @Test fun endedGToCOwnerCannotAddReplacementFourMillisecondsBeforeNormalPianoOn() {
+        val t=Fixture();val p=pianoPolicy();t.sequencer.currentChord=g
+        val snapshotOwner=t.seed(p,output=67,src=11,destination=11,onId=1977L,sourceNote=65,
+            velocity=73,sourceBank=13333,headerPc=0)
+        t.sequencer.armChordDiagnostic();clearInvocations(t.audio,t.midi)
+        // Deterministic event clock reproduces report +109ms stale / +113ms
+        // normal. No real-time sleeps or change to the production clock.
+        val eventMs=AtomicLong(1)
+        val ons=Collections.synchronizedList(mutableListOf<Pair<Long,Int>>())
+        doAnswer { call -> ons.add(eventMs.get() to call.getArgument<Int>(1));null }
+            .`when`(t.audio).noteOnStyleChannel(anyInt(),anyInt(),anyFloat(),anyInt(),anyInt(),anyInt(),anyLong(),anyLong(),anyBoolean(),anyLong(),anyInt())
+        assertTrue(t.scheduledOff(11,65))
+        t.sequencer.currentChord=c
+        eventMs.set(109);t.retarget(snapshotOwner,c)
+        t.collect();assertEquals(listOf("OFF 11 67"),t.events)
+        assertTrue(t.sequencer.chordDiagnosticReport().contains("stage=STALE_OWNER_SKIP"))
+        eventMs.set(113);t.normalPianoOn(p);t.collect()
+        assertEquals(listOf(113L to 64),ons.toList())
+        assertEquals(listOf("OFF 11 67","ON 11 64 ${81/127f}"),t.events)
+        val normal=t.identities.single()
+        assertEquals(65,normal[4]);assertEquals(0,normal[10])
+        verify(t.midi,times(1)).sendNoteOn(11,64,81)
+        verify(t.midi,never()).sendNoteOn(11,64,73)
+    }
+    @Test fun validReplacementCannotBeEndedBetweenOwnerValidationAndNewOn() {
+        val t=Fixture();val p=pianoPolicy();t.sequencer.currentChord=g
+        val owner=t.seed(p,output=67,src=11,destination=11,onId=1977L,sourceNote=65,velocity=73)
+        t.sequencer.armChordDiagnostic();clearInvocations(t.audio,t.midi)
+        val offEntered=CountDownLatch(1);val allowReplacement=CountDownLatch(1)
+        val scheduledStarted=CountDownLatch(1);val scheduledDone=CountDownLatch(1)
+        val failure=AtomicReference<Throwable>()
+        doAnswer { call ->
+            if(call.getArgument<Int>(0)==11 && call.getArgument<Int>(1)==67) {
+                offEntered.countDown();check(allowReplacement.await(5,TimeUnit.SECONDS))
+            };null
+        }.`when`(t.audio).noteOffStyleChannel(anyInt(),anyInt(),anyInt(),anyInt(),anyInt(),anyLong(),anyLong(),anyLong(),anyInt())
+        val replacement=thread(name="RTR-owner",isDaemon=true) {
+            try { t.retarget(owner,c) } catch(e:Throwable) { failure.compareAndSet(null,e) }
+        }
+        var scheduled:Thread?=null
+        try {
+            assertTrue(offEntered.await(5,TimeUnit.SECONDS))
+            scheduled=thread(name="scheduled-off",isDaemon=true) {
+                scheduledStarted.countDown()
+                try { check(t.scheduledOff(11,65)) } catch(e:Throwable) { failure.compareAndSet(null,e) }
+                finally { scheduledDone.countDown() }
+            }
+            assertTrue(scheduledStarted.await(5,TimeUnit.SECONDS))
+            assertFalse("off cannot interleave inside replacement",scheduledDone.await(100,TimeUnit.MILLISECONDS))
+        } finally {
+            allowReplacement.countDown();replacement.join(5000);scheduled?.join(5000)
+        }
+        assertFalse(replacement.isAlive);assertFalse(scheduled?.isAlive==true);assertNull(failure.get())
+        t.collect()
+        assertEquals(listOf("OFF 11 67","ON 11 64 ${73/127f}","OFF 11 64"),t.events)
+        assertEquals(listOf("sendNoteOff","sendNoteOn","sendNoteOff"),mockingDetails(t.midi).invocations.map { it.method.name })
+    }
+    @Test fun replacedOwnerWithEqualFieldsIsSkippedByIdentityWithoutPitchOrEventDeduplication() {
+        val t=Fixture();val p=pianoPolicy();t.sequencer.currentChord=g
+        val old=t.seed(p,output=67,src=11,destination=11,onId=1977L,sourceNote=65,velocity=73)
+        val current=t.seed(p,output=67,src=11,destination=11,onId=1977L,sourceNote=65,velocity=73)
+        assertEquals(old,current);assertNotSame(old,current)
+        t.sequencer.armChordDiagnostic();clearInvocations(t.audio,t.midi)
+        t.retarget(old,c);t.release(old,1977L);t.collect();assertTrue(t.events.isEmpty())
+        t.retarget(current,c);t.collect()
+        assertEquals(listOf("OFF 11 67","ON 11 64 ${73/127f}"),t.events)
     }
 }

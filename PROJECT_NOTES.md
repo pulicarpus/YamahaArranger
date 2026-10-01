@@ -1,5 +1,13 @@
 # YamahaArranger — Catatan Proyek
 
+## Latest checkpoint — Stale G→C retarget owner fix (2026-10-01)
+
+- Branch `diag/audio-path-presence`; parent `0637cb6e4211fa3a7a6049464b557962d2eaf639`, baseline app **#763 / a8da981**. [Checkpoint](docs/STALE_RETARGET_OWNER_FIX_CHECKPOINT_20261001.md).
+- ChordCapture204523 proves owner1977 ended before replacement2025 nevertheless sent ConcertGrand ON64/73,4ms before normal2028 ON64/81. This is stale source ownership, not preset fallback or pitch/event-ID duplication. Uploaded report is v1; its claimed #763 binary identity is not independently verified.
+- Referential owner validation and shared lifecycle lock make validation plus RTR OFF→ON atomic against normal NOTE_OFF/NOTE_ON, release and STOP. Ended/replaced owners send nothing; capture records STALE_OWNER_SKIP. Valid owner transform/velocity/voice/RTR behavior preserved. No gain/remap/kit/resolver/CASM/family/sustain/release tuning; scheduler waits/order unchanged.
+- Local363 host checks PASS. Three new regression cases reproduce ended-owner G→C, racing scheduled OFF and equal-field replacement identity;26 targeted JVM cases and APK await existing GitHub CI. No workflow changes.
+- Test next successful APK: warm same MainD/full mix, CAPTURE once, C→F→G→C,2–3s each, final C2s, END→STOP→SAVE CHORD (SMALL). Send only the small v2 ChordCapture and G→C attack/stuck-note observations.
+
 ## Latest checkpoint — Chord onset / coalescing source-note diagnostic (2026-10-01)
 
 - Branch `diag/audio-path-presence`; parent HEAD `c10f4b490316d7b577f37021cf5302a04bd0ac22`; app baseline **Build #762** / `f102b2bdfb5df0204b3a4ce33c7c6bf070d87aab`. Source/APK `a8da9819a89411923e33fa57de5d138df2dcf2b1`, **Build #763 SUCCESS**, run36869697146/job110393988433. Final checkpoint commit changes documentation only. [Checkpoint](docs/CHORD_RETRIGGER_DIAGNOSTIC_CHECKPOINT_20261001.md).
