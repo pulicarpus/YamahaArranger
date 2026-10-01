@@ -71,4 +71,11 @@ The workspace is a partial text inspection snapshot; local git HEAD is not a rem
 
 ## Published APK evidence
 
-Pending candidate source commit and CI run. Do not claim build success or improved sound until verified.
+- **Build #759 SUCCESS**, [run36820172797](https://github.com/pulicarpus/YamahaArranger/actions/runs/36820172797), job110233839617. Source/APK commit `9b1a3a8a1c6e6de18dfd07eaf13bc2b9cea4fbd5`; parent `e7049cc4bca5ef87a421a064c322284d4ae138b1`.
+- [app-debug APK artifact](https://github.com/pulicarpus/YamahaArranger/actions/runs/36820172797/artifacts/11143590135), artifact11143590135, ZIP12,571,987 bytes; archive digest `sha256:31648f3d4c46ab35c2391e16dced9b70583ff81db639583dd7946ba3d1dadc68`. This is the artifact ZIP digest, not an independently hashed APK digest.
+- CI independently printed all322 host checks; compileDebugKotlin/compileDebugUnitTestKotlin and targeted testDebugUnitTest succeeded (two classes,11 source test cases). Real BASS/BASSMIDI C++/JNI compiled for arm64-v8a and armeabi-v7a; assembleDebug succeeded in23s after the unit-test build. Upload and inherited delivery steps succeeded.
+- One candidate build, no speculative musical fix or retry chain. Source compiled directly from checkout; workflow was unchanged. Existing unused audio_engine fields are the native compiler warnings; no diagnostic ABI/compiler failure.
+- Remote source review:21 intended paths; each published blob hash matches the local reviewed version.124 other existing blobs including18 native libraries are unchanged. No main update/PR/merge.
+- Final checkpoint commit only changes PROJECT_NOTES.md and this document. Source/APK remains9b1a3a8 and paths-ignore avoids another APK.
+- Android real-font metadata output, memory/observer overhead, MediaPlayer audition and timbre remain to be tested. Green CI is not device audio evidence.
+

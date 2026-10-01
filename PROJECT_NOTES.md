@@ -2,11 +2,11 @@
 
 ## Latest checkpoint — Actual note-zone / isolated audition diagnostic (2026-10-01)
 
-- Branch `diag/audio-path-presence`, parent `e7049cc4bca5ef87a421a064c322284d4ae138b1`; source candidate and APK run will be recorded after CI. This is instrumentation, not tuning or a musical fix.
+- Branch `diag/audio-path-presence`, parent `e7049cc4bca5ef87a421a064c322284d4ae138b1`; source/APK `9b1a3a8a1c6e6de18dfd07eaf13bc2b9cea4fbd5`, **Build #759 SUCCESS**, run36820172797/job110233839617. Final checkpoint only updates docs; APK source remains9b1a3a8. This is instrumentation, not tuning or a musical fix.
 - [Full checkpoint](docs/NOTE_ZONE_DIAGNOSTIC_CHECKPOINT_20261001.md): actual Bass/Strings NOTE_ON identity captured against live BASS preset; SAVE REPORT expands original-bank SF2 layers, attenuation/envelope generators and modulators. BASS voice sample ID is unavailable, so all matching layers are labelled eligibility evidence, not PCM proof.
 - Drum audit keeps MainD baseline and adds all-section key/velocity coverage plus complete candidate zone/generator detail. Optional Inspector audition uses a separate decode stream/WAV at STOP; never installs a kit or sends normal arranger/external MIDI notes.
 - SOLO STRINGS2 explicitly unmutes14/mutes8–13/15. Wait a new full section for noteOns. Existing mute/controller behavior retained.
-- Local322 host checks pass;14 protected native functions and whole StyleSequencer unchanged. CI must verify11 targeted Kotlin cases and both Android ABIs. No family/resolver/CASM/scheduler/gain/sustain/release/native library/workflow change. Device timbre remains unverified.
+- Local322 host checks pass;14 protected native functions and whole StyleSequencer unchanged. CI passed11 targeted Kotlin cases and both Android ABIs with the real BASS/BASSMIDI SDK. No family/resolver/CASM/scheduler/gain/sustain/release/native library/workflow change. Device timbre remains unverified. [APK app-debug](https://github.com/pulicarpus/YamahaArranger/actions/runs/36820172797/artifacts/11143590135), ZIP12,571,987bytes, artifact11143590135, archiveSHA25631648f3d4c46ab35c2391e16dced9b70583ff81db639583dd7946ba3d1dadc68.
 
 ## Latest checkpoint — Build #758 warm solo evidence (2026-10-01)
 
