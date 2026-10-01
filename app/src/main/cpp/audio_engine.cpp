@@ -183,6 +183,10 @@ void AudioEngine::sfNoteOnChannel(int channel, int midiNote, float velocity01) {
     soundFont_.noteOn(channel, midiNote, velocity01);
 }
 
+void AudioEngine::sfNoteOnStyleChannel(int channel, int midiNote, float velocity01, const AudioPathOrigin& origin) {
+    soundFont_.noteOn(channel, midiNote, velocity01, origin);
+}
+
 void AudioEngine::sfNoteOffChannel(int channel, int midiNote) {
     soundFont_.noteOff(channel, midiNote);
 }
@@ -259,3 +263,4 @@ void AudioEngine::allNotesOff() {
     }
     soundFont_.allNotesOff();
 }
+

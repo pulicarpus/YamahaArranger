@@ -216,6 +216,16 @@ class AudioEngineManager @Inject constructor(
         else noteOn(midiNote, velocity01)
     }
 
+    fun noteOnStyleChannel(channel: Int, note: Int, velocity: Float, sourceChannel: Int,
+        sourceNote: Int, styleBank: Int, tick: Long, id: Long, sampled: Boolean) {
+        if (soundFontLoaded) bridge.nativeSfNoteOnStyleChannel(channel, note, velocity,
+            sourceChannel, sourceNote, styleBank, tick, id, sampled)
+        else {
+            if (sampled) DebugLog.add("AUDIO BRIDGE id=$id ch=$channel NOTE_ON_NATIVE=0 reason=sf2_not_loaded existing_sample_fallback=1")
+            noteOnChannel(channel, note, velocity)
+        }
+    }
+
     fun noteOffChannel(channel: Int, midiNote: Int) {
         DebugLog.traceAudio("NOTE_OFF ch=$channel note=$midiNote sf2=$soundFontLoaded")
         if (soundFontLoaded) bridge.nativeSfNoteOffChannel(channel, midiNote)

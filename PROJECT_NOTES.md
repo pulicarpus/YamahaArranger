@@ -1,14 +1,27 @@
 # YamahaArranger — Catatan Proyek
 
-## Latest checkpoint — Family-preserving multi-SF2 (2026-09-30)
+## Latest checkpoint — Runtime audio-path diagnostic (2026-10-01)
+
+- Branch: `diag/audio-path-presence`; parent/source baseline `ba56c263bdad4c4f9fb00fa59d9ce2d3463656b9` (Build #754).
+- Implementation commit/build: pending publication; final APK evidence will be appended after CI.
+- Device report now confirms the family gate fix works. Remaining subjective issues: Piano dominant, Bass buried, Strings barely audible with Tyros t4 strings slow, snare missing/wrong. Raw latest AllLog was not available; root cause is not proven.
+- This candidate adds correlated STYLE PATH -> AUDIO PATH/LIVE/DRUM diagnostics, actual BASS preset/controller readback, sent/rejected counters, snare38/40 and lifecycle/duration evidence. It does not change gain, preset selection, drum mapping, CASM transforms, Main/Fill timing, sustain, keyboard voices or UI.
+- Tests:210 family policy +26 native routing +22 diagnostic checks pass; audio still requires Android traces.
+- [Full continuation and Android test procedure](docs/AUDIO_PATH_DIAGNOSTIC_CHECKPOINT_20261001.md). Use the same Love Song/Main D/SF2 stack, full mix then short solo passes, clear/export AllLog+Inspector and compare matching event ids. No speculative fix/build chain.
+
+## Historical checkpoint — Family-preserving multi-SF2 (2026-09-30)
 
 - Branch: `feat/family-preserving-multisf2`; parent `512bcc6f23636c22261b718036f5ef389cabe80a`.
-- Implementation commit/build evidence: awaiting publication; update after workflow finishes.
+- Commit terakhir source/APK: `ba56c263bdad4c4f9fb00fa59d9ce2d3463656b9`; family branch HEAD tetap SHA APK ini; pembaruan checkpoint akhir sebelumnya hanya lokal karena write GitHub terputus. Catatan lengkapnya kini disertakan pada branch diagnostic.
+- **Build #754 SUKSES**, workflow run `36749544403`, job `110004325024`; tes CI, build Android dua ABI, upload APK dan Telegram berhasil. Tidak ada retry build.
+- [APK app-debug](https://github.com/pulicarpus/YamahaArranger/actions/runs/36749544403/artifacts/11114086868) / [hasil workflow](https://github.com/pulicarpus/YamahaArranger/actions/runs/36749544403). Archive 12,436,339 bytes, artifact `11114086868`.
+- Diff remote sesuai 21 path yang direncanakan; 108 blob lama lain, termasuk 18 native library/CMake, tetap identik. Source resolver/workflow di GitHub sama dengan snapshot yang diuji.
+- Local workspace adalah snapshot teks untuk review, bukan clone remote; HEAD git lokal bukan SHA APK. Gunakan SHA GitHub di atas untuk melanjutkan.
 - Full continuation document: [family-preserving resolver checkpoint](docs/FAMILY_PRESERVING_RESOLVER_CHECKPOINT_20260930.md).
 - Concrete fix: A.Guitar -> Wide Piano 2 numeric collision now rejected before any score. One family/role-gated policy compares Yamaha + Colombo + optional Tyros globally. No universal Piano fallback; unresolved/failed melodic mapping blocks new notes explicitly.
 - CI mutation scripts are removed; core-first load safety and Colombo admission are in source. Both APK workflows run the same C++ policy/native host tests then compile checked-out source.
-- Before publication: 210 policy + 19 native routing checks pass; 13 protected native functions unchanged; scheduler/CASM/MIDI/layout source unchanged.
-- Android audio remains unverified. Next: test Love Song five melodic parts and dedicated drums; export AllLog/Inspector; inspect VOICE REQUEST/CANDIDATE/POOL/FINAL, MAP and preload. Check optional Tyros memory, reload, RIGHT1/2/3/LEFT and the existing performance regression boundary.
+- Validasi lokal dan CI: 210 policy + 19 native routing checks pass; 13 protected native functions unchanged; scheduler/CASM/MIDI/layout source unchanged.
+- Before latest device report, Android audio was unverified. Latest report confirms family gate but weak orchestration. Earlier planned checks: test Love Song five melodic parts and dedicated drums; export AllLog/Inspector; inspect VOICE REQUEST/CANDIDATE/POOL/FINAL, MAP and preload. Check optional Tyros memory, reload, RIGHT1/2/3/LEFT and the existing performance regression boundary.
 - This checkpoint supersedes historical suggestions below permitting Piano for a non-Piano request when its family is absent, Sax -> Clarinet, and cross-family fallback. Those paths are prohibited now. Historical findings are retained for context.
 
 ## Historical checkpoint Voice Resolver — Build 743 → next test

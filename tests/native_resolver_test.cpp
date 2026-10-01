@@ -1,5 +1,6 @@
 #include "bassmidi_player.h"
 #include <jni.h>
+#include <android/log.h>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
@@ -73,6 +74,31 @@ int main(int argc, char** argv) {
     for (const auto& d: mock_bass::mappings) if (d.minchan==8 && d.numchan==2 && d.dbank==128)
         dedicated |= mock_bass::fonts[d.font].find("Drum")!=std::string::npos;
     check(dedicated,"Drum font/mappings survive melodic pool changes");
+    // Diagnostic reads must not change MIDI delivery or controller values.
+    player.setChannelMixer(12,80,64,0,0,0);
+    mock_bass::logs.clear();
+    const int diagBefore=mock_bass::noteOns;
+    player.noteOn(12,60,0.5f,AudioPathOrigin{5,62,1040,1234,42,true});
+    check(mock_bass::noteOns==diagBefore+1,"Diagnostics add no extra NOTE_ON or gain/mute fix");
+    auto logged=[](const std::string& needle) {
+        for(const auto& line:mock_bass::logs) if(line.find(needle)!=std::string::npos) return true;
+        return false;
+    };
+    check(logged("CC7=80 CC11=0 NOTE_ON_SENT=1"),"Actual BASS controllers expose zero expression despite accepted note");
+    check(logged("mappingMatch=1")&&logged("src=5 original=62 output=60"),"Live mapping readback correlates transformed source metadata");
+    mock_bass::mismatchPreset=true;
+    player.noteOn(12,62,0.5f,AudioPathOrigin{5,64,1040,1235,43,true});
+    check(logged("mappingMatch=0"),"Live mismatch cannot be presented as matching mapping");
+    mock_bass::mismatchPreset=false;
+    mock_bass::failNote=true;
+    player.noteOn(12,63,0.5f,AudioPathOrigin{5,65,1040,1236,44,true});
+    check(logged("reason=bass_event_failed"),"NOTE_ON_SENT follows actual API failure");
+    mock_bass::failNote=false;
+    mock_bass::logs.clear();
+    player.noteOn(9,38,0.8f,AudioPathOrigin{9,38,126*128,1237,45,true});
+    check(logged("expected=GM_ACOUSTIC_SNARE")&&logged("NOTE_ON_SENT=1"),"Dedicated snare trace includes actual delivery");
+    player.noteOn(9,40,0.6f,AudioPathOrigin{9,38,126*128,1238,46,true});
+    check(logged("original=38 remapped=1"),"Drum note changes are observed without introducing remap");
     mock_bass::failMapping=true;
     player.setChannelPreset(12,1040,1,"A.Guitar");
     const int failed=mock_bass::noteOns; player.noteOn(12,60,1);

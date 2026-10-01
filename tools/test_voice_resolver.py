@@ -23,3 +23,9 @@ with tempfile.TemporaryDirectory(prefix="yamaha-resolver-") as directory:
                     str(root / "app/src/main/cpp/bassmidi_player.cpp"),
                     "-o", str(native_executable)], check=True)
     subprocess.run([str(native_executable), directory], check=True)
+    diagnostic_executable = Path(directory) / "audio_path_diagnostic_test"
+    subprocess.run([compiler, "-std=c++17", "-Wall", "-Wextra", "-Werror", "-O2",
+                    "-I", str(root / "app/src/main/cpp"),
+                    str(root / "tests/audio_path_diagnostic_test.cpp"),
+                    "-o", str(diagnostic_executable)], check=True)
+    subprocess.run([str(diagnostic_executable)], check=True)

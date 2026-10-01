@@ -21,6 +21,7 @@ public:
     void noteOn(int midiNote,int rootNote,float velocity01,const float* sampleData,size_t sampleFrames,int sampleRateHz);
     void noteOff(int midiNote); void allNotesOff();
     void sfNoteOnChannel(int channel,int midiNote,float velocity01);
+    void sfNoteOnStyleChannel(int channel,int midiNote,float velocity01,const AudioPathOrigin& origin);
     void sfNoteOffChannel(int channel,int midiNote);
     void sfSetChannelPreset(int channel,int bank,int program);
     void sfSetChannelPresetWithName(int channel,int bank,int program,const std::string& voiceName);
@@ -39,3 +40,4 @@ private:
     BassMidiPlayer soundFont_;
     float dcLastInL_=0,dcLastOutL_=0,dcLastInR_=0,dcLastOutR_=0;
 };
+

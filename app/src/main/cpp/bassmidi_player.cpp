@@ -300,6 +300,7 @@ bool BassMidiPlayer::applyFonts() {
              static_cast<unsigned>(flags), BASS_ErrorGetCode());
         return false;
     }
+    ++fontMappingGeneration_;
     LOGI("BASSMIDI FONTEX2 applied: entries=%u flags=%u",
          static_cast<unsigned>(count), static_cast<unsigned>(flags));
 
@@ -494,6 +495,7 @@ void BassMidiPlayer::unload() {
     }
 
     for (auto& ch : channels_) ch = ChannelState{};
+    audioDiagnostics_ = {};
     melodyPath_.clear();
     melodyBassPath_.clear();
     drumPath_.clear();
@@ -503,15 +505,26 @@ void BassMidiPlayer::unload() {
     drumDrumPresetCache_.clear();
 }
 
-void BassMidiPlayer::send(int channel, DWORD event, DWORD param) {
-    if (!stream_) return;
+bool BassMidiPlayer::send(int channel, DWORD event, DWORD param) {
+    if (!stream_) return false;
     channel = std::max(0, std::min(15, channel));
 
-    if (!BASS_MIDI_StreamEvent(stream_, static_cast<DWORD>(channel), event, param)) {
+    const bool sent = BASS_MIDI_StreamEvent(stream_, static_cast<DWORD>(channel), event, param);
+    if (!sent) {
         LOGE("MIDI event failed ch=%d event=%u param=%u error=%d",
              channel, static_cast<unsigned>(event),
              static_cast<unsigned>(param), BASS_ErrorGetCode());
     }
+    if (sent && channel >= 4) {
+        auto& d = audioDiagnostics_[channel];
+        int* tracked = event == MIDI_EVENT_VOLUME ? &d.cc7 : event == MIDI_EVENT_EXPRESSION ? &d.cc11 : nullptr;
+        if (tracked && *tracked != static_cast<int>(param)) {
+            *tracked = static_cast<int>(param);
+            LOGI("AUDIO CC ch=%d cc=%d value=%u sent=1", channel,
+                 event == MIDI_EVENT_VOLUME ? 7 : 11, static_cast<unsigned>(param));
+        }
+    }
+    return sent;
 }
 
 namespace {
@@ -960,9 +973,84 @@ void BassMidiPlayer::preloadCurrentPreset(int channel) {
          state.bankMsb, state.bankLsb, sourceProgram, state.melodySourceName.c_str(), state.program);
 }
 
-void BassMidiPlayer::noteOn(int channel, int key, float velocity) {
+void BassMidiPlayer::logAudioPath(int channel, int key, int velocity, bool sent, int error,
+                                  const AudioPathOrigin& origin, const char* reason, uint64_t now) {
+    if (channel < 4 || channel > 15) return; // Keyboard parts are untouched.
+    if (!now) now = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count());
+    auto& d = audioDiagnostics_[channel];
+    const int cc7 = static_cast<int>(BASS_MIDI_StreamGetEvent(stream_, channel, MIDI_EVENT_VOLUME));
+    const int cc11 = static_cast<int>(BASS_MIDI_StreamGetEvent(stream_, channel, MIDI_EVENT_EXPRESSION));
+    d.on(key, velocity, sent, cc7, cc11, now, channel == 8 || channel == 9);
+    const auto& state = channels_[channel];
+    const bool drum = channel == 8 || channel == 9;
+    const bool special = drum && (audio_path::snare(key) || audio_path::snare(origin.sourceNote));
+    if (d.sample(now, special) || origin.sampled) {
+        HSOUNDFONT expected = drum ? (drumFont_ ? drumFont_ : melodyFont_) : melodyFont_;
+        const std::vector<NormalizedBankMap>* banks = &normalizedBanks_;
+        std::string sourcePath = drum ? (drumFont_ ? drumPath_ : melodyPath_) : melodyPath_;
+        if (!drum && state.melodySource > 0 && static_cast<size_t>(state.melodySource) <= secondaryMelodies_.size()) {
+            const auto& secondary = secondaryMelodies_[state.melodySource - 1];
+            expected = secondary.font; banks = &secondary.banks; sourcePath = secondary.path;
+        }
+        int expectedBank = state.melodySourceBank;
+        int expectedPc = state.melodySourceProgram;
+        if (drum) {
+            expectedBank = 128; expectedPc = state.program;
+            findDrumPreset(sourcePath, state.program, expectedBank, expectedPc); // Read the existing cache only.
+        }
+        else for (const auto& b : *banks) if (b.rawBank == expectedBank) { expectedBank = b.virtualBank; break; }
+        BASS_MIDI_FONT live{};
+        const bool liveOk = BASS_MIDI_StreamGetPreset(stream_, channel, &live);
+        const char* liveName = liveOk ? BASS_MIDI_FontGetPreset(live.font, live.preset, live.bank) : nullptr;
+        std::string livePath = live.font == melodyFont_ ? melodyPath_ : live.font == drumFont_ ? drumPath_ : "UNAVAILABLE";
+        for (const auto& secondary : secondaryMelodies_) if (live.font == secondary.font) livePath = secondary.path;
+        const auto liveSf2 = livePath.substr(livePath.find_last_of("/\\") + 1);
+        BASS_MIDI_FONTINFO info{};
+        const bool infoOk = liveOk && BASS_MIDI_FontGetInfo(live.font, &info);
+        const bool mappingMatch = liveOk && expected == live.font && expectedPc == live.preset &&
+            expectedBank == live.bank;
+        const auto sf2 = sourcePath.substr(sourcePath.find_last_of("/\\") + 1);
+        LOGI("AUDIO PATH id=%lld ch=%d role=%s voice='%.48s' sourceSF2='%.70s' selected='%.48s' requestedPC=%d sourceRawBank=%d srcBank=%d srcPC=%d dstBank=%d:%d dstPC=%d note=%d vel=%d CC7=%d CC11=%d NOTE_ON_SENT=%d error=%d reason=%s",
+             static_cast<long long>(origin.id), channel, drum ? "DRUM" : voice_resolver::familyName(voice_resolver::namedFamily(state.melodySourceName)),
+             state.requestedVoiceName.c_str(), sf2.c_str(), drum ? (liveName ? liveName : "UNAVAILABLE") : state.melodySourceName.c_str(),
+             d.requestedPc, drum ? live.bank : state.melodySourceBank, expectedBank, expectedPc, state.bankMsb, state.bankLsb, state.program,
+             key, velocity, cc7, cc11, sent ? 1 : 0, error, reason);
+        LOGI("AUDIO LIVE id=%lld ch=%d mapGen=%llu expectedFont=%u liveOk=%d liveFont=%u liveBank=%d livePC=%d liveSF2='%.70s' preset='%.64s' mappingMatch=%d src=%d original=%d output=%d styleBank=%d:%d tick=%lld samload=%llu samsize=%llu infoOk=%d evidence=event_and_preset_not_audibility",
+             static_cast<long long>(origin.id), channel, static_cast<unsigned long long>(fontMappingGeneration_),
+             static_cast<unsigned>(expected), liveOk ? 1 : 0, static_cast<unsigned>(live.font), live.bank, live.preset,
+             liveSf2.c_str(), liveName ? liveName : "UNAVAILABLE", mappingMatch ? 1 : 0, origin.sourceChannel, origin.sourceNote,
+             key, origin.styleBank < 0 ? -1 : origin.styleBank / 128, origin.styleBank < 0 ? -1 : origin.styleBank % 128,
+             static_cast<long long>(origin.tick), static_cast<unsigned long long>(info.samload),
+             static_cast<unsigned long long>(info.samsize), infoOk ? 1 : 0);
+        if (drum) LOGI("DRUM PATH id=%lld ch=%d kit='%.64s' requestedKitPC=%d kitFallback=%d note=%d expected=%s original=%d remapped=%d liveBank=%d livePC=%d NOTE_ON_SENT=%d expectation=GM_label_only_XG_sample_unverified",
+             static_cast<long long>(origin.id), channel, liveName ? liveName : "UNAVAILABLE", d.requestedPc, liveOk && d.requestedPc >= 0 && live.preset != d.requestedPc ? 1 : 0, key,
+             audio_path::drumName(key), origin.sourceNote, origin.sourceNote >= 0 && origin.sourceNote != key ? 1 : 0,
+             live.bank, live.preset, sent ? 1 : 0);
+    }
+    if (d.summaryDue(now)) {
+        const auto& s = d.stats;
+        LOGI("AUDIO SUMMARY ch=%d attempts=%llu sent=%llu rejected=%llu velMin=%d velMean=%.1f velMax=%d CC7=%d CC11=%d zeroCC=%llu controlProxyMean=%.4f snare38=%llu/%llu snare40=%llu/%llu offs=%llu shortOff_lt80ms=%llu heldMean_ms=%.1f orphanOff=%llu pendingSentOns=%u ledgerOverflow=%llu window=about2s proxy=not_audio_energy",
+             channel, static_cast<unsigned long long>(s.attempts), static_cast<unsigned long long>(s.sent), static_cast<unsigned long long>(s.rejected),
+             s.attempts ? s.velocityMin : -1, s.attempts ? double(s.velocitySum) / s.attempts : 0.0, s.velocityMax, cc7, cc11,
+             static_cast<unsigned long long>(s.ccZero), s.attempts ? s.controlLevelSum / s.attempts : 0.0,
+             static_cast<unsigned long long>(s.snare38Sent), static_cast<unsigned long long>(s.snare38),
+             static_cast<unsigned long long>(s.snare40Sent), static_cast<unsigned long long>(s.snare40),
+             static_cast<unsigned long long>(s.offs), static_cast<unsigned long long>(s.shortOffs),
+             s.durations ? double(s.durationSum) / s.durations : 0.0, static_cast<unsigned long long>(s.orphanOffs),
+             static_cast<unsigned>(d.pending()), static_cast<unsigned long long>(s.ledgerOverflow));
+        d.resetSummary();
+    }
+}
+
+void BassMidiPlayer::noteOn(int channel, int key, float velocity, const AudioPathOrigin& origin) {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (!ensureEngine()) return;
+    if (!ensureEngine()) {
+        logAudioPath(std::clamp(channel, 0, 15), std::clamp(key, 0, 127),
+                     std::clamp(static_cast<int>(std::lround(velocity * 127.0f)), 1, 127),
+                     false, BASS_ErrorGetCode(), origin, "engine_unavailable", 0);
+        return;
+    }
 
     channel = std::max(0, std::min(15, channel));
     key = std::max(0, std::min(127, key));
@@ -972,13 +1060,18 @@ void BassMidiPlayer::noteOn(int channel, int key, float velocity) {
     // A failed family gate must not fall through to BASSMIDI's generic font
     // mappings/default Piano. Dedicated Rhythm channels keep their old path.
     if (channel != 8 && channel != 9 && channels_[channel].initialized &&
-        channels_[channel].melodySourceProgram < 0) return;
+        channels_[channel].melodySourceProgram < 0) {
+        logAudioPath(channel, key, vel, false, 0, origin, "family_or_mapping_reject", 0);
+        return;
+    }
 
     // Never overwrite the channel's program/bank here. MIDI Voyager keeps
     // instrument state separate from note events; doing a forced Program 0
     // on every note was one of the diagnostic build's major correctness bugs.
-    send(channel, MIDI_EVENT_NOTE,
-         static_cast<DWORD>(key | (vel << 8)));
+    const bool sent = send(channel, MIDI_EVENT_NOTE,
+                           static_cast<DWORD>(key | (vel << 8)));
+    const int error = sent ? 0 : BASS_ErrorGetCode();
+    logAudioPath(channel, key, vel, sent, error, origin, sent ? "bass_event_accepted" : "bass_event_failed", 0);
 }
 
 void BassMidiPlayer::noteOff(int channel, int key) {
@@ -987,14 +1080,24 @@ void BassMidiPlayer::noteOff(int channel, int key) {
 
     channel = std::max(0, std::min(15, channel));
     key = std::max(0, std::min(127, key));
-    send(channel, MIDI_EVENT_NOTE, static_cast<DWORD>(key));
+    const bool sent = send(channel, MIDI_EVENT_NOTE, static_cast<DWORD>(key));
+    if (channel >= 4) {
+        const auto now = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()).count());
+        auto& d = audioDiagnostics_[channel];
+        const auto held = d.off(key, sent, now);
+        if (d.sample(now, (channel == 8 || channel == 9) && audio_path::snare(key)))
+            LOGI("AUDIO OFF ch=%d note=%d NOTE_OFF_SENT=%d held_ms=%lld pendingSentOns=%u interpretation=diagnostic_ledger_not_synth_voices",
+                 channel, key, sent ? 1 : 0, static_cast<long long>(held), static_cast<unsigned>(d.pending()));
+    }
 }
 
 void BassMidiPlayer::allNotesOff() {
     std::lock_guard<std::mutex> lock(mutex_);
     if (!stream_) return;
     for (int ch = 0; ch < 16; ++ch) {
-        send(ch, MIDI_EVENT_NOTESOFF, 0);
+        const bool sent = send(ch, MIDI_EVENT_NOTESOFF, 0);
+        if (ch >= 4 && sent) audioDiagnostics_[ch].allOff();
     }
 }
 
@@ -1005,6 +1108,10 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program, const 
     channel = std::max(0, std::min(15, channel));
     const int requestedBank = bank;
     program = std::max(0, std::min(65535, program));
+    if (channel >= 4) {
+        audioDiagnostics_[channel].requestedBank = requestedBank;
+        audioDiagnostics_[channel].requestedPc = program;
+    }
 
     // The Kotlin side represents Yamaha bank select as one 14-bit value:
     // MSB * 128 + LSB. BASSMIDI keeps the two MIDI controllers separate,

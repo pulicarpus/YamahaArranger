@@ -744,6 +744,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             if (sourceChannel != null) dynamicBankBySource[sourceChannel] = msb * 128 + lsb
         }
 
+        val audioPath = StyleAudioPathDiagnostic(section.name)
+        StyleAudioPathDiagnostic.inventory(section)
         for(s in merged){
             val absoluteTick=startAbsoluteTick+s.tick.toLong()
             val transition = pendingTransition
@@ -813,8 +815,18 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                 continue
             }
 
-            if(policy==null&&chord!=null&&s.event.isNoteOn&&!isRhythmSource(s.event.channel))continue
+            val diagChannel = policy?.destinationChannel ?: s.event.channel
+            val diagId = if (s.event.isNoteOn) audioPath.observe(diagChannel) else 0L
+            val diagBank = dynamicBankBySource[s.event.channel] ?: (s.part.bankMsb * 128 + s.part.bankLsb)
+            fun diagnostic(stage: String, output: Int = -1, detail: String = ""): Boolean = audioPath.event(
+                diagId, diagChannel, s.event.channel, s.event.note, output, s.event.velocity,
+                diagBank, absoluteTick, policy?.voiceName ?: "UNKNOWN", stage, detail)
+            if(policy==null&&chord!=null&&s.event.isNoteOn&&!isRhythmSource(s.event.channel)) {
+                diagnostic("DROP_NO_POLICY_WITH_CHORD")
+                continue
+            }
             if(s.event.isNoteOn&&isUnsupportedArticulation(policy)){
+                diagnostic("DROP_UNSUPPORTED_ARTICULATION")
                 com.yourapp.yamahaarranger.ui.DebugLog.add("🔇 SUPPRESS " + (policy?.voiceName ?: "unknown") + " src" + s.event.channel + ":" + s.event.note + " (MegaVoice articulation unsupported by SF2)")
                 continue
             }
@@ -826,6 +838,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                     if(active.destinationChannel==13)com.yourapp.yamahaarranger.ui.DebugLog.add("🎻 STRING NOTEOFF src"+active.sourceChannel+":"+active.sourceNote+" dst13 note="+active.outputNote)
                     audioEngine.noteOffChannel(active.destinationChannel,active.outputNote)
                     midiInputManager.sendNoteOff(active.destinationChannel,active.outputNote)
+                } else {
+                    diagnostic("OFF_NO_ACTIVE_LEDGER", detail = "NOTE_OFF_FORWARDED=0 oneShotDrumMayBeNormal=1")
                 }
                 continue
             }
@@ -833,12 +847,13 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             val sourceChannel=s.event.channel
             val destinationChannel=policy?.destinationChannel?:sourceChannel
             if(destinationChannel in 0..3){
+                diagnostic("DROP_RESERVED_KEYBOARD")
                 com.yourapp.yamahaarranger.ui.DebugLog.add("  · style event src"+sourceChannel+":"+s.event.note+": SKIP dst"+destinationChannel+" (reserved for keyboard voices)")
                 continue
             }
-            if(destinationChannel in lockedChannels)continue
+            if(destinationChannel in lockedChannels) { diagnostic("DROP_LOCKED"); continue }
             val channelOverride=channelOverrides[destinationChannel]
-            if(channelOverride?.muted==true)continue
+            if(channelOverride?.muted==true) { diagnostic("DROP_MUTED"); continue }
 
             val key=sourceChannel.toString()+":"+s.event.note
             val previousActive=activeTransposedNotes[key]
@@ -853,7 +868,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             val transformed=if(policy!=null&&!isDrumPart){
                 chord?.let{CasmNoteTransformer.transform(s.event.note,it,policy)}?:s.event.note.coerceIn(0,127)
             }else s.event.note.coerceIn(0,127)
-            val note=((transformed?:continue)+(channelOverride?.transpose?:0)).coerceIn(0,127)
+            if (transformed == null) { diagnostic("DROP_TRANSFORM_NULL"); continue }
+            val note=(transformed+(channelOverride?.transpose?:0)).coerceIn(0,127)
             val velocity=s.event.velocity.coerceIn(1,127)
 
             if(policy!=null&&!isDrumPart){
@@ -863,9 +879,13 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                 if(destinationChannel==13)com.yourapp.yamahaarranger.ui.DebugLog.add("🎼 CASM SELECT src"+sourceChannel+":"+s.event.note+" chord="+chord?.rootNote+"/"+chord?.quality+" → dst"+destinationChannel+" NTR="+(policy.ntr and 0x7f)+" NTT="+(policy.ntt and 0x7f)+" SRC="+policy.sourceChordRoot+"/"+policy.sourceChordType+" range="+policy.sourceNoteLow+"-"+policy.sourceNoteHigh+" RTR="+(policy.rtr and 0x7f))
             }
 
-            audioEngine.noteOnChannel(destinationChannel,note,velocity/127f)
+            val sampled = diagnostic("FORWARD", note,
+                "transformAsMelody=${!isDrumPart} nativeRhythmChannel=${destinationChannel == 8 || destinationChannel == 9} transpose=${channelOverride?.transpose ?: 0}")
+            audioEngine.noteOnStyleChannel(destinationChannel,note,velocity/127f,
+                sourceChannel,s.event.note,diagBank,absoluteTick,diagId,sampled)
             midiInputManager.sendNoteOn(destinationChannel,note,velocity)
         }
+        audioPath.finish()
         val naturalEnd = startAbsoluteTick + section.lengthTicks.coerceAtLeast(0).toLong()
         return if (interruptedByTransition) {
             PlayOnceResult(lastProcessedTick, true)

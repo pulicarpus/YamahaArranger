@@ -3,6 +3,7 @@
 #include <mutex>
 #include <array>
 #include <vector>
+#include "audio_path_diagnostic.h"
 #include <bass.h>
 #include <bassmidi.h>
 
@@ -19,7 +20,7 @@ public:
     bool isMelodyLoaded() const { return stream_ != 0 && melodyFont_ != 0; }
     bool isDrumLoaded() const { return stream_ != 0 && drumFont_ != 0; }
     void render(float* out, int numFrames);
-    void noteOn(int channel, int key, float velocity);
+    void noteOn(int channel, int key, float velocity, const AudioPathOrigin& origin = {});
     void noteOff(int channel, int key);
     void allNotesOff();
     void setChannelPreset(int channel, int bank, int program, const std::string& voiceName = {});
@@ -71,7 +72,11 @@ private:
     void refreshMelodicChannels();
     void invalidateMelodicChannels();
     bool normalizeMelodySf2(const std::string& sourcePath, const std::string& outputPath);
-    void send(int channel, DWORD event, DWORD param);
+    bool send(int channel, DWORD event, DWORD param);
+    void logAudioPath(int channel, int key, int velocity, bool sent, int error,
+                      const AudioPathOrigin& origin, const char* reason, uint64_t now);
+    std::array<audio_path::Channel, 16> audioDiagnostics_{};
+    uint64_t fontMappingGeneration_ = 0;
     void preloadCurrentPreset(int channel);
     void rebuildDrumPresetCache(const std::string& path,
                                 std::vector<DrumPresetEntry>& cache);

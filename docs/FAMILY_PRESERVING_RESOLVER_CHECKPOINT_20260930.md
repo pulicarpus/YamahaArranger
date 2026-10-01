@@ -4,7 +4,7 @@
 
 Development branch: `feat/family-preserving-multisf2`.
 Implementation parent: `512bcc6f23636c22261b718036f5ef389cabe80a` on `feat/colombo-primary-fallback`.
-Implementation commit and APK build/run/artifact: pending publication; the final evidence section below is updated after CI completes.
+Latest implementation commit: `ba56c263bdad4c4f9fb00fa59d9ce2d3463656b9`. APK Build #754 / run `36749544403` succeeded on that exact commit. The attempted subsequent documentation-only commit did not publish; family branch HEAD remains this APK commit. Completed local notes are now preserved on the diagnostic branch.
 Do not merge into main without a separate decision. One concrete wrong-family collision is the purpose of this candidate APK. Do not retune scoring through repeated speculative builds.
 
 ## Evidence inspected before editing
@@ -128,4 +128,19 @@ First review Love Song AllLog/Inspector against this APK's exact implementation 
 
 ## Final build evidence
 
-Pending CI. Update this section and PROJECT_NOTES.md with implementation commit, workflow Build number/run URL, job result, artifact identifier/size, and checkpoint commit lineage. Do not label green CI as proof of correct audio.
+- Implementation commit: `ba56c263bdad4c4f9fb00fa59d9ce2d3463656b9`; parent `512bcc6f23636c22261b718036f5ef389cabe80a`.
+- Branch: `feat/family-preserving-multisf2`.
+- Workflow: `.github/workflows/build.yml`, Build #754, run `36749544403`, job `110004325024`, completed SUCCESS on 2026-09-30.
+- [Workflow run](https://github.com/pulicarpus/YamahaArranger/actions/runs/36749544403).
+- [Download app-debug artifact](https://github.com/pulicarpus/YamahaArranger/actions/runs/36749544403/artifacts/11114086868). Artifact ID `11114086868`, archive size 12,436,339 bytes; contains `app-debug.apk`. Artifact archive SHA256: `5ecf5edc6f5f898d1165bafe5cf51a63a57b0ec7c19617a0b883d7236365c15e` (archive digest, not a separately measured APK-file digest). GitHub currently reports expiry 2026-12-29.
+- CI independently printed PASS:210 policy / PASS:19 native mock checks; real Android SDK/native build and Kotlin packaging passed. Gradle printed BUILD SUCCESSFUL in 1m24s. Upload APK and inherited Telegram delivery steps succeeded.
+- First candidate build succeeded; no failed build/retry or speculative follow-up code changes.
+- Compile warnings were only unused private dcLastIn/Out fields in unchanged `audio_engine.h`; no resolver compilation warning was reported. Do not modify that unrelated area for this task.
+- Verified 21 expected remote changed paths and 108 unrelated existing file blobs unchanged, including all 18 native `.so` libraries and CMake configuration. Remote resolver/header/workflow contents exactly match the locally reviewed/tested versions.
+- Final checkpoint commit has this implementation commit as parent and changes only this document plus PROJECT_NOTES.md. Its SHA is discoverable from the branch HEAD/history; it does not claim a new APK or change compiled source. Documentation-only paths are ignored by the push workflow.
+- Local `/workspace/YamahaArranger` is a text inspection snapshot initialized for diff review, not an authenticated remote clone; its local baseline HEAD is NOT the published implementation SHA. GitHub is authoritative for branch/commit/build identity. Shell clone/auth access was unavailable; publication used GitHub Git-data APIs preserving the remote base tree and binary blobs. A future session should obtain the branch from GitHub rather than treat the local snapshot history as remote history.
+- Audio has not been heard/tested from this APK. Next required evidence is the Android checklist above and user AllLog/Inspector for Build #754.
+
+## Follow-up user evidence — 2026-10-01
+
+User tested Android and reports the family gate works and A.Guitar -> Wide Piano 2 is fixed. Remaining weak Bass/Strings/snare and dominant Piano require event/mapping/controller/lifecycle diagnostics. See AUDIO_PATH_DIAGNOSTIC_CHECKPOINT_20261001.md. Do not rollback/tune this resolver based only on subjective orchestration. The raw newest AllLog was not available to independently establish audio root cause.

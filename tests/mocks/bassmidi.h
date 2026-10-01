@@ -4,6 +4,8 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <fstream>
+#include <tuple>
 constexpr DWORD BASS_CONFIG_MIDI_COMPACT=20, BASS_CONFIG_MIDI_VOICES=21;
 constexpr DWORD BASS_ATTRIB_MIDI_PPQN=30, BASS_ATTRIB_MIDI_SRC=31,
     BASS_ATTRIB_MIDI_VOICES=32, BASS_ATTRIB_MIDI_VOL=33;
@@ -14,6 +16,7 @@ enum { MIDI_EVENT_NOTE=1, MIDI_EVENT_DRUMS, MIDI_EVENT_BANK, MIDI_EVENT_BANK_LSB
 struct BASS_MIDI_FONTEX2 {
     HSOUNDFONT font; int spreset, sbank, dpreset, dbank, dbanklsb, minchan, numchan;
 };
+struct BASS_MIDI_FONT { HSOUNDFONT font=0; int preset=-1, bank=-1; };
 struct BASS_MIDI_FONTINFO { DWORD presets=0; uint64_t samsize=0, samload=0; DWORD samtype=0; const char* name="mock"; };
 namespace mock_bass {
 inline std::map<HSOUNDFONT, std::string> fonts;
@@ -21,22 +24,57 @@ inline std::vector<BASS_MIDI_FONTEX2> mappings;
 inline HSOUNDFONT nextFont=100, preloadedFont=0;
 inline int preloadProgram=-1, preloadBank=-1, noteOns=0;
 inline DWORD preloadFlags=0, streamFlags=0;
-inline bool failMapping=false;
+inline bool failMapping=false, failNote=false, mismatchPreset=false;
+inline std::map<std::pair<int,DWORD>,DWORD> events;
+inline std::map<std::tuple<HSOUNDFONT,int,int>,std::string> presets;
 }
 inline HSTREAM BASS_MIDI_StreamCreate(int, DWORD flags, int) { mock_bass::streamFlags=flags; return 1; }
-inline bool BASS_MIDI_StreamEvent(HSTREAM, DWORD, DWORD event, DWORD value) {
+inline bool BASS_MIDI_StreamEvent(HSTREAM, DWORD chan, DWORD event, DWORD value) {
+    if (event==MIDI_EVENT_NOTE && mock_bass::failNote) return false;
     if (event==MIDI_EVENT_NOTE && value>>8) ++mock_bass::noteOns;
+    mock_bass::events[{chan,event}]=value;
     return true;
 }
 inline HSOUNDFONT BASS_MIDI_FontInit(const char* path, DWORD) {
     if (std::string(path).find("fail")!=std::string::npos) return 0;
-    const auto handle=mock_bass::nextFont++; mock_bass::fonts[handle]=path; return handle;
+    const auto handle=mock_bass::nextFont++; mock_bass::fonts[handle]=path;
+    std::ifstream file(path,std::ios::binary);
+    std::vector<unsigned char> data((std::istreambuf_iterator<char>(file)),std::istreambuf_iterator<char>());
+    if (data.size()>=108) {
+        const int bank=data[54]|(data[55]<<8), pc=data[52]|(data[53]<<8);
+        std::string name(reinterpret_cast<const char*>(data.data()+32),20);
+        name.resize(name.find('\0')==std::string::npos?20:name.find('\0'));
+        mock_bass::presets[{handle,bank,pc}]=name;
+    }
+    return handle;
 }
 inline bool BASS_MIDI_FontFree(HSOUNDFONT h) { mock_bass::fonts.erase(h); return true; }
 inline bool BASS_MIDI_FontSetVolume(HSOUNDFONT, float) { return true; }
 inline bool BASS_MIDI_FontGetInfo(HSOUNDFONT, BASS_MIDI_FONTINFO*) { return true; }
 inline bool BASS_MIDI_FontGetPresets(HSOUNDFONT, DWORD*) { return false; }
-inline const char* BASS_MIDI_FontGetPreset(HSOUNDFONT, int, int) { return nullptr; }
+inline const char* BASS_MIDI_FontGetPreset(HSOUNDFONT h, int pc, int bank) {
+    const auto it=mock_bass::presets.find({h,bank,pc});
+    return it==mock_bass::presets.end()?nullptr:it->second.c_str();
+}
+inline DWORD BASS_MIDI_StreamGetEvent(HSTREAM, DWORD ch, DWORD event) {
+    const auto it=mock_bass::events.find({ch,event});
+    return it!=mock_bass::events.end()?it->second:((event==MIDI_EVENT_VOLUME||event==MIDI_EVENT_EXPRESSION)?127:0);
+}
+inline bool BASS_MIDI_StreamGetPreset(HSTREAM stream, DWORD ch, BASS_MIDI_FONT* live) {
+    const int pc=BASS_MIDI_StreamGetEvent(stream,ch,MIDI_EVENT_PROGRAM);
+    const int msb=BASS_MIDI_StreamGetEvent(stream,ch,MIDI_EVENT_BANK);
+    const int lsb=BASS_MIDI_StreamGetEvent(stream,ch,MIDI_EVENT_BANK_LSB);
+    for (const auto& m:mock_bass::mappings) {
+        if (int(ch)<m.minchan||int(ch)>=m.minchan+m.numchan||m.dbank!=msb||m.dbanklsb!=lsb||
+            (m.dpreset!=-1&&m.dpreset!=pc)) continue;
+        const int sourcePc=m.spreset==-1?pc:m.spreset;
+        if (!BASS_MIDI_FontGetPreset(m.font,sourcePc,m.sbank)) continue;
+        *live={m.font,sourcePc,m.sbank};
+        if (mock_bass::mismatchPreset) live->preset=127;
+        return true;
+    }
+    return false;
+}
 inline bool BASS_MIDI_FontLoadEx(HSOUNDFONT h, int pc, int bank, int, DWORD flags) {
     mock_bass::preloadedFont=h; mock_bass::preloadProgram=pc; mock_bass::preloadBank=bank; mock_bass::preloadFlags=flags;
     return true;
