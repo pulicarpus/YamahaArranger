@@ -160,6 +160,26 @@ fun Sf2StyleInspectorDialog(
                 Text("STOP first. Source demand / active preset / eligible zones; musical identity unknown. Max 48 KiB.",
                     color = InspectorDim, fontSize = 10.sp)
 
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    for (full in listOf(false, true)) {
+                        OutlinedButton(enabled = !exportBusy && !state.isPlaying && !state.sf2ScanInProgress, onClick = {
+                            exportBusy = true
+                            exportScope.launch {
+                                try {
+                                    val saved = saveSf2Metadata(chordContext, viewModel, full)
+                                    Toast.makeText(chordContext,
+                                        if (saved != null) "SF2 metadata: Downloads/YamahaArranger/$saved"
+                                        else "SF2 metadata export failed", Toast.LENGTH_LONG).show()
+                                } catch (error: Exception) {
+                                    Toast.makeText(chordContext, "SF2 metadata: ${error.message}", Toast.LENGTH_LONG).show()
+                                } finally { exportBusy = false }
+                            }
+                        }) { Text(if (full) "FULL METADATA (ZIP)" else "EXPORT SF2 METADATA") }
+                    }
+                }
+                Text("STOP first. All managed SF2 files; compact semantic index max 48 KiB. Full ZIP optional. Reading large fonts may take time.",
+                    color = InspectorDim, fontSize = 10.sp)
+
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(enabled = !exportBusy, onClick = viewModel::diagnosticSoloStrings2) { Text("SOLO STRINGS2") }
                     Text("Unmutes ch14, mutes ch8–13/15. Play a full MainD section; restore mix with existing mute controls.",
@@ -532,5 +552,35 @@ private fun saveDrumAuditionWav(context: Context, wav: ByteArray, bank: Int, pc:
     } catch (_: Exception) {
         target?.let { runCatching { context.contentResolver.delete(it, null, null) } }
         null
+    }
+}
+
+
+/** Stream full metadata to compressed storage; no giant report String or sample data retained. */
+private suspend fun saveSf2Metadata(context: Context, viewModel: MainViewModel, full: Boolean): String? {
+    val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+    val name = if (full) "YamahaArranger_SF2MetadataFull_$stamp.zip" else "YamahaArranger_SemanticInventory_$stamp.txt"
+    return withContext(Dispatchers.IO) {
+        var target: android.net.Uri? = null
+        try {
+            val values = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, name)
+                put(MediaStore.MediaColumns.MIME_TYPE, if (full) "application/zip" else "text/plain")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/YamahaArranger")
+                put(MediaStore.MediaColumns.IS_PENDING, 1)
+            }
+            target = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                ?: return@withContext null
+            val output = context.contentResolver.openOutputStream(target!!) ?: error("output unavailable")
+            val summary = output.use { viewModel.exportSf2Metadata(it, full) }
+            context.contentResolver.update(target!!, ContentValues().apply {
+                put(MediaStore.MediaColumns.IS_PENDING, 0)
+            }, null, null)
+            DebugLog.add("SF2 METADATA files=${summary.files} valid=${summary.valid} failed=${summary.failed} compactBytes=${summary.compactBytes} playback=UNCHANGED")
+            name
+        } catch (error: Exception) {
+            target?.let { runCatching { context.contentResolver.delete(it, null, null) } }
+            throw error
+        }
     }
 }

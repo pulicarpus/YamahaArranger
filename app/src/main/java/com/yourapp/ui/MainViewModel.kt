@@ -608,6 +608,15 @@ class MainViewModel @Inject constructor(
         DebugLog.add("DIAGNOSTIC SOLO Strings2 ch14=UNMUTED otherStyleChannels=MUTED; wait a full MainD section for new notes")
     }
 
+    /** File-only scanner: no AudioEngineManager/ArrangerBrain calls, no import or cache writes. */
+    suspend fun exportSf2Metadata(output: java.io.OutputStream, full: Boolean): com.yourapp.audio.Sf2SemanticInventory.Summary {
+        check(!uiState.value.isPlaying) { "STOP before SF2 metadata export" }
+        return withContext(Dispatchers.IO) {
+            val sources = contentResolver.sf2MetadataSources()
+            com.yourapp.audio.Sf2SemanticInventory.export(sources, output, full)
+        }
+    }
+
     suspend fun compactDrumCompatibilityReport(comparison: String = ""): String {
         if (uiState.value.isPlaying) return "DRUM COMPATIBILITY unavailable: STOP before export\n"
         val style = drumAuditStyle ?: return "DRUM COMPATIBILITY unavailable: load a style first\n"

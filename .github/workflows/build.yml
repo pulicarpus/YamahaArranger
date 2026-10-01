@@ -12,6 +12,7 @@ on:
       - feat/family-preserving-multisf2
       - diag/audio-path-presence
       - diag/drum-compatibility-compact
+      - diag/sf2-semantic-inventory
     paths-ignore:
       - "docs/**"
       - "PROJECT_NOTES.md"
@@ -76,7 +77,7 @@ jobs:
           gradle-version: 8.7
       - name: Build debug APK
         run: |
-          gradle testDebugUnitTest --tests '*StyleExpressionRegressionTest' --tests '*DrumStyleAuditProfileTest' --tests '*StyleChordDiagnosticRegressionTest' --stacktrace
+          gradle testDebugUnitTest --tests '*StyleExpressionRegressionTest' --tests '*DrumStyleAuditProfileTest' --tests '*StyleChordDiagnosticRegressionTest' --tests '*Sf2SemanticInventoryTest' --tests '*Sf2MetadataReadOnlyTest' --stacktrace
           gradle assembleDebug --stacktrace
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4

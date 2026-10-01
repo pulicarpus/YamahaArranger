@@ -318,6 +318,10 @@ class ContentResolverProvider @Inject constructor(
             ?.map { Uri.fromFile(it) to it.name }
             ?: emptyList()
     }
+    /** Read-only diagnostic discovery; unlike listSoundFonts this never creates the folder. */
+    fun sf2MetadataSources(): com.yourapp.audio.Sf2SemanticInventory.Discovery =
+        com.yourapp.audio.Sf2SemanticInventory.discover(sf2RootDir)
+
     fun copySoundFontToCache(uri: Uri, displayName: String): File? {
         val dir = File(context.cacheDir, "sf2").apply { mkdirs() }
         val dest = File(dir, displayName)
