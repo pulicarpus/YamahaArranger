@@ -1,5 +1,13 @@
 # YamahaArranger — Catatan Proyek
 
+## Latest checkpoint — Build #758 warm solo evidence (2026-10-01)
+
+- [Warm/solo checkpoint](docs/BUILD758_WARM_SOLO_CHECKPOINT_20261001.md) records AllLog120026 hash and line evidence. APK/source remains #758/1fd6a82. All372 sampled notes accepted/matched;248 source/native velocity pairs unchanged, maximum gap11ms; full MainD~13.71s. Cold loading does not explain all remaining warm-session symptoms.
+- Strings1 solo confirmed: Tyros0/49, keys52/60/64, velocity26, CC7/11=127/127, still reported nearly inaudible. Later Bass solo also127/127 and reported weak; rawCC7=52 is not the sole explanation. Sample/envelope/PCM remains unmeasured. Strings2 was muted11:59:24.697 and never unmuted; its solo is not demonstrated here.
+- Rhythm2 solo12:00:02.138–10.709:60 bridge noteOns/26 native samples, allch9; no new Piano/Guitar noteOns. DedicatedPC0 still falls back from73, key31 zone still absent. Listening description does not prove cross-family routing. PC36/1/24 compatibility remains unverified; prior21-kit ranking applies.
+- Mute/unmute uses overridevolume127 instead of restoring raw style controllers. CC11 fix remains: StringsCC7 changes100→0/127 through user actions, with no62 reset. Compare solo levels with these changed controllers in mind.
+- Next evidence: melodic Tyros49/BASS8/17 zones/sample/envelope or PCM, plus semantic identification of candidate drum samples. Repeating identical AllLog does not resolve those gaps. No source fix/build; all regression boundaries preserved.
+
 ## Latest checkpoint — Build #758 runtime verified / 21-kit results (2026-10-01)
 
 - Branch `diag/audio-path-presence`; read-only baseline HEAD `ee74bf507bbbcf360dee2a84d570150623f7ed49`. Source/APK tetap `1fd6a820555b93b9e8a11bb2faa5261b4286ff92`, **Build #758 SUCCESS**, run36806478056. Continuation ini hanya dokumen; tidak ada source fix/build baru.
