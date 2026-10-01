@@ -35,3 +35,8 @@ with tempfile.TemporaryDirectory(prefix="yamaha-resolver-") as directory:
                     str(root / "tests/sf2_zone_diagnostic_test.cpp"),
                     "-o", str(zone_executable)], check=True)
     subprocess.run([str(zone_executable)], check=True)
+    kit_executable = Path(directory) / "drum_kit_audit_test"
+    subprocess.run([compiler, "-std=c++17", "-Wall", "-Wextra", "-Werror", "-O2",
+                    "-I", str(root / "app/src/main/cpp"),
+                    str(root / "tests/drum_kit_audit_test.cpp"), "-o", str(kit_executable)], check=True)
+    subprocess.run([str(kit_executable)], check=True)

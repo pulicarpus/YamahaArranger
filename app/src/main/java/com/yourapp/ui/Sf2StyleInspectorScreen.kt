@@ -31,6 +31,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,6 +46,9 @@ import java.util.Locale
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private val InspectorBg = Color(0xFF101114)
 private val InspectorPanel = Color(0xFF1B1D21)
@@ -62,6 +66,8 @@ fun Sf2StyleInspectorDialog(
     val state by viewModel.uiState.collectAsState()
     var tab by remember { mutableStateOf(0) }
     var query by remember { mutableStateOf("") }
+    val exportScope = rememberCoroutineScope()
+    var exportBusy by remember { mutableStateOf(false) }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -78,15 +84,23 @@ fun Sf2StyleInspectorDialog(
                         Text("Diagnostic view • no changes to arranger playback", color = InspectorDim, fontSize = 9.sp)
                     }
                     val context = LocalContext.current
-                    OutlinedButton(onClick = {
-                        val fileName = saveInspectorReport(context, state)
-                        Toast.makeText(
-                            context,
-                            if (fileName != null) "Inspector disimpan: Downloads/YamahaArranger/$fileName"
-                            else "Gagal menyimpan inspector",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }) { Text("SAVE REPORT") }
+                    OutlinedButton(enabled = !exportBusy, onClick = {
+                        exportBusy = true
+                        exportScope.launch {
+                            try {
+                                val kitAudit = viewModel.drumKitAuditReport()
+                                val fileName = withContext(Dispatchers.IO) {
+                                    saveInspectorReport(context, state, kitAudit)
+                                }
+                                Toast.makeText(
+                                    context,
+                                    if (fileName != null) "Inspector disimpan: Downloads/YamahaArranger/$fileName"
+                                    else "Gagal menyimpan inspector",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            } finally { exportBusy = false }
+                        }
+                    }) { Text(if (exportBusy) "EXPORTING…" else "SAVE REPORT") }
                     Spacer(Modifier.width(6.dp))
                     OutlinedButton(onClick = onDismiss) { Text("CLOSE") }
                 }
@@ -272,13 +286,16 @@ private fun ResolverInspector(state: MainUiState) {
     }
 }
 
-private fun saveInspectorReport(context: Context, state: MainUiState): String? {
+private fun saveInspectorReport(context: Context, state: MainUiState, kitAudit: String): String? {
     val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
     val fileName = "YamahaArranger_Inspector_$stamp.txt"
 
     val report = buildString {
         appendLine("YAMAHA ARRANGER — SF2 / STYLE INSPECTOR")
         appendLine("Generated: $stamp")
+        appendLine()
+        appendLine("=== ALL LOADED DEDICATED DRUM KITS / MAIND COVERAGE ===")
+        appendLine(kitAudit)
         appendLine()
         appendLine("=== SF2 ===")
         appendLine("Loaded SF2: ${state.soundFontName}")

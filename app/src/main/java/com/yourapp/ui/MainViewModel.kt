@@ -564,6 +564,18 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    // Snapshot of the parsed style for explicit read-only Inspector export.
+    // Does not record inside the note/timing loop or modify ArrangerBrain.
+    private var drumAuditStyle: com.yourapp.yamahaarranger.style.ParsedStyle? = null
+
+    suspend fun drumKitAuditReport(): String {
+        val style = drumAuditStyle ?: return "DRUM KIT AUDIT unavailable: load a style first\n"
+        return withContext(Dispatchers.Default) {
+            val profile = com.yourapp.yamahaarranger.arranger.DrumStyleAuditProfile.from(style)
+            profile.header + audioEngine.drumKitCoverage(profile.histogram)
+        }
+    }
+
     fun onStyleFilePicked(uri: Uri) {
         viewModelScope.launch {
             val bytes = withContext(Dispatchers.IO) { contentResolver.readBytes(uri) }
@@ -576,6 +588,7 @@ class MainViewModel @Inject constructor(
             val fileName = uriFileName ?: contentResolver.fileName(uri) ?: "style.sty"
             val parsed = withContext(Dispatchers.Default) { styleRepository.loadStyle(fileName, bytes) }
             if (parsed == null) { DebugLog.add("❌ Parse fail: $fileName"); return@launch }
+            drumAuditStyle = parsed
             arrangerBrain.loadStyle(parsed)
             _voiceAssignments.value = voiceSlotsFromStyle(parsed)
             _styleName.value = fileName

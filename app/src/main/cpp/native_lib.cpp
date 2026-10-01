@@ -90,6 +90,20 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_Nativ
     const std::string safePresets = sanitizeUtf8ForJni(presets.c_str());
     return env->NewStringUTF(safePresets.c_str());
 }
+extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeGetDrumKitCoverage(JNIEnv* env,jobject,jintArray histogram){
+    if(!g_engine) return env->NewStringUTF("DRUM KIT AUDIT unavailable: audio engine absent\n");
+    if(!histogram) return env->NewStringUTF("DRUM KIT AUDIT unavailable: histogram absent\n");
+    const jsize n=env->GetArrayLength(histogram);
+    if(n%4 || n>131072) return env->NewStringUTF("DRUM KIT AUDIT unavailable: invalid histogram length\n");
+    std::vector<jint> values(n);
+    env->GetIntArrayRegion(histogram,0,n,values.data());
+    if(env->ExceptionCheck()) return nullptr;
+    std::vector<drum_audit::Hit> hits;
+    for(jsize i=0;i<n;i+=4) hits.push_back({values[i],values[i+1],values[i+2],values[i+3]});
+    const auto report=g_engine->sfDrumKitCoverage(hits);
+    const auto safe=sanitizeUtf8ForJni(report.c_str());
+    return env->NewStringUTF(safe.c_str());
+}
 extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeParseStyle(JNIEnv* env,jobject,jbyteArray styBytes){if(styBytes==nullptr)return JNI_FALSE;jsize len=env->GetArrayLength(styBytes);std::vector<uint8_t>buf(len);env->GetByteArrayRegion(styBytes,0,len,reinterpret_cast<jbyte*>(buf.data()));g_lastParsedStyle=std::make_unique<StyleParser>();return g_lastParsedStyle->parse(buf.data(),buf.size())?JNI_TRUE:JNI_FALSE;}
 extern "C" JNIEXPORT jint JNICALL Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeGetSectionCount(JNIEnv*,jobject){return g_lastParsedStyle?static_cast<jint>(g_lastParsedStyle->sections().size()):0;}
 extern "C" JNIEXPORT jint JNICALL Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeGetPpq(JNIEnv*,jobject){return g_lastParsedStyle?g_lastParsedStyle->ppq():480;}

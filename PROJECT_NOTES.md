@@ -1,5 +1,15 @@
 # YamahaArranger — Catatan Proyek
 
+## Kandidat berikutnya — audit seluruh kit drum / fix CC11
+
+- Branch `diag/audio-path-presence`; parent HEAD `882505d44cf0f08a2834c067cb62ba2c246455da`, baseline APK #756 `8def797ace9da1646784e74c7f1019b278eee7ab`. Commit fix CC11 `8344604838cd9e4cae903c45218592f80d1d486d`; commit/build/artifact kandidat audit dicatat setelah CI selesai.
+- [Checkpoint lengkap](docs/DRUM_ALL_KIT_CHECKPOINT_20261001.md) mencakup file, keputusan, boundary, bukti/hipotesis, tes Android dan langkah lanjut. [Histogram baseline](docs/BUILD756_MAIND_DRUM_HISTOGRAM.csv).
+- SAVE REPORT mengekspor coverage/ranking semua kit dari cache dedicated SF2 yang sudah loaded terhadap seluruh bin key/velocity MainD. Tidak mengirim test notes, mengganti kit, meremap31/38/40 atau mengubah gain. Coverage bukan bukti timbre. SF2 tidak perlu diupload.
+- Fix terpisah yang terbukti: style CC11 memakai expression-only setter existing sehingga tidak resend raw CC7=62 di atas effective100. Event CC7 baru tetap bekerja; mute/volume pengguna dan override expression dipertahankan.
+- 296 host checks lulus pada source; CI menjalankan dua kelas JUnit targeted10tests sebelum APK. Family gate/native playback/CASM/scheduler/timing tetap.
+- Android: load font yang sama +Love Song, STOP, Inspector SAVE REPORT; harapkan21kits/213hits/10keys dengan Rhythm1=117,Rhythm2=96. Lalu MainD, exportAllLog untuk memeriksa Strings1CC7=100 tetap saatCC11 berubah. Kirim kedua report, bukanSF2.
+
+
 ## Latest checkpoint — Runtime evidence and drum-zone candidate (2026-10-01)
 
 - Branch `diag/audio-path-presence`; baseline APK #755 source `cf5e41565c1f8668795b850bf594ac4a7c48a348`, baseline docs HEAD `b1ae2a23d1788094cece469293543504c6b4a597`. Commit source/APK terbaru `8def797ace9da1646784e74c7f1019b278eee7ab`; **Build #756 SUKSES**, run36799888326 / job110171617935. Checkpoint HEAD sesudahnya hanya dokumentasi.

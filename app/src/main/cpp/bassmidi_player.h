@@ -5,6 +5,7 @@
 #include <vector>
 #include "audio_path_diagnostic.h"
 #include "sf2_zone_diagnostic.h"
+#include "drum_kit_audit.h"
 #include <bass.h>
 #include <bassmidi.h>
 
@@ -31,6 +32,7 @@ public:
     void setKeyboardReleaseTime(int releaseTime);
     void setMasterGain(float gain);
     std::string presetList() const;
+    std::string drumKitCoverage(const std::vector<drum_audit::Hit>& hits) const;
 private:
     struct ChannelState {
         int bankMsb = 0;

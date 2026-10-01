@@ -31,6 +31,7 @@ public:
     void sfSetKeyboardReleaseTime(int releaseTime);
     void sfSetMasterGain(float gain);
     std::string sfPresetList() const;
+    std::string sfDrumKitCoverage(const std::vector<drum_audit::Hit>& hits) const;
     oboe::DataCallbackResult onAudioReady(oboe::AudioStream*,void*,int32_t) override;
 private:
     std::shared_ptr<oboe::AudioStream> stream_;

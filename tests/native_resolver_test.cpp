@@ -106,6 +106,16 @@ int main(int argc, char** argv) {
     check(logged("DRUM ZONE ch=9 key=21 vel=42")&&logged("metadataKnown=0"),"Incomplete SF2 zone metadata cannot be claimed as missing sample proof");
     player.noteOn(9,40,0.6f,AudioPathOrigin{9,38,126*128,1238,46,true});
     check(logged("original=38 remapped=1"),"Drum note changes are observed without introducing remap");
+    const auto eventsBeforeAudit=mock_bass::events;
+    const auto fontBeforeAudit=mapping(12).font;
+    check(player.drumKitCoverage({{9,31,110,8},{9,21,42,32}}).find("unavailable")!=std::string::npos,
+          "Incomplete cached metadata fails explicitly rather than inventing kit coverage");
+    check(mock_bass::events==eventsBeforeAudit && mapping(12).font==fontBeforeAudit,
+          "Explicit all-kit audit sends no MIDI events and does not alter FONTEX2");
+    player.setChannelMixer(13,100,64,127,40,0);
+    player.setChannelExpression(13,126);
+    check(mock_bass::events[{13,MIDI_EVENT_VOLUME}]==100 && mock_bass::events[{13,MIDI_EVENT_EXPRESSION}]==126,
+          "Native expression-only boundary preserves effective CC7=100");
     mock_bass::failMapping=true;
     player.setChannelPreset(12,1040,1,"A.Guitar");
     const int failed=mock_bass::noteOns; player.noteOn(12,60,1);

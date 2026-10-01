@@ -32,6 +32,7 @@ int main() {
     const auto data=fixture();const auto inventory=sf2_zones::parse(data);
     check(inventory.valid,"full metadata accepted");
     check(inventory.presets.size()==1,"dedicated drum preset only");
+    check(inventory.presetNames.at({128,0})=="Yamaha Kit","actual phdr preset name cached for all-kit export");
     check(!sf2_zones::match(inventory,128,73,21,25).known,"absent PC73 is unknown, not invented coverage");
     auto m=sf2_zones::match(inventory,128,0,21,25);
     check(m.known && m.zones==1,"extended key21 eligible at style velocity25");
@@ -47,5 +48,7 @@ int main() {
     Bytes cut=data;cut.pop_back();check(!sf2_zones::parse(cut).valid,"truncated file unknown");
     Bytes empty;check(!sf2_zones::parse(empty).valid,"missing metadata unknown");
     Bytes bad=data;bad[8]='x';check(!sf2_zones::parse(bad).valid,"non-SF2 unknown");
+    Bytes named=data;std::memcpy(named.data()+32,"CLOW D'ACADEMY",std::strlen("CLOW D'ACADEMY"));
+    check(sf2_zones::parse(named).presetNames.at({128,0})=="CLOW D'ACADEMY","preset apostrophe preserved in Inspector inventory");
     std::cout<<"PASS "<<checks<<" SF2 zone metadata checks\n";
 }

@@ -18,6 +18,7 @@ struct Inventory {
     bool valid=false;
     std::string reason="missing_pdta";
     std::map<std::pair<int,int>, std::vector<Zone>> presets;
+    std::map<std::pair<int,int>, std::string> presetNames;
 };
 struct Table { const unsigned char* p=nullptr; size_t n=0, stride=0;
     size_t count() const { return stride ? n/stride : 0; }
@@ -25,16 +26,16 @@ struct Table { const unsigned char* p=nullptr; size_t n=0, stride=0;
 };
 inline uint16_t u16(const unsigned char* p) { return uint16_t(p[0]) | uint16_t(p[1])<<8; }
 inline uint32_t u32(const unsigned char* p) { return uint32_t(u16(p)) | uint32_t(u16(p+2))<<16; }
-inline std::string name(const unsigned char* p) {
+inline std::string name(const unsigned char* p, bool quoteSafe=true) {
     size_t n=0; while(n<20 && p[n]) ++n;
     std::string s(reinterpret_cast<const char*>(p),n);
-    for(auto& c:s) if(static_cast<unsigned char>(c)<32 || static_cast<unsigned char>(c)>126 || c=='\'') c='?';
+    for(auto& c:s) if(static_cast<unsigned char>(c)<32 || static_cast<unsigned char>(c)>126 || (quoteSafe && c=='\'')) c='?';
     return s;
 }
 struct Range { int kl=0,kh=127,vl=0,vh=127; bool key=false,vel=false; int link=-1; };
 inline Inventory parse(const std::vector<unsigned char>& data) {
     Inventory out;
-    auto fail=[&](const char* reason) { out.valid=false; out.reason=reason; out.presets.clear(); return out; };
+    auto fail=[&](const char* reason) { out.valid=false; out.reason=reason; out.presets.clear(); out.presetNames.clear(); return out; };
     if(data.size()<12 || std::memcmp(data.data(),"RIFF",4) || std::memcmp(data.data()+8,"sfbk",4)) return fail("not_sf2");
     const uint64_t end=uint64_t(u32(data.data()+4))+8;
     if(end>data.size() || end<12) return fail("truncated_riff");
@@ -88,6 +89,7 @@ inline Inventory parse(const std::vector<unsigned char>& data) {
         const size_t first=u16(header+24),last=u16(ph.row(p+1)+24);
         if(first>last || last>=pb.count()) return fail("invalid_preset_bags");
         auto& zones=out.presets[{bank,pc}]; Range presetGlobal;
+        out.presetNames[{bank,pc}]=name(header,false);
         for(size_t b=first;b<last;++b) {
             Range pr=zone(pb,pg,b,41);
             if(!ok) return fail("invalid_preset_generators");

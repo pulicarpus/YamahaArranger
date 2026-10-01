@@ -213,6 +213,9 @@ std::string AudioEngine::sfPresetList() const {
 void AudioEngine::sfSetChannelExpression(int channel, int expression) {
     soundFont_.setChannelExpression(channel, expression);
 }
+std::string AudioEngine::sfDrumKitCoverage(const std::vector<drum_audit::Hit>& hits) const {
+    return soundFont_.drumKitCoverage(hits);
+}
 void AudioEngine::sfSetKeyboardSustain(bool enabled) {
     soundFont_.setKeyboardSustain(enabled);
 }

@@ -1,0 +1,11 @@
+channel_zero_based,key,hits_one_full_4bar_section,runtime_bridge_hits_all_MainD_passes,style_velocity_min,style_velocity_max,runtime_velocity_min,runtime_velocity_max,requested_kit_pc,actual_bank,actual_pc,matching_zones_observed,XG_reference_role_PC73_variant_unverified,actual_instrument_sample_zone_names
+8,54,8,11,110,110,110,110,73,128,0,3,Tambourine,"sf2-05/SATRIOMUSIK SF2-08[54-54,40-125,frames=16384,type=1];sf2-05/SATRIOMUSIK SF2-08[54-54,40-125,frames=16384,type=1];sf2-05/SATRIOMUSIK SF2-08[54-54,40-125,frames=16384,type=1] | sf2-05/SATRIOMUSIK SF2-08[54-54,0-39,frames=16384,type=1];sf2-05/SATRIOMUSIK SF2-08[54-54,0-39,frames=16384,type=1];sf2-05/SATRIOMUSIK SF2-08[54-54,0-39,frames=16384,type=1]"
+8,75,6,7,57,110,57,110,73,128,0,2,Claves,"sf2-05/SATRIOMUSIK SF2-43[75-75,0-127,frames=4576,type=4];sf2-05/SATRIOMUSIK SF2-19[75-75,0-127,frames=4576,type=2]"
+8,80,27,37,54,94,54,94,73,128,0,1,Mute Triangle,"sf2-05/SATRIOMUSIK SF2-46[80-80,0-127,frames=395067,type=1]"
+8,81,12,17,60,93,60,93,73,128,0,1,Open Triangle,"sf2-05/SATRIOMUSIK SF2-46[81-81,0-127,frames=395067,type=1]"
+8,82,64,88,28,65,28,65,73,128,0,2,Shaker,"sf2-05/SATRIOMUSIK SF2-47[82-82,0-127,frames=8236,type=1];sf2-05/SATRIOMUSIK SF2-20[82-82,0-127,frames=8236,type=1]"
+9,21,32,45,28,42,28,42,73,128,0,0,Metronome Click (timekeeper),(none)
+9,31,8,11,110,110,110,110,73,128,0,0,Snare Soft (backbeat),(none)
+9,33,16,22,59,94,59,94,73,128,0,2,Kick Soft,"sf2-12/SATRIOMUSIK SF2-42[33-33,89-95,frames=16288,type=1];sf2-12/SATRIOMUSIK SF2-42[33-33,89-95,frames=16288,type=1] | sf2-12/SATRIOMUSIK SF2-42[33-33,0-67,frames=16288,type=1];sf2-12/SATRIOMUSIK SF2-42[33-33,0-67,frames=16288,type=1] | sf2-12/SATRIOMUSIK SF2-42[33-33,75-81,frames=16288,type=1];sf2-12/SATRIOMUSIK SF2-42[33-33,75-81,frames=16288,type=1] | sf2-12/SATRIOMUSIK SF2-42[33-33,68-74,frames=16288,type=1];sf2-12/SATRIOMUSIK SF2-42[33-33,68-74,frames=16288,type=1] | sf2-12/SATRIOMUSIK SF2-42[33-33,82-88,frames=16288,type=1];sf2-12/SATRIOMUSIK SF2-42[33-33,82-88,frames=16288,type=1]"
+9,51,34,47,31,64,31,64,73,128,0,2,Ride Cymbal 1,"sf2-11/SATRIOMUSIK SF2-71[51-51,0-127,frames=415744,type=1];sf2-11/SATRIOMUSIK SF2-71[51-51,0-127,frames=415744,type=1]"
+9,53,6,8,34,64,34,64,73,128,0,2,Ride Bell,"sf2-11/SATRIOMUSIK SF2-73[53-53,0-127,frames=400384,type=1];sf2-11/SATRIOMUSIK SF2-73[53-53,0-127,frames=400384,type=1]"

@@ -238,6 +238,7 @@ class AudioEngineManager @Inject constructor(
 
     fun setChannelVolume(channel: Int, volume: Int) = setChannelMixer(channel, volume=volume)
     fun setChannelExpression(channel: Int, expression: Int) = bridge.nativeSetChannelExpression(channel, expression.coerceIn(0, 127))
+    fun drumKitCoverage(histogram: IntArray): String = bridge.nativeGetDrumKitCoverage(histogram)
     fun setKeyboardSustain(enabled: Boolean) {
         DebugLog.add(if (enabled) "🎹 SUSTAIN: ON" else "🎹 SUSTAIN: OFF")
         bridge.nativeSetKeyboardSustain(enabled)

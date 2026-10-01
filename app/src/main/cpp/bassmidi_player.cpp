@@ -1305,6 +1305,23 @@ void BassMidiPlayer::setMasterGain(float gain) {
                              std::max(0.0f, std::min(1.0f, gain)));
 }
 
+std::string BassMidiPlayer::drumKitCoverage(const std::vector<drum_audit::Hit>& hits) const {
+    sf2_zones::Inventory snapshot;
+    std::string source;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!drumFont_ || drumPath_.empty())
+            return "DRUM KIT AUDIT unavailable: dedicated drum SF2 not loaded\n";
+        const auto it = drumZoneInventories_.find(drumPath_);
+        if (it == drumZoneInventories_.end())
+            return "DRUM KIT AUDIT unavailable: dedicated metadata cache absent\n";
+        snapshot = it->second;
+        source = drumPath_;
+    }
+    // Format outside the synth mutex; never switch FONTEX2 or send test notes.
+    return "Dedicated sourceSF2='" + source + "'\n" + drum_audit::report(snapshot, hits);
+}
+
 std::string BassMidiPlayer::presetList() const {
     std::lock_guard<std::mutex> lock(mutex_);
 

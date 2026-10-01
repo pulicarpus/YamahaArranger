@@ -74,7 +74,9 @@ jobs:
         with:
           gradle-version: 8.7
       - name: Build debug APK
-        run: gradle assembleDebug --stacktrace
+        run: |
+          gradle testDebugUnitTest --tests '*StyleExpressionRegressionTest' --tests '*DrumStyleAuditProfileTest' --stacktrace
+          gradle assembleDebug --stacktrace
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
