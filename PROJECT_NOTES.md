@@ -1,5 +1,13 @@
 # YamahaArranger — Catatan Proyek
 
+## Latest checkpoint — Small focused CHORD CAPTURE export (2026-10-01)
+
+- Branch `diag/audio-path-presence`; parent `7827e4612657b219cbcd176f501a61169915ff61`, app baseline **Build #761** / `29122e0d8707c88d7e4a0aa0b0a1b1b0dd1d45ff`. Candidate source/build identity follows CI. [Checkpoint](docs/CHORD_COMPACT_REPORT_CHECKPOINT_20261001.md).
+- AllLog190755:435 sampled note/preset pairs accepted/matching; ConcertGrand onlych11; nine Piano RTR replacements coincide with C→F→G→C. Actual preset before/after those exact sends remains unproven because full Inspector could not be transmitted. No musical fix is justified yet.
+- New SAVE CHORD (SMALL) writes a separate `YamahaArranger_ChordCapture_*.txt`, **max48KiB UTF-8**, without SF2 zone/kit/inventory dumps. Focused windows retain source/CASM/note IDs, offs/ons, requested bank/program and actual BASS pre/post identity. ch11 evidence has priority; omitted/overflow rows are explicit.
+- Host353 checks pass;15 native playback and6 sequencer methods are identical to#761. No resolver/family/kit/gain/CASM/scheduler/timing/sustain/release change. New Kotlin size/filter regression cases remain in the existing targeted CI class; workflow unchanged.
+- Test: warm MainD/full mix, arm once, C→F→G→C2–3s each, END→STOP→SAVE CHORD (SMALL). Send only the small ChordCapture file plus the audible transition; no large Inspector or repeated AllLog requested.
+
 ## Latest checkpoint — Chord retarget / pre-send active preset capture (2026-10-01)
 
 - Branch `diag/audio-path-presence`, parent `a32a7c14ff166d657b31a448ca823827a349d2a6`; app baseline **Build #759** / `9b1a3a8a1c6e6de18dfd07eaf13bc2b9cea4fbd5`. Source/APK `29122e0d8707c88d7e4a0aa0b0a1b1b0dd1d45ff`, **Build #761 SUCCESS**, run36858495778/job110356623775. Diagnostic only; final HEAD updates docs, APK source stays29122e0.

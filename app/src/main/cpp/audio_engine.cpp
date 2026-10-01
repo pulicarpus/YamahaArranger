@@ -277,3 +277,6 @@ void AudioEngine::sfNoteOffStyleChannel(int channel,int note,const AudioPathOrig
 void AudioEngine::sfArmChordDiagnostic() { soundFont_.armChordDiagnostic(); }
 void AudioEngine::sfStopChordDiagnostic() { soundFont_.stopChordDiagnostic(); }
 std::string AudioEngine::sfChordDiagnosticReport() const { return soundFont_.chordDiagnosticReport(); }
+
+void AudioEngine::sfMarkChordDiagnostic(int64_t id) { soundFont_.markChordDiagnostic(id); }
+std::string AudioEngine::sfCompactChordDiagnosticReport() const { return soundFont_.compactChordDiagnosticReport(); }

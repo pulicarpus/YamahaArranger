@@ -527,6 +527,7 @@ class ArrangerBrain @Inject constructor(
 
     fun armChordDiagnostic() { if (::sequencer.isInitialized) sequencer.armChordDiagnostic() }
     fun stopChordDiagnostic() { if (::sequencer.isInitialized) sequencer.stopChordDiagnostic() }
+    fun compactChordDiagnosticReport(): String = if (::sequencer.isInitialized) sequencer.compactChordDiagnosticReport() else "CHORD STYLE unavailable: load style first"
     fun chordDiagnosticReport(): String = if (::sequencer.isInitialized) sequencer.chordDiagnosticReport() else "CHORD STYLE unavailable: load style first"
 
     fun setStyleChannelMute(channel: Int, muted: Boolean) {

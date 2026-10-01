@@ -121,7 +121,21 @@ fun Sf2StyleInspectorDialog(
                     OutlinedButton(enabled = !exportBusy, onClick = viewModel::armChordDiagnostic) { Text("CAPTURE CHORD (60s)") }
                     OutlinedButton(enabled = !exportBusy, onClick = viewModel::stopChordDiagnostic) { Text("END CAPTURE") }
                 }
-                Text("Play C → F → G → C, end capture, then STOP and SAVE REPORT.", color = InspectorDim, fontSize = 10.sp)
+                Text("Play C → F → G → C, END CAPTURE, STOP, then SAVE CHORD (max 48 KiB).", color = InspectorDim, fontSize = 10.sp)
+
+                val chordContext = LocalContext.current
+                OutlinedButton(enabled = !exportBusy, onClick = {
+                    exportBusy = true
+                    exportScope.launch {
+                        try {
+                            val report = viewModel.compactChordReport()
+                            val fileName = withContext(Dispatchers.IO) { saveChordReport(chordContext, report) }
+                            Toast.makeText(chordContext, if(fileName != null)
+                                "CHORD ${(report.toByteArray(Charsets.UTF_8).size + 1023) / 1024} KiB: Downloads/YamahaArranger/$fileName"
+                                else "Gagal menyimpan CHORD", Toast.LENGTH_LONG).show()
+                        } finally { exportBusy = false }
+                    }
+                }) { Text("SAVE CHORD (SMALL)") }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(enabled = !exportBusy, onClick = viewModel::diagnosticSoloStrings2) { Text("SOLO STRINGS2") }
@@ -433,3 +447,25 @@ private fun saveInspectorReport(context: Context, state: MainUiState, kitAudit: 
     }
 }
 
+
+private fun saveChordReport(context: Context, report: String): String? {
+    val bytes = report.toByteArray(Charsets.UTF_8)
+    if(bytes.size > 48 * 1024) return null
+    val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+    val name = "YamahaArranger_ChordCapture_$stamp.txt"
+    var target: android.net.Uri? = null
+    return try {
+        val values = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, name)
+            put(MediaStore.MediaColumns.MIME_TYPE, "text/plain")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/YamahaArranger")
+        }
+        target = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: return null
+        val stream = context.contentResolver.openOutputStream(target!!) ?: error("output stream unavailable")
+        stream.use { it.write(bytes) }
+        name
+    } catch (_: Exception) {
+        target?.let { runCatching { context.contentResolver.delete(it, null, null) } }
+        null
+    }
+}

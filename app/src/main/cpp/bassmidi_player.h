@@ -28,6 +28,8 @@ public:
     void noteOff(int channel, int key, const AudioPathOrigin& origin = {});
     void armChordDiagnostic();
     void stopChordDiagnostic();
+    void markChordDiagnostic(int64_t id);
+    std::string compactChordDiagnosticReport() const;
     std::string chordDiagnosticReport() const;
     void allNotesOff();
     void setChannelPreset(int channel, int bank, int program, const std::string& voiceName = {});

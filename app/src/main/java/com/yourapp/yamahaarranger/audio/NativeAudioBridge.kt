@@ -28,6 +28,8 @@ class NativeAudioBridge @Inject constructor() {
     external fun nativeSfNoteOnStyleChannel(channel: Int, midiNote: Int, velocity: Float,
         sourceChannel: Int, sourceNote: Int, styleBank: Int, tick: Long, id: Long, sampled: Boolean, chordId: Long, operation: Int)
     external fun nativeArmChordDiagnostic()
+    external fun nativeMarkChordDiagnostic(id: Long)
+    external fun nativeCompactChordDiagnosticReport(): String
     external fun nativeStopChordDiagnostic()
     external fun nativeChordDiagnosticReport(): String
     external fun nativeSfNoteOffStyleChannel(channel: Int, note: Int, sourceChannel: Int,

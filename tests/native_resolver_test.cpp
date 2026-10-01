@@ -175,6 +175,14 @@ int main(int argc, char** argv) {
     player.noteOn(14,60,0.5f,AudioPathOrigin{5,60,1029,100,604,false,701,1});
     check(mock_bass::noteOns==rejectedBefore && player.chordDiagnosticReport().find("stage=NOTE_POST ch=14 src=5 original=60 output=60 velocity=64 styleBank=1029 tick=100 sent=0")!=std::string::npos,
           "chord instrumentation retains the proven family/mapping rejection");
+    const auto messagesBeforeCompact=mock_bass::history;
+    const auto small=player.compactChordDiagnosticReport();
+    check(small.size()<=30*1024 && small.find("NOTE_PRE")!=std::string::npos && small.find("NOTE_POST")!=std::string::npos,
+          "compact native report retains exact before/after evidence within30KiB");
+    check(small.find("control=PROGRAM value=49")!=std::string::npos && small.find("request=1029:49")!=std::string::npos,
+          "compact report carries requested program and labelled control attempt");
+    player.markChordDiagnostic(702);
+    check(mock_bass::history==messagesBeforeCompact,"compact export/window marker send no MIDI and do not alter playback state");
     player.stopChordDiagnostic(); const auto stoppedReport=player.chordDiagnosticReport();
     player.noteOn(13,60,26.0f/127.0f);
     check(player.chordDiagnosticReport()==stoppedReport,"explicit stop freezes the native evidence");

@@ -584,11 +584,17 @@ class MainViewModel @Inject constructor(
 
     fun armChordDiagnostic() {
         arrangerBrain.armChordDiagnostic()
-        DebugLog.add("CHORD CAPTURE armed for 60s; play C -> F -> G -> C, then END CAPTURE and SAVE REPORT")
+        DebugLog.add("CHORD CAPTURE armed for 60s; play C -> F -> G -> C, then END CAPTURE and SAVE CHORD (small file)")
     }
     fun stopChordDiagnostic() {
         arrangerBrain.stopChordDiagnostic()
-        DebugLog.add("CHORD CAPTURE ended; SAVE REPORT includes style + native correlation")
+        DebugLog.add("CHORD CAPTURE ended; SAVE CHORD exports the small focused report")
+    }
+
+    suspend fun compactChordReport(): String = withContext(Dispatchers.Default) {
+        val header = "YAMAHA ARRANGER CHORD CAPTURE (compact)\nStyle=${uiState.value.styleName.take(64)} section=${uiState.value.activeSection} maxFileBytes=49152\nNo SF2 inventories/zone dumps. Channel numbers zero-based.\n"
+        val rows = (arrangerBrain.compactChordDiagnosticReport() + "\n" + audioEngine.compactChordDiagnosticReport()).lineSequence().toList()
+        com.yourapp.yamahaarranger.arranger.ChordReportBounds.lines(header, rows)
     }
 
     fun diagnosticSoloStrings2() {

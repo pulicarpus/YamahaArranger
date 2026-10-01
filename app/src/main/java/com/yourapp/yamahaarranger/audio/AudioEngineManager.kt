@@ -227,6 +227,8 @@ class AudioEngineManager @Inject constructor(
     }
 
     fun armChordDiagnostic() = bridge.nativeArmChordDiagnostic()
+    fun markChordDiagnostic(id: Long) = bridge.nativeMarkChordDiagnostic(id)
+    fun compactChordDiagnosticReport(): String = bridge.nativeCompactChordDiagnosticReport()
     fun stopChordDiagnostic() = bridge.nativeStopChordDiagnostic()
     fun chordDiagnosticReport(): String = bridge.nativeChordDiagnosticReport()
     fun noteOffStyleChannel(channel: Int, note: Int, sourceChannel: Int, sourceNote: Int,

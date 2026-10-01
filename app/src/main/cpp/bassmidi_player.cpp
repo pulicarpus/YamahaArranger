@@ -1642,8 +1642,8 @@ void BassMidiPlayer::render(float* out, int numFrames) {
 void BassMidiPlayer::armChordDiagnostic() {
     std::lock_guard<std::mutex> lock(mutex_);
     chordCapture_.arm();
-    // Baseline all channels, including keyboard; later control rows show changes.
-    for(int ch=0;ch<16;++ch) captureChordState("BASELINE",ch,-1,0,-1,0);
+    // The focused capture keeps ch11 baseline and short chord windows.
+    captureChordState("BASELINE",11,-1,0,-1,0);
 }
 void BassMidiPlayer::stopChordDiagnostic() {
     std::lock_guard<std::mutex> lock(mutex_); chordCapture_.stop();
@@ -1654,11 +1654,14 @@ void BassMidiPlayer::captureChordState(const char* stage,int channel,int key,int
     const auto now=chord_diagnostic::monoNs();
     if(!chordCapture_.active(now)) { chordCapture_.stop(); return; }
     if(channel<0 || channel>15) return;
+    if(!chordCapture_.interested(channel,origin,event!=0,now)) return;
     if(chordCapture_.rows.size()==chord_diagnostic::Capture::cap) { ++chordCapture_.dropped; return; }
     chord_diagnostic::Row row; row.stage=stage; row.origin=origin;
     row.mono=now; row.wall=chord_diagnostic::wallMs(); row.midiOrder=chordMidiOrder_;
     row.channel=channel; row.key=key; row.velocity=velocity; row.sent=sent; row.error=error;
     row.event=event; row.param=param; row.mapGeneration=fontMappingGeneration_;
+    row.controlType=event==MIDI_EVENT_BANK ? "BANK_MSB" : event==MIDI_EVENT_BANK_LSB ? "BANK_LSB" :
+        event==MIDI_EVENT_PROGRAM ? "PROGRAM" : event==MIDI_EVENT_DRUMS ? "DRUM_MODE" : "NOTES_OFF";
     const auto& state=channels_[channel]; const auto& request=audioDiagnostics_[channel];
     row.initialized=state.initialized; row.drum=state.drum;
     row.requestedBank=request.requestedBank>=0 ? request.requestedBank :
@@ -1733,4 +1736,16 @@ std::string BassMidiPlayer::chordDiagnosticReport() const {
             << " CC7=" << row.cc7 << " CC11=" << row.cc11 << '\n';
     }
     return out.str();
+}
+
+void BassMidiPlayer::markChordDiagnostic(int64_t id) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if(!chordCapture_.active() || !id) return;
+    chordCapture_.mark(id);
+    captureChordState("BASELINE",11,-1,0,-1,0);
+}
+std::string BassMidiPlayer::compactChordDiagnosticReport() const {
+    chord_diagnostic::Capture snapshot;
+    { std::lock_guard<std::mutex> lock(mutex_); snapshot=chordCapture_; }
+    return chord_diagnostic::compactReport(snapshot);
 }

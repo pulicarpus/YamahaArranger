@@ -72,6 +72,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     fun armChordDiagnostic() { audioEngine.armChordDiagnostic(); chordTrace.arm() }
     fun stopChordDiagnostic() { chordTrace.stop(); audioEngine.stopChordDiagnostic() }
     fun chordDiagnosticReport(): String = chordTrace.report()
+    fun compactChordDiagnosticReport(): String = chordTrace.compactReport()
 
     private val activeTransposedNotes=mutableMapOf<String,ActiveTransposedNote>()
 
@@ -399,7 +400,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     }
 
     private fun handleNoChord(){
-        chordTrace.begin("previous", "NONE", activeTransposedNotes.size)
+        val captureId=chordTrace.begin("previous", "NONE", activeTransposedNotes.size)
+        if(captureId!=0L) audioEngine.markChordDiagnostic(captureId)
         stringTrace("NO_CHORD active="+activeTransposedNotes.size)
         val snapshot=activeTransposedNotes.values.toList()
         snapshot.forEach{releaseActive(it)}
@@ -407,7 +409,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     }
 
     private fun handleChordChange(newChord:DetectedChord,oldChord:DetectedChord?){
-        chordTrace.begin("${oldChord?.rootNote}/${oldChord?.quality}", "${newChord.rootNote}/${newChord.quality}",activeTransposedNotes.size)
+        val captureId=chordTrace.begin("${oldChord?.rootNote}/${oldChord?.quality}", "${newChord.rootNote}/${newChord.quality}",activeTransposedNotes.size)
+        if(captureId!=0L) audioEngine.markChordDiagnostic(captureId)
         stringTrace("CHORD_CHANGE new="+newChord.rootNote+"/"+newChord.quality+" active="+activeTransposedNotes.size)
         if(activeTransposedNotes.isEmpty()){
             stringTrace("CHORD_CHANGE no-active-notes")

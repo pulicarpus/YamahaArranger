@@ -26,6 +26,8 @@ public:
     void sfNoteOffStyleChannel(int channel,int midiNote,const AudioPathOrigin& origin);
     void sfArmChordDiagnostic();
     void sfStopChordDiagnostic();
+    void sfMarkChordDiagnostic(int64_t id);
+    std::string sfCompactChordDiagnosticReport() const;
     std::string sfChordDiagnosticReport() const;
     void sfSetChannelPreset(int channel,int bank,int program);
     void sfSetChannelPresetWithName(int channel,int bank,int program,const std::string& voiceName);
