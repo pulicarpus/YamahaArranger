@@ -26,9 +26,9 @@ class Sf2MetadataReadOnlyTest {
         val styles = mock(StyleRepository::class.java)
         val state = MainUiState(isPlaying=playing)
         init {
-            doReturn(MutableStateFlow(state)).`when`(vm).uiState
             for ((field,value) in listOf("contentResolver" to files, "audioEngine" to audio,
-                "arrangerBrain" to brain, "midiInputManager" to midi, "styleRepository" to styles)) {
+                "arrangerBrain" to brain, "midiInputManager" to midi, "styleRepository" to styles,
+                "uiState" to MutableStateFlow(state))) {
                 MainViewModel::class.java.getDeclaredField(field).apply { isAccessible=true }.set(vm,value)
             }
             doReturn(Sf2SemanticInventory.Discovery(listOf(Sf2SemanticInventory.Source("id","test.sf2") {
