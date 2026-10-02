@@ -58,6 +58,14 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: "Check out #774 end-to-end baseline (read only)"
+        uses: actions/checkout@v4
+        with:
+          ref: 4b1ca4701d9e955f9feddc2cde1161c537d41260
+          path: .shadow-baseline774
+          persist-credentials: false
+      - name: Verify #774 production trace unchanged
+        run: python3 tools/compare_drum_shadow_baseline.py .shadow-baseline774 --label baseline774
       - name: Accept Android SDK licenses
         run: yes $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
       - name: Set up Android NDK r26d
@@ -100,7 +108,7 @@ jobs:
           gradle-version: 8.7
       - name: Build debug APK
         run: |
-          gradle testDebugUnitTest --tests '*StyleExpressionRegressionTest' --tests '*DrumStyleAuditProfileTest' --tests '*StyleChordDiagnosticRegressionTest' --tests '*Sf2SemanticInventoryTest' --tests '*Sf2MetadataReadOnlyTest' --tests '*ManagedSf2AuditionTest' --tests '*DrumShadowPlannerTest' --tests '*DrumShadowReadOnlyTest' --tests '*DrumSemanticEvidenceRegistryTest' --tests '*DrumEngineeringProofTest' --stacktrace
+          gradle testDebugUnitTest --tests '*StyleExpressionRegressionTest' --tests '*DrumStyleAuditProfileTest' --tests '*StyleChordDiagnosticRegressionTest' --tests '*Sf2SemanticInventoryTest' --tests '*Sf2MetadataReadOnlyTest' --tests '*ManagedSf2AuditionTest' --tests '*DrumShadowPlannerTest' --tests '*DrumShadowReadOnlyTest' --tests '*DrumSemanticEvidenceRegistryTest' --tests '*DrumEngineeringProofTest' --tests '*GenericDrumResolverTest' --tests '*ShadowDrumRuntimeTest' --tests '*GenericDrumGlobalReplayTest' --stacktrace
           python3 - <<'PY'
           import xml.etree.ElementTree as ET
           from pathlib import Path
@@ -108,6 +116,9 @@ jobs:
           counts={k:sum(int(s.get(k,0)) for s in suites) for k in ['tests','failures','errors','skipped']}
           print('JVM_RESULTS',counts)
           assert counts['failures']==counts['errors']==counts['skipped']==0
+          replay=[s for s in suites if 'GenericDrumGlobalReplayTest' in s.get('name','')]
+          for s in replay:
+              print(s.findtext('system-out',''))
           PY
           gradle assembleDebug --stacktrace
           python3 -c "import zipfile; z=zipfile.ZipFile('app/build/outputs/apk/debug/app-debug.apk'); assert 'drum_shadow_audit770_v1.tsv' in z.namelist(); print('APK bundled semantic registry PRESENT')"
@@ -116,6 +127,14 @@ jobs:
         with:
           name: app-debug
           path: app/build/outputs/apk/debug/app-debug.apk
+      - name: Upload full global shadow comparison
+        uses: actions/upload-artifact@v4
+        with:
+          name: generic-drum-shadow-proof
+          path: |
+            app/build/generic-drum-global-replay.txt
+            app/build/test-results/testDebugUnitTest/TEST-*GenericDrum*.xml
+            app/build/test-results/testDebugUnitTest/TEST-*ShadowDrumRuntime*.xml
       - name: Send APK to Telegram
         if: github.ref != 'refs/heads/diag/sf2-semantic-inventory'
         continue-on-error: true
@@ -128,4 +147,3 @@ jobs:
             🎹 *YamahaArranger BASSMIDI Build!*
             🔊 BASSMIDI native engine
             🧪 Build #${{ github.run_number }}
-

@@ -24,4 +24,8 @@ for forbidden in ('AudioEngineManager', 'NativeAudioBridge', 'MidiInputManager',
 engineering=(root/'app/src/main/java/com/yourapp/audio/DrumEngineeringProof.kt').read_text()
 for forbidden in ('AudioEngineManager', 'NativeAudioBridge', 'MidiInputManager', 'ArrangerBrain', 'StreamEvent(', 'StreamSetFonts('):
     assert forbidden not in engineering, 'engineering proof gained dispatch capability'
+for path in ['GenericDrumResolver.kt','ShadowDrumRuntime.kt','GenericDrumShadowExport.kt','GenericDrumShadowRehearsal.kt']:
+    source=(root/'app/src/main/java/com/yourapp/audio'/path).read_text()
+    for forbidden in ('AudioEngineManager','NativeAudioBridge','MidiInputManager','ArrangerBrain','StreamEvent(','StreamSetFonts('):
+        assert forbidden not in source, 'shadow resolver gained production dispatch capability: '+path
 print('SHADOW structural guards PASS: #770 native implementation and sequencer/decoder unchanged; no added NOTE hot-path hooks, allocations or mutexes')

@@ -109,4 +109,16 @@ class DrumShadowReadOnlyTest {
         verify(f.audio,times(2)).shadowDrumSnapshot();verifyNoMoreInteractions(f.audio);verifyNoInteractions(f.brain,f.midi,f.styles)
     }
 
+    @Test fun genericFullDemandExportCannotDispatchOrMutateActualVmState() = runBlocking {
+        val target=com.yourapp.audio.DrumSemanticEvidenceRegistry.bundled().targets.single {it.id=="hat-pedal-closed"}
+        val f=Fixture(target=target);val out=f.vm.exportGenericDrumShadow(requestExperimental=true)
+        assertTrue(out.contains("GENERIC DRUM RESOLVER SHADOW"));assertTrue(out.contains("enabled=false"))
+        assertTrue(out.contains("outcome=ABSTAIN"));f.unchanged(true)
+    }
+    @Test fun genericPlayingRejectsBeforeScanOrAnyAudioInteraction() = runBlocking {
+        val f=Fixture(true)
+        try { f.vm.exportGenericDrumShadow();fail("STOP required") } catch(_:IllegalStateException) {}
+        verifyNoInteractions(f.files);f.unchanged()
+    }
+
 }

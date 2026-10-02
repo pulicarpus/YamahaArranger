@@ -640,6 +640,34 @@ class MainViewModel @Inject constructor(
 
     private val drumShadowCache = com.yourapp.audio.DrumShadowPlanner.Cache()
 
+    /** Whole-demand generic milestone; resource/lane attestation absence causes per-note ABSTAIN. */
+    suspend fun exportGenericDrumShadow(allowApproximation: Boolean = false, requestExperimental: Boolean = false): String {
+        check(!uiState.value.isPlaying) { "STOP before preparing generic shadow resolver" }
+        val style=drumAuditStyle ?: error("Load a style first")
+        return withContext(Dispatchers.IO) {
+            val p=com.yourapp.audio.DrumShadowPlanner
+            val fonts=p.inventory(contentResolver.sf2MetadataSources())
+            val demand=p.requests(style)
+            val registry=com.yourapp.audio.DrumSemanticEvidenceRegistry.bundled()
+            check(!uiState.value.isPlaying && drumAuditStyle===style) { "Style/playback changed; STOP and retry" }
+            val before=p.snapshot(audioEngine.shadowDrumSnapshot(),fonts)
+            val generic=com.yourapp.audio.GenericDrumResolver
+            // No native resource/lane adapter is invented from a metadata-only readiness observation.
+            val plan=generic.compile(demand,fonts,registry,before,before,com.yourapp.audio.GenericDrumResolver.Policy(allowApproximation),sourceDigest=p.styleDigest(style))
+            val after=p.snapshot(audioEngine.shadowDrumSnapshot(),fonts)
+            check(!uiState.value.isPlaying && drumAuditStyle===style) { "Style/playback changed during resolver preparation; retry" }
+            val result=if(com.yourapp.audio.DrumEngineeringProof.generation(before,after).status==com.yourapp.audio.DrumEngineeringProof.Status.PASS)plan
+                else generic.compile(demand,fonts,registry,before,after,com.yourapp.audio.GenericDrumResolver.Policy(allowApproximation),sourceDigest=p.styleDigest(style))
+            check(!uiState.value.isPlaying && drumAuditStyle===style) { "Style/playback changed during final shadow compilation; retry" }
+            val rehearsal=com.yourapp.audio.GenericDrumShadowRehearsal
+            val legacy=rehearsal.replay(style,result,after,false)
+            val proposed=rehearsal.replay(style,result,after,true)
+            check(!uiState.value.isPlaying && drumAuditStyle===style) { "Style/playback changed during rehearsal; retry" }
+            com.yourapp.audio.GenericDrumShadowExport.export(result,requestExperimental,
+                "legacy=$legacy proposed=$proposed projectionTraceIdentical=${legacy.traceSHA256==proposed.traceSHA256};scope=RAW_SOURCE_TOKEN_CONTRACT_NOT_OBSERVED_PRODUCTION_SCHEDULER")
+        }
+    }
+
     /** Explicit STOP preparation/export only. No sequencer or runtime activation. */
     suspend fun exportShadowDrum(evidenceText: String = "", allowApproximation: Boolean = false, useAuditedRegistry: Boolean = true): String {
         check(!uiState.value.isPlaying) { "STOP before preparing shadow export" }

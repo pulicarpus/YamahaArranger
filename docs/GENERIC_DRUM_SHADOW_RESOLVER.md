@@ -1,0 +1,37 @@
+# Generic end-to-end drum shadow resolver
+
+Baseline: #774 `4b1ca4701d9e955f9feddc2cde1161c537d41260`. This milestone compiles all raw style demand and all managed SF2 relations, searches cross-key semantic hints globally, applies explicit semantic/engineering admission, rehearses captured-route owner tokens, exports aggregate comparisons, and builds the diagnostic APK. It does not claim that a metadata-only observation establishes real BASSMIDI resource, controller, lane or voice-token readiness.
+
+## Pipeline
+
+Explicit STOP export → full managed-byte SHA256/inventory → immutable preset/layer and semantic-hint index → unique request/context/velocity compilation → EXACT > COMPATIBLE > policy-enabled APPROXIMATION → per-binding/per-rhythm-lane runtime gates → unique safe binding or ABSTAIN → full raw ON/OFF token rehearsal → bounded comparison export. Every demand has a row; absence of source identity or runtime proof never stops unrelated notes. ABSTAIN retains legacy production.
+
+All presets/banks/PCs/instruments/zones are indexed, including banks outside 128 and SF2s outside Colombo. Canonical source-key hints span relation key boundaries/root/fixed-key possibilities. Reviewed bindings can reference any eligible key, independent of hints. Hi-hat techniques (open/closed/pedal/edge/partial or splash), snare techniques and other drum families are separate hint categories. Sample/instrument names never admit a musical classification. Hints are bounded and distributed across fonts for display; that order is never a winner rule.
+
+The #770 registry is unchanged seed data, not executable bank/PC/key conditionals. The compiler accepts generic reviewed target/candidate registries and is tested with different Yamaha request banks, PCs and keys. Source semantic identity for Yamaha requests outside an authoritative catalog stays UNKNOWN; it is never inferred from GM key numbers. Address/preset-name/coverage equality is not renamed musical EXACT. Reviewed INCOMPATIBLE evidence vetoes contradictory positive claims for the same applicable binding. Equal safe bindings at the best semantic tier remain ambiguous; only independently proven safety exclusion can remove a tie. Names, amplitude, total coverage or font order cannot break one.
+
+## Runtime contract and activation boundary
+
+Admission requires current managed fingerprints/eligible layers, audited layer multiplicity, velocity-region coverage, static root/key/tuning/modulator safety, valid mono/stereo sample references, stable font generation, and a native ticket scoped to binding + Rhythm1/Rhythm2 lane + full style digest. The ticket must prove loaded-byte identity, sample readiness, neutral runtime pitch, velocity response, controller lane and a real ownership adapter. Hi-hat/exclusive-family tickets additionally require complete-family closure, same verified font/preset/lane and engine choke behavior. Missing/stale tickets yield UNKNOWN/FAIL and ABSTAIN. Metadata-region inference is not a claim of observed PCM dynamics at every velocity.
+
+`ShadowDrumRuntime` is a bounded offline contract model, not a native dispatch adapter. It captures font/handle/generation/bank/PC/key/lane at ON and uses the same route at OFF, maintains independent owner tokens, retires only matching exclusive-domain owners and preserves held owners across section/plan/flag changes. STOP/Ending flush targets captured owners; no ALL_NOTES_OFF exists in the model. A CHOKE command is an offline ownership-retirement annotation, not a production MIDI event.
+
+Important: tokens in the model do not prove BASSMIDI can independently release multiple simultaneous voices at the same physical key. Actual NOTEOFF1/per-voice/retrigger semantics remain a required native adapter proof. Shadow transition tests exercise the token contract and preserve old production code/traces; they do not claim to execute an experimental backend on an Android arranger.
+
+`DrumExperimentalActivation` keeps its request OFF by default and refuses activation because this branch has **no verified production resource/lane/owner adapter**. The current device evidence cannot justify adding one by assumption. This is a evaluated safety outcome, not a halted pipeline: every unsafe note proceeds via ABSTAIN/legacy fallback and the full pipeline/replay/build completes. No enabled production feature flag is offered in this APK. Positive runtime-ticket fixtures test selection and ownership contracts only, and cannot reach any synth API.
+
+## Work and cache boundary
+
+Parsing, indexing, key search, hashing, ranking, regex and export run on the explicit STOP IO worker. No new sequencer/native event hooks, filesystem I/O, logging or scanning are added to NOTE_ON/OFF. The route decisions are immutable rows suitable for a future direct table adapter. Digests include full style/controller content, raw demand, fonts/path/SHA, reviewed registry/evidence, policy, both snapshots and lane tickets. This version recomputes explicit exports instead of reusing stale preparation. The offline ownership model deliberately allocates command records and performs bounded owner scans; it must not be described as a tested realtime backend.
+
+Source limits: 32768 demands, 200000 inventory relations and 2048 rehearsal owners. Over-budget source compilation rejects a partial plan; rehearsal owner exhaustion emits no unowned ON and reports a rejection count. Exports are 48 KiB, summaries precede details, and omissions are counted. Projected STOP routes/RAW source-token traces remain separate from observed actual runtime dispatch/CASM/scheduler behavior.
+
+## Full-data verification
+
+The original uploaded style is extracted with the unchanged production `StyleParser`/`SmfReader` into a test-only event/CASM fixture. It contains all 1054 demands, including 47 key21 and 48 key31 hits. Four complete global metadata inventories contribute 66944 zone relations, plus sample headers. The compressed fixture contains metadata only, not SF2 PCM. JVM replay requires every demand to resolve or abstain without loss, semantic claims to retain 959 UNKNOWN + 95 COMPATIBLE, key16 to remain UNKNOWN, no runtime candidate to be selected without tickets, zero final owner leaks and identical legacy/proposed RAW token projection when all routes abstain. CI uploads that comparison and XML results separately from the APK.
+
+Regression includes both rhythm lanes, native-ticket invalidation, contradictory identity, determinism/ties, velocity multiplicity, sample pairing, hi-hat articulation/class gates, independent simultaneous owners, repeated tokens, cross-key captured OFF, multi-SF2/preset/generation domains, Main↔Fill, Intro→Main, Ending, loop/rapid boundaries and OFF/ON flag changes. Old native/decoder/StyleSequencer/CC11/FONTEX2/NOWAIT/NOTEOFF1/valid-owner code is unchanged, and host traces compare independently compiled #770/#772/#773/#774 baselines.
+
+## Tester
+
+Warm the same style/SF2, STOP, open SF2/STYLE INSPECTOR → SHADOW DRUM RESOLVER. Leave **Full demand + all managed SF2 resolver** enabled and press EXPORT. Send `Downloads/YamahaArranger/YamahaArranger_GenericDrumShadow_*.txt`. Disable the full-resolver checkbox only to export the previous Engineering Proof report. No repeated WAV or random audition is requested. No #774 device Engineering Proof TXT was attached to this request; current loaded resource/lane facts are therefore not invented from its APK build result.
