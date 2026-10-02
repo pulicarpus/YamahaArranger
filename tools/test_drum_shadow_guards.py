@@ -4,6 +4,8 @@ import hashlib
 from pathlib import Path
 root=Path(__file__).resolve().parents[1]
 protected={'app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt': '1d8d3698a2efdbcc5273275d6a793a06cd0e5262e4c4275ad176b33c4f82cbe7', 'app/src/test/java/com/yourapp/yamahaarranger/arranger/CasmNoteTransformerTest.kt': 'c8477ef5a80c3326ef13ea7f631f6a161a64435762d214e25a6681f39897523f', 'app/src/main/java/com/yourapp/yamahaarranger/arranger/CasmNoteTransformer.kt': '2d993aa83733ec6f9e9685b1c0eb0d47f131bd2c253df734a599b7c3cd102ebf', 'app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt': '2ead0dbd29ec54ebc423e4bb828618501555be6ff9055cabf189cb5859d01e76'}
+protected.update({'app/src/main/cpp/bassmidi_player.cpp': '98c388e513f09b00dfa460959eb125f344d943dfea0dc484563a86dff20cf7ab', 'app/src/main/cpp/native_lib.cpp': '4b26fbd8d1af84c04f0c3686f2a31c2ce57f071ff2d423bcc763366e17b31dde'})
+protected.update({'app/src/main/java/com/yourapp/yamahaarranger/style/StyleRepository.kt': 'f024ed422f8e8c3af1cb3e3cef0d2e2f6a8e7d148dfe6b7f6340ed9a848ca5cd'})
 for path,expected in protected.items():
     assert hashlib.sha256((root/path).read_bytes()).hexdigest()==expected, "#770 production path changed: "+path
 native=(root/'app/src/main/cpp/bassmidi_player.cpp').read_bytes()
@@ -16,4 +18,7 @@ for forbidden in ('StreamEvent(', 'StreamSetFonts(', 'FontLoad', 'FontInit(', 's
 planner=(root/'app/src/main/java/com/yourapp/audio/DrumShadowPlanner.kt').read_text()
 for forbidden in ('AudioEngineManager', 'NativeAudioBridge', 'MidiInputManager', 'ArrangerBrain'):
     assert forbidden not in planner, "pure planner gained production dispatch capability"
+registry=(root/'app/src/main/java/com/yourapp/audio/DrumSemanticEvidenceRegistry.kt').read_text()
+for forbidden in ('AudioEngineManager', 'NativeAudioBridge', 'MidiInputManager', 'ArrangerBrain'):
+    assert forbidden not in registry, 'registry gained dispatch capability'
 print('SHADOW structural guards PASS: #770 native implementation and sequencer/decoder unchanged; no added NOTE hot-path hooks, allocations or mutexes')

@@ -22,14 +22,17 @@ fun DrumShadowDialog(viewModel: MainViewModel, onDismiss: () -> Unit) {
     val state by viewModel.uiState.collectAsState()
     var busy by remember {mutableStateOf(false)}
     var evidence by remember {mutableStateOf("")}
+    var auditedRegistry by remember {mutableStateOf(true)}
     var approximation by remember {mutableStateOf(false)}
     var status by remember {mutableStateOf("STOP after warming the current style/SF2. Export prepares a shadow plan; playback never uses it.")}
     AlertDialog(onDismissRequest={if(!busy)onDismiss()},title={Text("Shadow Drum Resolver")},text={
         Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)) {
             Text("Stage 1–2 only. Original raw style demand, current STOP production snapshot and proposed decisions are separate. No synth/MIDI events or routing changes.")
-            Text("Blank evidence = no semantic authority; UNKNOWN/ABSTAIN is expected. Names, coverage and WAV presence never declare identity.")
-            OutlinedTextField(evidence,{evidence=it},enabled=!busy,label={Text("Optional explicit evidence catalog")},modifier=Modifier.fillMaxWidth().heightIn(min=90.dp,max=180.dp))
-            Text("One claim per line: MSB|LSB|rawPC|targetKey|SF2_SHA256|bank|PC|sourceKey|class|confidence|provenance. Imported claims cannot bypass engineering gates.")
+            Text("Pass 2 loads the reviewed audition #770 registry as data. Edge remains UNKNOWN; pedal/snare candidates remain advisory. No winner or production substitution.")
+            Row {Checkbox(auditedRegistry,{auditedRegistry=it},enabled=!busy);Text("Use verified audit #770 evidence (shadow only)")}
+            Text("Imported claims cannot prove runtime pitch/choke/ownership/readiness. ABSTAIN is expected even with COMPATIBLE candidates.")
+            OutlinedTextField(evidence,{evidence=it},enabled=!busy,label={Text("Optional supplemental claims (unreviewed)")},modifier=Modifier.fillMaxWidth().heightIn(min=90.dp,max=180.dp))
+            Text("One claim per line: MSB|LSB|rawPC|targetKey|SF2_SHA256|bank|PC|sourceKey|class|confidence|provenance. Supplemental claims cannot promote reviewed targets or bypass engineering gates.")
             Row {Checkbox(approximation,{approximation=it},enabled=!busy);Text("Consider APPROXIMATION in shadow only")}
             Text(status)
         }
@@ -37,9 +40,9 @@ fun DrumShadowDialog(viewModel: MainViewModel, onDismiss: () -> Unit) {
         busy=true
         scope.launch {
             try {
-                val report=viewModel.exportShadowDrum(evidence,approximation)
+                val report=viewModel.exportShadowDrum(evidence,approximation,auditedRegistry)
                 val name=withContext(Dispatchers.IO) {
-                    val name="YamahaArranger_DrumShadow_${UUID.randomUUID()}.txt"
+                    val name="YamahaArranger_DrumShadowPass2_${UUID.randomUUID()}.txt"
                     val values=ContentValues().apply {put(MediaStore.MediaColumns.DISPLAY_NAME,name);put(MediaStore.MediaColumns.MIME_TYPE,"text/plain");put(MediaStore.MediaColumns.RELATIVE_PATH,Environment.DIRECTORY_DOWNLOADS+"/YamahaArranger");put(MediaStore.MediaColumns.IS_PENDING,1)}
                     val uri=context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI,values) ?: error("Cannot create shadow export")
                     try {

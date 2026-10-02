@@ -16,7 +16,7 @@ import org.mockito.Mockito.*
 
 /** Actual export boundary: only one getter, never an audio/MIDI/arranger mutation. */
 class DrumShadowReadOnlyTest {
-    private class Fixture(playing:Boolean=false) {
+    private class Fixture(playing:Boolean=false,target:com.yourapp.audio.DrumSemanticEvidenceRegistry.Target?=null) {
         val vm=mock(MainViewModel::class.java,CALLS_REAL_METHODS)
         val files=mock(ContentResolverProvider::class.java)
         val audio=mock(AudioEngineManager::class.java)
@@ -26,7 +26,7 @@ class DrumShadowReadOnlyTest {
         val state=MainUiState(isPlaying=playing)
         val flow=MutableStateFlow(state)
         val style=ParsedStyle("fixture",1920,mapOf("Main" to StyleSectionModel("Main",100,listOf(
-            StylePartModel("Rhythm",listOf(StyleNoteEvent(10,true,60,42,9)),program=12,bankMsb=121,bankLsb=3)))))
+            StylePartModel("Rhythm",listOf(StyleNoteEvent(10,true,target?.key?:60,42,9)),program=target?.rawPc?:12,bankMsb=target?.msb?:121,bankLsb=target?.lsb?:3)))))
         fun field(name:String,value:Any?) {MainViewModel::class.java.getDeclaredField(name).apply {isAccessible=true}.set(vm,value)}
         init {
             for((name,value) in listOf("contentResolver" to files,"audioEngine" to audio,"arrangerBrain" to brain,
@@ -84,4 +84,12 @@ class DrumShadowReadOnlyTest {
         assertTrue(report.contains("crossKey=true"));assertTrue(report.contains("shadow=ABSTAIN"))
         assertTrue(report.contains("UNPROVEN_NOTE_OWNERSHIP"));f.unchanged(true)
     }
+    @Test fun pass2RegistryExportKeepsActualVmAudioAndArrangerReadOnlyEvenWithFingerprintFailures() = runBlocking {
+        val target=com.yourapp.audio.DrumSemanticEvidenceRegistry.bundled().targets.single {it.id=="hat-pedal-closed"}
+        val f=Fixture(target=target);val out=f.vm.exportShadowDrum()
+        assertTrue(out.contains("REGISTRY version=audit770-semantic-v1"));assertTrue(out.contains("class=COMPATIBLE"))
+        assertTrue(out.contains("FINGERPRINT_MISMATCH_OR_FONT_ABSENT"));assertTrue(out.contains("ACTUAL_RUNTIME_DISPATCH=UNKNOWN"))
+        assertTrue(out.contains("shadow=ABSTAIN"));f.unchanged(true)
+    }
+
 }

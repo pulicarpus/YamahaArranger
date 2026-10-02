@@ -27,7 +27,11 @@ object DrumShadowPlanner {
     data class Proof(val pitch: Boolean = false, val choke: Boolean = false, val ownership: Boolean = false,
         val resourceReady: Boolean = false)
     data class Evidence(val msb: Int, val lsb: Int, val pc: Int, val key: Int, val candidate: Binding,
-        val classification: Classification, val confidence: Int, val provenance: String, val proof: Proof = Proof())
+        val classification: Classification, val confidence: Int, val provenance: String, val proof: Proof = Proof(),
+        val target:DrumSemanticEvidenceRegistry.Target?=null,val registryVersion:String="manual-unversioned",
+        val evidenceId:String="manual",val schema:Int=1,val velocityLow:Int=0,val velocityHigh:Int=127,
+        val observedVelocities:List<Int> = emptyList(),val layerHashes:List<String> = emptyList(),
+        val confidenceLabel:String="SUPPLIED_UNCALIBRATED",val metadataProvenance:String="NONE",val pcmProvenance:String="NONE")
     data class Policy(val allowApproximation: Boolean = false, val version: Int = 1, val retainLegacy: Boolean = false)
     data class Production(val channel: Int, val inputBank: Int, val inputPc: Int, val sha256: String?,
         val bank: Int, val pc: Int, val verified: Boolean, val generation: Long, val rawBank: Int = bank, val fingerprintScope: String = "CURRENT_MANAGED_BYTES_PATH_CORRELATION_NOT_LOADED_SAMPLE_PROOF")
@@ -35,11 +39,14 @@ object DrumShadowPlanner {
     data class Snapshot(val production: List<Production>, val normalized: List<Normalized>, val generation: String,
         val raw: String)
     data class CacheKey(val styleDigest: String, val fontDigest: String, val evidenceDigest: String,
-        val policy: Policy, val engineGeneration: String, val schema: Int = 1)
+        val policy: Policy, val engineGeneration: String, val schema: Int = 2, val registryDigest:String = "NONE")
+    data class CandidateDecision(val evidence:Evidence,val bundle:List<Zone>,val passedGates:List<String>,
+        val failedGates:List<String>,val proposedAction:Action)
     data class Decision(val request: Request, val production: Production?, val action: Action,
         val classification: Classification, val confidence: Int, val candidate: Binding?,
         val bundle: List<Zone>, val reasons: List<String>, val provenance: String, val crossKey: Boolean,
-        val productionKey: Int?, val productionScope: String)
+        val productionKey: Int?, val productionScope: String,val semanticTarget:DrumSemanticEvidenceRegistry.Target?=null,
+        val candidates:List<CandidateDecision> = emptyList(),val passedGates:List<String> = emptyList())
     data class Plan(val key: CacheKey, val decisions: List<Decision>, val compileNanos: Long, val storedRows: Int, val storedLayerRefs: Int)
     private fun <T> frozen(xs: List<T>): List<T> = Collections.unmodifiableList(xs.toList())
     private fun frozenMap(xs: Map<Int,Int>): Map<Int,Int> = Collections.unmodifiableMap(xs.toMap())
@@ -108,6 +115,11 @@ object DrumShadowPlanner {
         }
         return frozen(result)
     }
+    fun zoneFromMetadata(fontId:String,row:String):Zone {
+        val v=relation.matchEntire(row)?.groupValues ?: error("invalid zone relation")
+        return Zone(fontId,v[1].toInt(),v[2].toInt(),v[3],v[4],v[6],v[5].toInt(),v[7].toInt(),v[8].toInt(),v[9].toInt(),v[10].toInt(),
+            v[12].toInt(),v[14].toIntOrNull(),v[13].toInt(),v[15].toInt(),v[16].toInt(),gens(v[17]),gens(v[18]),row)
+    }
     private fun path(identity:String):String = try { val uri=java.net.URI(identity);if(uri.scheme=="file") java.io.File(uri).path else identity } catch(_:Exception){identity}
     private fun decodeHex(s:String):String {if(s=="-")return "";return s.chunked(2).map {it.toInt(16).toByte()}.toByteArray().toString(Charsets.UTF_8)}
     fun snapshot(raw:String, fonts:List<Font>):Snapshot {
@@ -140,13 +152,17 @@ object DrumShadowPlanner {
             Evidence(n[0],n[1],n[2],n[3],Binding(f[4],bank,pc,key),Classification.valueOf(f[8]),confidence,f[10])
         }.toList())
     }
-    fun cacheKey(requests:List<Request>,fonts:List<Font>,evidence:List<Evidence>,policy:Policy,snapshot:Snapshot):CacheKey =
-        CacheKey(digest(requests.toString().toByteArray()),digest(fonts.map {it.sha256+it.identity}.sorted().joinToString().toByteArray()),digest(evidence.toString().toByteArray()),policy,
-            snapshot.generation+":"+digest(snapshot.raw.toByteArray()))
-    fun compile(requests:List<Request>,fonts:List<Font>,evidence:List<Evidence>,policy:Policy,snapshot:Snapshot):Plan {
+    fun cacheKey(requests:List<Request>,fonts:List<Font>,evidence:List<Evidence>,policy:Policy,snapshot:Snapshot,
+        registry:DrumSemanticEvidenceRegistry.Registry=DrumSemanticEvidenceRegistry.empty()):CacheKey =
+        CacheKey(digest(requests.toString().toByteArray()),digest(fonts.map {it.sha256+it.identity}.sorted().joinToString().toByteArray()),
+            digest((evidence+registry.evidence).toString().toByteArray()),policy,snapshot.generation+":"+digest(snapshot.raw.toByteArray()),
+            registryDigest=registry.version+":"+registry.sha256+":"+registry.analysisSha256+":"+digest(registry.targets.toString().toByteArray()))
+    fun compile(requests:List<Request>,fonts:List<Font>,evidence:List<Evidence>,policy:Policy,snapshot:Snapshot,
+        registry:DrumSemanticEvidenceRegistry.Registry=DrumSemanticEvidenceRegistry.empty()):Plan {
         val start=System.nanoTime();require(requests.size<=MAX_REQUESTS)
-        val index=fonts.flatMap {it.zones}.groupBy {Triple(it.fontId,it.bank,it.pc)}
-        val evidenceIndex=evidence.groupBy {listOf(it.msb,it.lsb,it.pc,it.key)}
+        val uniqueFonts=fonts.distinctBy {it.sha256}
+        val index=uniqueFonts.flatMap {it.zones}.groupBy {Triple(it.fontId,it.bank,it.pc)}
+        val evidenceIndex=(evidence+registry.evidence).groupBy {listOf(it.msb,it.lsb,it.pc,it.key)}
         val demandedKeys=requests.groupBy {it.rhythmChannel}.mapValues {it.value.map {r->r.sourceKey}.toSet()}
         var layerRefs=0
         fun boundedLayers(zones:List<Zone>):List<Zone> {
@@ -155,76 +171,141 @@ object DrumShadowPlanner {
         }
         val decisions=requests.map {r ->
             val live=snapshot.production.firstOrNull {it.channel==r.rhythmChannel}
+            val target=registry.targets.firstOrNull {it.matches(r)}
             val inputMatches=live!=null && live.inputBank==r.msb*128+r.lsb && live.inputPc==r.rawPc
             val observedScope=if(inputMatches) "STOP_SNAPSHOT_MATCHING_NATIVE_INPUT;actual_per_note_UNKNOWN" else "STOP_SNAPSHOT_DIFFERENT_CONTEXT;actual_per_note_UNKNOWN"
             val nativeBundle=live?.sha256?.let {index[Triple(it,live.rawBank,live.pc)]}?.filter {it.eligible(r.sourceKey,r.velocity)}.orEmpty()
             val nativeExactAddress=inputMatches && live!!.verified && live.rawBank==r.msb*128+r.lsb && live.pc==r.rawPc && nativeBundle.isNotEmpty()
-            val claims=evidenceIndex[listOf(r.msb,r.lsb,r.rawPc,r.sourceKey)].orEmpty()
-            fun decision(action:Action,c:Classification,claim:Evidence?,bundle:List<Zone>,reasons:List<String>) = Decision(r,live,action,c,claim?.confidence?:0,claim?.candidate,boundedLayers(bundle),frozen(reasons),claim?.provenance?:"no_semantic_authority",claim?.candidate?.key?.let {it!=r.sourceKey}?:false,null,observedScope)
-            if(!r.routingKnown) return@map decision(Action.ABSTAIN,Classification.UNKNOWN,null,emptyList(),listOf("AMBIGUOUS_ROUTING_OR_ORIGINAL_IDENTITY"))
-            val contradictions=claims.any {live!=null && it.classification==Classification.INCOMPATIBLE && it.candidate.sha256==live?.sha256 && it.candidate.bank==live.rawBank && it.candidate.pc==live.pc && it.candidate.key==r.sourceKey}
-            if(nativeExactAddress && !contradictions) return@map decision(Action.PASSTHROUGH,Classification.UNKNOWN,null,nativeBundle,listOf("EXISTING_NATIVE_ADDRESS_PRESERVED_NOT_IDENTITY_PROOF","LOGICAL_KEY_RUNTIME_UNKNOWN"))
-            val rejected=claims.filter {it.classification==Classification.INCOMPATIBLE}.map {it.candidate}.toSet()
-            val accepted=claims.filter {it.candidate !in rejected && (it.classification==Classification.EXACT || it.classification==Classification.COMPATIBLE || (it.classification==Classification.APPROXIMATION && policy.allowApproximation))}
-            if(accepted.isEmpty()) {
-                val reason=when {claims.any {it.classification==Classification.INCOMPATIBLE}->"INCOMPATIBLE";claims.any {it.classification==Classification.APPROXIMATION}->"APPROXIMATION_REQUIRES_EXPLICIT_POLICY";else->"UNKNOWN_SEMANTIC_TARGET_OR_EVIDENCE"}
-                val legacy=policy.retainLegacy && !contradictions && inputMatches && live?.verified==true && nativeBundle.isNotEmpty()
-                return@map decision(if(legacy) Action.LEGACY_ONLY else Action.ABSTAIN,Classification.UNKNOWN,null,emptyList(),listOf(reason,"PRODUCTION_LEGACY_ROUTE_UNCHANGED"))
+            val claims=evidenceIndex[listOf(r.msb,r.lsb,r.rawPc,r.sourceKey)].orEmpty().map {e ->
+                // Unreviewed text cannot promote an authoritative target or invent a winner over the bundled audit.
+                if(target!=null && e !in registry.evidence)e.copy(classification=Classification.UNKNOWN,confidence=0,
+                    confidenceLabel="UNREVIEWED_SUPPLEMENTAL",provenance=e.provenance+";unreviewedClaimClass="+e.classification) else e
             }
-            val rank=accepted.minOf {it.classification.ordinal};val best=accepted.filter {it.classification.ordinal==rank}.distinct()
-            if(best.size!=1) return@map decision(Action.ABSTAIN,Classification.UNKNOWN,null,emptyList(),listOf("AMBIGUOUS_EVIDENCE_NO_TIE_WINNER"))
-            val e=best.single();val b=e.candidate;val bundle=index[Triple(b.sha256,b.bank,b.pc)].orEmpty().filter {it.eligible(b.key,r.velocity)}
-            val failures=mutableListOf<String>()
-            if(bundle.isEmpty())failures+="MISSING_ZONE_OR_FONT"
-            val sampleHeaders=fonts.firstOrNull {it.sha256==b.sha256}?.samples.orEmpty()
-            if(bundle.any {z ->
-                val sh=sampleHeaders[z.sampleId]
-                if((z.sampleType and 0x7fff) !in listOf(2,4)) false else {
-                    val partner=sampleHeaders[z.link]
-                    sh==null || partner==null || partner.link!=z.sampleId || (partner.type and 0x7fff) != (if((z.sampleType and 0x7fff)==2)4 else 2) ||
-                        sh.rate!=partner.rate || sh.end-sh.start!=partner.end-partner.start || sh.original!=partner.original
+            val inRegion=claims.filter {r.velocity in it.velocityLow..it.velocityHigh}
+            val rejected=inRegion.filter {it.classification==Classification.INCOMPATIBLE}.map {it.candidate}.toSet()
+            val accepted=inRegion.filter {it.candidate !in rejected && (it.classification==Classification.EXACT || it.classification==Classification.COMPATIBLE || (it.classification==Classification.APPROXIMATION && policy.allowApproximation))}
+            val best=accepted.minOfOrNull {it.classification.ordinal}?.let {rank->accepted.filter {it.classification.ordinal==rank}.distinct()}.orEmpty()
+            val ambiguous=best.size>1
+            val evaluations=frozen(claims.map {e ->
+                val b=e.candidate;val bundle=index[Triple(b.sha256,b.bank,b.pc)].orEmpty().filter {it.eligible(b.key,r.velocity)}
+                val passed=mutableListOf<String>();val failed=mutableListOf<String>()
+                fun gate(ok:Boolean,name:String,reason:String) {if(ok)passed+=name else failed+=reason}
+                if(target!=null)gate(e in registry.evidence,"REVIEWED_REGISTRY_AUTHORITY","UNREVIEWED_SUPPLEMENTAL_AUTHORITY")
+                gate(uniqueFonts.any {it.sha256==b.sha256},"FINGERPRINT_MATCH_CURRENT_MANAGED_BYTES","FINGERPRINT_MISMATCH_OR_FONT_ABSENT")
+                gate(bundle.isNotEmpty(),"ELIGIBLE_VELOCITY_LAYERS_PRESENT","MISSING_ZONE_OR_FONT")
+                gate(r.velocity in e.velocityLow..e.velocityHigh,"EVIDENCE_VELOCITY_REGION","EVIDENCE_VELOCITY_REGION_MISSING")
+                if(e.schema>=2) {
+                    val actual=bundle.map {digest(it.raw.toByteArray())}.sorted()
+                    gate(e.layerHashes.isNotEmpty() && actual==e.layerHashes.sorted(),"AUDITED_LAYER_SIGNATURES_MATCH","AUDITED_LAYER_MISMATCH")
+                    gate(r.velocity in e.observedVelocities,"ISOLATED_PCM_OBSERVED_AT_REQUEST_VELOCITY","REQUEST_VELOCITY_NOT_AUDITIONED")
                 }
-            }) failures+="INVALID_STEREO_SAMPLE_PAIR"
-            if(!e.proof.pitch)failures+="UNREVIEWED_PITCH_ROOT_TUNING_MODULATORS"
-            if(!e.proof.choke)failures+="UNSAFE_OR_UNKNOWN_CHOKE_RELATIONSHIPS"
-            if(!e.proof.ownership)failures+="UNPROVEN_NOTE_OWNERSHIP"
-            if(!e.proof.resourceReady)failures+="MISSING_OR_NOT_READY_RESOURCE"
-            // Future route tokens are not implemented. Imports cannot bypass these proofs.
-            if((b.key!=r.sourceKey && b.key in demandedKeys[r.rhythmChannel].orEmpty()))failures+="MANY_TO_ONE_OWNERSHIP_COLLISION"
-            if(failures.isNotEmpty()) decision(Action.ABSTAIN,e.classification,e,bundle,failures)
-            else decision(Action.SUBSTITUTE,e.classification,e,bundle,listOf("PROPOSED_ONLY_NO_DISPATCH_CAPABILITY"))
+                val headers=uniqueFonts.firstOrNull {it.sha256==b.sha256}?.samples.orEmpty()
+                val badStereo=bundle.any {z ->
+                    if((z.sampleType and 0x7fff) !in listOf(2,4)) false else {
+                        val sh=headers[z.sampleId];val partner=headers[z.link]
+                        sh==null || partner==null || partner.link!=z.sampleId || (partner.type and 0x7fff) != (if((z.sampleType and 0x7fff)==2)4 else 2) ||
+                            sh.rate!=partner.rate || sh.end-sh.start!=partner.end-partner.start || sh.original!=partner.original
+                    }
+                }
+                gate(bundle.isNotEmpty() && !badStereo,"STEREO_HEADERS_OR_MONO_METADATA_VALID",if(badStereo)"INVALID_STEREO_SAMPLE_PAIR" else "STEREO_CHECK_NO_LAYERS")
+                gate(e in accepted,"SEMANTIC_CLAIM_ACCEPTED",when {
+                    e.candidate in rejected || e.classification==Classification.INCOMPATIBLE -> "INCOMPATIBLE"
+                    e.classification==Classification.APPROXIMATION && !policy.allowApproximation -> "APPROXIMATION_REQUIRES_EXPLICIT_POLICY"
+                    else -> "UNKNOWN_SEMANTIC_IDENTITY_OR_EVIDENCE"
+                })
+                gate(e.proof.pitch,"PITCH_ROOT_TUNING_MODULATORS_REVIEWED","UNREVIEWED_PITCH_ROOT_TUNING_MODULATORS")
+                gate(e.proof.choke,"CHOKE_RELATIONSHIPS_PROVEN","UNSAFE_OR_UNKNOWN_CHOKE_RELATIONSHIPS")
+                gate(e.proof.ownership,"NOTE_OWNERSHIP_PROVEN","UNPROVEN_NOTE_OWNERSHIP")
+                gate(e.proof.resourceReady,"PRODUCTION_RESOURCE_READY_PROVEN","MISSING_OR_NOT_READY_RESOURCE")
+                gate(!(b.key!=r.sourceKey && b.key in demandedKeys[r.rhythmChannel].orEmpty()),"NO_ORIGINAL_KEY_OWNER_COLLISION","MANY_TO_ONE_OWNERSHIP_COLLISION")
+                if(ambiguous && e in best)failed+="AMBIGUOUS_EVIDENCE_NO_TIE_WINNER"
+                CandidateDecision(e,boundedLayers(bundle),frozen(passed),frozen(failed),if(failed.isEmpty())Action.SUBSTITUTE else Action.ABSTAIN)
+            })
+            fun decision(action:Action,c:Classification,chosen:CandidateDecision?,bundle:List<Zone>,reasons:List<String>,passed:List<String> = emptyList()) =
+                Decision(r,live,action,c,chosen?.evidence?.confidence?:0,chosen?.evidence?.candidate,
+                    bundle,frozen(reasons),chosen?.evidence?.provenance?:if(claims.isEmpty())"no_semantic_authority" else "registry_claims_no_selected_winner",
+                    chosen?.evidence?.candidate?.key?.let {it!=r.sourceKey}?:false,null,observedScope,target,evaluations,frozen(passed))
+            if(!r.routingKnown) return@map decision(Action.ABSTAIN,Classification.UNKNOWN,null,emptyList(),listOf("AMBIGUOUS_ROUTING_OR_ORIGINAL_IDENTITY"))
+            val contradictions=inRegion.any {live!=null && it.classification==Classification.INCOMPATIBLE && it.candidate.sha256==live.sha256 && it.candidate.bank==live.rawBank && it.candidate.pc==live.pc && it.candidate.key==r.sourceKey}
+            if(nativeExactAddress && !contradictions) return@map decision(Action.PASSTHROUGH,Classification.UNKNOWN,null,boundedLayers(nativeBundle),listOf("EXISTING_NATIVE_ADDRESS_PRESERVED_NOT_IDENTITY_PROOF","LOGICAL_KEY_RUNTIME_UNKNOWN"),listOf("EXISTING_NATIVE_ADDRESS_PRESERVED"))
+            if(best.isEmpty()) {
+                val reason=when {
+                    inRegion.any {it.classification==Classification.INCOMPATIBLE}->"INCOMPATIBLE"
+                    inRegion.any {it.classification==Classification.APPROXIMATION}->"APPROXIMATION_REQUIRES_EXPLICIT_POLICY"
+                    claims.isNotEmpty() && inRegion.isEmpty()->"EVIDENCE_NOT_APPLICABLE_AT_DEMAND_VELOCITY"
+                    else->"UNKNOWN_SEMANTIC_TARGET_OR_EVIDENCE"
+                }
+                val legacy=policy.retainLegacy && !contradictions && inputMatches && live?.verified==true && nativeBundle.isNotEmpty()
+                return@map decision(if(legacy)Action.LEGACY_ONLY else Action.ABSTAIN,Classification.UNKNOWN,null,emptyList(),listOf(reason,"PRODUCTION_LEGACY_ROUTE_UNCHANGED"))
+            }
+            if(ambiguous) return@map decision(Action.ABSTAIN,best.first().classification,null,emptyList(),listOf("AMBIGUOUS_EVIDENCE_NO_TIE_WINNER","CANDIDATES_ADVISORY_ONLY"))
+            val chosen=evaluations.single {it.evidence==best.single()}
+            decision(chosen.proposedAction,chosen.evidence.classification,chosen,chosen.bundle,
+                if(chosen.failedGates.isEmpty())listOf("PROPOSED_ONLY_NO_DISPATCH_CAPABILITY") else chosen.failedGates,chosen.passedGates)
         }
-        // Detect collisions between proposed candidates as well as an original source key.
-        val targets=decisions.filter {it.candidate!=null}.groupBy {listOf(it.request.rhythmChannel,it.candidate!!.sha256,it.candidate.bank,it.candidate.pc,it.candidate.key)}
-        val checked=decisions.map {d -> val b=d.candidate
-            if(b!=null && targets[listOf(d.request.rhythmChannel,b.sha256,b.bank,b.pc,b.key)].orEmpty().map {it.request.sourceKey}.distinct().size>1)
-                d.copy(action=Action.ABSTAIN,reasons=frozen(d.reasons+"MANY_TO_ONE_OWNERSHIP_COLLISION")) else d }
-        return Plan(cacheKey(requests,fonts,evidence,policy,snapshot),frozen(checked),System.nanoTime()-start,checked.size,layerRefs)
+        // All advisory bindings participate; do not let ambiguity hide a possible future owner collision.
+        val targets=decisions.flatMap {d->d.candidates.map {d.request to it.evidence.candidate}}
+            .groupBy {listOf(it.first.rhythmChannel,it.second.sha256,it.second.bank,it.second.pc,it.second.key)}
+        val checked=decisions.map {d ->
+            val candidates=frozen(d.candidates.map {c -> val b=c.evidence.candidate
+                val collision=targets[listOf(d.request.rhythmChannel,b.sha256,b.bank,b.pc,b.key)].orEmpty().map {it.first.sourceKey}.distinct().size>1
+                if(collision)c.copy(proposedAction=Action.ABSTAIN,failedGates=frozen(c.failedGates+"MANY_TO_ONE_OWNERSHIP_COLLISION")) else c
+            })
+            val veto=d.candidate?.let {b->candidates.any {it.evidence.candidate==b && "MANY_TO_ONE_OWNERSHIP_COLLISION" in it.failedGates}}==true
+            d.copy(candidates=candidates,action=if(veto)Action.ABSTAIN else d.action,reasons=if(veto)frozen(d.reasons+"MANY_TO_ONE_OWNERSHIP_COLLISION") else d.reasons)
+        }
+        return Plan(cacheKey(requests,fonts,evidence,policy,snapshot,registry),frozen(checked),System.nanoTime()-start,checked.size,layerRefs)
     }
-    fun export(plan:Plan,fonts:List<Font>,snapshot:Snapshot):String {
-        val out=StringBuilder();var bytes=0;var omitted=0;var omittedZones=0
-        fun add(s:String):Boolean {val safe=s.replace('\r',' ').replace('\n',' ');val n=safe.toByteArray().size+1;if(bytes+n>EXPORT_BYTES-1024)return false;out.append(safe).append('\n');bytes+=n;return true}
-        add("YAMAHAARRANGER SHADOW DRUM RESOLVER v1 STAGE1_2 productionDispatch=UNCHANGED runtimeHook=NONE")
-        add("scope=RAW_STYLE_DEMAND plus STOP_NATIVE_SNAPSHOT; source/logical/synth keys separate; no claimed actual per-note sample voice; no winner")
-        add("cache=${plan.key} compileNs=${plan.compileNanos} storedRows=${plan.storedRows} storedLayerRefs=${plan.storedLayerRefs} maxLayerRefs=$MAX_PLAN_LAYER_REFS planMemory=bounded_not_heap_measured")
-        add("PERFORMANCE noteOnHooks=0 noteOffHooks=0 addedHotPathAllocations=0 addedMutexes=0; device_p95_p99_xrun=NOT_MEASURED; preparation=STOP_worker_only")
-        for(f in fonts)add("FONT sha256=${f.sha256} name=${f.name} identity=${f.identity} zones=${f.zones.size}")
-        for(n in snapshot.normalized)add("NORMALIZED sha256=${n.sha256} raw=${n.rawBank} virtual=${n.virtualBank} handle=${n.handle}")
-        for(l in snapshot.production)add("CURRENT_STOP_PRODUCTION $l")
-        for((group,rows) in plan.decisions.groupBy {it.action to it.classification})add("SUMMARY action=${group.first} class=${group.second} notes=${rows.size}")
-        for((id,d) in plan.decisions.withIndex()) {
-            if(!add("ROW id=$id original=${d.request} production=${d.production} productionKey=UNKNOWN productionScope=${d.productionScope} shadow=${d.action} class=${d.classification} confidence=${d.confidence} candidate=${d.candidate} crossKey=${d.crossKey} provenance=${d.provenance} failedGates=${d.reasons} eligibleLayers=${d.bundle.size}")){omitted++;continue}
-            for(z in d.bundle) if(!add("BUNDLE row=$id sha256=${z.fontId} ${z.raw}"))omittedZones++
+    fun export(plan:Plan,fonts:List<Font>,snapshot:Snapshot,
+        registry:DrumSemanticEvidenceRegistry.Registry=DrumSemanticEvidenceRegistry.empty()):String {
+        val out=StringBuilder();var bytes=0;var omitted=0;var omittedNotes=0;var omittedZones=0;var omittedMeta=0;var omittedEvals=0
+        fun add(s:String):Boolean {
+            val safe=s.map {if(it.code<32 || it.code==127)' ' else it}.joinToString("")
+            val n=safe.toByteArray().size+1;if(bytes+n>EXPORT_BYTES-1024)return false
+            out.append(safe).append('\n');bytes+=n;return true
         }
-        out.append("END totalRows=${plan.decisions.size} omittedRows=$omitted omittedZoneRows=$omittedZones maxBytes=$EXPORT_BYTES; omission != no_zone; production=UNCHANGED\n")
+        fun meta(s:String) {if(!add(s))omittedMeta++}
+        meta("YAMAHAARRANGER SHADOW DRUM RESOLVER v2 SHADOW_PASS2 productionDispatch=UNCHANGED runtimeHook=NONE")
+        meta("RAW_STYLE_DEMAND plus STOP_NATIVE_SNAPSHOT; ACTUAL_RUNTIME_DISPATCH=UNKNOWN logicalKey=null productionKey=UNKNOWN; no actual per-note proof; no winner")
+        meta("REGISTRY version=${registry.version} schema=2 sha256=${registry.sha256} analysisSHA256=${registry.analysisSha256} targets=${registry.targets.size} claims=${registry.evidence.size}; classification=provenance_claim_not_loaded_sample_identity; confidence_tier_not_probability")
+        meta("cache=${plan.key} compileNs=${plan.compileNanos} storedRows=${plan.storedRows} storedLayerRefs=${plan.storedLayerRefs} maxLayerRefs=$MAX_PLAN_LAYER_REFS planMemory=bounded_not_heap_measured")
+        meta("PERFORMANCE noteOnHooks=0 noteOffHooks=0 addedHotPathAllocations=0 addedMutexes=0; device_p95_p99_xrun=NOT_MEASURED; preparation=STOP_worker_only")
+        for(f in fonts)meta("FONT sha256=${f.sha256} name=${f.name} identity=${f.identity} zones=${f.zones.size}")
+        for(n in snapshot.normalized)meta("NORMALIZED sha256=${n.sha256} raw=${n.rawBank} virtual=${n.virtualBank} handle=${n.handle}")
+        for(l in snapshot.production)meta("CURRENT_STOP_PRODUCTION $l NOT_ACTUAL_PER_NOTE_PROOF")
+        for((group,rows) in plan.decisions.groupBy {it.action to it.classification})meta("SUMMARY action=${group.first} class=${group.second} notes=${rows.size}")
+        for(t in registry.targets) {
+            meta("TARGET $t registryVersion=${registry.version}")
+            val rows=plan.decisions.filter {it.semanticTarget?.id==t.id}
+            meta("TARGET_SUMMARY id=${t.id} sourceKey=${t.key} notes=${rows.size} velocityDemand=${rows.groupingBy {it.request.velocity}.eachCount().toSortedMap()} actions=${rows.groupingBy {it.action}.eachCount()} classifications=${rows.groupingBy {it.classification}.eachCount()} selectedWinner=NONE")
+        }
+        for(e in registry.evidence)meta("EVIDENCE id=${e.evidenceId} target=${e.target?.id} version=${e.registryVersion} candidate=${e.candidate} class=${e.classification} confidence=${e.confidenceLabel} evidenceVelocity=${e.velocityLow}:${e.velocityHigh} isolatedObservedVelocities=${e.observedVelocities} layerSHA256=${e.layerHashes} provenance=${e.provenance} metadata=${e.metadataProvenance} PCM=${e.pcmProvenance} engineeringProof=${e.proof}")
+        val all=plan.decisions.flatMap {d->d.candidates.map {d.request to it}}
+        val evals=all.distinctBy {listOf(it.first.rhythmChannel,it.first.velocity,it.second)}
+        val emittedLayers=mutableSetOf<String>()
+        for((r,c) in evals) {
+            val e=c.evidence
+            if(!add("CANDIDATE_EVAL target=${e.target?.id} original=${r.msb}:${r.lsb}:${r.rawPc}:key${r.sourceKey} rhythm=${r.rhythmChannel} velocity=${r.velocity} id=${e.evidenceId} version=${e.registryVersion} candidate=${e.candidate} crossKey=${e.candidate.key!=r.sourceKey} class=${e.classification} confidence=${e.confidenceLabel} proposed=${c.proposedAction} passedGates=${c.passedGates} failedGates=${c.failedGates} eligibleLayers=${c.bundle.size}; advisoryOnly=true")){omittedEvals++;continue}
+            for(z in c.bundle) {
+                val id=digest((z.fontId+z.raw).toByteArray())
+                if(emittedLayers.add(id) && !add("LAYER evidence=${e.evidenceId} sf2SHA256=${z.fontId} layerSHA256=${digest(z.raw.toByteArray())} ${z.raw}"))omittedZones++
+            }
+        }
+        // Prioritize semantic demands; aggregate repeated hits so important targets survive the bounded export.
+        val groups=plan.decisions.groupBy {it.request.copy(tick=0)}.entries.sortedBy {if(it.value.first().semanticTarget==null)1 else 0}
+        for((r,rows) in groups) {
+            val d=rows.first()
+            if(!add("GROUP original=$r target=${d.semanticTarget?.id ?: "UNKNOWN"} hits=${rows.size} firstTick=${rows.minOf {it.request.tick}} lastTick=${rows.maxOf {it.request.tick}} productionScope=${d.productionScope} productionKey=UNKNOWN shadow=${d.action} class=${d.classification} candidate=${d.candidate} selectedCrossKey=${d.crossKey} candidateCrossKeys=${d.candidates.map {it.evidence.candidate.key!=r.sourceKey}} evidenceIds=${d.candidates.map {it.evidence.evidenceId}} passedGates=${d.passedGates} failedGates=${d.reasons} provenance=${d.provenance}")){omitted++;omittedNotes+=rows.size}
+        }
+        out.append("END totalRows=${plan.decisions.size} detailUnit=AGGREGATED_RAW_DEMAND groups=${groups.size} omittedRows=$omitted omittedDemandNotes=$omittedNotes omittedZoneRows=$omittedZones omittedCandidateEvaluations=$omittedEvals omittedMetadataRows=$omittedMeta maxBytes=$EXPORT_BYTES; omission != no_zone; production=UNCHANGED\n")
         return out.toString().also {check(it.toByteArray().size<=EXPORT_BYTES)}
     }
     /** Worker-only cache. Key includes all invalidation dimensions; never used by the synth. */
     class Cache {
         private var last:Plan?=null
-        @Synchronized fun prepare(requests:List<Request>,fonts:List<Font>,evidence:List<Evidence>,policy:Policy,snapshot:Snapshot,styleDigest:String="parsed_demand"):Plan {
-            val key=cacheKey(requests,fonts,evidence,policy,snapshot).let { it.copy(styleDigest=digest((it.styleDigest+":"+styleDigest).toByteArray())) }
-            return last?.takeIf {it.key==key} ?: compile(requests,fonts,evidence,policy,snapshot).copy(key=key).also {last=it}
+        @Synchronized fun prepare(requests:List<Request>,fonts:List<Font>,evidence:List<Evidence>,policy:Policy,snapshot:Snapshot,styleDigest:String="parsed_demand",registry:DrumSemanticEvidenceRegistry.Registry=DrumSemanticEvidenceRegistry.empty()):Plan {
+            val key=cacheKey(requests,fonts,evidence,policy,snapshot,registry).let { it.copy(styleDigest=digest((it.styleDigest+":"+styleDigest).toByteArray())) }
+            return last?.takeIf {it.key==key} ?: compile(requests,fonts,evidence,policy,snapshot,registry).copy(key=key).also {last=it}
         }
     }
 }

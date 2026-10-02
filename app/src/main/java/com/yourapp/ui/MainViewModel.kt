@@ -641,7 +641,7 @@ class MainViewModel @Inject constructor(
     private val drumShadowCache = com.yourapp.audio.DrumShadowPlanner.Cache()
 
     /** Explicit STOP preparation/export only. No sequencer or runtime activation. */
-    suspend fun exportShadowDrum(evidenceText: String = "", allowApproximation: Boolean = false): String {
+    suspend fun exportShadowDrum(evidenceText: String = "", allowApproximation: Boolean = false, useAuditedRegistry: Boolean = true): String {
         check(!uiState.value.isPlaying) { "STOP before preparing shadow export" }
         val style = drumAuditStyle ?: error("Load a style first")
         return withContext(Dispatchers.IO) {
@@ -649,11 +649,12 @@ class MainViewModel @Inject constructor(
             val demand = p.requests(style)
             val fonts = p.inventory(contentResolver.sf2MetadataSources())
             val evidence = p.evidence(evidenceText)
+            val registry = if(useAuditedRegistry) com.yourapp.audio.DrumSemanticEvidenceRegistry.bundled() else com.yourapp.audio.DrumSemanticEvidenceRegistry.empty()
             check(!uiState.value.isPlaying && drumAuditStyle === style) { "Style/playback changed during preparation; STOP and retry" }
             val snapshot = p.snapshot(audioEngine.shadowDrumSnapshot(), fonts)
-            val plan = drumShadowCache.prepare(demand,fonts,evidence,com.yourapp.audio.DrumShadowPlanner.Policy(allowApproximation),snapshot,p.styleDigest(style))
+            val plan = drumShadowCache.prepare(demand,fonts,evidence,com.yourapp.audio.DrumShadowPlanner.Policy(allowApproximation),snapshot,p.styleDigest(style),registry)
             check(!uiState.value.isPlaying && drumAuditStyle === style) { "Style/playback changed during preparation; retry" }
-            p.export(plan,fonts,snapshot)
+            p.export(plan,fonts,snapshot,registry)
         }
     }
 
