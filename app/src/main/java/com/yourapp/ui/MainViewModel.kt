@@ -638,6 +638,25 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    private val drumShadowCache = com.yourapp.audio.DrumShadowPlanner.Cache()
+
+    /** Explicit STOP preparation/export only. No sequencer or runtime activation. */
+    suspend fun exportShadowDrum(evidenceText: String = "", allowApproximation: Boolean = false): String {
+        check(!uiState.value.isPlaying) { "STOP before preparing shadow export" }
+        val style = drumAuditStyle ?: error("Load a style first")
+        return withContext(Dispatchers.IO) {
+            val p = com.yourapp.audio.DrumShadowPlanner
+            val demand = p.requests(style)
+            val fonts = p.inventory(contentResolver.sf2MetadataSources())
+            val evidence = p.evidence(evidenceText)
+            check(!uiState.value.isPlaying && drumAuditStyle === style) { "Style/playback changed during preparation; STOP and retry" }
+            val snapshot = p.snapshot(audioEngine.shadowDrumSnapshot(), fonts)
+            val plan = drumShadowCache.prepare(demand,fonts,evidence,p.Policy(allowApproximation),snapshot,p.styleDigest(style))
+            check(!uiState.value.isPlaying && drumAuditStyle === style) { "Style/playback changed during preparation; retry" }
+            p.export(plan,fonts,snapshot)
+        }
+    }
+
     suspend fun compactDrumCompatibilityReport(comparison: String = ""): String {
         if (uiState.value.isPlaying) return "DRUM COMPATIBILITY unavailable: STOP before export\n"
         val style = drumAuditStyle ?: return "DRUM COMPATIBILITY unavailable: load a style first\n"

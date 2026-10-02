@@ -219,3 +219,8 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_Nativ
     const auto report=g_engine ? g_engine->sfCompactChordDiagnosticReport() : "CHORD NATIVE unavailable: engine absent\n";
     return env->NewStringUTF(sanitizeUtf8ForJni(report.c_str()).c_str());
 }
+
+extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeShadowDrumSnapshot(JNIEnv* env,jobject) {
+    const std::string report=g_engine?g_engine->sfShadowDrumSnapshot():"GEN value=0\n";
+    return env->NewStringUTF(report.c_str());
+}

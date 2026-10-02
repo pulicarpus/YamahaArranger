@@ -37,6 +37,7 @@ public:
     void sfSetKeyboardReleaseTime(int releaseTime);
     void sfSetMasterGain(float gain);
     std::string sfPresetList() const;
+    std::string sfShadowDrumSnapshot() const { return soundFont_.shadowDrumSnapshot(); }
     std::vector<unsigned char> sfDiagnosticDrumWav(int bank,int pc,int key,int velocity);
     std::string sfNoteZoneReport() const;
     std::string sfDrumKitCoverage(const std::vector<drum_audit::Hit>& hits) const;

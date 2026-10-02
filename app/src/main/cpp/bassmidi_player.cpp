@@ -1795,3 +1795,38 @@ std::string BassMidiPlayer::compactChordDiagnosticReport() const {
     { std::lock_guard<std::mutex> lock(mutex_); snapshot=chordCapture_; }
     return chord_diagnostic::compactReport(snapshot);
 }
+
+// Stage1/2 STOP-only observational snapshot. No NOTE hot-path hook or production-state writes.
+std::string BassMidiPlayer::shadowDrumSnapshot() const {
+    struct Live {int ch,inputBank,inputPc,bank=-1,pc=-1,effective;bool verified=false;std::string source;HSOUNDFONT handle=0;};
+    struct Bank {std::string path;int raw,virtualBank;HSOUNDFONT handle;};
+    std::vector<Live> lives;std::vector<Bank> banks;std::vector<std::pair<std::string,HSOUNDFONT>> fonts;
+    uint64_t generation;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);generation=fontMappingGeneration_;
+        if(melodyFont_)fonts.emplace_back(melodyPath_,melodyFont_);
+        if(drumFont_)fonts.emplace_back(drumPath_,drumFont_);
+        for(const auto& m:normalizedBanks_)banks.push_back({melodyPath_,m.rawBank,m.virtualBank,melodyFont_});
+        for(const auto& f:secondaryMelodies_) {
+            fonts.emplace_back(f.path,f.font);
+            for(const auto& m:f.banks)banks.push_back({f.path,m.rawBank,m.virtualBank,f.font});
+        }
+        for(int ch=8;ch<=9;++ch) {
+            Live row{ch,audioDiagnostics_[ch].requestedBank,audioDiagnostics_[ch].requestedPc,-1,-1,channels_[ch].program,false,{}};
+            BASS_MIDI_FONT live{};row.verified=stream_ && BASS_MIDI_StreamGetPreset(stream_,ch,&live);
+            if(row.verified) {row.bank=live.bank;row.pc=live.preset;row.handle=live.font;
+                for(const auto& f:fonts)if(f.second==live.font)row.source=f.first;
+            }
+            lives.push_back(std::move(row));
+        }
+    }
+    // Encode file paths without delimiter/newline ambiguity; format outside synth mutex.
+    auto hex=[](const std::string& value) {const char* digits="0123456789abcdef";std::string out;
+        for(unsigned char c:value){out.push_back(digits[c>>4]);out.push_back(digits[c&15]);}return out.empty()?std::string("-"):out;};
+    std::ostringstream out;out<<"GEN value="<<generation<<"\n";
+    for(const auto& f:fonts)out<<"FONT source="<<hex(f.first)<<" handle="<<f.second<<" readiness=UNKNOWN\n";
+    for(const auto& b:banks)out<<"BANK source="<<hex(b.path)<<" raw="<<b.raw<<" virtual="<<b.virtualBank<<" handle="<<b.handle<<"\n";
+    for(const auto& r:lives)out<<"LIVE ch="<<r.ch<<" inputBank="<<r.inputBank<<" inputPC="<<r.inputPc
+        <<" source="<<hex(r.source)<<" handle="<<r.handle<<" bank="<<r.bank<<" pc="<<r.pc<<" verified="<<r.verified<<" effectivePC="<<r.effective<<"\n";
+    return out.str();
+}

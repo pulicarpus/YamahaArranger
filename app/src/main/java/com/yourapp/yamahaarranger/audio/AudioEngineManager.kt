@@ -250,6 +250,8 @@ class AudioEngineManager @Inject constructor(
 
     fun setChannelVolume(channel: Int, volume: Int) = setChannelMixer(channel, volume=volume)
     fun setChannelExpression(channel: Int, expression: Int) = bridge.nativeSetChannelExpression(channel, expression.coerceIn(0, 127))
+    fun shadowDrumSnapshot(): String = bridge.nativeShadowDrumSnapshot()
+
     fun diagnosticDrumWav(bank: Int, pc: Int, key: Int, velocity: Int): ByteArray = bridge.nativeDiagnosticDrumWav(bank, pc, key, velocity)
     fun noteZoneReport(): String = bridge.nativeGetNoteZoneReport()
     fun drumKitCoverage(histogram: IntArray): String = bridge.nativeGetDrumKitCoverage(histogram)

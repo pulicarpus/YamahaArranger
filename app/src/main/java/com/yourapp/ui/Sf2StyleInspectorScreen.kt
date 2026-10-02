@@ -67,6 +67,8 @@ fun Sf2StyleInspectorDialog(
     viewModel: MainViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+    var shadowDialog by remember { mutableStateOf(false) }
+    if (shadowDialog) DrumShadowDialog(viewModel) { shadowDialog = false }
     var managedAudition by remember { mutableStateOf(false) }
     if (managedAudition) ManagedSf2AuditionDialog(viewModel) { managedAudition = false }
     var tab by remember { mutableStateOf(0) }
@@ -182,6 +184,9 @@ fun Sf2StyleInspectorDialog(
                 Text("STOP first. All managed SF2 files; compact semantic index max 48 KiB. Full ZIP optional. Reading large fonts may take time.",
                     color = InspectorDim, fontSize = 10.sp)
 
+                OutlinedButton(enabled = !exportBusy && !state.isPlaying, onClick = { shadowDialog = true }) {
+                    Text("SHADOW DRUM RESOLVER")
+                }
                 OutlinedButton(enabled = !exportBusy && !state.isPlaying, onClick = { managedAudition = true }) {
                     Text("MANAGED SF2 AUDITION (WAV + SIDECAR)")
                 }

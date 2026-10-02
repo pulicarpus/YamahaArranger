@@ -28,8 +28,16 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+      - name: Check out #770 performance baseline (read only)
+        uses: actions/checkout@v4
+        with:
+          ref: 376ebe2884e743f1f32ae0c56201ed5a342805bb
+          path: .shadow-baseline
+          persist-credentials: false
       - name: Test family-preserving resolver
-        run: python3 tools/test_voice_resolver.py
+        run: |
+          python3 tools/test_voice_resolver.py
+          python3 tools/compare_drum_shadow_baseline.py .shadow-baseline
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -77,7 +85,7 @@ jobs:
           gradle-version: 8.7
       - name: Build debug APK
         run: |
-          gradle testDebugUnitTest --tests '*StyleExpressionRegressionTest' --tests '*DrumStyleAuditProfileTest' --tests '*StyleChordDiagnosticRegressionTest' --tests '*Sf2SemanticInventoryTest' --tests '*Sf2MetadataReadOnlyTest' --tests '*ManagedSf2AuditionTest' --stacktrace
+          gradle testDebugUnitTest --tests '*StyleExpressionRegressionTest' --tests '*DrumStyleAuditProfileTest' --tests '*StyleChordDiagnosticRegressionTest' --tests '*Sf2SemanticInventoryTest' --tests '*Sf2MetadataReadOnlyTest' --tests '*ManagedSf2AuditionTest' --tests '*DrumShadowPlannerTest' --tests '*DrumShadowReadOnlyTest' --stacktrace
           gradle assembleDebug --stacktrace
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4

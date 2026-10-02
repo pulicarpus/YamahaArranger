@@ -41,6 +41,7 @@ public:
     void setKeyboardReleaseTime(int releaseTime);
     void setMasterGain(float gain);
     std::string presetList() const;
+    std::string shadowDrumSnapshot() const;
     std::vector<unsigned char> diagnosticDrumWav(int bank,int pc,int key,int velocity);
     std::string noteZoneReport() const;
     std::string drumKitCoverage(const std::vector<drum_audit::Hit>& hits) const;
