@@ -98,7 +98,7 @@ class GenericDrumResolverTest {
     }
     @Test fun articulationLexiconSeparatesPedalEdgeOpenAndClosed() {
         val z=font(seed()).zones.first()
-        for((name,expected) in listOf("HiHat Foot(R)" to "PEDAL_CLOSED","hi-hat edge" to "EDGE","HiHat Half-Open" to "PARTIAL_OR_SPLASH","HiHat Open" to "OPEN","HiHat Closed" to "CLOSED"))
+        for((name,expected) in listOf("HiHat Foot(R)" to "PEDAL_UNSPECIFIED","hi-hat edge" to "EDGE","HiHat Half-Open" to "PARTIAL_OR_SPLASH","HiHat Open" to "OPEN","HiHat Closed" to "CLOSED"))
             assertEquals(expected,g.nameHint(z.copy(sample=name,instrument="opaque"))!!.articulation)
     }
     @Test fun unknownSemanticTargetsDoNotBecomeGmByMidiKeyNumber() {
@@ -126,5 +126,23 @@ class GenericDrumResolverTest {
         val e=seed();val t=ticket(e)
         assertNull(compile(listOf(e),tickets=listOf(t.copy(rhythmChannel=8))).rows.single().selected)
         assertNull(compile(listOf(e),tickets=listOf(t.copy(sourceDigest="controller_style_changed"))).rows.single().selected)
+    }
+    @Test fun unknownEdgeSiblingCannotBeHiddenByPedalFamilyTicket() {
+        val pedal=registry.evidence.first { it.target!!.technique=="PEDAL_CLOSED" }
+        val edge=registry.evidence.first { it.target!!.technique=="EDGE" }
+        val plan=compile(listOf(pedal,edge),listOf(req(pedal,42),req(edge,42)),listOf(ticket(pedal),ticket(edge)))
+        assertTrue(plan.rows.all { it.selected==null })
+        assertEquals(DrumEngineeringProof.Status.UNKNOWN,plan.rows.first().candidates.single().gates["KNOWN_HAT_SEMANTIC_CLOSURE"])
+    }
+    @Test fun nativeVelocityResponseRegionDoesNotExpandFromOneAudition() {
+        val e=seed();val limited=ticket(e).copy(velocityLow=100,velocityHigh=127)
+        val plan=compile(listOf(e),listOf(req(e,42),req(e,110)),listOf(limited))
+        assertNull(plan.rows[0].selected);assertNotNull(plan.rows[1].selected)
+    }
+    @Test fun globalHintLexiconIncludesOtherPercussionAndDoesNotCallPedalSplashClosed() {
+        val z=font(seed()).zones.first()
+        assertEquals("PEDAL_SPLASH_OR_OPEN",g.nameHint(z.copy(sample="Pedal Splash HiHat",instrument="opaque"))!!.articulation)
+        for((name,family) in listOf("Bongo" to "BONGO","Muted Conga" to "CONGA","Tambourine" to "TAMBOURINE","Woodblock" to "WOODBLOCK","Triangle" to "TRIANGLE","Castanet" to "CASTANET"))
+            assertEquals(family,g.nameHint(z.copy(sample=name,instrument="opaque"))!!.family)
     }
 }

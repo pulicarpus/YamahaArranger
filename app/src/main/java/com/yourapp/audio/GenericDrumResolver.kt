@@ -16,7 +16,7 @@ object GenericDrumResolver {
         val loadedSHA256:String,val samplesReady:Boolean,val pitchNeutral:Boolean,val velocityResponseVerified:Boolean,
         val ownerAdapterVerified:Boolean,val controllerLaneVerified:Boolean,val chokeFamilyClosed:Boolean,
         val chokeSameLane:Boolean,val chokeEngineVerified:Boolean,val provenance:String,
-        val rhythmChannel:Int=9,val sourceDigest:String="raw-demand-only")
+        val rhythmChannel:Int=9,val sourceDigest:String="raw-demand-only",val velocityLow:Int=1,val velocityHigh:Int=127)
     data class Candidate(val evidence:DrumShadowPlanner.Evidence,val layers:List<DrumShadowPlanner.Zone>,
         val gates:Map<String,DrumEngineeringProof.Status>,val reasons:List<String>,val ticket:RuntimeTicket?=null) {
         val safe get()=gates.values.all { it==DrumEngineeringProof.Status.PASS }
@@ -30,6 +30,10 @@ object GenericDrumResolver {
     }
     private fun <T> freeze(xs:List<T>):List<T> = Collections.unmodifiableList(xs.toList())
     private fun stable(b:DrumShadowPlanner.Binding)="${b.sha256}:${b.bank.toString().padStart(5,'0')}:${b.pc.toString().padStart(3,'0')}:${b.key.toString().padStart(3,'0')}"
+    private val percussionHints=linkedMapOf("BONGO" to "bongo","CONGA" to "conga","TIMBALE" to "timbale",
+        "TAMBOURINE" to "tambourine","SHAKER" to "shaker","CABASA" to "cabasa","MARACAS" to "maraca",
+        "CLAVES" to "clave","GUIRO" to "guiro","WOODBLOCK" to "wood.?block","TRIANGLE" to "triangle",
+        "WHISTLE" to "whistle","CUICA" to "cuica","AGOGO" to "agogo","CASTANET" to "castanet")
 
     /** Conservative articulation-specific lexicon; UNKNOWN hints never enter ranking. */
     fun nameHint(z:DrumShadowPlanner.Zone):Semantic? {
@@ -37,7 +41,11 @@ object GenericDrumResolver {
         val hat=Regex("hi[ -]?hat|hihat").containsMatchIn(s)
         return when {
             hat -> Semantic("HI_HAT",when {
-                Regex("pedal|pedaled|foot").containsMatchIn(s)->"PEDAL_CLOSED"
+                Regex("pedal|pedaled|foot").containsMatchIn(s)->when {
+                    Regex("splash|open").containsMatchIn(s)->"PEDAL_SPLASH_OR_OPEN"
+                    Regex("close|closed|chick").containsMatchIn(s)->"PEDAL_CLOSED"
+                    else->"PEDAL_UNSPECIFIED"
+                }
                 Regex("half[ -]?open|splash").containsMatchIn(s)->"PARTIAL_OR_SPLASH"
                 Regex("open").containsMatchIn(s)->"OPEN"
                 Regex("edge").containsMatchIn(s)->"EDGE"
@@ -57,7 +65,15 @@ object GenericDrumResolver {
             Regex("crash").containsMatchIn(s)->Semantic("CYMBAL","CRASH")
             Regex("cow.?bell").containsMatchIn(s)->Semantic("COWBELL","HIT")
             Regex("clap").containsMatchIn(s)->Semantic("CLAP","HIT")
-            else->null
+            else->percussionHints.entries.firstOrNull { Regex(it.value).containsMatchIn(s) }?.let { entry ->
+                Semantic(entry.key,when {
+                    Regex("mute|closed").containsMatchIn(s)->"MUTED"
+                    Regex("slap").containsMatchIn(s)->"SLAP"
+                    Regex("open").containsMatchIn(s)->"OPEN"
+                    Regex("roll").containsMatchIn(s)->"ROLL"
+                    else->"HIT"
+                })
+            }
         }
     }
     class Index(fonts:List<DrumShadowPlanner.Font>) {
@@ -86,7 +102,8 @@ object GenericDrumResolver {
         fun hints(t:DrumSemanticEvidenceRegistry.Target?,v:Int):List<Hint> {
             if(t==null)return emptyList()
             val key=Semantic(t.family,t.technique)
-            val eligible=semantic[key].orEmpty().filter { layers(it.binding,v).isNotEmpty() }
+            val probes=semantic[key].orEmpty()+if(t.family=="HI_HAT" && t.technique=="PEDAL_CLOSED")semantic[Semantic("HI_HAT","PEDAL_UNSPECIFIED")].orEmpty() else emptyList()
+            val eligible=probes.filter { layers(it.binding,v).isNotEmpty() }
             // Bounded evidence display spans fonts; ordering is explicitly never a winner rule.
             return eligible.groupBy { it.binding.sha256 }.values.flatMap { it.take(2) }.take(MAX_HINTS)
         }
@@ -99,6 +116,8 @@ object GenericDrumResolver {
         val index=Index(fonts);val stableGeneration=DrumEngineeringProof.generation(before,after)
         val claims=registry.evidence.groupBy { listOf(it.msb,it.lsb,it.pc,it.key) }
         val targets=registry.targets.associateBy { listOf(it.msb,it.lsb,it.rawPc,it.key) }
+        val hatDemands=requests.filter { targets[listOf(it.msb,it.lsb,it.rawPc,it.sourceKey)]?.family=="HI_HAT" }
+            .groupBy { listOf(it.rhythmChannel,it.msb,it.lsb,it.rawPc) }
         require(tickets.map { it.binding to it.rhythmChannel }.distinct().size==tickets.size) {"ambiguous native ticket"}
         val ticketIndex=tickets.associateBy { it.binding to it.rhythmChannel }
         // Evaluate one row per unique source/routing/context/velocity; reuse immutable results for all hits.
@@ -131,11 +150,25 @@ object GenericDrumResolver {
                     gate("STABLE_GENERATION",stableGeneration.status,stableGeneration.detail)
                     required("NATIVE_LOADED_RESOURCE",ticket?.let { it.generation==before.generation && it.handle>0 && it.loadedSHA256==b.sha256 && it.samplesReady && it.provenance.isNotBlank() && it.sourceDigest==sourceDigest },"native_per_binding_lane_style_attestation_absent_or_stale")
                     required("RUNTIME_PITCH",ticket?.pitchNeutral,"native_pitch_bend_transpose_context_not_neutral")
-                    required("VELOCITY_RESPONSE",ticket?.velocityResponseVerified,"default_modulators_or_lane_velocity_response_unproven")
+                    required("VELOCITY_RESPONSE",ticket?.let { it.velocityResponseVerified && r.velocity in it.velocityLow..it.velocityHigh },"default_modulators_or_lane_velocity_response_region_unproven")
                     required("OWNER_ADAPTER",ticket?.ownerAdapterVerified,"production_token_adapter_unavailable")
                     required("CONTROLLER_LANE",ticket?.controllerLaneVerified,"controller_mixer_lane_unverified")
                     val hat=target?.family=="HI_HAT"
                     val exclusive=layers.map { it.ig[57] ?: 0 }.toSet()
+                    if(hat) {
+                        val closure=hatDemands[listOf(r.rhythmChannel,r.msb,r.lsb,r.rawPc)].orEmpty().all { member ->
+                            claims[listOf(member.msb,member.lsb,member.rawPc,member.sourceKey)].orEmpty().any { sibling ->
+                                val sb=sibling.candidate;val sl=index.layers(sb,member.velocity)
+                                val admitted=sibling.classification in listOf(DrumShadowPlanner.Classification.EXACT,DrumShadowPlanner.Classification.COMPATIBLE) ||
+                                    sibling.classification==DrumShadowPlanner.Classification.APPROXIMATION && policy.allowApproximation
+                                admitted && sb.sha256==b.sha256 && sb.bank==b.bank && sb.pc==b.pc && sl.isNotEmpty() &&
+                                    sl.all { (it.ig[57] ?: 0)>0 && (it.ig[57] ?: 0) in exclusive } &&
+                                    sl.map { DrumShadowPlanner.digest(it.raw.toByteArray()) }.sorted()==sibling.layerHashes.sorted()
+                            }
+                        }
+                        gate("KNOWN_HAT_SEMANTIC_CLOSURE",if(closure)DrumEngineeringProof.Status.PASS else DrumEngineeringProof.Status.UNKNOWN,
+                            "known_source_hat_articulation_unproven_or_split_preset_family;native_ticket_cannot_promote_unknown_sibling")
+                    }
                     if(hat || exclusive.any { it>0 })required("CHOKE_CLOSED_LANE",ticket?.let { it.chokeFamilyClosed && it.chokeSameLane && it.chokeEngineVerified && (!hat || exclusive.size==1 && exclusive.first()>0) },"complete_family_same_font_preset_lane_and_engine_choke_unproven")
                     else required("CHOKE_CLOSED_LANE",true,"not_exclusive_family")
                     Candidate(e,freeze(layers),Collections.unmodifiableMap(statuses),freeze(reasons),ticket)

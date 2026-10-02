@@ -33,9 +33,9 @@ fun DrumShadowDialog(viewModel: MainViewModel, onDismiss: () -> Unit) {
             Text("Engineering proof audits static pitch, velocity regions, exclusive classes and offline note pairing. STOP snapshots bracket the audit. Runtime safety may remain UNKNOWN; export does not activate candidates.")
             Row {Checkbox(fullResolver,{fullResolver=it},enabled=!busy);Text("Full demand + all managed SF2 resolver")}
             Text("Full resolver ranks reviewed evidence, searches cross-key metadata hints and keeps unsafe/unknown notes on legacy fallback. Experimental production is blocked until a verified resource/lane/owner adapter is available.")
-            Row {Checkbox(auditedRegistry,{auditedRegistry=it},enabled=!busy);Text("Use verified audit #770 evidence (shadow only)")}
+            Row {Checkbox(if(fullResolver)true else auditedRegistry,{auditedRegistry=it},enabled=!busy && !fullResolver);Text("Use verified audit #770 evidence (required for full resolver)")}
             Text("Imported claims cannot prove runtime pitch/choke/ownership/readiness. ABSTAIN is expected even with COMPATIBLE candidates.")
-            OutlinedTextField(evidence,{evidence=it},enabled=!busy,label={Text("Optional supplemental claims (unreviewed)")},modifier=Modifier.fillMaxWidth().heightIn(min=90.dp,max=180.dp))
+            OutlinedTextField(evidence,{evidence=it},enabled=!busy && !fullResolver,label={Text("Optional claims for previous Engineering Proof")},modifier=Modifier.fillMaxWidth().heightIn(min=90.dp,max=180.dp))
             Text("One claim per line: MSB|LSB|rawPC|targetKey|SF2_SHA256|bank|PC|sourceKey|class|confidence|provenance. Supplemental claims cannot promote reviewed targets or bypass engineering gates.")
             Row {Checkbox(approximation,{approximation=it},enabled=!busy);Text("Consider APPROXIMATION in shadow only")}
             Text(status)
