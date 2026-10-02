@@ -112,7 +112,7 @@ class DrumShadowPlannerTest {
         val headers=mapOf(0 to DrumShadowPlanner.Sample(0,60,44100,4,1,0,100),1 to DrumShadowPlanner.Sample(1,60,44100,2,0,100,200))
         val d=plan(fonts=listOf(font(zones).copy(samples=headers))).decisions.single()
         assertEquals(DrumShadowPlanner.Action.SUBSTITUTE,d.action);assertEquals(2,d.bundle.size)
-        try {(d.bundle as MutableList).clear();fail("must be immutable")} catch(_:UnsupportedOperationException) {}
+        try {(d.bundle as MutableList<DrumShadowPlanner.Zone>).clear();fail("must be immutable")} catch(_:UnsupportedOperationException) {}
         assertEquals(2,d.bundle.size)
     }
     @Test fun negativeEvidenceCannotBePromotedByPositiveClaimForSameBinding() {

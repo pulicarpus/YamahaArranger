@@ -30,7 +30,7 @@ object DrumShadowPlanner {
         val classification: Classification, val confidence: Int, val provenance: String, val proof: Proof = Proof())
     data class Policy(val allowApproximation: Boolean = false, val version: Int = 1, val retainLegacy: Boolean = false)
     data class Production(val channel: Int, val inputBank: Int, val inputPc: Int, val sha256: String?,
-        val bank: Int, val pc: Int, val verified: Boolean, val generation: Long, val rawBank: Int = bank)
+        val bank: Int, val pc: Int, val verified: Boolean, val generation: Long, val rawBank: Int = bank, val fingerprintScope: String = "CURRENT_MANAGED_BYTES_PATH_CORRELATION_NOT_LOADED_SAMPLE_PROOF")
     data class Normalized(val sha256: String, val rawBank: Int, val virtualBank: Int, val handle: Long? = null)
     data class Snapshot(val production: List<Production>, val normalized: List<Normalized>, val generation: String,
         val raw: String)
@@ -77,7 +77,7 @@ object DrumShadowPlanner {
                             check(out.size<MAX_REQUESTS) { "style demand exceeds bounded shadow plan" }
                             // CASM/overrides/masks are not executed; logical transformed key cannot be asserted from raw demand.
                             out+=Request(sectionName,part.name,src,dst,msb,lsb,pc,event.note,null,event.velocity,event.tick,context,dynamic,
-                                destinations.size==1 && msb in 0..127 && lsb in 0..127 && pc in 0..127)
+                                destinations.size==1 && msb in 0..127 && lsb in 0..127 && pc in 0..127 && event.note in 0..127 && event.velocity in 1..127)
                         }
                     }
                 }
@@ -222,7 +222,7 @@ object DrumShadowPlanner {
     /** Worker-only cache. Key includes all invalidation dimensions; never used by the synth. */
     class Cache {
         private var last:Plan?=null
-                @Synchronized fun prepare(requests:List<Request>,fonts:List<Font>,evidence:List<Evidence>,policy:Policy,snapshot:Snapshot,styleDigest:String="parsed_demand"):Plan {
+        @Synchronized fun prepare(requests:List<Request>,fonts:List<Font>,evidence:List<Evidence>,policy:Policy,snapshot:Snapshot,styleDigest:String="parsed_demand"):Plan {
             val key=cacheKey(requests,fonts,evidence,policy,snapshot).let { it.copy(styleDigest=digest((it.styleDigest+":"+styleDigest).toByteArray())) }
             return last?.takeIf {it.key==key} ?: compile(requests,fonts,evidence,policy,snapshot).copy(key=key).also {last=it}
         }

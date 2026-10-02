@@ -651,7 +651,7 @@ class MainViewModel @Inject constructor(
             val evidence = p.evidence(evidenceText)
             check(!uiState.value.isPlaying && drumAuditStyle === style) { "Style/playback changed during preparation; STOP and retry" }
             val snapshot = p.snapshot(audioEngine.shadowDrumSnapshot(), fonts)
-            val plan = drumShadowCache.prepare(demand,fonts,evidence,p.Policy(allowApproximation),snapshot,p.styleDigest(style))
+            val plan = drumShadowCache.prepare(demand,fonts,evidence,com.yourapp.audio.DrumShadowPlanner.Policy(allowApproximation),snapshot,p.styleDigest(style))
             check(!uiState.value.isPlaying && drumAuditStyle === style) { "Style/playback changed during preparation; retry" }
             p.export(plan,fonts,snapshot)
         }

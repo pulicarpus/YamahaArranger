@@ -28,7 +28,7 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-      - name: Check out #770 performance baseline (read only)
+      - name: "Check out #770 performance baseline (read only)"
         uses: actions/checkout@v4
         with:
           ref: 376ebe2884e743f1f32ae0c56201ed5a342805bb
