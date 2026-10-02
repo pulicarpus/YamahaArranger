@@ -25,10 +25,11 @@ fun DrumShadowDialog(viewModel: MainViewModel, onDismiss: () -> Unit) {
     var auditedRegistry by remember {mutableStateOf(true)}
     var approximation by remember {mutableStateOf(false)}
     var status by remember {mutableStateOf("STOP after warming the current style/SF2. Export prepares a shadow plan; playback never uses it.")}
-    AlertDialog(onDismissRequest={if(!busy)onDismiss()},title={Text("Shadow Drum Resolver")},text={
+    AlertDialog(onDismissRequest={if(!busy)onDismiss()},title={Text("Engineering Proof — Shadow Only")},text={
         Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)) {
             Text("Stage 1–2 only. Original raw style demand, current STOP production snapshot and proposed decisions are separate. No synth/MIDI events or routing changes.")
             Text("Pass 2 loads the reviewed audition #770 registry as data. Edge remains UNKNOWN; pedal/snare candidates remain advisory. No winner or production substitution.")
+            Text("Engineering proof audits static pitch, velocity regions, exclusive classes and offline note pairing. STOP snapshots bracket the audit. Runtime safety may remain UNKNOWN; export does not activate candidates.")
             Row {Checkbox(auditedRegistry,{auditedRegistry=it},enabled=!busy);Text("Use verified audit #770 evidence (shadow only)")}
             Text("Imported claims cannot prove runtime pitch/choke/ownership/readiness. ABSTAIN is expected even with COMPATIBLE candidates.")
             OutlinedTextField(evidence,{evidence=it},enabled=!busy,label={Text("Optional supplemental claims (unreviewed)")},modifier=Modifier.fillMaxWidth().heightIn(min=90.dp,max=180.dp))
@@ -42,7 +43,7 @@ fun DrumShadowDialog(viewModel: MainViewModel, onDismiss: () -> Unit) {
             try {
                 val report=viewModel.exportShadowDrum(evidence,approximation,auditedRegistry)
                 val name=withContext(Dispatchers.IO) {
-                    val name="YamahaArranger_DrumShadowPass2_${UUID.randomUUID()}.txt"
+                    val name="YamahaArranger_EngineeringProof_${UUID.randomUUID()}.txt"
                     val values=ContentValues().apply {put(MediaStore.MediaColumns.DISPLAY_NAME,name);put(MediaStore.MediaColumns.MIME_TYPE,"text/plain");put(MediaStore.MediaColumns.RELATIVE_PATH,Environment.DIRECTORY_DOWNLOADS+"/YamahaArranger");put(MediaStore.MediaColumns.IS_PENDING,1)}
                     val uri=context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI,values) ?: error("Cannot create shadow export")
                     try {

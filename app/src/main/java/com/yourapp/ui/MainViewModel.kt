@@ -654,7 +654,12 @@ class MainViewModel @Inject constructor(
             val snapshot = p.snapshot(audioEngine.shadowDrumSnapshot(), fonts)
             val plan = drumShadowCache.prepare(demand,fonts,evidence,com.yourapp.audio.DrumShadowPlanner.Policy(allowApproximation),snapshot,p.styleDigest(style),registry)
             check(!uiState.value.isPlaying && drumAuditStyle === style) { "Style/playback changed during preparation; retry" }
-            p.export(plan,fonts,snapshot,registry)
+            val proof = com.yourapp.audio.DrumEngineeringProof
+            val engineering = proof.audit(plan,fonts,snapshot,snapshot,style)
+            // Second observational getter catches changes across the whole worker audit; no resource preparation.
+            val after = p.snapshot(audioEngine.shadowDrumSnapshot(), fonts)
+            check(!uiState.value.isPlaying && drumAuditStyle === style) { "Style/playback changed during engineering audit; retry" }
+            p.export(plan,fonts,snapshot,registry,proof.seal(engineering,snapshot,after))
         }
     }
 
@@ -1046,4 +1051,3 @@ class MainViewModel @Inject constructor(
         private fun displayLabelFor(section: ArrangerSection): String = SECTION_BUTTON_MAP.entries.firstOrNull { it.value == section }?.key ?: section.name
     }
 }
-

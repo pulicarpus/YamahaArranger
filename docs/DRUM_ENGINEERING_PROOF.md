@@ -1,0 +1,37 @@
+# Engineering Proof Diagnostic (#774 source)
+
+Baseline: GitHub `a66beeb3365e29b8454df154251ad88242dd6961` (#773). The existing resolver, sequencer, decoder, native player, JNI, FONTEX2/NOWAIT/NOTEOFF1, CC11 and valid-owner behavior are unchanged. No Stage 3, candidate winner, auxiliary lane or production mapping is added. The existing #770 evidence registry is unchanged. Raw Yamaha numbering is closed.
+
+The explicit STOP export runs inventory, shadow compilation and a pure engineering audit on the IO worker. The existing observational native getter is called before and after the audit; different generation or snapshot content makes resource readiness FAIL. Neither getter loads samples, activates a preset, sends events, or changes controllers. Style identity and STOP state are rechecked before returning the report. Scan/export never sends notes. The diagnostic is not wired to the realtime path.
+
+## Scope of proofs
+
+Each candidate has scoped PASS / FAIL / UNKNOWN results, provenance and remaining runtime gates. PASS always applies to the stated scope, not to all future runtime behavior.
+
+* Resource: full managed-file SHA256, bank/rawPC/key, preset and velocity-layer availability, sample-header references and stereo pairing are checked. The export includes observed handles, normalized banks and generation. Path correlation does not prove that the loaded font bytes equal the current managed bytes. Existing getters cannot prove per-candidate loaded sample readiness; resourceReady stays UNKNOWN when only metadata is available. Cached/managed paths that cannot be correlated remain UNKNOWN. Missing or inconsistent resources fail; no eager preload is added.
+* Pitch: `(fixed key or candidate key - effective root) * instrument scale tuning + coarseTune * 100 + fineTune`, adding preset/instrument coarse/fine generators. The export retains original key, root override, correction and explicit pitch-related modulators. Header correction is native compensation, not evidence of transposition caused by a cross-key lookup. Unsupported pitch generators/modulators or unpitched/invalid roots remain UNKNOWN. A nonzero known offset disproves the **zero-offset native-pitch hypothesis**; it is not an assertion that deliberately tuned SF2 content is musically wrong. A static PASS does not prove runtime pitch bend/default modulators/transposition/engine overrides are neutral.
+* Choke: reads instrument exclusiveClass (SF2 generator 57) and related preset zones, sample IDs, names, ranges, roots and pairings. Names are evidence only. Related-zone detail is bounded to 32 with explicit omission count. A static exclusive group does not prove runtime closed/pedal/open colocation or choke across fonts, presets or lanes. Missing exclusive class does not prove safety from a short envelope. Hi-hat choke therefore stays UNKNOWN without runtime-family evidence. No synthetic choke events are sent. Non-hat targets have no inferred hi-hat requirement.
+* Ownership: offline FIFO token simulation uses original section/part/channel/key ON/OFF ordering, including velocity-zero ON as OFF. It records simultaneous physical-owner collisions, retriggers, unmatched OFF, unterminated notes and section-boundary owners. OFF refers to captured ON ownership in the simulation. Main/Fill sections are deliberately not flattened into a fictitious runtime order. CASM-transformed keys, masks, actual lanes and scheduler transitions remain UNKNOWN. Other raw notes retain unknown physical owners; raw notes at the candidate key are reported as potential original-owner collisions. A FAIL is a counterexample to **simple key rewrite**, not a failure in existing playback. Balanced cross-key sequences still require unimplemented ownership tokens.
+* Velocity: compares actual immutable raw-style demand velocities with the complete eligible layer-signature multiset from the audited sidecars, preserving multiple relations. Same-region/layer inference can PASS at velocities not auditioned, but observed PCM velocities and inferred velocities are separate. Fixed-velocity generators are reported. Default modulators, engine dynamics and acceptance at inferred velocities remain unproven. No new PCM, semantic promotion or confidence increase is invented.
+* Ambiguity: equal semantic candidates retain `AMBIGUOUS_EVIDENCE_NO_TIE_WINNER`. Engineering measurements never rank by font order, names, amplitude or coverage. Key16 stays UNKNOWN / ARTICULATION_UNPROVEN because the registry is unchanged.
+
+## Labels and cache
+
+`BLOCKED` identifies a scoped counterexample/missing resource or incompatible semantic claim. `AMBIGUOUS` preserves an unresolved semantic tie in the absence of a FAIL. `UNKNOWN` covers insufficient evidence. `SAFE_FOR_FUTURE_STAGE3` is reserved and is **never emitted by this metadata/offline-only diagnostic**. Runtime pitch context, choke lane, ownership tokens, sample readiness, velocity response and winner policy remain explicit gates. No result writes the shadow planner's Proof booleans or reaches production.
+
+The existing Stage 2 plan cache retains all invalidation dimensions. Engineering reports are recomputed for each explicit export, not reused. Their digest includes the plan key (style, font SHA/path, evidence/version/policy, generation/snapshot), engineering version, full immutable-style digest and both observed snapshots. Preparation time is exported; it excludes full file scanning and is not a realtime latency measurement. Event simulation is capped at 131072 source events per audit candidate. The previous inventory, request and layer limits remain enforced.
+
+The same bounded 48 KiB writer places engineering results before raw demand details. Global omission counters cover engineering metadata rows too. The old `CANDIDATE_EVAL` section retains Pass2's strict observed-velocity gate as historical diagnostic context; the separate `ENGINEERING_PROOF velocityCoverage` records new same-region inference. Both remain advisory and ABSTAIN, with production unchanged.
+
+## Tester steps
+
+1. Warm the same style and managed SF2 configuration, then STOP.
+2. Open SF2/STYLE INSPECTOR → SHADOW DRUM RESOLVER. Dialog title: **Engineering Proof — Shadow Only**.
+3. Leave **Use verified audit #770 evidence** enabled. No supplemental claims are needed.
+4. Tap EXPORT and send `Downloads/YamahaArranger/YamahaArranger_EngineeringProof_*.txt`.
+
+No audition or repeated WAV is needed. The export calculates demand counts and velocity histograms from the loaded original style; it does not fabricate a cloud-side #773 velocity histogram. The user-provided #773 aggregates (1054 demand / 959 UNKNOWN / 95 COMPATIBLE, key21 47 and key31 48) are expected comparison evidence, not hardcoded counts or mappings.
+
+## Verification
+
+Regression checks preserve the old native/sequencer/decoder hashes and extend the dispatch-capability guard to the pure engineering compiler. Host traces are compared with independently compiled #770, #772 and #773 baselines. JVM tests cover generation/handle changes, pitch generators/modulators, exclusive classes, many-to-one/simultaneous/retrigger ownership, section boundaries, metadata velocity inference, ambiguity, edge semantics, cache invalidation and the actual ViewModel's two-getter-only boundary. CI builds arm64-v8a and armeabi-v7a with the real BASS SDK. Host/mock p95/p99 are observations only; Android xrun, device heap and lock-contention benchmarks are not claimed.

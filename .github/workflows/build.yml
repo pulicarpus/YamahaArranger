@@ -45,6 +45,14 @@ jobs:
           python3 tools/test_voice_resolver.py
           python3 tools/compare_drum_shadow_baseline.py .shadow-baseline
           python3 tools/compare_drum_shadow_baseline.py .shadow-baseline772 --label baseline772
+      - name: "Check out #773 engineering baseline (read only)"
+        uses: actions/checkout@v4
+        with:
+          ref: a66beeb3365e29b8454df154251ad88242dd6961
+          path: .shadow-baseline773
+          persist-credentials: false
+      - name: Verify #773 production trace unchanged
+        run: python3 tools/compare_drum_shadow_baseline.py .shadow-baseline773 --label baseline773
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -92,7 +100,7 @@ jobs:
           gradle-version: 8.7
       - name: Build debug APK
         run: |
-          gradle testDebugUnitTest --tests '*StyleExpressionRegressionTest' --tests '*DrumStyleAuditProfileTest' --tests '*StyleChordDiagnosticRegressionTest' --tests '*Sf2SemanticInventoryTest' --tests '*Sf2MetadataReadOnlyTest' --tests '*ManagedSf2AuditionTest' --tests '*DrumShadowPlannerTest' --tests '*DrumShadowReadOnlyTest' --tests '*DrumSemanticEvidenceRegistryTest' --stacktrace
+          gradle testDebugUnitTest --tests '*StyleExpressionRegressionTest' --tests '*DrumStyleAuditProfileTest' --tests '*StyleChordDiagnosticRegressionTest' --tests '*Sf2SemanticInventoryTest' --tests '*Sf2MetadataReadOnlyTest' --tests '*ManagedSf2AuditionTest' --tests '*DrumShadowPlannerTest' --tests '*DrumShadowReadOnlyTest' --tests '*DrumSemanticEvidenceRegistryTest' --tests '*DrumEngineeringProofTest' --stacktrace
           python3 - <<'PY'
           import xml.etree.ElementTree as ET
           from pathlib import Path
@@ -120,5 +128,4 @@ jobs:
             🎹 *YamahaArranger BASSMIDI Build!*
             🔊 BASSMIDI native engine
             🧪 Build #${{ github.run_number }}
-
 

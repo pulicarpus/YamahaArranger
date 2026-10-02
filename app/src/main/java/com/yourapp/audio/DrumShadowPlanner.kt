@@ -257,7 +257,7 @@ object DrumShadowPlanner {
         return Plan(cacheKey(requests,fonts,evidence,policy,snapshot,registry),frozen(checked),System.nanoTime()-start,checked.size,layerRefs)
     }
     fun export(plan:Plan,fonts:List<Font>,snapshot:Snapshot,
-        registry:DrumSemanticEvidenceRegistry.Registry=DrumSemanticEvidenceRegistry.empty()):String {
+        registry:DrumSemanticEvidenceRegistry.Registry=DrumSemanticEvidenceRegistry.empty(), engineering:DrumEngineeringProof.Report?=null):String {
         val out=StringBuilder();var bytes=0;var omitted=0;var omittedNotes=0;var omittedZones=0;var omittedMeta=0;var omittedEvals=0
         fun add(s:String):Boolean {
             val safe=s.map {if(it.code<32 || it.code==127)' ' else it}.joinToString("")
@@ -270,6 +270,7 @@ object DrumShadowPlanner {
         meta("REGISTRY version=${registry.version} schema=2 sha256=${registry.sha256} analysisSHA256=${registry.analysisSha256} targets=${registry.targets.size} claims=${registry.evidence.size}; classification=provenance_claim_not_loaded_sample_identity; confidence_tier_not_probability")
         meta("cache=${plan.key} compileNs=${plan.compileNanos} storedRows=${plan.storedRows} storedLayerRefs=${plan.storedLayerRefs} maxLayerRefs=$MAX_PLAN_LAYER_REFS planMemory=bounded_not_heap_measured")
         meta("PERFORMANCE noteOnHooks=0 noteOffHooks=0 addedHotPathAllocations=0 addedMutexes=0; device_p95_p99_xrun=NOT_MEASURED; preparation=STOP_worker_only")
+        if(engineering!=null)meta("ENGINEERING_SCOPE static_metadata_and_offline_hypotheses_not_runtime_safety;CANDIDATE_EVAL_retains_Pass2_strict_observed_velocity_gate;ENGINEERING_PROOF_velocityCoverage_adds_separate_same_region_inference;no_Proof_boolean_or_dispatch_changes")
         for(f in fonts)meta("FONT sha256=${f.sha256} name=${f.name} identity=${f.identity} zones=${f.zones.size}")
         for(n in snapshot.normalized)meta("NORMALIZED sha256=${n.sha256} raw=${n.rawBank} virtual=${n.virtualBank} handle=${n.handle}")
         for(l in snapshot.production)meta("CURRENT_STOP_PRODUCTION $l NOT_ACTUAL_PER_NOTE_PROOF")
@@ -278,6 +279,10 @@ object DrumShadowPlanner {
             meta("TARGET $t registryVersion=${registry.version}")
             val rows=plan.decisions.filter {it.semanticTarget?.id==t.id}
             meta("TARGET_SUMMARY id=${t.id} sourceKey=${t.key} notes=${rows.size} velocityDemand=${rows.groupingBy {it.request.velocity}.eachCount().toSortedMap()} actions=${rows.groupingBy {it.action}.eachCount()} classifications=${rows.groupingBy {it.classification}.eachCount()} selectedWinner=NONE")
+        }
+        if(engineering!=null) {
+            for(line in snapshot.raw.lineSequence().filter { it.isNotBlank() })meta("ENGINEERING_STOP_HANDLE_OBSERVATION $line;loaded_fingerprint_or_per_note_sample_identity_NOT_PROVEN")
+            DrumEngineeringProof.export(engineering) { meta(it) }
         }
         for(e in registry.evidence)meta("EVIDENCE id=${e.evidenceId} target=${e.target?.id} version=${e.registryVersion} candidate=${e.candidate} class=${e.classification} confidence=${e.confidenceLabel} evidenceVelocity=${e.velocityLow}:${e.velocityHigh} isolatedObservedVelocities=${e.observedVelocities} layerSHA256=${e.layerHashes} provenance=${e.provenance} metadata=${e.metadataProvenance} PCM=${e.pcmProvenance} engineeringProof=${e.proof}")
         val all=plan.decisions.flatMap {d->d.candidates.map {d.request to it}}

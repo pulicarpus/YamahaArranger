@@ -21,4 +21,7 @@ for forbidden in ('AudioEngineManager', 'NativeAudioBridge', 'MidiInputManager',
 registry=(root/'app/src/main/java/com/yourapp/audio/DrumSemanticEvidenceRegistry.kt').read_text()
 for forbidden in ('AudioEngineManager', 'NativeAudioBridge', 'MidiInputManager', 'ArrangerBrain'):
     assert forbidden not in registry, 'registry gained dispatch capability'
+engineering=(root/'app/src/main/java/com/yourapp/audio/DrumEngineeringProof.kt').read_text()
+for forbidden in ('AudioEngineManager', 'NativeAudioBridge', 'MidiInputManager', 'ArrangerBrain', 'StreamEvent(', 'StreamSetFonts('):
+    assert forbidden not in engineering, 'engineering proof gained dispatch capability'
 print('SHADOW structural guards PASS: #770 native implementation and sequencer/decoder unchanged; no added NOTE hot-path hooks, allocations or mutexes')
