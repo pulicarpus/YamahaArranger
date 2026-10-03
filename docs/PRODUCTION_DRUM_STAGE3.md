@@ -59,7 +59,8 @@ Section boundaries, Ending and STOP release captured experimental owners;
 they do not add global note-off at Main/Fill transitions. Resource replacement
 and explicit OFF clear private streams/fonts before deleting snapshots. Private
 PCM is added to the existing render output in fixed-size blocks; no render heap
-allocation. Decode/controller failures stop further admission. Capacity is four
+allocation. Decode/controller/OFF transport failures stop further admission and silence the
+private mix; captured OFF bindings remain retryable until cleanup. Capacity is four
 resources with 32 simultaneous owners each; excess demand uses legacy.
 
 ## Current subset and limits

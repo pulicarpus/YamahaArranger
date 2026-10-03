@@ -91,6 +91,15 @@ int main(int argc,char** argv) {
     check(lanes.off(pinned),"old-generation owner OFF uses captured resource");
     std::array<float,5000*2> buffer{};lanes.renderAdd(buffer.data(),5000);check(!lanes.decodeFailures,"render bounded blocks without allocation");
     mock_bass::failDecode=true;lanes.renderAdd(buffer.data(),64);check(!lanes.enabled && lanes.decodeFailures,"decode failure disables new routes");mock_bass::failDecode=false;
+    lanes.clear();
+    check(lanes.prepare(candidate,sha,126,35,91,9,gen,1,48000,0.9f)==1,"prepare after render fault cleanup");lanes.enabled=true;
+    const auto failingOff=lanes.on(1,9,110,gen);mock_bass::failPrivateNote=true;
+    check(!lanes.off(failingOff) && !lanes.enabled && !lanes.healthy && lanes.releaseFailures==1,"OFF transport fault stops new admission and silences private mix");
+    mock_bass::failPrivateNote=false;check(lanes.off(failingOff),"captured owner remains retryable after OFF failure");
+    lanes.clear();check(lanes.prepare(candidate,sha,126,35,91,9,gen,1,48000,0.9f)==1,"fresh healthy resource");lanes.enabled=true;
+    mock_bass::failPrivateController=true;
+    check(!lanes.controller(9,MIDI_EVENT_EXPRESSION,0) && !lanes.healthy && !lanes.enabled,"controller failure cannot leave an audible wrong-mixer lane");
+    check(!lanes.on(1,9,110,gen),"unhealthy controller lane abstains before ON");mock_bass::failPrivateController=false;
     lanes.clear();check(!lanes.hasOwners() && !lanes.count,"resources cleaned after failure");
     std::cout<<"PRODUCTION_DRUM_ADAPTER "<<checks<<" checks PASS; actual BassMidiPlayer with mock BASS; device PCM/latency remains device verification\n";
 }

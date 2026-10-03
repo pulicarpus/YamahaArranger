@@ -1821,7 +1821,7 @@ int BassMidiPlayer::prepareExperimentalDrum(const std::string& path,const std::s
 }
 bool BassMidiPlayer::enableExperimentalDrum(bool enable) {
     std::lock_guard<std::mutex> lock(mutex_);
-    if(enable && (!experimentalDrums_.count || experimentalResourceEpoch_!=fontResourceEpoch_))return false;
+    if(enable && (!experimentalDrums_.healthy || !experimentalDrums_.count || experimentalResourceEpoch_!=fontResourceEpoch_))return false;
     for(int i=0;enable && i<experimentalDrums_.count;++i)
         if(experimentalDrums_.routes[i].generation!=fontMappingGeneration_)return false;
     experimentalDrums_.enabled=enable;return true;
