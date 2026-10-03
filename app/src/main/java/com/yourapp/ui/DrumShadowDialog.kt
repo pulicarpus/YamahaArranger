@@ -29,6 +29,7 @@ fun DrumShadowDialog(viewModel: MainViewModel, onDismiss: () -> Unit) {
     var fingerprint by remember {mutableStateOf("")}
     var stage3Report by remember {mutableStateOf<String?>(null)}
     var status by remember {mutableStateOf("STOP after warming the current style/SF2. Export prepares a shadow plan; playback never uses it.")}
+    LaunchedEffect(Unit) {viewModel.productionDrumExport()?.let {stage3Report=it;status=it}}
     AlertDialog(onDismissRequest={if(!busy)onDismiss()},title={Text("Drum Resolver — Experimental")},text={
         Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)) {
             Text("Stage 1–2 only. Original raw style demand, current STOP production snapshot and proposed decisions are separate. No synth/MIDI events or routing changes.")
@@ -66,9 +67,10 @@ fun DrumShadowDialog(viewModel: MainViewModel, onDismiss: () -> Unit) {
         busy=true
         scope.launch {
             try {
-                val report=stage3Report?.let {it+"\n"+viewModel.productionDrumStatus()} ?: if(fullResolver)viewModel.exportGenericDrumShadow(approximation) else viewModel.exportShadowDrum(evidence,approximation,auditedRegistry)
+                val productionReport=viewModel.productionDrumExport()
+                val report=productionReport ?: if(fullResolver)viewModel.exportGenericDrumShadow(approximation) else viewModel.exportShadowDrum(evidence,approximation,auditedRegistry)
                 val name=withContext(Dispatchers.IO) {
-                    val name="YamahaArranger_${if(stage3Report!=null)"ProductionDrumPreflight" else if(fullResolver)"GenericDrumShadow" else "EngineeringProof"}_${UUID.randomUUID()}.txt"
+                    val name="YamahaArranger_${if(productionReport!=null)"ProductionDrumPreflight" else if(fullResolver)"GenericDrumShadow" else "EngineeringProof"}_${UUID.randomUUID()}.txt"
                     val values=ContentValues().apply {put(MediaStore.MediaColumns.DISPLAY_NAME,name);put(MediaStore.MediaColumns.MIME_TYPE,"text/plain");put(MediaStore.MediaColumns.RELATIVE_PATH,Environment.DIRECTORY_DOWNLOADS+"/YamahaArranger");put(MediaStore.MediaColumns.IS_PENDING,1)}
                     val uri=context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI,values) ?: error("Cannot create shadow export")
                     try {

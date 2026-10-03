@@ -96,7 +96,9 @@ tests or offline shadow traces.
    only if all native gates pass. Failed candidates stay legacy.
 5. Play Main/Fill/Intro/Ending, including rapid changes. STOP; STATUS shows native
    accepted/released/rejected/decodeFailures/owners. owners must return to zero.
-6. EXPORT saves `ProductionDrumPreflight` including admitted mappings, failed
+6. Reopen the Inspector after playing. The installed preflight summary persists;
+   STATUS/EXPORT combine it with fresh native counters using read-only getters.
+   EXPORT saves `ProductionDrumPreflight` including admitted mappings, failed
    candidate gates and latest counters. OFF clears resources and restores legacy.
 
 No repeat audition WAV is required. Existing shadow/metadata exports still never

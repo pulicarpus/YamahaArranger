@@ -566,6 +566,7 @@ class MainViewModel @Inject constructor(
 
     // Snapshot of the parsed style for explicit read-only Inspector export.
     // Does not record inside the note/timing loop or modify ArrangerBrain.
+    @Volatile private var productionDrumPreflightSummary:String?=null
     private var drumAuditStyle: com.yourapp.yamahaarranger.style.ParsedStyle? = null
 
     suspend fun diagnosticDrumWav(bank: Int, pc: Int, key: Int, velocity: Int): ByteArray {
@@ -690,6 +691,7 @@ class MainViewModel @Inject constructor(
             fun stopped()= !uiState.value.isPlaying && drumAuditStyle===style
             check(stopped()) {"Style/playback changed; preparation discarded"}
             audioEngine.clearProductionDrum()
+            productionDrumPreflightSummary=null
             val before=p.snapshot(audioEngine.shadowDrumSnapshot(),fonts)
             val policy=com.yourapp.audio.GenericDrumResolver.Policy(resourceFingerprint=fingerprint)
             val preliminary=g.compile(requests,fonts,registry,before,before,policy,sourceDigest=digest)
@@ -736,19 +738,24 @@ class MainViewModel @Inject constructor(
                 }
                 val failed=plan.rows.filter {it.selected==null}.flatMap {it.candidates}.flatMap {it.gates.entries}
                     .filter {it.value!=com.yourapp.audio.DrumEngineeringProof.Status.PASS}.groupingBy {it.key+":"+it.value}.eachCount()
-                "STAGE3_PREFLIGHT conditionalSafeRows=${production.safeRows} ABSTAIN=${production.totalRows-production.safeRows} total=${production.totalRows} resourceScope=$fingerprint\n"+
+                val report="STAGE3_PREFLIGHT conditionalSafeRows=${production.safeRows} ABSTAIN=${production.totalRows-production.safeRows} total=${production.totalRows} resourceScope=$fingerprint\n"+
                     "activation=EXPERIMENTAL_SUBSET native_first=true actual_raw_key_guard=true unsafe=LEGACY;preflight_counts_not_observed_NOTE_ON_counts\n"+
                     mappings.joinToString("\n")+"\nFAILED_CANDIDATE_GATES $failed\n"+audioEngine.productionDrumReport()+
                     "Remaining: unknown semantic identity; unresolved hat family/choke; out-of-scope candidate; unsupported modulators/fixed velocity; stale generation or overridden/native-present route abstains at dispatch\n"
+                productionDrumPreflightSummary=report.substringBefore("NATIVE_DRUM_ADAPTER")
+                report
             } catch(e:Exception) {audioEngine.clearProductionDrum();throw e}
             finally {if(!transferred) {snapshot.setWritable(true);snapshot.delete()}}
         }} finally {audioEngine.productionDrumPreparing=false;_sf2ScanInProgress.value=false}
     }
     fun disableProductionDrum():String {
         check(!uiState.value.isPlaying) {"STOP before disabling experimental resolver"}
-        audioEngine.clearProductionDrum();return "Experimental OFF: legacy routing restored; captured owners/resources released"
+        audioEngine.clearProductionDrum();productionDrumPreflightSummary=null;return "Experimental OFF: legacy routing restored; captured owners/resources released"
     }
-    fun productionDrumStatus():String=audioEngine.productionDrumReport()
+    fun productionDrumStatus():String=(if(audioEngine.productionDrumPlan!=null)productionDrumPreflightSummary.orEmpty() else "Experimental plan inactive\n")+audioEngine.productionDrumReport()
+    /** Survives Inspector dismissal: export the installed plan and current counters,
+     * never silently replace an active Stage 3 result with an empty-ticket shadow. */
+    fun productionDrumExport():String?=if(audioEngine.productionDrumPlan!=null)productionDrumPreflightSummary.orEmpty()+audioEngine.productionDrumReport() else null
 
     /** Explicit STOP preparation/export only. No sequencer or runtime activation. */
     suspend fun exportShadowDrum(evidenceText: String = "", allowApproximation: Boolean = false, useAuditedRegistry: Boolean = true): String {
@@ -827,6 +834,7 @@ class MainViewModel @Inject constructor(
             val parsed = withContext(Dispatchers.Default) { styleRepository.loadStyle(fileName, bytes) }
             if (parsed == null) { DebugLog.add("❌ Parse fail: $fileName"); return@launch }
             audioEngine.clearProductionDrum()
+            productionDrumPreflightSummary=null
             drumAuditStyle = parsed
             arrangerBrain.loadStyle(parsed)
             _voiceAssignments.value = voiceSlotsFromStyle(parsed)
