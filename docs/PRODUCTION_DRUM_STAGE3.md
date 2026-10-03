@@ -38,7 +38,7 @@ RAW_ROUTING is a conditional preflight admission: the actual sequencer output
 must retain original key/destination/bank/rawPC/velocity, after existing CASM,
 masks and overrides. Overrides or changed context abstain at dispatch. A present
 native requested kit is conservatively preserved, even if the prepared table
-contains a semantic exception. Generation or capacity failure also returns to
+contains a semantic exception. Font-resource epoch or capacity failure also returns to
 legacy before a successful candidate ON. Only explicit production activation
 uses this adapter; metadata/shadow exports remain read-only.
 
@@ -50,6 +50,10 @@ mapped repeated note. Each admitted native ON has a distinct physical channel,
 capturing token/font/stream/generation/bank/preset/key/lane. Thus many source keys
 mapping to one candidate key can release in either order. OFF uses its captured
 lane, never today's preset/flag/mapping. NOTEOFF1 remains enabled.
+
+Native resource epochs are separate from ordinary legacy mapping generations:
+melody preset setup can rebuild FONTEX2 without invalidating a private drum lane.
+Font load/unload closes new admission, while held private owners remain pinned.
 
 Section boundaries, Ending and STOP release captured experimental owners;
 they do not add global note-off at Main/Fill transitions. Resource replacement
@@ -110,3 +114,13 @@ velocity bytes, Rhythm1/2, CC11, native-first, stale resources, preload/preset/O
 failure, bounded capacity, render failure and cleanup. JVM tests use the real
 scheduler seam for source identities, legacy markers, overrides and section
 boundaries; the full four-font/1,054-demand fixture retains every unresolved gate.
+
+
+Full-suite expansion at the first Stage 3 CI run exposed five stale tests in
+unchanged CASM/chord production sources (previous workflow ran a filtered suite).
+The fixture now explicitly uses HIGH KEY=11 for an unwrapped root transpose,
+NTR=ROOT FIXED for BYPASS, nearest-octave bass, and an impossible narrow note
+limit for suppression. Added checks retain octave folding and HIGH KEY=0 wrap.
+The C/E/G/A ambiguous chord test preserves the existing MIN7-over-SIX priority
+(Am7/C). No CASM, chord analyzer, ACMP behavior or timing was modified to fix
+these tests. Production-source hashes remain protected.

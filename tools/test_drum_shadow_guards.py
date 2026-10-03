@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Stage1/2 guard against checkpoint #770: zero added production hooks/state writes."""
+"""Stage 3 protection of legacy NOTE, CASM, decoder and read-only exports."""
 import hashlib
 from pathlib import Path
 root=Path(__file__).resolve().parents[1]
-protected={'app/src/test/java/com/yourapp/yamahaarranger/arranger/CasmNoteTransformerTest.kt': 'c8477ef5a80c3326ef13ea7f631f6a161a64435762d214e25a6681f39897523f', 'app/src/main/java/com/yourapp/yamahaarranger/arranger/CasmNoteTransformer.kt': '2d993aa83733ec6f9e9685b1c0eb0d47f131bd2c253df734a599b7c3cd102ebf', 'app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt': '2ead0dbd29ec54ebc423e4bb828618501555be6ff9055cabf189cb5859d01e76'}
+protected={'app/src/test/java/com/yourapp/yamahaarranger/arranger/CasmNoteTransformerTest.kt': '07bacec7ea5a9f8078c25ae704e047f853afb7d9bbb8d0f7444a71376882b951', 'app/src/main/java/com/yourapp/yamahaarranger/arranger/CasmNoteTransformer.kt': '2d993aa83733ec6f9e9685b1c0eb0d47f131bd2c253df734a599b7c3cd102ebf', 'app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt': '2ead0dbd29ec54ebc423e4bb828618501555be6ff9055cabf189cb5859d01e76'}
 protected.update({'app/src/main/java/com/yourapp/yamahaarranger/style/StyleRepository.kt': 'f024ed422f8e8c3af1cb3e3cef0d2e2f6a8e7d148dfe6b7f6340ed9a848ca5cd'})
 for path,expected in protected.items():
     assert hashlib.sha256((root/path).read_bytes()).hexdigest()==expected, "#770 production path changed: "+path

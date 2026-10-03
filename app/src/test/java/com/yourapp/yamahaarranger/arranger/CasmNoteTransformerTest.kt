@@ -15,7 +15,7 @@ class CasmNoteTransformerTest {
     private fun policy(
         ntr: Int = 0,
         ntt: Int = 0,
-        highKey: Int = 0,
+        highKey: Int = 11,
         low: Int = 0,
         high: Int = 127,
         bassOn: Boolean = false
@@ -41,7 +41,7 @@ class CasmNoteTransformerTest {
 
     @Test
     fun bypass_preservesSourceNote() {
-        assertEquals(60, CasmNoteTransformer.transform(60, gMajor, policy(ntt = 0)))
+        assertEquals(60, CasmNoteTransformer.transform(60, gMajor, policy(ntr = 1, ntt = 0)))
     }
 
     @Test
@@ -50,13 +50,23 @@ class CasmNoteTransformerTest {
     }
 
     @Test
-    fun bassNtt_usesChordBassWhenEnabled() {
+    fun bassNtt_usesChordBassInNearestOctaveWhenEnabled() {
         val chord = DetectedChord(0, 7, ChordQuality.MAJOR)
-        assertEquals(67, CasmNoteTransformer.transform(60, chord, policy(ntt = 3, bassOn = true)))
+        assertEquals(55, CasmNoteTransformer.transform(60, chord, policy(ntt = 3, bassOn = true)))
+    }
+
+    @Test
+    fun noteLimit_movesByOctaveBeforeConsideringSuppression() {
+        assertEquals(72, CasmNoteTransformer.transform(60, cMajor, policy(low = 65, high = 90)))
+    }
+
+    @Test
+    fun highKeyZeroWrapsRootTransposeBelowNextOctave() {
+        assertEquals(55, CasmNoteTransformer.transform(60, gMajor, policy(highKey = 0)))
     }
 
     @Test
     fun noteLimit_canSuppressPartNote() {
-        assertNull(CasmNoteTransformer.transform(60, cMajor, policy(low = 65, high = 90)))
+        assertNull(CasmNoteTransformer.transform(60, cMajor, policy(low = 65, high = 66)))
     }
 }

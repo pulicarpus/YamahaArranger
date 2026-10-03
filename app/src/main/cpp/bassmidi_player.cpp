@@ -319,6 +319,7 @@ bool BassMidiPlayer::applyFonts() {
 
 bool BassMidiPlayer::loadRole(const std::string& path, bool drum) {
     std::lock_guard<std::mutex> lock(mutex_);
+    ++fontResourceEpoch_;
     if (!ensureEngine()) return false;
 
     HSOUNDFONT& target = drum ? drumFont_ : melodyFont_;
@@ -420,6 +421,7 @@ bool BassMidiPlayer::loadMelodyFallback(const std::string& path) {
     // Bounded pool: primary Yamaha + Colombo + optional Tyros. Optional
     // allocation failure cannot discard the established melody/drum pair.
     if (secondaryMelodies_.size() >= 2) return false;
+    ++fontResourceEpoch_;
     SecondaryMelody secondary;
     secondary.path = path;
     secondary.bassPath = path + ".bassmidi-normalized.sf2";
@@ -474,6 +476,7 @@ bool BassMidiPlayer::loadDrum(const std::string& path) {
 void BassMidiPlayer::unload() {
     std::lock_guard<std::mutex> lock(mutex_);
     experimentalDrums_.clear();
+    ++fontResourceEpoch_;
 
     if (stream_) {
         for (int ch = 0; ch < 16; ++ch) {
@@ -1812,11 +1815,13 @@ std::string BassMidiPlayer::compactChordDiagnosticReport() const {
 int BassMidiPlayer::prepareExperimentalDrum(const std::string& path,const std::string& sha,int bank,int pc,int key,int rhythm,uint64_t generation) {
     std::lock_guard<std::mutex> lock(mutex_);
     if(generation!=fontMappingGeneration_)return 0;
+    if(!experimentalDrums_.count) {experimentalResourceEpoch_=fontResourceEpoch_;experimentalGeneration_=generation;}
+    if(experimentalResourceEpoch_!=fontResourceEpoch_ || experimentalGeneration_!=generation)return 0;
     return experimentalDrums_.prepare(path,sha,bank,pc,key,rhythm,generation,stream_,sampleRate_,soundFontVolume_);
 }
 bool BassMidiPlayer::enableExperimentalDrum(bool enable) {
     std::lock_guard<std::mutex> lock(mutex_);
-    if(enable && !experimentalDrums_.count)return false;
+    if(enable && (!experimentalDrums_.count || experimentalResourceEpoch_!=fontResourceEpoch_))return false;
     for(int i=0;enable && i<experimentalDrums_.count;++i)
         if(experimentalDrums_.routes[i].generation!=fontMappingGeneration_)return false;
     experimentalDrums_.enabled=enable;return true;
@@ -1830,13 +1835,16 @@ uint64_t BassMidiPlayer::experimentalDrumOn(int route,int rhythm,int velocity,in
     // A present native kit wins, even if the preflight table proposed a substitution.
     if(!channels_[rhythm].initialized || audioDiagnostics_[rhythm].requestedPc!=rawPc ||
        channels_[rhythm].program==rawPc)return 0;
-    return experimentalDrums_.on(route,rhythm,velocity,fontMappingGeneration_);
+    if(experimentalResourceEpoch_!=fontResourceEpoch_)return 0;
+    return experimentalDrums_.on(route,rhythm,velocity,experimentalGeneration_);
 }
 bool BassMidiPlayer::experimentalDrumOff(uint64_t token) {
     std::lock_guard<std::mutex> lock(mutex_);return experimentalDrums_.off(token);
 }
 std::string BassMidiPlayer::experimentalDrumReport() const {
-    std::lock_guard<std::mutex> lock(mutex_);return experimentalDrums_.report();
+    std::lock_guard<std::mutex> lock(mutex_);
+    return experimentalDrums_.report()+"RESOURCE_EPOCH prepared="+std::to_string(experimentalResourceEpoch_)+
+        " current="+std::to_string(fontResourceEpoch_)+" currentMappingGeneration="+std::to_string(fontMappingGeneration_)+"\n";
 }
 
 // Stage1/2 STOP-only observational snapshot. No NOTE hot-path hook or production-state writes.

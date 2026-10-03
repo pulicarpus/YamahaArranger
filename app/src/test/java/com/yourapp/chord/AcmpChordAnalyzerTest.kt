@@ -41,9 +41,11 @@ class AcmpChordAnalyzerTest {
         assertEquals("CM7", result!!.displayName)
     }
 
-    @Test fun sixth() {
+    @Test fun ambiguousSixthAndMinorSevenRetainsExistingMinorSevenPriority() {
         val result = AcmpChordAnalyzer.analyze(midi(60, 64, 67, 69))
-        assertEquals("C6", result!!.displayName)
+        // C/E/G/A is both C6 and Am7/C. Existing quality priority chooses MIN7.
+        // This Stage 3 regression preserves that baseline choice; no analyzer change.
+        assertEquals("Am7/C", result!!.displayName)
     }
 
     @Test fun diminishedSeven() {

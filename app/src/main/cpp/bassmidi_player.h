@@ -124,6 +124,9 @@ private:
                            std::string& matchedName, int& sourceFont) const;
     bool findDrumPreset(const std::string& path, int requestedProgram,
                         int& sourceBank, int& sourceProgram) const;
+    // Resource epoch is separate from applyFonts() mapping revisions. A melody
+    // preset rebuild must never invalidate immutable private drum owner lanes.
+    uint64_t fontResourceEpoch_=1,experimentalResourceEpoch_=0,experimentalGeneration_=0;
     ExperimentalDrumLanes experimentalDrums_;
     HSTREAM stream_ = 0;
     HSOUNDFONT melodyFont_ = 0;
