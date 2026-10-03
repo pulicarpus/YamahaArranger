@@ -108,7 +108,7 @@ jobs:
           gradle-version: 8.7
       - name: Build debug APK
         run: |
-          gradle testDebugUnitTest --tests '*StyleExpressionRegressionTest' --tests '*DrumStyleAuditProfileTest' --tests '*StyleChordDiagnosticRegressionTest' --tests '*Sf2SemanticInventoryTest' --tests '*Sf2MetadataReadOnlyTest' --tests '*ManagedSf2AuditionTest' --tests '*DrumShadowPlannerTest' --tests '*DrumShadowReadOnlyTest' --tests '*DrumSemanticEvidenceRegistryTest' --tests '*DrumEngineeringProofTest' --tests '*GenericDrumResolverTest' --tests '*ShadowDrumRuntimeTest' --tests '*GenericDrumGlobalReplayTest' --stacktrace
+          gradle testDebugUnitTest --stacktrace
           python3 - <<'PY'
           import xml.etree.ElementTree as ET
           from pathlib import Path
@@ -116,7 +116,7 @@ jobs:
           counts={k:sum(int(s.get(k,0)) for s in suites) for k in ['tests','failures','errors','skipped']}
           print('JVM_RESULTS',counts)
           assert counts['failures']==counts['errors']==counts['skipped']==0
-          replay=[s for s in suites if 'GenericDrumGlobalReplayTest' in s.get('name','')]
+          replay=[s for s in suites if 'GenericDrumGlobalReplayTest' in s.get('name','') or 'ProductionDrum' in s.get('name','')]
           for s in replay:
               print(s.findtext('system-out',''))
           PY
@@ -135,6 +135,7 @@ jobs:
             app/build/generic-drum-global-replay.txt
             app/build/test-results/testDebugUnitTest/TEST-*GenericDrum*.xml
             app/build/test-results/testDebugUnitTest/TEST-*ShadowDrumRuntime*.xml
+            app/build/test-results/testDebugUnitTest/TEST-*ProductionDrum*.xml
       - name: Send APK to Telegram
         if: github.ref != 'refs/heads/diag/sf2-semantic-inventory'
         continue-on-error: true

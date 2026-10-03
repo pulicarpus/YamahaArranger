@@ -22,4 +22,4 @@ with tempfile.TemporaryDirectory(prefix='shadow-baseline-') as directory:
         result=subprocess.run([str(exe),directory,str(trace)],check=True,capture_output=True,text=True)
         print(name+': '+result.stdout.strip());results[name]=trace.read_bytes()
     assert results[args.label]==results['shadow'],'#770 production event trace changed'
-    print('BASELINE '+args.label+' vs SHADOW production event traces BYTE-IDENTICAL; added NOTE hooks/allocations/mutexes=0 (structural guard); device xrun/underrun/heap/lock-contention NOT MEASURED')
+    print('BASELINE '+args.label+' vs SHADOW production event traces BYTE-IDENTICAL; experimental flag OFF legacy event trace preserved; device xrun/underrun/heap/lock-contention NOT MEASURED')

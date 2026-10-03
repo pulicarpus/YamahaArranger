@@ -224,3 +224,18 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_Nativ
     const std::string report=g_engine?g_engine->sfShadowDrumSnapshot():"GEN value=0\n";
     return env->NewStringUTF(report.c_str());
 }
+
+// Explicit Stage 3 APIs; no active arranger font/preset is replaced.
+extern "C" JNIEXPORT jint JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativePrepareExperimentalDrum(JNIEnv* env,jobject,jstring file,jstring fingerprint,jint bank,jint pc,jint key,jint rhythm,jlong generation) {
+    if(!g_engine || !file || !fingerprint)return 0;
+    const char* path=env->GetStringUTFChars(file,nullptr);if(!path)return 0;
+    const char* sha=env->GetStringUTFChars(fingerprint,nullptr);
+    int result=0;
+    if(sha) {result=g_engine->prepareExperimentalDrum(path,sha,bank,pc,key,rhythm,generation);env->ReleaseStringUTFChars(fingerprint,sha);}
+    env->ReleaseStringUTFChars(file,path);return result;
+}
+extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeEnableExperimentalDrum(JNIEnv*,jobject,jboolean enabled) {return g_engine && g_engine->enableExperimentalDrum(enabled);}
+extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeClearExperimentalDrum(JNIEnv*,jobject) {if(g_engine)g_engine->clearExperimentalDrum();}
+extern "C" JNIEXPORT jlong JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeExperimentalDrumOn(JNIEnv*,jobject,jint route,jint rhythm,jint velocity,jint rawPc) {return g_engine?g_engine->experimentalDrumOn(route,rhythm,velocity,rawPc):0;}
+extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeExperimentalDrumOff(JNIEnv*,jobject,jlong owner) {return g_engine && g_engine->experimentalDrumOff(owner);}
+extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeExperimentalDrumReport(JNIEnv* env,jobject) {return env->NewStringUTF(g_engine?g_engine->experimentalDrumReport().c_str():"native_engine_absent");}

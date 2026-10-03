@@ -10,7 +10,7 @@ object GenericDrumResolver {
     enum class Outcome { EXACT, COMPATIBLE, APPROXIMATION, ABSTAIN }
     data class Semantic(val family:String,val articulation:String)
     data class Hint(val binding:DrumShadowPlanner.Binding,val semantic:Semantic,val samples:List<String>)
-    data class Policy(val allowApproximation:Boolean=false)
+    data class Policy(val allowApproximation:Boolean=false,val resourceFingerprint:String?=null)
     /** Only an eventual native resource/lane adapter may supply these observations. No UI claims. */
     data class RuntimeTicket(val binding:DrumShadowPlanner.Binding,val generation:String,val handle:Long,
         val loadedSHA256:String,val samplesReady:Boolean,val pitchNeutral:Boolean,val velocityResponseVerified:Boolean,
@@ -133,6 +133,7 @@ object GenericDrumResolver {
                     fun gate(name:String,status:DrumEngineeringProof.Status,why:String) { statuses[name]=status;if(status!=DrumEngineeringProof.Status.PASS)reasons+="$name:$why" }
                     fun required(name:String,available:Boolean?,why:String) = gate(name,when(available){true->DrumEngineeringProof.Status.PASS;false->DrumEngineeringProof.Status.FAIL;null->DrumEngineeringProof.Status.UNKNOWN},why)
                     required("SEMANTIC_AUTHORITY",e.classification in listOf(DrumShadowPlanner.Classification.EXACT,DrumShadowPlanner.Classification.COMPATIBLE) || (e.classification==DrumShadowPlanner.Classification.APPROXIMATION && policy.allowApproximation),"semantic=${e.classification};policy=${policy.allowApproximation}")
+                    if(policy.resourceFingerprint!=null)required("RESOURCE_POLICY",b.sha256==policy.resourceFingerprint,"outside_explicit_fingerprint_resource_scope_not_a_musical_rejection")
                     required("NO_CONTRADICTORY_IDENTITY",b !in rejected,"reviewed_incompatible_evidence_veto")
                     required("RAW_ROUTING",if(!r.routingKnown)false else r.logicalKey?.let { it==r.sourceKey },"CASM_runtime_key_or_override_unproven")
                     required("FINGERPRINT_AND_LAYERS",font!=null && layers.isNotEmpty(),"managed_font_or_eligible_region_missing")

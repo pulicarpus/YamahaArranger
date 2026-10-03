@@ -63,4 +63,10 @@ with tempfile.TemporaryDirectory(prefix="yamaha-resolver-") as directory:
                     str(root / "tests/drum_shadow_readonly_test.cpp"),
                     str(root / "app/src/main/cpp/bassmidi_player.cpp"), "-o", str(shadow_executable)], check=True)
     subprocess.run([str(shadow_executable), directory, str(Path(directory)/"shadow-trace.txt")], check=True)
+with tempfile.TemporaryDirectory(prefix="production-drum-") as directory:
+    exe=Path(directory)/"production_adapter"
+    subprocess.run([compiler,"-std=c++17","-Wall","-Wextra","-Werror","-O2","-pthread",
+        "-I",str(root/"tests/mocks"),"-I",str(root/"app/src/main/cpp"),
+        str(root/"tests/production_drum_adapter_test.cpp"),str(root/"app/src/main/cpp/bassmidi_player.cpp"),"-o",str(exe)],check=True)
+    subprocess.run([str(exe),directory],check=True)
 subprocess.run(["python3",str(root / "tools/test_drum_shadow_guards.py")],check=True)

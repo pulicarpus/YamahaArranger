@@ -668,6 +668,88 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    /** Explicit Stage 3 preparation. The selected SHA is a user resource scope,
+     * never an automatic musical winner. All unsafe rows remain legacy. */
+    suspend fun prepareProductionDrum(fingerprint:String):String {
+        check(!uiState.value.isPlaying && !audioEngine.productionDrumPreparing) {"STOP before Stage 3 preparation"}
+        require(Regex("[0-9a-f]{64}").matches(fingerprint)) {"Select a managed SF2 fingerprint"}
+        val style=drumAuditStyle ?: error("Load a style first")
+        audioEngine.productionDrumPreparing=true
+        _sf2ScanInProgress.value=true
+        return try {withContext(Dispatchers.IO) {
+            val p=com.yourapp.audio.DrumShadowPlanner
+            val g=com.yourapp.audio.GenericDrumResolver
+            val discovery=contentResolver.sf2MetadataSources()
+            val fonts=p.inventory(discovery)
+            val selected=fonts.singleOrNull {it.sha256==fingerprint} ?: error("Fingerprint unavailable or duplicated")
+            val registry=com.yourapp.audio.DrumSemanticEvidenceRegistry.bundled()
+            val digest=p.styleDigest(style)
+            // RAW_ROUTING is guarded again after CASM/masks/overrides, at actual dispatch.
+            val requests=p.requests(style).map {it.copy(logicalKey=if(it.routingKnown)it.sourceKey else null,
+                scope="PREFLIGHT_CONDITIONAL_ON_ACTUAL_RAW_ROUTING_GUARD")}
+            fun stopped()= !uiState.value.isPlaying && drumAuditStyle===style
+            check(stopped()) {"Style/playback changed; preparation discarded"}
+            audioEngine.clearProductionDrum()
+            val before=p.snapshot(audioEngine.shadowDrumSnapshot(),fonts)
+            val policy=com.yourapp.audio.GenericDrumResolver.Policy(resourceFingerprint=fingerprint)
+            val preliminary=g.compile(requests,fonts,registry,before,before,policy,sourceDigest=digest)
+            val probes=preliminary.rows.flatMap {r->r.candidates.filter {
+                it.evidence.candidate.sha256==fingerprint && com.yourapp.audio.ProductionDrumPlan.preparable(it)
+            }.map {it.evidence.candidate to r.request.rhythmChannel}}.distinct()
+            check(probes.isNotEmpty()) {"No non-exclusive reviewed candidate passes static gates; legacy remains active"}
+            val source=discovery.sources.single {it.identity==selected.identity}
+            val scratch=File(contentResolver.contextCacheDir(),"production-drum").apply {mkdirs()}
+            val snapshot=File.createTempFile("verified-", ".sf2",scratch)
+            var transferred=false
+            try {
+                source.open()?.use {input->snapshot.outputStream().use {input.copyTo(it)}} ?: error("Cannot copy managed SF2")
+                val hash=java.security.MessageDigest.getInstance("SHA-256")
+                snapshot.inputStream().use {input->val buffer=ByteArray(65536);while(true) {
+                    val n=input.read(buffer);if(n<0)break;hash.update(buffer,0,n)
+                }}
+                val actual=hash.digest().joinToString("") {"%02x".format(it.toInt() and 255)}
+                check(actual==fingerprint && snapshot.setWritable(false)) {"Immutable managed resource fingerprint changed"}
+                val ids=linkedMapOf<Pair<com.yourapp.audio.DrumShadowPlanner.Binding,Int>,Int>()
+                val tickets=mutableListOf<com.yourapp.audio.GenericDrumResolver.RuntimeTicket>()
+                for((binding,rhythm) in probes) {
+                    check(stopped()) {"STOP/style guard changed"}
+                    val id=audioEngine.prepareProductionDrum(snapshot.absolutePath,fingerprint,binding.bank,binding.pc,binding.key,rhythm,before.generation.toLong())
+                    if(id<=0)continue // Native readiness failure is per binding, not whole resolver.
+                    val native=audioEngine.productionDrumReport().lineSequence().single {it.startsWith("ROUTE id=$id ")}
+                    val f=native.split(' ').drop(1).associate {val pair=it.split('=',limit=2);pair[0] to pair[1]}
+                    check(f["sha"]==fingerprint && f["bank"]==binding.bank.toString() && f["pc"]==binding.pc.toString() &&
+                        f["key"]==binding.key.toString() && f["rhythm"]==rhythm.toString() && f["generation"]==before.generation &&
+                        f["pitch"]=="8192" && f["preload"]=="SYNC_KEY" && f["velocity"]=="BYTE_IDENTITY" && f["controllers"]=="MIRRORED")
+                    ids[binding to rhythm]=id
+                    tickets+=com.yourapp.audio.GenericDrumResolver.RuntimeTicket(binding,before.generation,f.getValue("handle").toLong(),
+                        fingerprint,true,true,true,true,true,false,false,false,
+                        "native-synchronous-key-preload;actual-preset-all-owner-lanes;immutable-snapshot-SHA256;velocity-byte-identity;raw-routing-runtime-guard",
+                        rhythm,digest)
+                }
+                val after=p.snapshot(audioEngine.shadowDrumSnapshot(),fonts)
+                val plan=g.compile(requests,fonts,registry,before,after,policy,tickets,digest)
+                val production=com.yourapp.audio.ProductionDrumPlan.from(plan,ids)
+                check(stopped() && production.safeRows>0) {"No safe route after native preflight; legacy remains active"}
+                audioEngine.installProductionDrum(production,listOf(snapshot));transferred=true
+                val mappings=plan.rows.filter {it.selected!=null}.groupBy {it.request.sourceKey to it.selected}.map { (k,v)->
+                    "MAP originalKey=${k.first} candidate=${k.second} admittedHits=${v.size} velocities=${v.map {it.request.velocity}.distinct().sorted()}"
+                }
+                val failed=plan.rows.filter {it.selected==null}.flatMap {it.candidates}.flatMap {it.gates.entries}
+                    .filter {it.value!=com.yourapp.audio.DrumEngineeringProof.Status.PASS}.groupingBy {it.key+":"+it.value}.eachCount()
+                "STAGE3_PREFLIGHT conditionalSafeRows=${production.safeRows} ABSTAIN=${production.totalRows-production.safeRows} total=${production.totalRows} resourceScope=$fingerprint\n"+
+                    "activation=EXPERIMENTAL_SUBSET native_first=true actual_raw_key_guard=true unsafe=LEGACY;preflight_counts_not_observed_NOTE_ON_counts\n"+
+                    mappings.joinToString("\n")+"\nFAILED_CANDIDATE_GATES $failed\n"+audioEngine.productionDrumReport()+
+                    "Remaining: unknown semantic identity; unresolved hat family/choke; out-of-scope candidate; unsupported modulators/fixed velocity; stale generation or overridden/native-present route abstains at dispatch\n"
+            } catch(e:Exception) {audioEngine.clearProductionDrum();throw e}
+            finally {if(!transferred) {snapshot.setWritable(true);snapshot.delete()}}
+        }} finally {audioEngine.productionDrumPreparing=false;_sf2ScanInProgress.value=false}
+    }
+    fun disableProductionDrum():String {
+        check(!uiState.value.isPlaying) {"STOP before disabling experimental resolver"}
+        audioEngine.clearProductionDrum();return "Experimental OFF: legacy routing restored; captured owners/resources released"
+    }
+    fun productionDrumStatus():String=audioEngine.productionDrumReport()
+
     /** Explicit STOP preparation/export only. No sequencer or runtime activation. */
     suspend fun exportShadowDrum(evidenceText: String = "", allowApproximation: Boolean = false, useAuditedRegistry: Boolean = true): String {
         check(!uiState.value.isPlaying) { "STOP before preparing shadow export" }
@@ -744,6 +826,7 @@ class MainViewModel @Inject constructor(
             val fileName = uriFileName ?: contentResolver.fileName(uri) ?: "style.sty"
             val parsed = withContext(Dispatchers.Default) { styleRepository.loadStyle(fileName, bytes) }
             if (parsed == null) { DebugLog.add("❌ Parse fail: $fileName"); return@launch }
+            audioEngine.clearProductionDrum()
             drumAuditStyle = parsed
             arrangerBrain.loadStyle(parsed)
             _voiceAssignments.value = voiceSlotsFromStyle(parsed)

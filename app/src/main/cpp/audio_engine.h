@@ -37,6 +37,12 @@ public:
     void sfSetKeyboardReleaseTime(int releaseTime);
     void sfSetMasterGain(float gain);
     std::string sfPresetList() const;
+    int prepareExperimentalDrum(const std::string& path,const std::string& sha,int bank,int pc,int key,int rhythm,uint64_t gen) {return soundFont_.prepareExperimentalDrum(path,sha,bank,pc,key,rhythm,gen);}
+    bool enableExperimentalDrum(bool enabled) {return soundFont_.enableExperimentalDrum(enabled);}
+    void clearExperimentalDrum() {soundFont_.clearExperimentalDrum();}
+    uint64_t experimentalDrumOn(int route,int rhythm,int velocity,int rawPc) {return soundFont_.experimentalDrumOn(route,rhythm,velocity,rawPc);}
+    bool experimentalDrumOff(uint64_t token) {return soundFont_.experimentalDrumOff(token);}
+    std::string experimentalDrumReport() const {return soundFont_.experimentalDrumReport();}
     std::string sfShadowDrumSnapshot() const { return soundFont_.shadowDrumSnapshot(); }
     std::vector<unsigned char> sfDiagnosticDrumWav(int bank,int pc,int key,int velocity);
     std::string sfNoteZoneReport() const;

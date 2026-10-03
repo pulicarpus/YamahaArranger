@@ -473,6 +473,7 @@ bool BassMidiPlayer::loadDrum(const std::string& path) {
 
 void BassMidiPlayer::unload() {
     std::lock_guard<std::mutex> lock(mutex_);
+    experimentalDrums_.clear();
 
     if (stream_) {
         for (int ch = 0; ch < 16; ++ch) {
@@ -1144,6 +1145,7 @@ void BassMidiPlayer::noteOff(int channel, int key, const AudioPathOrigin& origin
 
 void BassMidiPlayer::allNotesOff() {
     std::lock_guard<std::mutex> lock(mutex_);
+    experimentalDrums_.flush();
     if (!stream_) return;
     for (int ch = 0; ch < 16; ++ch) {
         const bool sent = send(ch, MIDI_EVENT_NOTESOFF, 0);
@@ -1283,12 +1285,20 @@ void BassMidiPlayer::setChannelMixer(int channel, int volume, int pan,
     send(channel, MIDI_EVENT_EXPRESSION, std::clamp(expression, 0, 127));
     send(channel, MIDI_EVENT_REVERB, std::clamp(reverbSend, 0, 127));
     send(channel, MIDI_EVENT_CHORUS, std::clamp(chorusSend, 0, 127));
+    if(channel==8 || channel==9) {
+        experimentalDrums_.controller(channel,MIDI_EVENT_VOLUME,std::clamp(volume,0,127));
+        experimentalDrums_.controller(channel,MIDI_EVENT_PAN,std::clamp(pan,0,128));
+        experimentalDrums_.controller(channel,MIDI_EVENT_EXPRESSION,std::clamp(expression,0,127));
+        experimentalDrums_.controller(channel,MIDI_EVENT_REVERB,std::clamp(reverbSend,0,127));
+        experimentalDrums_.controller(channel,MIDI_EVENT_CHORUS,std::clamp(chorusSend,0,127));
+    }
 }
 
 void BassMidiPlayer::setChannelExpression(int channel, int expression) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (!ensureEngine()) return;
     send(channel, MIDI_EVENT_EXPRESSION, std::clamp(expression, 0, 127));
+    if(channel==8 || channel==9)experimentalDrums_.controller(channel,MIDI_EVENT_EXPRESSION,std::clamp(expression,0,127));
 }
 
 void BassMidiPlayer::setKeyboardSustain(bool enabled) {
@@ -1321,6 +1331,7 @@ void BassMidiPlayer::setMasterGain(float gain) {
     if (!stream_) return;
     BASS_ChannelSetAttribute(stream_, BASS_ATTRIB_MIDI_VOL,
                              std::max(0.0f, std::min(1.0f, gain)));
+    experimentalDrums_.gain(std::clamp(gain,0.f,1.f));
 }
 
 void BassMidiPlayer::auditNoteZone(int channel,int key,int velocity,bool sent,const AudioPathOrigin& origin) {
@@ -1681,6 +1692,7 @@ void BassMidiPlayer::render(float* out, int numFrames) {
     if (samples < numFrames * 2) {
         std::fill(out + samples, out + numFrames * 2, 0.0f);
     }
+    if(experimentalDrums_.count)experimentalDrums_.renderAdd(out,numFrames);
 }
 
 
@@ -1794,6 +1806,37 @@ std::string BassMidiPlayer::compactChordDiagnosticReport() const {
     chord_diagnostic::Capture snapshot;
     { std::lock_guard<std::mutex> lock(mutex_); snapshot=chordCapture_; }
     return chord_diagnostic::compactReport(snapshot);
+}
+
+// Stage 3 explicit STOP preflight and captured-owner dispatch. Legacy note methods stay intact.
+int BassMidiPlayer::prepareExperimentalDrum(const std::string& path,const std::string& sha,int bank,int pc,int key,int rhythm,uint64_t generation) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if(generation!=fontMappingGeneration_)return 0;
+    return experimentalDrums_.prepare(path,sha,bank,pc,key,rhythm,generation,stream_,sampleRate_,soundFontVolume_);
+}
+bool BassMidiPlayer::enableExperimentalDrum(bool enable) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if(enable && !experimentalDrums_.count)return false;
+    for(int i=0;enable && i<experimentalDrums_.count;++i)
+        if(experimentalDrums_.routes[i].generation!=fontMappingGeneration_)return false;
+    experimentalDrums_.enabled=enable;return true;
+}
+void BassMidiPlayer::clearExperimentalDrum() {
+    std::lock_guard<std::mutex> lock(mutex_);experimentalDrums_.clear();
+}
+uint64_t BassMidiPlayer::experimentalDrumOn(int route,int rhythm,int velocity,int rawPc) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if(rhythm!=8 && rhythm!=9)return 0;
+    // A present native kit wins, even if the preflight table proposed a substitution.
+    if(!channels_[rhythm].initialized || audioDiagnostics_[rhythm].requestedPc!=rawPc ||
+       channels_[rhythm].program==rawPc)return 0;
+    return experimentalDrums_.on(route,rhythm,velocity,fontMappingGeneration_);
+}
+bool BassMidiPlayer::experimentalDrumOff(uint64_t token) {
+    std::lock_guard<std::mutex> lock(mutex_);return experimentalDrums_.off(token);
+}
+std::string BassMidiPlayer::experimentalDrumReport() const {
+    std::lock_guard<std::mutex> lock(mutex_);return experimentalDrums_.report();
 }
 
 // Stage1/2 STOP-only observational snapshot. No NOTE hot-path hook or production-state writes.

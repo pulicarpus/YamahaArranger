@@ -386,6 +386,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             audioEngine.allNotesOff()
             midiInputManager.allNotesOff()
             activeTransposedNotes.clear()
+            audioEngine.endProductionDrumSection()
         }
         com.yourapp.yamahaarranger.ui.DebugLog.add("⏹ STOP")
     }
@@ -782,17 +783,18 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         data class Scheduled(
             val tick:Int,
             val event:StyleNoteEvent,
-            val part:com.yourapp.yamahaarranger.style.StylePartModel
+            val part:com.yourapp.yamahaarranger.style.StylePartModel,
+            val partIndex:Int
         )
 
         val sectionLength = section.lengthTicks.coerceAtLeast(1).toLong()
         val phase = phaseStartTick.mod(sectionLength)
         val merged=section.parts
-            .flatMap{part->
+            .flatMapIndexed{partIndex,part->
                 part.events.map{e->
                     val raw = e.tick.toLong().coerceAtLeast(0L)
                     val relative = (raw - phase + sectionLength) % sectionLength
-                    Scheduled(relative.toInt(), e, part)
+                    Scheduled(relative.toInt(), e, part,partIndex)
                 }
             }
             .sortedWith(compareBy<Scheduled>{it.tick}.thenBy{it.event.isNoteOn.not()})
@@ -808,6 +810,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         // section (T547 does this on the A.Guitar part). Keep a bank state per
         // source part so a later Program Change does not silently fall back to
         // bank 0 and replace the intended SF2 preset.
+        val preparedDrumTable=audioEngine.productionDrumPlan?.sections?.get(section.name)
+        val dynamicProgramBySource=mutableMapOf<Int,Int>()
         val dynamicBankBySource = mutableMapOf<Int, Int>()
         section.parts.forEach { part ->
             val msb = part.bankMsb.coerceIn(0, 127)
@@ -815,7 +819,10 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             val sourceChannel = part.casmPolicies.firstOrNull()?.sourceChannel
                 ?: part.casm?.sourceChannel
                 ?: part.events.firstOrNull()?.channel
-            if (sourceChannel != null) dynamicBankBySource[sourceChannel] = msb * 128 + lsb
+            if (sourceChannel != null) {
+                dynamicBankBySource[sourceChannel] = msb * 128 + lsb
+                dynamicProgramBySource[sourceChannel]=part.program
+            }
         }
 
         val audioPath = StyleAudioPathDiagnostic(section.name)
@@ -879,6 +886,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                         val msb = if (drum) 127 else (bank ushr 7).coerceIn(0, 127)
                         val lsb = if (drum) 0 else (bank and 0x7f)
                         val program = s.event.note.coerceIn(0, 127)
+                        dynamicProgramBySource[s.event.channel]=program
                         chordTrace.record { "DYNAMIC_PROGRAM chordId=${chordTrace.chordId()} section='${section.name}' part='${s.part.name}' src=${s.event.channel} dst=$destination requestBank=$bank requestPC=$program tick=$absoluteTick" }
                         audioEngine.setChannelProgram(destination, program, bank)
                         midiInputManager.sendProgramChange(destination, program, msb, lsb)
@@ -914,6 +922,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                 }
 
                 if(!s.event.isNoteOn){
+                    if(audioEngine.endProductionDrumNote(s.event.channel,s.event.note,s.partIndex))return@synchronized
                     if(!endScheduledNote(s.event.channel,s.event.note)) {
                         diagnostic("OFF_NO_ACTIVE_LEDGER", detail = "NOTE_OFF_FORWARDED=0 oneShotDrumMayBeNormal=1")
                     }
@@ -957,11 +966,16 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
 
                 val sampled = diagnostic("FORWARD", note,
                     "transformAsMelody=${!isDrumPart} nativeRhythmChannel=${destinationChannel == 8 || destinationChannel == 9} transpose=${channelOverride?.transpose ?: 0}")
-                audioEngine.noteOnStyleChannel(destinationChannel,note,velocity/127f,
+                val substituted=if(destinationChannel in 8..9)audioEngine.tryProductionDrumOn(preparedDrumTable,
+                    sourceChannel,destinationChannel,diagBank,dynamicProgramBySource[sourceChannel]?:s.part.program,
+                    s.event.note,note,velocity,!isDrumPart || channelOverride?.program!=null || channelOverride?.bank!=null ||
+                        (channelOverride?.transpose?:0)!=0,s.partIndex) else false
+                if(!substituted)audioEngine.noteOnStyleChannel(destinationChannel,note,velocity/127f,
                     sourceChannel,s.event.note,diagBank,absoluteTick,diagId,sampled,chordTrace.chordId())
                 midiInputManager.sendNoteOn(destinationChannel,note,velocity)
             }
         }
+        audioEngine.endProductionDrumSection()
         audioPath.finish()
         val naturalEnd = startAbsoluteTick + section.lengthTicks.coerceAtLeast(0).toLong()
         return if (interruptedByTransition) {
