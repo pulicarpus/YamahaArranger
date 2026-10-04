@@ -59,4 +59,26 @@ class CasmNoteTransformerTest {
     fun noteLimit_canSuppressPartNote() {
         assertNull(CasmNoteTransformer.transform(60, cMajor, policy(low = 65, high = 90)))
     }
+
+    @Test
+    fun isDrumVoice_distinguishesMelodicAndDrumNames() {
+        fun isDrumVoice(name: String) = name.lowercase().let {
+            it.contains("crash") || it.contains("cymbal") || it.contains("perc") ||
+            it.contains("add-dr") || it.contains("drum") || it.contains("kit") ||
+            it.startsWith("dr.") || it.startsWith("dr_") || it.startsWith("dr ") ||
+            it.startsWith("dr-") || it == "dr"
+        }
+
+        // Melodic voices starting with "dr" must NOT be identified as drums:
+        assertEquals(false, isDrumVoice("DrawbarOrgan"))
+        assertEquals(false, isDrumVoice("DriveGtr"))
+        assertEquals(false, isDrumVoice("DreamPad"))
+
+        // Legitimate drum voices must be identified as drums:
+        assertEquals(true, isDrumVoice("StandardKit"))
+        assertEquals(true, isDrumVoice("PopDrum"))
+        assertEquals(true, isDrumVoice("Dr.Kit"))
+        assertEquals(true, isDrumVoice("Dr_Perc"))
+        assertEquals(true, isDrumVoice("CrashCymbal"))
+    }
 }

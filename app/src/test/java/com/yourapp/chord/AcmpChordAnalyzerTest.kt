@@ -1,5 +1,6 @@
 package com.yourapp.chord
 
+import com.yourapp.yamahaarranger.chord.AcmpChordAnalyzer
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
