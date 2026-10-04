@@ -159,7 +159,6 @@ jobs:
             tests/fixtures/production_baseline776_sha256.json
             docs/REGRESSION_780_RECOVERY.md
       - name: Send APK to Telegram
-        if: github.ref != 'refs/heads/diag/sf2-semantic-inventory'
         continue-on-error: true
         uses: appleboy/telegram-action@master
         with:
