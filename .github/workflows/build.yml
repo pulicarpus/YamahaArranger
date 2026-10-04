@@ -53,6 +53,16 @@ jobs:
           persist-credentials: false
       - name: Verify #773 production trace unchanged
         run: python3 tools/compare_drum_shadow_baseline.py .shadow-baseline773 --label baseline773
+      - name: "Check out #776 regression baseline (read only)"
+        uses: actions/checkout@v4
+        with:
+          ref: 2f71950f6343bbfb723994ae6a2373130606a857
+          path: .regression-baseline776
+          persist-credentials: false
+      - name: Verify complete production bypass against build 776
+        run: |
+          python3 tools/test_production_regression_bypass.py .regression-baseline776
+          python3 tools/compare_drum_shadow_baseline.py .regression-baseline776 --label baseline776
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -122,6 +132,17 @@ jobs:
           PY
           gradle assembleDebug --stacktrace
           python3 -c "import zipfile; z=zipfile.ZipFile('app/build/outputs/apk/debug/app-debug.apk'); assert 'drum_shadow_audit770_v1.tsv' in z.namelist(); print('APK bundled semantic registry PRESENT')"
+      - name: Verify Stage 3 excluded from both APK native ABIs
+        run: |
+          python3 - <<'PY'
+          import zipfile
+          z=zipfile.ZipFile('app/build/outputs/apk/debug/app-debug.apk')
+          for abi in ['arm64-v8a','armeabi-v7a']:
+              data=z.read('lib/'+abi+'/libyamaha_arranger_native.so')
+              for symbol in [b'nativePrepareExperimentalDrum',b'nativeExperimentalDrumOn',b'nativeExperimentalDrumOff',b'nativeEnableExperimentalDrum',b'nativeClearExperimentalDrum']:
+                  assert symbol not in data,(abi,symbol)
+              print('APK_STAGE3_BYPASSED',abi)
+          PY
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
@@ -135,7 +156,8 @@ jobs:
             app/build/generic-drum-global-replay.txt
             app/build/test-results/testDebugUnitTest/TEST-*GenericDrum*.xml
             app/build/test-results/testDebugUnitTest/TEST-*ShadowDrumRuntime*.xml
-            app/build/test-results/testDebugUnitTest/TEST-*ProductionDrum*.xml
+            tests/fixtures/production_baseline776_sha256.json
+            docs/REGRESSION_780_RECOVERY.md
       - name: Send APK to Telegram
         if: github.ref != 'refs/heads/diag/sf2-semantic-inventory'
         continue-on-error: true

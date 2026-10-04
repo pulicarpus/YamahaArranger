@@ -44,7 +44,6 @@ class AudioEngineManager @Inject constructor(
      * both SoundFonts loaded simultaneously.
      */
     fun loadSoundFont(filePath: String): Boolean {
-        clearProductionDrum()
         val role = if (nextSoundFontRole == 0) "MELODY" else "DRUM"
         DebugLog.add("🎼 Loading $role SF2…")
         DebugLog.traceAudio("SF2 LOAD role=$role path=$filePath")
@@ -83,7 +82,6 @@ class AudioEngineManager @Inject constructor(
     }
 
     fun loadMelodySoundFont(filePath: String): Boolean {
-        clearProductionDrum()
         val ok = runBlocking { soundFontOperationMutex.withLock { withAudioStreamPausedUnsafe { bridge.nativeLoadMelodySoundFont(filePath) } } }
         soundFontLoaded = soundFontLoaded || ok
         if (ok) DebugLog.add("✅ MELODY SF2 OK") else DebugLog.add("❌ MELODY SF2 FAILED")
@@ -91,7 +89,6 @@ class AudioEngineManager @Inject constructor(
     }
 
     fun loadDrumSoundFont(filePath: String): Boolean {
-        clearProductionDrum()
         val ok = runBlocking { soundFontOperationMutex.withLock { withAudioStreamPausedUnsafe { bridge.nativeLoadDrumSoundFont(filePath) } } }
         soundFontLoaded = soundFontLoaded || ok
         if (ok) DebugLog.add("✅ DRUM SF2 OK") else DebugLog.add("❌ DRUM SF2 FAILED")
@@ -103,7 +100,6 @@ class AudioEngineManager @Inject constructor(
      * presets only after both native loads have completed.
      */
     fun loadSoundFontPair(melodyPath: String, drumPath: String): Boolean {
-        clearProductionDrum()
         val result = runBlocking { soundFontOperationMutex.withLock { withAudioStreamPausedUnsafe {
             val melodyOk = bridge.nativeLoadMelodySoundFont(melodyPath)
             if (!melodyOk) return@withAudioStreamPausedUnsafe false
@@ -126,7 +122,6 @@ class AudioEngineManager @Inject constructor(
         drumPath: String,
         additionalMelodyPath: String? = null
     ): Boolean {
-        clearProductionDrum()
         val result = runBlocking { soundFontOperationMutex.withLock { withAudioStreamPausedUnsafe {
             // Establish the essential Yamaha pair first. The previous order
             // loaded the large secondary melody font before the drum font; if
@@ -172,7 +167,6 @@ class AudioEngineManager @Inject constructor(
      * stream so the render callback never sees a half-updated font stack.
      */
     fun loadSingleSoundFont(filePath: String): Boolean {
-        clearProductionDrum()
         val result = runBlocking { soundFontOperationMutex.withLock { withAudioStreamPausedUnsafe {
             val melodyOk = bridge.nativeLoadMelodySoundFont(filePath)
             if (!melodyOk) return@withAudioStreamPausedUnsafe false
@@ -195,7 +189,6 @@ class AudioEngineManager @Inject constructor(
     fun isSoundFontLoaded(): Boolean = soundFontLoaded
 
     fun unloadSoundFont() {
-        clearProductionDrum()
         DebugLog.traceAudio("SF2 UNLOAD")
         runBlocking { soundFontOperationMutex.withLock { withAudioStreamPausedUnsafe { bridge.nativeUnloadSoundFont() } } }
         soundFontLoaded = false
@@ -257,48 +250,6 @@ class AudioEngineManager @Inject constructor(
 
     fun setChannelVolume(channel: Int, volume: Int) = setChannelMixer(channel, volume=volume)
     fun setChannelExpression(channel: Int, expression: Int) = bridge.nativeSetChannelExpression(channel, expression.coerceIn(0, 127))
-    @Volatile var productionDrumPlan:com.yourapp.audio.ProductionDrumPlan?=null
-        private set
-    @Volatile var productionDrumPreparing=false
-    private val productionDrumOwners=com.yourapp.audio.ProductionDrumOwners()
-    private val productionDrumLock=Any()
-    private val productionDrumSnapshots=mutableListOf<java.io.File>()
-    fun prepareProductionDrum(path:String,sha:String,bank:Int,pc:Int,key:Int,rhythm:Int,generation:Long):Int =
-        bridge.nativePrepareExperimentalDrum(path,sha,bank,pc,key,rhythm,generation)
-    fun installProductionDrum(plan:com.yourapp.audio.ProductionDrumPlan,snapshots:List<java.io.File>) {
-        synchronized(productionDrumLock) {
-            check(bridge.nativeEnableExperimentalDrum(true)) {"Native route generation changed"}
-            productionDrumSnapshots.addAll(snapshots);productionDrumPlan=plan
-        }
-    }
-    fun clearProductionDrum() = synchronized(productionDrumLock) {
-        productionDrumPlan=null
-        productionDrumOwners.clear {bridge.nativeExperimentalDrumOff(it)}
-        bridge.nativeClearExperimentalDrum() // streams/fonts freed before immutable files
-        productionDrumSnapshots.forEach {it.setWritable(true);it.delete()};productionDrumSnapshots.clear()
-    }
-    fun productionDrumReport():String=bridge.nativeExperimentalDrumReport()
-    fun endProductionDrumSection() {
-        if(productionDrumPlan==null)return
-        synchronized(productionDrumLock) {productionDrumOwners.clear {bridge.nativeExperimentalDrumOff(it)}}
-    }
-    /** True only after native ON succeeds. Failed admission becomes a legacy FIFO marker. */
-    fun tryProductionDrumOn(table:com.yourapp.audio.ProductionDrumPlan.Table?,source:Int,rhythm:Int,
-        bank:Int,pc:Int,key:Int,outputKey:Int,velocity:Int,overridden:Boolean,part:Int=0):Boolean = synchronized(productionDrumLock) {
-        if(productionDrumPlan==null || rhythm !in 8..9)return@synchronized false
-        val slot=productionDrumOwners.reserve(source,key,part)
-        if(slot<0 || productionDrumOwners.overflow)return@synchronized false
-        val route=if(outputKey==key && !overridden)table?.route(source,rhythm,bank,pc,key,velocity)?:0 else 0
-        val owner=if(route>0)bridge.nativeExperimentalDrumOn(route,rhythm,velocity,pc) else 0L
-        productionDrumOwners.commit(slot,owner);owner>0
-    }
-    fun endProductionDrumNote(source:Int,key:Int,part:Int=0):Boolean {
-        if(productionDrumPlan==null)return false
-        return synchronized(productionDrumLock) {
-        val owner=productionDrumOwners.pop(source,key,part)
-        if(owner>0) {bridge.nativeExperimentalDrumOff(owner);true} else false
-        }
-    }
     fun shadowDrumSnapshot(): String = bridge.nativeShadowDrumSnapshot()
 
     fun diagnosticDrumWav(bank: Int, pc: Int, key: Int, velocity: Int): ByteArray = bridge.nativeDiagnosticDrumWav(bank, pc, key, velocity)

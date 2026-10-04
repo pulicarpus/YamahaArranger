@@ -12,7 +12,6 @@
 #include "drum_compatibility_comparison.h"
 #include <bass.h>
 #include <bassmidi.h>
-#include "experimental_drum_lanes.h"
 
 class BassMidiPlayer {
 public:
@@ -43,12 +42,6 @@ public:
     void setMasterGain(float gain);
     std::string presetList() const;
     std::string shadowDrumSnapshot() const;
-    int prepareExperimentalDrum(const std::string& path,const std::string& sha,int bank,int pc,int key,int rhythm,uint64_t generation);
-    bool enableExperimentalDrum(bool enable);
-    void clearExperimentalDrum();
-    uint64_t experimentalDrumOn(int route,int rhythm,int velocity,int rawPc);
-    bool experimentalDrumOff(uint64_t token);
-    std::string experimentalDrumReport() const;
     std::vector<unsigned char> diagnosticDrumWav(int bank,int pc,int key,int velocity);
     std::string noteZoneReport() const;
     std::string drumKitCoverage(const std::vector<drum_audit::Hit>& hits) const;
@@ -124,10 +117,6 @@ private:
                            std::string& matchedName, int& sourceFont) const;
     bool findDrumPreset(const std::string& path, int requestedProgram,
                         int& sourceBank, int& sourceProgram) const;
-    // Resource epoch is separate from applyFonts() mapping revisions. A melody
-    // preset rebuild must never invalidate immutable private drum owner lanes.
-    uint64_t fontResourceEpoch_=1,experimentalResourceEpoch_=0,experimentalGeneration_=0;
-    ExperimentalDrumLanes experimentalDrums_;
     HSTREAM stream_ = 0;
     HSOUNDFONT melodyFont_ = 0;
     HSOUNDFONT drumFont_ = 0;

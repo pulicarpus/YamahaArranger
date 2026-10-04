@@ -1,0 +1,17 @@
+{
+  "app/src/main/cpp/audio_engine.h": "0ba650140944d166cb4d518fcb861461b279c87710a4538e80332a946e62e929",
+  "app/src/main/cpp/bassmidi_player.cpp": "98c388e513f09b00dfa460959eb125f344d943dfea0dc484563a86dff20cf7ab",
+  "app/src/main/cpp/bassmidi_player.h": "e00e493c6a4c0e0e83acb33375df2aa96032bce0d4bfc6d1a9c69889f6d18537",
+  "app/src/main/cpp/native_lib.cpp": "4b26fbd8d1af84c04f0c3686f2a31c2ce57f071ff2d423bcc763366e17b31dde",
+  "app/src/main/java/com/yourapp/ui/ContentResolverProvider.kt": "8d0617d2aec3fb8f2b276eac9ed9131c05b0974fc36f5c247eec2f7e7269ca52",
+  "app/src/main/java/com/yourapp/ui/DrumShadowDialog.kt": "39dde779116b293d5f5e4e88eeb1838617dda3a63dc191baff1b73e245370c0e",
+  "app/src/main/java/com/yourapp/ui/MainViewModel.kt": "5a21f927d3ffdcc9ce000373f9c9bce430457e07b1baf6f7d69f51543a48fc89",
+  "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt": "1d8d3698a2efdbcc5273275d6a793a06cd0e5262e4c4275ad176b33c4f82cbe7",
+  "app/src/main/java/com/yourapp/yamahaarranger/audio/AudioEngineManager.kt": "eca0503f15fd73d5d8115379fce9960ad77c82d57ddeffb7fabf90bcc8454857",
+  "app/src/main/java/com/yourapp/yamahaarranger/audio/NativeAudioBridge.kt": "83be9ea0b73766b387ad307491e98172a35c7deda693c503a9b582471f3417a3",
+  "app/src/main/java/com/yourapp/yamahaarranger/arranger/CasmNoteTransformer.kt": "2d993aa83733ec6f9e9685b1c0eb0d47f131bd2c253df734a599b7c3cd102ebf",
+  "app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt": "2ead0dbd29ec54ebc423e4bb828618501555be6ff9055cabf189cb5859d01e76",
+  "app/src/main/java/com/yourapp/chord/AcmpChordAnalyzer.kt": "13775c9526c8f1ce317cec5ab609046fd542af089c3f1e7c0862eddca8d3f88a",
+  "app/src/main/java/com/yourapp/yamahaarranger/style/StyleRepository.kt": "f024ed422f8e8c3af1cb3e3cef0d2e2f6a8e7d148dfe6b7f6340ed9a848ca5cd",
+  "app/src/main/cpp/audio_engine.cpp": "27ac8e7c9e97b1cc0c8a16dd03b2840541ecef41d4f58514ec81a932b9500b0f"
+}

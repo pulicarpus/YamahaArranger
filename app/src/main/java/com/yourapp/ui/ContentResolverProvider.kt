@@ -21,8 +21,6 @@ data class StyleFolder(val uri: Uri, val name: String, val styleCount: Int)
 class ContentResolverProvider @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
-    fun contextCacheDir():File=context.cacheDir
-
     private val sf2RootDir: File
         get() = File(Environment.getExternalStorageDirectory(), "YamahaArranger/SF2")
 

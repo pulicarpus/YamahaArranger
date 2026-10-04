@@ -25,12 +25,8 @@ fun DrumShadowDialog(viewModel: MainViewModel, onDismiss: () -> Unit) {
     var auditedRegistry by remember {mutableStateOf(true)}
     var approximation by remember {mutableStateOf(false)}
     var fullResolver by remember {mutableStateOf(true)}
-    var fonts by remember {mutableStateOf<List<com.yourapp.audio.ManagedSf2Audition.Font>>(emptyList())}
-    var fingerprint by remember {mutableStateOf("")}
-    var stage3Report by remember {mutableStateOf<String?>(null)}
     var status by remember {mutableStateOf("STOP after warming the current style/SF2. Export prepares a shadow plan; playback never uses it.")}
-    LaunchedEffect(Unit) {viewModel.productionDrumExport()?.let {stage3Report=it;status=it}}
-    AlertDialog(onDismissRequest={if(!busy)onDismiss()},title={Text("Drum Resolver — Experimental")},text={
+    AlertDialog(onDismissRequest={if(!busy)onDismiss()},title={Text("Generic Drum Resolver — Shadow Only")},text={
         Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)) {
             Text("Stage 1–2 only. Original raw style demand, current STOP production snapshot and proposed decisions are separate. No synth/MIDI events or routing changes.")
             Text("Pass 2 loads the reviewed audition #770 registry as data. Edge remains UNKNOWN; pedal/snare candidates remain advisory. No winner or production substitution.")
@@ -42,35 +38,15 @@ fun DrumShadowDialog(viewModel: MainViewModel, onDismiss: () -> Unit) {
             OutlinedTextField(evidence,{evidence=it},enabled=!busy && !fullResolver,label={Text("Optional claims for previous Engineering Proof")},modifier=Modifier.fillMaxWidth().heightIn(min=90.dp,max=180.dp))
             Text("One claim per line: MSB|LSB|rawPC|targetKey|SF2_SHA256|bank|PC|sourceKey|class|confidence|provenance. Supplemental claims cannot promote reviewed targets or bypass engineering gates.")
             Row {Checkbox(approximation,{approximation=it},enabled=!busy);Text("Consider APPROXIMATION in shadow only")}
-            HorizontalDivider()
-            Text("Stage 3: activate only verified non-exclusive notes. Unproven notes and hi-hat families keep legacy playback. OFF is the default.")
-            Text("Choose the SF2 resource for this experiment. This choice does not declare a musical winner.")
-            OutlinedButton(enabled=!busy && !state.isPlaying,onClick={
-                busy=true;scope.launch {try {fonts=viewModel.managedAuditionFonts();status="Select a fingerprint below"}
-                    catch(e:Exception){status=e.message?:"SF2 scan failed"} finally {busy=false}}
-            }) {Text("LOAD MANAGED SF2")}
-            fonts.forEach {font->Row {
-                RadioButton(fingerprint==font.sha256,{fingerprint=font.sha256},enabled=!busy)
-                Text("${font.name} (${font.sha256.take(12)})")
-            }}
-            Button(enabled=!busy && !state.isPlaying && fingerprint.isNotBlank(),onClick={
-                busy=true;scope.launch {try {stage3Report=viewModel.prepareProductionDrum(fingerprint);status=stage3Report!!}
-                    catch(e:Exception){stage3Report=null;status=e.message?:"Preflight failed; legacy remains active"} finally {busy=false}}
-            }) {Text("PREPARE & ENABLE SAFE SUBSET")}
-            Row {
-                OutlinedButton(enabled=!busy && !state.isPlaying,onClick={status=viewModel.disableProductionDrum();stage3Report=null}) {Text("OFF")}
-                OutlinedButton(enabled=!busy,onClick={status=viewModel.productionDrumStatus()}) {Text("STATUS")}
-            }
             Text(status)
         }
     },confirmButton={Button(enabled=!busy && !state.isPlaying && !state.sf2ScanInProgress,onClick={
         busy=true
         scope.launch {
             try {
-                val productionReport=viewModel.productionDrumExport()
-                val report=productionReport ?: if(fullResolver)viewModel.exportGenericDrumShadow(approximation) else viewModel.exportShadowDrum(evidence,approximation,auditedRegistry)
+                val report=if(fullResolver)viewModel.exportGenericDrumShadow(approximation) else viewModel.exportShadowDrum(evidence,approximation,auditedRegistry)
                 val name=withContext(Dispatchers.IO) {
-                    val name="YamahaArranger_${if(productionReport!=null)"ProductionDrumPreflight" else if(fullResolver)"GenericDrumShadow" else "EngineeringProof"}_${UUID.randomUUID()}.txt"
+                    val name="YamahaArranger_${if(fullResolver)"GenericDrumShadow" else "EngineeringProof"}_${UUID.randomUUID()}.txt"
                     val values=ContentValues().apply {put(MediaStore.MediaColumns.DISPLAY_NAME,name);put(MediaStore.MediaColumns.MIME_TYPE,"text/plain");put(MediaStore.MediaColumns.RELATIVE_PATH,Environment.DIRECTORY_DOWNLOADS+"/YamahaArranger");put(MediaStore.MediaColumns.IS_PENDING,1)}
                     val uri=context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI,values) ?: error("Cannot create shadow export")
                     try {

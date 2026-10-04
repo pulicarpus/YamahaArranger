@@ -10,12 +10,6 @@ class NativeAudioBridge @Inject constructor() {
         init { System.loadLibrary("yamaha_arranger_native") }
     }
 
-    external fun nativePrepareExperimentalDrum(path:String,sha:String,bank:Int,pc:Int,key:Int,rhythm:Int,generation:Long):Int
-    external fun nativeEnableExperimentalDrum(enabled:Boolean):Boolean
-    external fun nativeClearExperimentalDrum()
-    external fun nativeExperimentalDrumOn(route:Int,rhythm:Int,velocity:Int,rawPc:Int):Long
-    external fun nativeExperimentalDrumOff(owner:Long):Boolean
-    external fun nativeExperimentalDrumReport():String
     external fun nativeShadowDrumSnapshot(): String
     external fun nativeInitLogger()
     external fun nativeStart(): Boolean

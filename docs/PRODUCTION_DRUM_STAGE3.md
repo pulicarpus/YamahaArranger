@@ -1,3 +1,5 @@
+> CURRENT STATUS: Stage 3 is quarantined and cannot activate in the regression APK. See REGRESSION_780_RECOVERY.md. The material below describes the prior failed-device build, not current production behavior.
+
 # Stage 3 experimental production adapter
 
 Baseline: #776, `2f71950f6343bbfb723994ae6a2373130606a857`.
