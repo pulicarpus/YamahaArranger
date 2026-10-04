@@ -576,8 +576,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         )
     }
 
-    private fun guessProgramFromVoiceName(name:String):Int{val n=name.lowercase();val numeric=Regex("(?:^|\\D)(\\d{1,3})\\s*$").find(n)?.groupValues?.getOrNull(1)?.toIntOrNull();if(numeric!=null&&numeric in 0..127)return numeric;return when{n.contains("piano")->0;n.contains("e.piano")||n.contains("ep")->4;n.contains("organ")->16;n.contains("accordion")->21;n.contains("guitar")||n.contains("gtr")->24;n.contains("bass")->33;n.contains("violin")->40;n.contains("cello")->42;n.contains("strg")||n.contains("str")->48;n.contains("choir")->52;n.contains("trumpet")->56;n.contains("trombone")->57;n.contains("brass")->61;n.contains("sax")->65;n.contains("oboe")->68;n.contains("clarinet")->71;n.contains("flute")->73;n.contains("crash")||n.contains("cymbal")||n.contains("perc")||n.contains("dr")||n.contains("kit")||n.contains("drum")->0;n.contains("pad")->89;else->-1}}
-    private fun isDrumVoice(name:String)=name.lowercase().let{it.contains("crash")||it.contains("cymbal")||it.contains("perc")||it.contains("add-dr")||it.contains("drum")||it.contains("kit")||it.startsWith("dr")}
+    private fun guessProgramFromVoiceName(name:String):Int{val n=name.lowercase();val numeric=Regex("(?:^|\\D)(\\d{1,3})\\s*$").find(n)?.groupValues?.getOrNull(1)?.toIntOrNull();if(numeric!=null&&numeric in 0..127)return numeric;return when{n.contains("piano")->0;n.contains("e.piano")||n.contains("ep")->4;n.contains("organ")->16;n.contains("accordion")->21;n.contains("guitar")||n.contains("gtr")->24;n.contains("bass")->33;n.contains("violin")->40;n.contains("cello")->42;n.contains("strg")||n.contains("str")->48;n.contains("choir")->52;n.contains("trumpet")->56;n.contains("trombone")->57;n.contains("brass")->61;n.contains("sax")->65;n.contains("oboe")->68;n.contains("clarinet")->71;n.contains("flute")->73;n.contains("crash")||n.contains("cymbal")||n.contains("perc")||n.contains("add-dr")||n.contains("drum")||n.contains("kit")||n.startsWith("dr.")||n.startsWith("dr_")||n.startsWith("dr ")->0;n.contains("pad")->89;else->-1}}
+    private fun isDrumVoice(name:String)=name.lowercase().let{it.contains("crash")||it.contains("cymbal")||it.contains("perc")||it.contains("add-dr")||it.contains("drum")||it.contains("kit")||it.startsWith("dr.")||it.startsWith("dr_")||it.startsWith("dr ")||it.startsWith("dr-")||it=="dr"}
     private fun yamahaChordType(chord:DetectedChord):Int = when(chord.quality){
         ChordQuality.MAJOR -> 0
         ChordQuality.SIX -> 1
@@ -849,7 +849,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                 activeTransposedNotes.remove(key)
             }
 
-            val isDrumPart=destinationChannel==9||(policy!=null&&isDrumVoice(policy.voiceName))
+            val isDrumPart=destinationChannel==8||destinationChannel==9||(policy!=null&&isDrumVoice(policy.voiceName))
             val transformed=if(policy!=null&&!isDrumPart){
                 chord?.let{CasmNoteTransformer.transform(s.event.note,it,policy)}?:s.event.note.coerceIn(0,127)
             }else s.event.note.coerceIn(0,127)
