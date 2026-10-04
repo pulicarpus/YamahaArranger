@@ -44,6 +44,26 @@ class DrumShadowReadOnlyTest {
             assertSame(style,MainViewModel::class.java.getDeclaredField("drumAuditStyle").apply {isAccessible=true}.get(vm))
         }
     }
+    @Test fun partPresenceExportCallsOnlySchedulerAndNativeReadOnlyGetters() = runBlocking {
+        val f=Fixture()
+        doReturn("PART ch=9 bridgeCalls=3\n").`when`(f.brain).partPresenceReport(f.style)
+        doReturn("NATIVE ch=9 BASS_NOTE_ON_SENT=3\n=== ACTUAL BASS / STRINGS NOTE ZONES ===\nold detailed rows").`when`(f.audio).noteZoneReport()
+        val out=f.vm.compactPartPresenceReport()
+        assertTrue(out.contains("bridgeCalls=3"));assertTrue(out.contains("BASS_NOTE_ON_SENT=3"))
+        assertFalse(out.contains("old detailed rows"));assertTrue(out.toByteArray().size<=48*1024)
+        verify(f.brain).partPresenceReport(f.style);verify(f.audio).noteZoneReport()
+        verifyNoMoreInteractions(f.brain,f.audio);verifyNoInteractions(f.files,f.midi,f.styles)
+        assertSame(f.state,f.vm.uiState.value)
+    }
+    @Test fun partPresenceWhilePlayingRejectsBeforeAnyPlaybackOrFilesystemInteraction() = runBlocking {
+        val f=Fixture(true);assertTrue(f.vm.compactPartPresenceReport().contains("STOP"))
+        verifyNoInteractions(f.audio,f.brain,f.files,f.midi,f.styles);assertSame(f.state,f.vm.uiState.value)
+    }
+    @Test fun partPresenceWithoutStyleRejectsWithoutReadingOrChangingEngine() = runBlocking {
+        val f=Fixture();f.field("drumAuditStyle",null)
+        assertTrue(f.vm.compactPartPresenceReport().contains("load a style"))
+        verifyNoInteractions(f.audio,f.brain,f.files,f.midi,f.styles);assertSame(f.state,f.vm.uiState.value)
+    }
     @Test fun shadowScanCompileExportCallsOnlyReadOnlySnapshotAndKeepsProductionState() = runBlocking {
         val f=Fixture();val original=f.style.toString();val out=f.vm.exportShadowDrum()
         assertTrue(out.contains("productionDispatch=UNCHANGED"));assertTrue(out.contains("shadow=ABSTAIN"))

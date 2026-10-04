@@ -300,6 +300,7 @@ bool BassMidiPlayer::applyFonts() {
              static_cast<unsigned>(flags), BASS_ErrorGetCode());
         return false;
     }
+    publishedFontMaps_ = cfg;
     ++fontMappingGeneration_;
     LOGI("BASSMIDI FONTEX2 applied: entries=%u flags=%u",
          static_cast<unsigned>(count), static_cast<unsigned>(flags));
@@ -314,6 +315,23 @@ bool BassMidiPlayer::applyFonts() {
     LOGI("BASSMIDI fonts applied: FONTEX2 entries=%u melody=%d drum=%d volume=%.2f",
          static_cast<unsigned>(count), melodyFont_ != 0, drumFont_ != 0,
          soundFontVolume_);
+    return true;
+}
+
+// Error-path verification only. A failed install may preserve the old table;
+// do not assume that. Inspect the complete native table before retaining routes.
+bool BassMidiPlayer::publishedFontTableIntact() const {
+    if (!stream_ || publishedFontMaps_.empty()) return false;
+    const DWORD count = BASS_MIDI_StreamGetFonts(stream_, nullptr, 0);
+    if (count != publishedFontMaps_.size()) return false;
+    std::vector<BASS_MIDI_FONTEX2> live(count);
+    if (BASS_MIDI_StreamGetFonts(stream_, live.data(), count | BASS_MIDI_FONT_EX2) != count) return false;
+    for (size_t i=0;i<live.size();++i) {
+        const auto& a=live[i]; const auto& b=publishedFontMaps_[i];
+        if (a.font!=b.font || a.spreset!=b.spreset || a.sbank!=b.sbank ||
+            a.dpreset!=b.dpreset || a.dbank!=b.dbank || a.dbanklsb!=b.dbanklsb ||
+            a.minchan!=b.minchan || a.numchan!=b.numchan) return false;
+    }
     return true;
 }
 
@@ -495,6 +513,7 @@ void BassMidiPlayer::unload() {
         stream_ = 0;
     }
 
+    publishedFontMaps_.clear();
     for (auto& ch : channels_) ch = ChannelState{};
     audioDiagnostics_ = {};
     drumZoneInventories_.clear();
@@ -1005,6 +1024,16 @@ void BassMidiPlayer::logAudioPath(int channel, int key, int velocity, bool sent,
     const int cc7 = static_cast<int>(BASS_MIDI_StreamGetEvent(stream_, channel, MIDI_EVENT_VOLUME));
     const int cc11 = static_cast<int>(BASS_MIDI_StreamGetEvent(stream_, channel, MIDI_EVENT_EXPRESSION));
     d.on(key, velocity, sent, cc7, cc11, now, channel == 8 || channel == 9);
+    if (origin.sourceChannel >= 0 && channel >= 8) {
+        auto& presence=partPresence_[channel];
+        ++presence.attempts; presence.sent+=sent; presence.zeroController+=(cc7==0 || cc11==0);
+        presence.lastKey=key; presence.lastVelocity=velocity;
+        if (!sent) {
+            if (std::strcmp(reason,"engine_unavailable")==0) ++presence.engineUnavailable;
+            else if (std::strcmp(reason,"family_or_mapping_reject")==0) ++presence.familyOrMapRejected;
+            else ++presence.sendFailed;
+        }
+    }
     const auto& state = channels_[channel];
     const bool drum = channel == 8 || channel == 9;
     if (drum) {
@@ -1247,8 +1276,20 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program, const 
          state.melodySourceBank, state.melodySourceProgram, state.melodySourceName.c_str());
 
     if (!state.drum && !applyFonts()) {
-        invalidateMelodicChannels();
-        LOGE("VOICE MAP apply failed ch=%d; suppressing melodic notes until compatible mappings restored", channel);
+        // Only this channel's identity changed. The previous FONTEX2 table
+        // still serves the other channels and no resource was freed here.
+        // Font replacement failures retain the separate global invalidation.
+        ++partPresence_[channel].presetMapFailures;
+        if (publishedFontTableIntact()) {
+            state.melodySource = -1;
+            state.melodySourceBank = -1;
+            state.melodySourceProgram = -1;
+            state.melodySourceName.clear();
+            LOGE("VOICE MAP apply failed ch=%d; native table unchanged, suppressing only this channel", channel);
+        } else {
+            invalidateMelodicChannels();
+            LOGE("VOICE MAP apply failed ch=%d; native table unverified, retaining global fail-closed behavior", channel);
+        }
     }
 
     if (state.drum) send(channel, MIDI_EVENT_DRUMS, 1);
@@ -1416,8 +1457,47 @@ std::vector<unsigned char> BassMidiPlayer::diagnosticDrumWav(int bank,int pc,int
 
 std::string BassMidiPlayer::noteZoneReport() const {
     std::map<std::string,NoteZoneObservation> snapshot; bool limited;
-    { std::lock_guard<std::mutex> lock(mutex_); snapshot=noteZoneRows_; limited=noteZoneLimit_; }
+    std::ostringstream presence;
+    {
+        std::lock_guard<std::mutex> lock(mutex_); snapshot=noteZoneRows_; limited=noteZoneLimit_;
+        presence << "=== ACCOMPANIMENT PART PRESENCE / NATIVE ===\n"
+            << "counters=process_lifetime explicit_style_origins_only; last binding and current mappingGeneration=" << fontMappingGeneration_
+            << "; accepted_event_not_audible_PCM; snapshot_never_sends_MIDI\n";
+        for (int ch=8;ch<16;++ch) {
+            const auto& n=partPresence_[ch]; const auto& state=channels_[ch];
+            BASS_MIDI_FONT live{};
+            const bool liveOk=stream_ && BASS_MIDI_StreamGetPreset(stream_,ch,&live);
+            const char* name=liveOk?BASS_MIDI_FontGetPreset(live.font,live.preset,live.bank):nullptr;
+            std::string path; int rawBank=live.bank; bool bankKnown=state.drum;
+            const std::vector<NormalizedBankMap>* maps=nullptr;
+            if (liveOk && live.font==melodyFont_) { path=melodyPath_; maps=&normalizedBanks_; }
+            if (liveOk && live.font==drumFont_) path=drumPath_;
+            for (const auto& f:secondaryMelodies_) if (liveOk && f.font==live.font) { path=f.path; maps=&f.banks; }
+            if (maps) for (const auto& b:*maps) if (b.virtualBank==live.bank) { rawBank=b.rawBank; bankKnown=true; break; }
+            const sf2_zones::Inventory* inventory=nullptr;
+            const auto melodic=melodicZoneInventories_.find(path);
+            const auto drum=drumZoneInventories_.find(path);
+            if (bankKnown && melodic!=melodicZoneInventories_.end()) inventory=melodic->second.get();
+            if (state.drum && drum!=drumZoneInventories_.end()) inventory=&drum->second;
+            sf2_zones::Match eligible{};
+            if (inventory && liveOk && n.lastKey>=0) eligible=sf2_zones::match(*inventory,rawBank,live.preset,n.lastKey,n.lastVelocity);
+            presence << "NATIVE ch=" << ch << " midiChannel=" << ch+1 << " attempts=" << n.attempts << " BASS_NOTE_ON_SENT=" << n.sent
+                << " familyOrMapRejected=" << n.familyOrMapRejected << " engineUnavailable=" << n.engineUnavailable << " sendFailed=" << n.sendFailed
+                << " zeroController=" << n.zeroController << " presetMapFailures=" << n.presetMapFailures
+                << " requestedBank=" << audioDiagnostics_[ch].requestedBank << " rawPC=" << audioDiagnostics_[ch].requestedPc
+                << " effectiveBank=" << state.bankMsb << ':' << state.bankLsb << " effectivePC=" << state.program
+                << " selectedRawBank=" << state.melodySourceBank << " selectedPC=" << state.melodySourceProgram
+                << " initialized=" << state.initialized << " admitted=" << (state.drum || state.melodySourceProgram>=0)
+                << " liveAvailable=" << liveOk << " font=" << live.font << " liveBank=" << live.bank << " livePC=" << live.preset
+                << " preset='" << (name?name:"UNAVAILABLE") << "' SF2='" << path << "' CC7="
+                << (stream_?BASS_MIDI_StreamGetEvent(stream_,ch,MIDI_EVENT_VOLUME):0) << " CC11="
+                << (stream_?BASS_MIDI_StreamGetEvent(stream_,ch,MIDI_EVENT_EXPRESSION):0)
+                << " lastKey=" << n.lastKey << " lastVelocity=" << n.lastVelocity << " lastNoteMetadataKnown=" << eligible.known
+                << " lastNoteEligibleZones=" << eligible.zones << " last_note_only_not_all_velocity_proof\n";
+        }
+    }
     std::ostringstream report;
+    report << presence.str();
     report << "=== ACTUAL BASS / STRINGS NOTE ZONES ===\nuniqueObservations=" << snapshot.size()
         << " limitReached=" << limited << " cap=512 cached_at_font_load no_PCM_or_voice_sample_ID\n";
     if(snapshot.empty()) report << "unavailable: play Bass/Strings after all fonts finish loading\n";

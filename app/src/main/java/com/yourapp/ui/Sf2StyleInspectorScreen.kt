@@ -142,6 +142,20 @@ fun Sf2StyleInspectorDialog(
                     }
                 }) { Text("SAVE CHORD (SMALL)") }
 
+                OutlinedButton(enabled = !exportBusy && !state.isPlaying, onClick = {
+                    exportBusy = true
+                    exportScope.launch {
+                        try {
+                            val report = viewModel.compactPartPresenceReport()
+                            val fileName = withContext(Dispatchers.IO) {
+                                saveChordReport(chordContext, report, "YamahaArranger_PartPresence")
+                            }
+                            Toast.makeText(chordContext, if (fileName != null)
+                                "PARTS: Downloads/YamahaArranger/$fileName" else "Gagal menyimpan PARTS", Toast.LENGTH_LONG).show()
+                        } finally { exportBusy = false }
+                    }
+                }) { Text("SAVE PARTS (SMALL)") }
+
                 Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(comparisonKits, { comparisonKits = it }, enabled = !exportBusy,
                     label = { Text("Compare 1–4 kits: bank:PC,bank:PC (blank = all kits)") },

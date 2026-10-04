@@ -5,17 +5,19 @@ import com.yourapp.yamahaarranger.ui.DebugLog
 import java.util.concurrent.atomic.AtomicLong
 
 /** Observer only. Does not select policy, transform notes, change MIDI or control time. */
-internal class StyleAudioPathDiagnostic(private val section: String) {
+internal class StyleAudioPathDiagnostic(private val section: String, private val presence: StylePartPresence? = null) {
     private val seen = IntArray(16)
     private val forwarded = IntArray(16)
     private val drops = Array(16) { linkedMapOf<String, Int>() }
 
     fun observe(ch: Int): Long {
+        presence?.seen(ch)
         if (ch in 0..15) seen[ch]++
         return nextId()
     }
     fun event(id: Long, ch: Int, src: Int, original: Int, output: Int, velocity: Int,
               bank: Int, tick: Long, voice: String, stage: String, detail: String = ""): Boolean {
+        presence?.decision(ch, stage)
         if (ch in 0..15) {
             if (stage == "FORWARD") forwarded[ch]++
             else drops[ch][stage] = (drops[ch][stage] ?: 0) + 1

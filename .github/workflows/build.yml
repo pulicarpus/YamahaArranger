@@ -13,6 +13,7 @@ on:
       - diag/audio-path-presence
       - diag/drum-compatibility-compact
       - diag/sf2-semantic-inventory
+      - fix/accompaniment-presence-781
     paths-ignore:
       - "docs/**"
       - "PROJECT_NOTES.md"
@@ -59,7 +60,7 @@ jobs:
           ref: 2f71950f6343bbfb723994ae6a2373130606a857
           path: .regression-baseline776
           persist-credentials: false
-      - name: Verify complete production bypass against build 776
+      - name: Verify Stage 3 bypass and reviewed accompaniment patch against build 776
         run: |
           python3 tools/test_production_regression_bypass.py .regression-baseline776
           python3 tools/compare_drum_shadow_baseline.py .regression-baseline776 --label baseline776
@@ -126,7 +127,7 @@ jobs:
           counts={k:sum(int(s.get(k,0)) for s in suites) for k in ['tests','failures','errors','skipped']}
           print('JVM_RESULTS',counts)
           assert counts['failures']==counts['errors']==counts['skipped']==0
-          replay=[s for s in suites if 'GenericDrumGlobalReplayTest' in s.get('name','') or 'ProductionDrum' in s.get('name','')]
+          replay=[s for s in suites if 'GenericDrumGlobalReplayTest' in s.get('name','') or 'ProductionDrum' in s.get('name','') or 'StylePartPresenceRegressionTest' in s.get('name','')]
           for s in replay:
               print(s.findtext('system-out',''))
           PY
@@ -158,8 +159,17 @@ jobs:
             app/build/test-results/testDebugUnitTest/TEST-*ShadowDrumRuntime*.xml
             tests/fixtures/production_baseline776_sha256.json
             docs/REGRESSION_780_RECOVERY.md
+      - name: Upload accompaniment presence proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: accompaniment-presence-proof
+          path: |
+            app/build/accompaniment-presence-replay.txt
+            app/build/test-results/testDebugUnitTest/TEST-*StylePartPresence*.xml
+            tests/fixtures/accompaniment_presence781_patch.json
+            docs/ACCOMPANIMENT_PRESENCE_781.md
       - name: Send APK to Telegram
-        if: github.ref != 'refs/heads/diag/sf2-semantic-inventory'
+        if: github.ref != 'refs/heads/diag/sf2-semantic-inventory' && github.ref != 'refs/heads/fix/accompaniment-presence-781'
         continue-on-error: true
         uses: appleboy/telegram-action@master
         with:

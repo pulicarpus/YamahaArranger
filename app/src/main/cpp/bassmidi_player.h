@@ -85,6 +85,13 @@ private:
     bool ensureEngine();
     bool loadRole(const std::string& path, bool drum);
     bool applyFonts();
+    bool publishedFontTableIntact() const;
+    std::vector<BASS_MIDI_FONTEX2> publishedFontMaps_;
+    struct PartPresence {
+        uint64_t attempts=0, sent=0, familyOrMapRejected=0, engineUnavailable=0, sendFailed=0, zeroController=0, presetMapFailures=0;
+        int lastKey=-1, lastVelocity=-1;
+    };
+    std::array<PartPresence,16> partPresence_{};
     void refreshMelodicChannels();
     void invalidateMelodicChannels();
     bool normalizeMelodySf2(const std::string& sourcePath, const std::string& outputPath);

@@ -1,0 +1,22 @@
+{
+  "app/src/main/cpp/bassmidi_player.cpp": {
+    "baseline776": "98c388e513f09b00dfa460959eb125f344d943dfea0dc484563a86dff20cf7ab",
+    "reviewedPresencePatch": "e165009fa559fc3f90117854e3c5b04853b23d735770d0f8bd168026bd49200d"
+  },
+  "app/src/main/cpp/bassmidi_player.h": {
+    "baseline776": "e00e493c6a4c0e0e83acb33375df2aa96032bce0d4bfc6d1a9c69889f6d18537",
+    "reviewedPresencePatch": "453e4218644e2302261520c4493aea8743c6e8f0f37b0b4ad51b56af204d053c"
+  },
+  "app/src/main/java/com/yourapp/ui/MainViewModel.kt": {
+    "baseline776": "5a21f927d3ffdcc9ce000373f9c9bce430457e07b1baf6f7d69f51543a48fc89",
+    "reviewedPresencePatch": "a89548b3fd38a6b032491621e0288d6b45a2b8c87dad761aa1da1cbf816a2cb6"
+  },
+  "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt": {
+    "baseline776": "1d8d3698a2efdbcc5273275d6a793a06cd0e5262e4c4275ad176b33c4f82cbe7",
+    "reviewedPresencePatch": "99cbd23a1488f3b79a5974c15da14ce3143123e1dc9fb4c58075a9f76abc4a6e"
+  },
+  "app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt": {
+    "baseline776": "2ead0dbd29ec54ebc423e4bb828618501555be6ff9055cabf189cb5859d01e76",
+    "reviewedPresencePatch": "882fdbc6c22f290b89aac3be1d7b336c9be76a61da16c53f503bcaf0df874b2b"
+  }
+}

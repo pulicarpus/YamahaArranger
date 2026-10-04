@@ -68,6 +68,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         val sourcePart:String, val sourceSection:String, val sourceBank:Int,
         val sourceHeaderPC:Int, val sourceTick:Long, val onId:Long
     )
+    private val partPresence = StylePartPresence()
+    fun partPresenceReport(style:com.yourapp.yamahaarranger.style.ParsedStyle):String = partPresence.report(style)
     private val chordTrace = ChordChangeDiagnostic()
     fun armChordDiagnostic() { audioEngine.armChordDiagnostic(); chordTrace.arm() }
     fun stopChordDiagnostic() { chordTrace.stop(); audioEngine.stopChordDiagnostic() }
@@ -157,7 +159,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         val old=channelOverride(channel)
         setChannelOverride(channel, old.copy(program=program.coerceIn(0,127), bank=bank.coerceIn(0,16383)))
     }
-    fun setVoiceMap(vm:Map<Int,String>){voiceMap=vm;lastAppliedSection="";com.yourapp.yamahaarranger.ui.DebugLog.add("🎼 Legacy VoiceMap received: ${vm.size}; CASM policy takes precedence")}
+    fun setVoiceMap(vm:Map<Int,String>){partPresence.reset();voiceMap=vm;lastAppliedSection="";com.yourapp.yamahaarranger.ui.DebugLog.add("🎼 Legacy VoiceMap received: ${vm.size}; CASM policy takes precedence")}
     private data class PendingSection(
         val section: StyleSectionModel,
         val ppq: Int,
@@ -549,7 +551,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             val c = policies.firstOrNull() ?: return@forEach
             val destination = c.destinationChannel
             if (destination in lockedChannels || destination in applied) return@forEach
-            val drum = destination == 8 || destination == 9 || isDrumVoice(c.voiceName)
+            val drum = isDrumDestination(destination, c.voiceName)
             val override = channelOverrides[destination]
             if (override?.muted == true) { applied += destination; return@forEach }
             val explicit = explicitByDestination[destination]
@@ -650,8 +652,17 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         )
     }
 
-    private fun guessProgramFromVoiceName(name:String):Int{val n=name.lowercase();val numeric=Regex("(?:^|\\D)(\\d{1,3})\\s*$").find(n)?.groupValues?.getOrNull(1)?.toIntOrNull();if(numeric!=null&&numeric in 0..127)return numeric;return when{n.contains("piano")->0;n.contains("e.piano")||n.contains("ep")->4;n.contains("organ")->16;n.contains("accordion")->21;n.contains("guitar")||n.contains("gtr")->24;n.contains("bass")->33;n.contains("violin")->40;n.contains("cello")->42;n.contains("strg")||n.contains("str")->48;n.contains("choir")->52;n.contains("trumpet")->56;n.contains("trombone")->57;n.contains("brass")->61;n.contains("sax")->65;n.contains("oboe")->68;n.contains("clarinet")->71;n.contains("flute")->73;n.contains("crash")||n.contains("cymbal")||n.contains("perc")||n.contains("dr")||n.contains("kit")||n.contains("drum")->0;n.contains("pad")->89;else->-1}}
-    private fun isDrumVoice(name:String)=name.lowercase().let{it.contains("crash")||it.contains("cymbal")||it.contains("perc")||it.contains("add-dr")||it.contains("drum")||it.contains("kit")||it.startsWith("dr")}
+    private fun guessProgramFromVoiceName(name:String):Int{val n=name.lowercase();val numeric=Regex("(?:^|\\D)(\\d{1,3})\\s*$").find(n)?.groupValues?.getOrNull(1)?.toIntOrNull();if(numeric!=null&&numeric in 0..127)return numeric;return when{n.contains("piano")->0;n.contains("e.piano")||n.contains("ep")->4;n.contains("organ")->16;n.contains("accordion")->21;n.contains("guitar")||n.contains("gtr")->24;n.contains("bass")->33;n.contains("violin")->40;n.contains("cello")->42;n.contains("strg")||n.contains("str")->48;n.contains("choir")->52;n.contains("trumpet")->56;n.contains("trombone")->57;n.contains("brass")->61;n.contains("sax")->65;n.contains("oboe")->68;n.contains("clarinet")->71;n.contains("flute")->73;isDrumVoice(n)->0;n.contains("pad")->89;else->-1}}
+    // Match the native role contract: Rhythm1/2 are 8/9, destinations
+    // 10..15 are melodic. Auxiliary legacy destinations may use voice hints.
+    private fun isDrumDestination(destination:Int, voiceName:String):Boolean =
+        destination == 8 || destination == 9 || (destination !in 10..15 && isDrumVoice(voiceName))
+    private fun isDrumVoice(name:String)=name.lowercase().trim().let{
+        it.contains("crash") || it.contains("cymbal") || it.contains("perc") ||
+        it.contains("add-dr") || it.contains("drum") || it.contains("kit") ||
+        it == "dr" || it.startsWith("dr.") || it.startsWith("dr_") ||
+        it.startsWith("dr ") || it.startsWith("dr-")
+    }
     private fun yamahaChordType(chord:DetectedChord):Int = when(chord.quality){
         ChordQuality.MAJOR -> 0
         ChordQuality.SIX -> 1
@@ -818,7 +829,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             if (sourceChannel != null) dynamicBankBySource[sourceChannel] = msb * 128 + lsb
         }
 
-        val audioPath = StyleAudioPathDiagnostic(section.name)
+        val audioPath = StyleAudioPathDiagnostic(section.name, partPresence)
         StyleAudioPathDiagnostic.inventory(section)
         for(s in merged){
             val absoluteTick=startAbsoluteTick+s.tick.toLong()
@@ -870,8 +881,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                         }
                         if(s.event.note==0 || s.event.note==32) chordTrace.record { "SOURCE_BANK chordId=${chordTrace.chordId()} src=${s.event.channel} dst=$destination controller=${s.event.note} value=${s.event.velocity} bank=${dynamicBankBySource[s.event.channel]} tick=$absoluteTick nativeSend=0_until_PROGRAM" }
                     } else if (s.event.isProgramChange) {
-                        val drum = destination == 8 || destination == 9 ||
-                            (policy != null && isDrumVoice(policy.voiceName))
+                        val drum = isDrumDestination(destination, policy?.voiceName.orEmpty())
                         val styleBank = dynamicBankBySource[s.event.channel]
                             ?: ((s.part.bankMsb.coerceIn(0, 127) * 128) +
                                 s.part.bankLsb.coerceIn(0, 127))
@@ -892,7 +902,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             }
 
             synchronized(noteLifecycleLock) {
-                val diagChannel = policy?.destinationChannel ?: s.event.channel
+                val diagChannel = policy?.destinationChannel ?: s.part.casmPolicies.ifEmpty { listOfNotNull(s.part.casm) }.map { it.destinationChannel }.distinct().singleOrNull() ?: s.event.channel
                 val diagId = if (s.event.isNoteOn) audioPath.observe(diagChannel) else 0L
                 val diagBank = dynamicBankBySource[s.event.channel] ?: (s.part.bankMsb * 128 + s.part.bankLsb)
                 fun diagnostic(stage: String, output: Int = -1, detail: String = ""): Boolean {
@@ -903,6 +913,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                 }
                 if(policy==null&&chord!=null&&s.event.isNoteOn&&!isRhythmSource(s.event.channel)) {
                     val candidates=s.part.casmPolicies.ifEmpty { listOfNotNull(s.part.casm) }
+                    if (candidates.isEmpty()) partPresence.missingPolicy(diagChannel)
                     val rules=candidates.map { "${it.sourceNoteLow}-${it.sourceNoteHigh}:mask=${it.chordMuteMask.toString(16)}" }
                     diagnostic("DROP_NO_POLICY_WITH_CHORD", detail="candidateDst=${candidates.map { it.destinationChannel }.distinct()} chord=${chord.rootNote}/${chord.quality} yamahaType=${yamahaChordType(chord)} rules=$rules evidence=policy_rejection_not_missing_part")
                     return@synchronized
@@ -940,7 +951,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                     activeTransposedNotes.remove(key)
                 }
 
-                val isDrumPart=destinationChannel==9||(policy!=null&&isDrumVoice(policy.voiceName))
+                partPresence.beforeTransform(destinationChannel)
+                val isDrumPart=isDrumDestination(destinationChannel, policy?.voiceName.orEmpty())
                 val transformed=if(policy!=null&&!isDrumPart){
                     chord?.let{CasmNoteTransformer.transform(s.event.note,it,policy)}?:s.event.note.coerceIn(0,127)
                 }else s.event.note.coerceIn(0,127)

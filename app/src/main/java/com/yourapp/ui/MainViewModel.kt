@@ -705,10 +705,23 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    suspend fun compactPartPresenceReport(): String {
+        if (uiState.value.isPlaying) return "PART PRESENCE unavailable: STOP before export\n"
+        val style = drumAuditStyle ?: return "PART PRESENCE unavailable: load a style first\n"
+        return withContext(Dispatchers.Default) {
+            val scheduler = arrangerBrain.partPresenceReport(style)
+            val native = audioEngine.noteZoneReport().substringBefore("=== ACTUAL BASS / STRINGS NOTE ZONES ===")
+            com.yourapp.yamahaarranger.arranger.ChordReportBounds.lines(
+                "PART PRESENCE: scheduler=since_style_load; native=process_lifetime; fresh app/session recommended.\nNo playback/controller writes; NOTE_ON acceptance does not prove audible PCM.",
+                (native + scheduler).lines())
+        }
+    }
+
     suspend fun drumKitAuditReport(): String {
         val style = drumAuditStyle ?: return "DRUM KIT AUDIT unavailable: load a style first\n"
         return withContext(Dispatchers.Default) {
             buildString {
+                appendLine(arrangerBrain.partPresenceReport(style))
                 appendLine(arrangerBrain.chordDiagnosticReport())
                 appendLine(audioEngine.chordDiagnosticReport())
                 appendLine(audioEngine.noteZoneReport())

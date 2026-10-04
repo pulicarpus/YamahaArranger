@@ -28,7 +28,7 @@ inline HSTREAM nextStream=1;
 inline std::map<HSTREAM,std::vector<BASS_MIDI_FONTEX2>> otherMappings;
 inline std::map<std::tuple<HSTREAM,int,DWORD>,DWORD> otherEvents;
 inline int auditionNoteOns=0;
-inline bool failMapping=false, failNote=false, mismatchPreset=false;
+inline bool failMapping=false, dropMappingsOnFailure=false, failNote=false, mismatchPreset=false;
 inline int forcedLivePc=-1;
 inline bool changePresetOnNote=false, failProgram=false, changeDiagnosticPresetOnNote=false;
 inline std::vector<std::tuple<HSTREAM,DWORD,DWORD,DWORD>> history;
@@ -54,8 +54,24 @@ inline HSOUNDFONT BASS_MIDI_FontInit(const char* path, DWORD) {
     const auto handle=mock_bass::nextFont++; mock_bass::fonts[handle]=path;
     std::ifstream file(path,std::ios::binary);
     std::vector<unsigned char> data((std::istreambuf_iterator<char>(file)),std::istreambuf_iterator<char>());
-    if (data.size()>=108) {
-        const int bank=data[54]|(data[55]<<8), pc=data[52]|(data[53]<<8);
+    bool foundPhdr=false;
+    // Enumerate all phdr records, not only the first preset of a font.
+    for (size_t off=12;off+8<=data.size();++off) {
+        if (std::string(reinterpret_cast<const char*>(data.data()+off),4)!="phdr") continue;
+        const size_t bytes=size_t(data[off+4])|(size_t(data[off+5])<<8)|(size_t(data[off+6])<<16)|(size_t(data[off+7])<<24);
+        if (bytes%38 || off+8+bytes>data.size()) break;
+        foundPhdr=true;
+        for (size_t record=off+8;record+38<=off+8+bytes;record+=38) {
+            const int pc=data[record+20]|(data[record+21]<<8),bank=data[record+22]|(data[record+23]<<8);
+            std::string name(reinterpret_cast<const char*>(data.data()+record),20);
+            name.resize(name.find('\0')==std::string::npos?20:name.find('\0'));
+            if (!name.empty() && name!="EOP") mock_bass::presets[{handle,bank,pc}]=name;
+        }
+        break;
+    }
+    // Older isolated-audition tests deliberately use an offset-only 108-byte stub.
+    if (!foundPhdr && data.size()>=108) {
+        const int bank=data[54]|(data[55]<<8),pc=data[52]|(data[53]<<8);
         std::string name(reinterpret_cast<const char*>(data.data()+32),20);
         name.resize(name.find('\0')==std::string::npos?20:name.find('\0'));
         mock_bass::presets[{handle,bank,pc}]=name;
@@ -100,10 +116,21 @@ inline bool BASS_MIDI_FontLoadEx(HSOUNDFONT h, int pc, int bank, int, DWORD flag
     return true;
 }
 inline bool BASS_MIDI_StreamSetFonts(HSTREAM stream, const BASS_MIDI_FONTEX2* maps, DWORD count) {
-    if (mock_bass::failMapping || !(count & BASS_MIDI_FONT_EX2)) return false;
+    if (mock_bass::failMapping || !(count & BASS_MIDI_FONT_EX2)) {
+        if (mock_bass::dropMappingsOnFailure) mock_bass::mappings.clear();
+        return false;
+    }
     auto& target=stream==1?mock_bass::mappings:mock_bass::otherMappings[stream];
     target.assign(maps,maps+(count & ~BASS_MIDI_FONT_EX2)); return true;
 }
 
 
 inline float BASS_MIDI_FontGetVolume(HSOUNDFONT) { return 0.9f; }
+
+inline DWORD BASS_MIDI_StreamGetFonts(HSTREAM stream, BASS_MIDI_FONTEX2* maps, DWORD count) {
+    const auto& current=stream==1?mock_bass::mappings:mock_bass::otherMappings[stream];
+    if (!maps) return static_cast<DWORD>(current.size());
+    if (!(count & BASS_MIDI_FONT_EX2)) return 0;
+    const DWORD n=std::min(static_cast<DWORD>(current.size()),count & ~BASS_MIDI_FONT_EX2);
+    std::copy(current.begin(),current.begin()+n,maps);return n;
+}

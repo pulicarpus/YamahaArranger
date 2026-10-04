@@ -527,6 +527,7 @@ class ArrangerBrain @Inject constructor(
 
     fun armChordDiagnostic() { if (::sequencer.isInitialized) sequencer.armChordDiagnostic() }
     fun stopChordDiagnostic() { if (::sequencer.isInitialized) sequencer.stopChordDiagnostic() }
+    fun partPresenceReport(style:ParsedStyle):String = if (::sequencer.isInitialized) sequencer.partPresenceReport(style) else "PART PRESENCE unavailable: sequencer not initialized"
     fun compactChordDiagnosticReport(): String = if (::sequencer.isInitialized) sequencer.compactChordDiagnosticReport() else "CHORD STYLE unavailable: load style first"
     fun chordDiagnosticReport(): String = if (::sequencer.isInitialized) sequencer.chordDiagnosticReport() else "CHORD STYLE unavailable: load style first"
 
