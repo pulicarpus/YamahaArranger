@@ -5,11 +5,17 @@ import com.yourapp.audio.Sf2SemanticInventory
 import com.yourapp.audio.Sf2SemanticInventoryTest
 import com.yourapp.midi.MidiInputManager
 import com.yourapp.yamahaarranger.arranger.ArrangerBrain
+import com.yourapp.yamahaarranger.arranger.ArrangerState
+import com.yourapp.yamahaarranger.chord.ChordDetector
 import com.yourapp.yamahaarranger.audio.AudioEngineManager
 import com.yourapp.yamahaarranger.style.*
 import java.io.ByteArrayInputStream
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import org.junit.Assert.*
 import org.junit.Test
 import org.mockito.Mockito.*
@@ -44,25 +50,58 @@ class DrumShadowReadOnlyTest {
             assertSame(style,MainViewModel::class.java.getDeclaredField("drumAuditStyle").apply {isAccessible=true}.get(vm))
         }
     }
+    // Exercise the real authoritative owner/formatter. Keep the separate mock
+    // brain in Fixture for the unchanged shadow tests; it cannot run the new
+    // session export because constructor-owned state would be null.
+    private class PartSession(val fixture: Fixture, loaded: Boolean = true) : AutoCloseable {
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val brain = spy(ArrangerBrain(fixture.audio, mock(ChordDetector::class.java), fixture.midi))
+        init {
+            brain.attachScope(scope)
+            if (loaded) brain.loadStyle(fixture.style)
+            if (fixture.state.isPlaying) {
+                @Suppress("UNCHECKED_CAST")
+                val state = ArrangerBrain::class.java.getDeclaredField("_state").apply { isAccessible = true }
+                    .get(brain) as MutableStateFlow<ArrangerState>
+                state.value = state.value.copy(isPlaying = true)
+            }
+            fixture.field("arrangerBrain", brain)
+            fixture.field("drumAuditStyle", null) // UI-local cache is irrelevant.
+            clearInvocations(brain, fixture.audio)
+        }
+        fun readOnly() {
+            val allowed = setOf("compactPartPresenceReport", "diagnosticActiveStyle", "partPresenceReport", "getState")
+            assertTrue(mockingDetails(brain).invocations.all { it.method.name in allowed })
+            verifyNoInteractions(fixture.files, fixture.midi, fixture.styles, fixture.brain)
+            assertSame(fixture.state, fixture.vm.uiState.value)
+        }
+        override fun close() { scope.cancel() }
+    }
     @Test fun partPresenceExportCallsOnlySchedulerAndNativeReadOnlyGetters() = runBlocking {
         val f=Fixture()
-        doReturn("PART ch=9 bridgeCalls=3\n").`when`(f.brain).partPresenceReport(f.style)
-        doReturn("NATIVE ch=9 BASS_NOTE_ON_SENT=3\n=== ACTUAL BASS / STRINGS NOTE ZONES ===\nold detailed rows").`when`(f.audio).noteZoneReport()
-        val out=f.vm.compactPartPresenceReport()
-        assertTrue(out.contains("bridgeCalls=3"));assertTrue(out.contains("BASS_NOTE_ON_SENT=3"))
-        assertFalse(out.contains("old detailed rows"));assertTrue(out.toByteArray().size<=48*1024)
-        verify(f.brain).partPresenceReport(f.style);verify(f.audio).noteZoneReport()
-        verifyNoMoreInteractions(f.brain,f.audio);verifyNoInteractions(f.files,f.midi,f.styles)
-        assertSame(f.state,f.vm.uiState.value)
+        PartSession(f).use { session ->
+            doReturn("NATIVE ch=9 BASS_NOTE_ON_SENT=3\nROLE_PCM_SCOPE\nROLE_LAYER ch=10\n=== ACTUAL BASS / STRINGS NOTE ZONES ===\nold detailed rows").`when`(f.audio).noteZoneReport()
+            val out=f.vm.compactPartPresenceReport()
+            assertTrue(out.contains("parsedRaw=1"));assertTrue(out.contains("BASS_NOTE_ON_SENT=3"))
+            assertTrue(out.contains("ROLE_PCM_SCOPE"));assertTrue(out.contains("ROLE_LAYER"))
+            assertFalse(out.contains("old detailed rows"));assertTrue(out.toByteArray().size<=48*1024)
+            verify(session.brain).partPresenceReport(f.style);verify(f.audio).noteZoneReport()
+            verifyNoMoreInteractions(f.audio);session.readOnly()
+        }
     }
     @Test fun partPresenceWhilePlayingRejectsBeforeAnyPlaybackOrFilesystemInteraction() = runBlocking {
-        val f=Fixture(true);assertTrue(f.vm.compactPartPresenceReport().contains("STOP"))
-        verifyNoInteractions(f.audio,f.brain,f.files,f.midi,f.styles);assertSame(f.state,f.vm.uiState.value)
+        val f=Fixture(true)
+        PartSession(f).use { session ->
+            assertTrue(f.vm.compactPartPresenceReport().contains("STOP"))
+            verifyNoInteractions(f.audio);session.readOnly()
+        }
     }
     @Test fun partPresenceWithoutStyleRejectsWithoutReadingOrChangingEngine() = runBlocking {
-        val f=Fixture();f.field("drumAuditStyle",null)
-        assertTrue(f.vm.compactPartPresenceReport().contains("load a style"))
-        verifyNoInteractions(f.audio,f.brain,f.files,f.midi,f.styles);assertSame(f.state,f.vm.uiState.value)
+        val f=Fixture()
+        PartSession(f,loaded=false).use { session ->
+            assertTrue(f.vm.compactPartPresenceReport().contains("load a style"))
+            verifyNoInteractions(f.audio);session.readOnly()
+        }
     }
     @Test fun shadowScanCompileExportCallsOnlyReadOnlySnapshotAndKeepsProductionState() = runBlocking {
         val f=Fixture();val original=f.style.toString();val out=f.vm.exportShadowDrum()
