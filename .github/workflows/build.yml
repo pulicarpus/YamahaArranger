@@ -14,6 +14,7 @@ on:
       - diag/drum-compatibility-compact
       - diag/sf2-semantic-inventory
       - fix/accompaniment-presence-781
+      - test/bank-translation-783
     paths-ignore:
       - "docs/**"
       - "PROJECT_NOTES.md"
@@ -29,6 +30,11 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+      - name: Verify bank-contract APK runtime byte-identical to build 783
+        if: github.ref == 'refs/heads/test/bank-translation-783'
+        run: |
+          git fetch --no-tags --depth=1 origin cb4d92b889e9d5a87ac5d287a34f46d661103341
+          git diff --exit-code cb4d92b889e9d5a87ac5d287a34f46d661103341 HEAD -- app/src/main
       - name: "Check out #770 performance baseline (read only)"
         uses: actions/checkout@v4
         with:
@@ -168,8 +174,9 @@ jobs:
             app/build/test-results/testDebugUnitTest/TEST-*StylePartPresence*.xml
             tests/fixtures/accompaniment_presence781_patch.json
             docs/ACCOMPANIMENT_PRESENCE_781.md
+            docs/BANK_READBACK_783.md
       - name: Send APK to Telegram
-        if: github.ref != 'refs/heads/diag/sf2-semantic-inventory' && github.ref != 'refs/heads/fix/accompaniment-presence-781'
+        if: github.ref != 'refs/heads/diag/sf2-semantic-inventory' && github.ref != 'refs/heads/fix/accompaniment-presence-781' && github.ref != 'refs/heads/test/bank-translation-783'
         continue-on-error: true
         uses: appleboy/telegram-action@master
         with:

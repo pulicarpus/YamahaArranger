@@ -57,6 +57,13 @@ with tempfile.TemporaryDirectory(prefix="yamaha-resolver-") as directory:
                     str(root / "app/src/main/cpp/managed_sf2_audition.cpp"), "-o", str(managed_executable)], check=True)
     subprocess.run([str(managed_executable), directory], check=True)
 
+    bank_executable = Path(directory) / "bank_translation_readback_test"
+    subprocess.run([compiler, "-std=c++17", "-Wall", "-Wextra", "-O2", "-pthread",
+                    "-I", str(root / "tests/mocks"), "-I", str(root / "app/src/main/cpp"), "-I", str(root / "tests"),
+                    str(root / "tests/bank_translation_readback_test.cpp"),
+                    str(root / "app/src/main/cpp/bassmidi_player.cpp"), "-o", str(bank_executable)], check=True)
+    subprocess.run([str(bank_executable), directory], check=True)
+
     presence_executable = Path(directory) / "accompaniment_presence_test"
     subprocess.run([compiler, "-std=c++17", "-Wall", "-Wextra", "-O2", "-pthread",
                     "-I", str(root / "tests/mocks"), "-I", str(root / "app/src/main/cpp"), "-I", str(root / "tests"),
