@@ -14,9 +14,10 @@ while(std::getline(file,line)){auto p=split(line,'\t');if(p[0]=="F"){names[std::
  inv[id].valid=true;inv[id].presetNames[{bank,pc}]=p[16];z.instrument=p[17];z.sample=p[18];z.presetGenerators=gens(p[19]);z.instrumentGenerators=gens(p[20]);inv[id].presets[{bank,pc}].push_back(z);
 }
 std::vector<Candidate> candidates;for(auto& f:inv){auto v=catalog(f.second,f.first,names[f.first]);std::cout<<"CATALOG|"<<names[f.first]<<"|"<<v.size()<<'\n';for(auto& c:v){c.fingerprint=fingerprints[f.first];for(const auto& evidence:auditionEvidence)if(c.fingerprint==evidence.fingerprint && c.bank==evidence.bank && c.pc==evidence.pc && c.key==evidence.key)c.auditioned=true;candidates.push_back(c);}}
+const auto plan=distinctPlan(candidates,127,0,73);
 std::ifstream demands(argv[2]);unsigned total=0,compatible=0,legacy=0;while(std::getline(demands,line)){
  auto p=split(line,'\t');int ch=std::stoi(p[0]),key=std::stoi(p[1]),count=std::stoi(p[2]);total+=count;
- const auto* n=sourceIdentity(127,0,73,key);const auto* c=n?choose(candidates,family(n->identity),key):nullptr;
+ const auto* n=sourceIdentity(127,0,73,key);const auto* c=plan[key].font?&plan[key]:nullptr;
  if(c && supported(family(n->identity)) && !n->keyOff) {compatible+=count;std::cout<<"ROUTE|"<<ch<<'|'<<key<<'|'<<count<<"|COMPATIBLE|"<<c->path<<'|'<<c->bank<<'|'<<c->pc<<'|'<<c->key<<'|'<<c->samples<<"|layers="<<c->layers<<"|auditioned="<<c->auditioned<<'\n';}
  else {legacy+=count;std::cout<<"ROUTE|"<<ch<<'|'<<key<<'|'<<count<<"|LEGACY_ABSTAIN|family_or_articulation_or_runtime_metadata_unproven\n";}
 }

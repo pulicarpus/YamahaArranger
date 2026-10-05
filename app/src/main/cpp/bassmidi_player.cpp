@@ -1146,6 +1146,11 @@ void BassMidiPlayer::noteOn(int channel, int key, float velocity, const AudioPat
     const int vel = std::max(1, std::min(127,
         static_cast<int>(std::lround(velocity * 127.0f))));
 
+    if(origin.sourceChannel>=0 && origin.styleBank>=0 && channel>=8) {
+        auto& measured=styleVelocityEvidence_[channel];++measured.count;measured.sum+=vel;measured.squares+=vel*vel;
+        measured.minimum=std::min(measured.minimum,vel);measured.maximum=std::max(measured.maximum,vel);
+    }
+
     captureChordState("NOTE_PRE",channel,key,vel,-1,0,origin);
 
     // A failed family gate must not fall through to BASSMIDI's generic font
@@ -1491,6 +1496,18 @@ std::string BassMidiPlayer::noteZoneReport() const {
         presence << "=== ACCOMPANIMENT PART PRESENCE / NATIVE ===\n"
             << "counters=process_lifetime explicit_style_origins_only; last binding and current mappingGeneration=" << fontMappingGeneration_
             << "; accepted_event_not_audible_PCM; snapshot_never_sends_MIDI\n";
+        presence << "PCM_MIX samples=" << pcmSamples_ << " peak=" << pcmPeak_
+            << " rms=" << (pcmSamples_?std::sqrt(pcmEnergy_/pcmSamples_):0)
+            << " clippedSamples=" << pcmClipped_ << " nonfiniteSamples=" << pcmNonfinite_
+            << " scope=post_sum_pre_existing_output_clamp no_per_part_PCM_claim no_gain_adjustment\n";
+        for(int channel=8;channel<16;++channel) {
+            const auto& v=styleVelocityEvidence_[channel];
+            presence << "STYLE_VELOCITY ch=" << channel << " count=" << v.count
+                << " min=" << (v.count?v.minimum:-1) << " max=" << (v.count?v.maximum:-1)
+                << " mean=" << (v.count?double(v.sum)/v.count:0)
+                << " rms=" << (v.count?std::sqrt(double(v.squares)/v.count):0)
+                << " scope=MIDI_input_not_SF2_response_or_PCM\n";
+        }
         for(int part=0;part<2;++part) {
             const auto& lane=percussionLanes_[part];
             presence << "PERCUSSION_FIDELITY enabled=" << YAMAHA_COMPATIBLE_PERCUSSION << " ch=" << part+8 << " pc=" << lane.requestedPc
@@ -1500,7 +1517,7 @@ std::string BassMidiPlayer::noteZoneReport() const {
                 << " failedOns=" << lane.failedOns << " overflowDropped=" << lane.overflowOns << " chokes=" << lane.chokes << '\n';
             for(int key=0;key<128;++key) if(lane.stream && lane.routes[key].font) {
                 const auto& c=lane.routes[key]; BASS_MIDI_FONT actual{};
-                const bool verified=BASS_MIDI_StreamGetPreset(lane.stream,key,&actual) && actual.font==c.font && actual.bank==c.nativeBank && actual.preset==c.pc;
+                const bool verified=lane.actualVerified[key] && BASS_MIDI_StreamGetPreset(lane.stream,key,&actual) && actual.font==c.font && actual.bank==c.nativeBank && actual.preset==c.pc;
                 presence << "COMPATIBLE_ROUTE ch=" << part+8 << " sourceKey=" << key << " candidateKey=" << c.key
                     << " sf2='" << c.path << "' bank=" << c.bank << " nativeBank=" << c.nativeBank << " rawPC=" << c.pc
                     << " fingerprint=" << c.fingerprint << " audition770=" << c.auditioned
@@ -1508,7 +1525,9 @@ std::string BassMidiPlayer::noteZoneReport() const {
                     << " sourceGroup=" << lane.groups[key] << " candidateExclusive=" << c.exclusive
                     << " velocities=1:127 pitchOffset=0 controllerLane=" << key << " actualVerified=" << verified
                     << " actualReadbackStage=" << (lane.actualVerified[key]?"FIRST_REAL_NOTE_VERIFIED":"DEFERRED_UNTIL_REAL_NOTE")
-                    << " actualVoiceSampleId=UNAVAILABLE semantic=COMPATIBLE_not_EXACT\n";
+                    << " sourceIdentity='" << (percussion_fidelity::sourceIdentity(127,0,lane.requestedPc,key)?percussion_fidelity::sourceIdentity(127,0,lane.requestedPc,key)->identity:"UNKNOWN")
+                    << "' sampleBundle=" << c.sampleIdentity
+                    << " actualVoiceSampleId=UNAVAILABLE semantic=COMPATIBLE_not_EXACT variantMatch=UNPROVEN\n";
             }
         }
         for (int ch=8;ch<16;++ch) {
@@ -1810,6 +1829,14 @@ void BassMidiPlayer::render(float* out, int numFrames) {
         std::fill(out + samples, out + numFrames * 2, 0.0f);
     }
     renderPercussion(out,numFrames);
+    // Sum before AudioEngine's existing output clamp. O(n) PCM only, no MIDI,
+    // allocation/logging or synth-state change; exports never render extra notes.
+    for(int i=0;i<numFrames*2;++i) {
+        const float sample=out[i];++pcmSamples_;
+        if(!std::isfinite(sample)){++pcmNonfinite_;continue;}
+        pcmEnergy_+=double(sample)*sample;pcmPeak_=std::max(pcmPeak_,std::abs(sample));
+        if(std::abs(sample)>1.0f)++pcmClipped_;
+    }
 }
 
 
@@ -1964,7 +1991,7 @@ void BassMidiPlayer::rebuildPercussionCatalog() {
     std::set<std::tuple<unsigned,int,int>> ready,failed;
     for(const auto& source:yamahaNotes) {
         const auto f=family(source.identity);if(!supported(f))continue;
-        const auto* best=choose(candidates,f,source.key);if(!best)continue;
+        const auto* best=choose(candidates,f,source.key,source.identity);if(!best)continue;
         const auto binding=std::make_tuple(best->font,best->nativeBank,best->pc);
         if(ready.count(binding) || failed.count(binding))continue;
         if(ready.size()>=8 || !BASS_MIDI_FontLoadEx(best->font,best->pc,best->nativeBank,0,0))failed.insert(binding);
@@ -2012,9 +2039,10 @@ void BassMidiPlayer::preparePercussionLane(int channel,int requestedPc) {
             if(bounded && seconds<3600)lane.legacyLifetimeFrames[key]=uint64_t(std::ceil((seconds+5)*sampleRate_));
         }
     }
+    const auto planned=distinctPlan(percussionCandidates_,127,0,requestedPc);
     for(const auto& n:yamahaNotes) if(n.msb==127 && n.lsb==0 && n.pc==requestedPc) {
         lane.groups[n.key]=n.group;
-        const auto* c=choose(percussionCandidates_,family(n.identity),n.key);
+        const auto* c=planned[n.key].font?&planned[n.key]:nullptr;
         if(!c || !supported(family(n.identity)) || n.keyOff)continue; // scheduler has no rhythm OFF contract
         // Retain an already compatible native zone instead of replacing a valid kit.
         bool legacyCompatible=false;

@@ -36,7 +36,7 @@ inline Family family(const std::string& text) {
 }
 inline bool supported(Family f) { return f!=Family::Unknown && f!=Family::HatClosed && f!=Family::HatOpen; }
 struct Candidate { unsigned font=0; int bank=0,nativeBank=0,pc=0,key=0,exclusive=0; Family family=Family::Unknown;
-    std::string path,preset,samples,fingerprint; int layers=0; bool auditioned=false; double seconds=0; };
+    std::string path,preset,samples,fingerprint,sampleIdentity; int layers=0; bool auditioned=false; double seconds=0; };
 inline int root(const sf2_zones::Zone& z) { const auto& g=z.instrumentGenerators;return g.has(58)?g.amount[58]:z.rootKey; }
 inline bool pitchAndVelocitySafe(const sf2_zones::Zone& z,int key) {
     for(int op:{0,1,2,3,4,12,45,50})if(sf2_zones::effective(z,op)!=0)return false;
@@ -88,18 +88,49 @@ inline std::vector<Candidate> catalog(const sf2_zones::Inventory& inv,unsigned f
             if(group && c.exclusive<=0)continue;
             if(!group && c.exclusive!=0)continue;
             if(c.family==Family::HatPedalClosed && (!context.count(Family::HatClosed) || !context.count(Family::HatOpen)))continue;
+            for(int id:sampleIds)c.sampleIdentity+=std::to_string(id)+",";
             out.push_back(c);
         }
     }
     return out;
 }
-// Operational deterministic selection among COMPATIBLE evidence, not an EXACT
-// timbre claim or a kit-level winner. Same-key is a tie-break only after semantics.
-inline const Candidate* choose(const std::vector<Candidate>& candidates,Family wanted,int sourceKey) {
+// Audition is evidence for its recorded Yamaha semantic target, not for every
+// unrelated request that happens to share the same broad instrument family.
+inline bool observedFor(const Candidate& c,const std::string& target) {
+    for(const auto& e:auditionEvidence)if(c.fingerprint==e.fingerprint && c.bank==e.bank &&
+        c.pc==e.pc && c.key==e.key && target==e.targetIdentity)return true;
+    return false;
+}
+inline std::string renderIdentity(const Candidate& c) {
+    return (c.fingerprint.empty()?c.path:c.fingerprint)+":"+c.sampleIdentity;
+}
+inline const Candidate* choose(const std::vector<Candidate>& candidates,Family wanted,int sourceKey,
+                               const std::string& target="") {
     const Candidate* best=nullptr;
-    auto score=[&](const Candidate& c) {return std::make_tuple(c.auditioned?0:1,c.key==sourceKey?0:1,c.bank==128?0:c.bank==127?1:2,c.layers,c.path,c.pc,c.key);};
+    auto score=[&](const Candidate& c) {return std::make_tuple(observedFor(c,target)?0:1,c.key==sourceKey?0:1,c.bank==128?0:c.bank==127?1:2,c.layers,c.path,c.pc,c.key);};
     for(const auto& c:candidates)if(c.family==wanted && (!best || score(c)<score(*best)))best=&c;
     return best;
+}
+// Do not silently flatten distinct Yamaha variants into the same sample bundle.
+// True documented source aliases may share a donor; distinct full identities
+// need independent evidence. Keep the source-auditioned target, abstain for
+// conflicting unproved variants rather than invent a different voice.
+inline std::array<Candidate,128> distinctPlan(const std::vector<Candidate>& candidates,int msb,int lsb,int pc) {
+    std::array<Candidate,128> plan{};
+    std::array<const YamahaNote*,128> sources{};
+    for(const auto& n:yamahaNotes)if(n.msb==msb && n.lsb==lsb && n.pc==pc && !n.keyOff && supported(family(n.identity))) {
+        sources[n.key]=&n;
+        if(const auto* c=choose(candidates,family(n.identity),n.key,n.identity))plan[n.key]=*c;
+    }
+    const auto proposed=plan;
+    for(int key=0;key<128;++key)if(proposed[key].font) {
+        const auto id=renderIdentity(proposed[key]);
+        for(int peer=0;peer<128;++peer)if(peer!=key && proposed[peer].font &&
+            id==renderIdentity(proposed[peer]) && std::string(sources[key]->identity)!=sources[peer]->identity) {
+            if(!observedFor(proposed[key],sources[key]->identity))plan[key]={};
+        }
+    }
+    return plan;
 }
 struct Owner { bool routed=false,accepted=false,choked=false; int key=0,group=0;
     unsigned stream=0,font=0; uint64_t generation=0; int bank=-1,pc=-1,lane=-1,sourceChannel=-1;

@@ -33,7 +33,7 @@ data=(root/'app/src/main/resources/drum_shadow_audit770_v1.tsv').read_text()
 seed=(root/'app/src/main/cpp/percussion_audition_evidence.h').read_text()
 for row in data.splitlines():
     v=row.split('|')
-    if v[0]=='CANDIDATE' and v[9]=='COMPATIBLE':assert f'{{"{v[3]}",{v[4]},{v[5]},{v[6]}}}' in seed
+    if v[0]=='CANDIDATE' and v[9]=='COMPATIBLE':assert f'{{"{v[3]}",{v[4]},{v[5]},{v[6]},' in seed
 assert seed.count('    {')==4
 assert 'YAMAHA_COMPATIBLE_PERCUSSION "' in (root/'app/src/main/cpp/CMakeLists.txt').read_text()
 print('MIX_PERCUSSION boundaries PASS: #784 fonts/normalization/melodic routing/CASM/scheduler intact; no heavy NOTE_ON/OFF/render work; old Stage 3 absent')

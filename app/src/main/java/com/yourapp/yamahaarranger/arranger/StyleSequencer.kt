@@ -61,7 +61,9 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         styleBusTrim = value.coerceIn(0,127)
         for (channel in 8..15) {
             val state = mixerStates[channel]
-            audioEngine.setChannelExpression(channel, effectiveExpression(channel, state.expression))
+            val effective = effectiveExpression(channel, state.expression)
+            audioEngine.setChannelExpression(channel, effective)
+            appliedChannelStates[channel]?.let { appliedChannelStates[channel] = it.copy(expression = effective) }
         }
     }
     private fun effectiveExpression(channel: Int, source: Int): Int =
@@ -645,7 +647,9 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         // An expression event must not resend cached raw CC7 over the effective
         // CC7 trim/mute already installed; CC11 retains the style envelope.
         if (event.note == 11) {
-            audioEngine.setChannelExpression(destinationChannel, effectiveExpression(destinationChannel, state.expression))
+            val effective = effectiveExpression(destinationChannel, state.expression)
+            audioEngine.setChannelExpression(destinationChannel, effective)
+            appliedChannelStates[destinationChannel]?.let { appliedChannelStates[destinationChannel] = it.copy(expression = effective) }
             return
         }
         applyEffectiveMixer(destinationChannel)
@@ -663,6 +667,13 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             if (ov?.muted == true) 0 else styleTrim(state.volume, ov?.volume ?: 127),
             ov?.pan ?: state.pan, effectiveExpression(channel, state.expression),
             ov?.reverbSend ?: state.reverbSend, ov?.chorusSend ?: state.chorusSend)
+        // This cache describes installed state, not only the previous section's
+        // tick-zero snapshot. Otherwise equal section headers skip a needed
+        // restore after CC automation changed the live synth in between.
+        appliedChannelStates[channel]?.let { appliedChannelStates[channel] = it.copy(
+            volume = if (ov?.muted == true) 0 else styleTrim(state.volume, ov?.volume ?: 127),
+            pan = ov?.pan ?: state.pan, expression = effectiveExpression(channel,state.expression),
+            reverbSend = ov?.reverbSend ?: state.reverbSend, chorusSend = ov?.chorusSend ?: state.chorusSend) }
     }
 
     private fun guessProgramFromVoiceName(name:String):Int{val n=name.lowercase();val numeric=Regex("(?:^|\\D)(\\d{1,3})\\s*$").find(n)?.groupValues?.getOrNull(1)?.toIntOrNull();if(numeric!=null&&numeric in 0..127)return numeric;return when{n.contains("piano")->0;n.contains("e.piano")||n.contains("ep")->4;n.contains("organ")->16;n.contains("accordion")->21;n.contains("guitar")||n.contains("gtr")->24;n.contains("bass")->33;n.contains("violin")->40;n.contains("cello")->42;n.contains("strg")||n.contains("str")->48;n.contains("choir")->52;n.contains("trumpet")->56;n.contains("trombone")->57;n.contains("brass")->61;n.contains("sax")->65;n.contains("oboe")->68;n.contains("clarinet")->71;n.contains("flute")->73;isDrumVoice(n)->0;n.contains("pad")->89;else->-1}}

@@ -1,27 +1,27 @@
 {
   "app/src/main/cpp/bassmidi_player.cpp": {
     "baseline776": "98c388e513f09b00dfa460959eb125f344d943dfea0dc484563a86dff20cf7ab",
-    "reviewedPresencePatch": "d064bff16869bebca06a69a7f820740ac8c04dab782fc4c9ef6d5704b8cc393a",
-    "scope": "Presence #783 preserved; reviewed style-only mix + bounded percussion #785; original #776 checksum retained"
+    "reviewedPresencePatch": "6c5bfa7262055ba7cd331c547187f0dc2e7f0bd947ab0fc0c92c7712abb513af",
+    "scope": "Presence783 and mix785 preserved; after785 reviewed mix-cache/full-identity correction + passive level counters; baseline776 retained"
   },
   "app/src/main/cpp/bassmidi_player.h": {
     "baseline776": "e00e493c6a4c0e0e83acb33375df2aa96032bce0d4bfc6d1a9c69889f6d18537",
-    "reviewedPresencePatch": "ddf2ccf042a0a2101fe93cfa04cc59e951736e5bb3fa8f4e28167b934be868cc",
-    "scope": "Presence #783 preserved; reviewed style-only mix + bounded percussion #785; original #776 checksum retained"
+    "reviewedPresencePatch": "f7d56861dee0a98f6711bad44c1724436aa88b1f40a50b9452ee5dfaeffea6f0",
+    "scope": "Presence783 and mix785 preserved; after785 reviewed mix-cache/full-identity correction + passive level counters; baseline776 retained"
   },
   "app/src/main/java/com/yourapp/ui/MainViewModel.kt": {
     "baseline776": "5a21f927d3ffdcc9ce000373f9c9bce430457e07b1baf6f7d69f51543a48fc89",
     "reviewedPresencePatch": "f086c248b64ad8d8790837114dacc172022c95ac8a2eeeca345cecc5aca21e95",
-    "scope": "Presence #783 preserved; reviewed style-only mix + bounded percussion #785; original #776 checksum retained"
+    "scope": "Presence783 and mix785 preserved; after785 reviewed mix-cache/full-identity correction + passive level counters; baseline776 retained"
   },
   "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt": {
     "baseline776": "1d8d3698a2efdbcc5273275d6a793a06cd0e5262e4c4275ad176b33c4f82cbe7",
-    "reviewedPresencePatch": "ce10512024a89b7da5b138265e171edda29ff223537cbf94da727c43231d0bd3",
-    "scope": "Presence #783 preserved; reviewed style-only mix + bounded percussion #785; original #776 checksum retained"
+    "reviewedPresencePatch": "d3db007c26f320cfff86c34ff8b27dfe4dae1d91b83d6760bd1efe6470aaea33",
+    "scope": "Presence783 and mix785 preserved; after785 reviewed mix-cache/full-identity correction + passive level counters; baseline776 retained"
   },
   "app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt": {
     "baseline776": "2ead0dbd29ec54ebc423e4bb828618501555be6ff9055cabf189cb5859d01e76",
     "reviewedPresencePatch": "af9a910356dad28e02bbe6cc0b7d5f5aeba48f7b146e23765209cb9e41fcb226",
-    "scope": "Presence #783 preserved; reviewed style-only mix + bounded percussion #785; original #776 checksum retained"
+    "scope": "Presence783 and mix785 preserved; after785 reviewed mix-cache/full-identity correction + passive level counters; baseline776 retained"
   }
 }

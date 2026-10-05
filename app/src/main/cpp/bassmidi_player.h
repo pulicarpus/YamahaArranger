@@ -93,6 +93,12 @@ private:
         int lastKey=-1, lastVelocity=-1;
     };
     std::array<PartPresence,16> partPresence_{};
+    // Passive measurements: no voice isolation, no calibration or gain writes.
+    struct VelocityEvidence {uint64_t count=0,sum=0,squares=0;int minimum=128,maximum=0;};
+    std::array<VelocityEvidence,16> styleVelocityEvidence_{};
+    uint64_t pcmSamples_=0,pcmClipped_=0,pcmNonfinite_=0;
+    double pcmEnergy_=0;float pcmPeak_=0;
+
     void refreshMelodicChannels();
     void invalidateMelodicChannels();
     bool normalizeMelodySf2(const std::string& sourcePath, const std::string& outputPath);

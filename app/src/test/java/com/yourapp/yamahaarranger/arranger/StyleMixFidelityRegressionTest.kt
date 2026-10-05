@@ -94,4 +94,18 @@ class StyleMixFidelityRegressionTest {
         }
     }
 
+    @Test fun equalHeadersAcrossMainFillRestoreMixAfterAutomationChangedLiveState() {
+        Fixture().use { f ->
+            val policy=CasmPolicyModel(12,12,"A.Guitar",0,0,0,0,11,0,127,1,false)
+            val setup=listOf(StyleNoteEvent(0,false,7,79,12,0xBC),StyleNoteEvent(0,false,11,110,12,0xBC))
+            val section=StyleSectionModel("MainA",2,listOf(StylePartModel("Chord2",setup,policy,program=1,bankMsb=8,bankLsb=16)))
+            fun activate(name:String) {val done=CountDownLatch(1);f.seq.playSeamless(section.copy(name=name),1_000_000_000,1){done.countDown()};assertTrue(done.await(10,TimeUnit.SECONDS))}
+            activate("MainA");val count=f.calls("setChannelMixer").size
+            f.cc(12,11,20);assertEquals(20,f.calls("setChannelExpression").last()[1])
+            activate("FillAA");assertTrue(f.calls("setChannelMixer").size>count);assertEquals(110,f.mix()[3])
+            f.cc(12,7,12);activate("MainB");assertEquals(79,f.mix()[1])
+            assertEquals(1,f.calls("setChannelProgram").last()[1])
+        }
+    }
+
 }

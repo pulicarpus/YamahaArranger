@@ -84,5 +84,47 @@
     "path": "app/src/main/cpp/bassmidi_player.cpp",
     "method": "void BassMidiPlayer::setChannelExpression(",
     "sha256": "e3140c42f7c603ff8cbcd3fbadafead8395a790b08d450873be082251727da4d"
+  },
+  {
+    "path": "app/src/main/cpp/bassmidi_player.cpp",
+    "method": "bool BassMidiPlayer::percussionOn(",
+    "baseline": "785",
+    "sha256": "cd05badd4a20305d1c815999bb05083ea316b8ee3de6677018ba1feb7203f213"
+  },
+  {
+    "path": "app/src/main/cpp/bassmidi_player.cpp",
+    "method": "bool BassMidiPlayer::percussionOff(",
+    "baseline": "785",
+    "sha256": "1104fd78fe8324d38efd0e7b351c6aa16ef73a165ee8eee475ee0cf5ce00832f"
+  },
+  {
+    "path": "app/src/main/cpp/bassmidi_player.cpp",
+    "method": "void BassMidiPlayer::allNotesOff()",
+    "baseline": "785",
+    "sha256": "c47ebf1e036029157c34ca5270acb17553026f7e69748b7bfc661818586b57d8"
+  },
+  {
+    "path": "app/src/main/cpp/bassmidi_player.cpp",
+    "method": "void BassMidiPlayer::noteOff(",
+    "baseline": "785",
+    "sha256": "2020b3939713ec71179834411c556034a842bb7699b9ab517465fc5bd69de732"
+  },
+  {
+    "path": "app/src/main/cpp/bassmidi_player.cpp",
+    "method": "void BassMidiPlayer::mirrorPercussionController(",
+    "baseline": "785",
+    "sha256": "8dbe33a659763aa2b4ae8e37af8b942157e48e12d2eeb2c41cabf9158b54e60f"
+  },
+  {
+    "path": "app/src/main/cpp/bassmidi_player.cpp",
+    "method": "void BassMidiPlayer::retirePercussionStreams()",
+    "baseline": "785",
+    "sha256": "65d2be4d066b5543bf964fa28b07419f386a5c65a176824df18d2b29b54d8d66"
+  },
+  {
+    "path": "app/src/main/cpp/bassmidi_player.cpp",
+    "method": "void BassMidiPlayer::setMasterGain(",
+    "baseline": "785",
+    "sha256": "70d0568f68956df07d6cff045757b9dd9b309e59f31f2bc7a799f62eb5b06242"
   }
 ]

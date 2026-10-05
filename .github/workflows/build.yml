@@ -192,12 +192,14 @@ jobs:
           path: |
             build/percussion-inventory-replay.txt
             build/percussion-real-bass-proof.txt
+            build/mix-response-proof.txt
+            docs/AFTER_785_MIX_SEMANTIC_CORRECTION.md
             app/build/test-results/testDebugUnitTest/TEST-*StyleMixFidelity*.xml
             docs/MIX_PERCUSSION_FIDELITY_784.md
             tests/fixtures/mix_percussion784_protected_methods.json
       - name: Send APK to Telegram
-        if: github.ref != 'refs/heads/diag/sf2-semantic-inventory' && github.ref != 'refs/heads/fix/accompaniment-presence-781' && github.ref != 'refs/heads/test/bank-translation-783' && github.ref != 'refs/heads/fix/mix-percussion-fidelity-784'
-        continue-on-error: true
+        if: github.ref != 'refs/heads/diag/sf2-semantic-inventory' && github.ref != 'refs/heads/fix/accompaniment-presence-781' && github.ref != 'refs/heads/test/bank-translation-783'
+        continue-on-error: false
         uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}

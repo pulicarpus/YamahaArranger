@@ -40,6 +40,23 @@ int main(int argc,char** argv){
         }
         check(choose(catalog(invalid,1,"fixture"),Family::Claves,75)==nullptr,"unproved root/velocity/stereo/modulator/loop/tuning must ABSTAIN");
     }
+    // Full Yamaha identities and source-bound audit evidence stop broad-family flattening.
+    Candidate snare;snare.font=1;snare.path="test";snare.bank=128;snare.pc=2;snare.key=40;
+    snare.family=Family::SnareHit;snare.sampleIdentity="71,";
+    snare.fingerprint=auditionEvidence[0].fingerprint;
+    auto distinct=distinctPlan({snare},127,0,73);
+    check(distinct[31].font && !distinct[30].font && !distinct[38].font && !distinct[40].font,"audited Snare4 stays; different unproved variants must not collapse");
+    snare.fingerprint="unaudited";distinct=distinctPlan({snare},127,0,73);
+    check(!distinct[31].font && !distinct[38].font,"no target evidence: ambiguous variant flattening abstains");
+    Candidate pedal=snare;pedal.family=Family::HatPedalClosed;pedal.key=44;pedal.sampleIdentity="72,";
+    distinct=distinctPlan({pedal},127,0,73);
+    check(distinct[21].font && distinct[44].font,"documented identical Yamaha pedal aliases may share donor, with separate owners");
+    Candidate copied=snare;copied.pc=3;copied.key=38;
+    distinct=distinctPlan({snare,copied},127,0,73);
+    check(!distinct[38].font && !distinct[40].font,"same samples in another preset are not a different variant");
+    check(std::string(sourceIdentity(127,0,73,31)->identity)=="Snare 4 PD" &&
+          std::string(sourceIdentity(127,0,73,38)->identity)=="Snare 1 PD","canonical full identities retained, not broad snare labels");
+    check(!observedFor(pedal,"Snare 4 PD"),"audition evidence cannot cross semantic family");
     mock_bass::deferAuxReadbackUntilNote=true;
     BassMidiPlayer player;
     check(player.loadMelody(percussion_fixture::write(dir,"melody.sf2",0,24,true)),"melody native loader");
@@ -59,15 +76,15 @@ int main(int argc,char** argv){
     on(8,82,42);on(8,82,110);off(8,82);off(8,82);
     check(eventCount(a,82,MIDI_EVENT_NOTE,82|(42<<8))==1 && eventCount(a,82,MIDI_EVENT_NOTE,82|(110<<8))==1,"velocity layers retain original velocity");
     check(eventCount(a,82,MIDI_EVENT_NOTE,82)==2,"repeated-note oldest ownership");
-    on(8,31,110);on(8,40,110);off(8,40);
-    check(eventCount(a,31,MIDI_EVENT_NOTE,40|(110<<8))==1 && eventCount(a,40,MIDI_EVENT_NOTE,40)==1 && eventCount(a,31,MIDI_EVENT_NOTE,40)==0,"many-to-one has distinct owner lanes");
-    off(8,31);check(eventCount(a,31,MIDI_EVENT_NOTE,40)==1,"cross-key OFF uses ON key and lane");
+    on(8,21,110);on(8,44,110);off(8,44);
+    check(eventCount(a,21,MIDI_EVENT_NOTE,44|(110<<8))==1 && eventCount(a,44,MIDI_EVENT_NOTE,44)==1 && eventCount(a,21,MIDI_EVENT_NOTE,44)==0,"many-to-one has distinct owner lanes");
+    off(8,21);check(eventCount(a,21,MIDI_EVENT_NOTE,44)==1,"cross-key OFF uses ON key and lane");
     on(8,75);off(8,75);check(eventCount(a,75,MIDI_EVENT_NOTE,58|(42<<8))==1 && eventCount(a,75,MIDI_EVENT_NOTE,58)==1,"claves cross-key58, not bell75");
-    on(9,31);off(9,31);check(eventCount(b,31,MIDI_EVENT_NOTE,40)==1,"Rhythm2 independence");
+    on(9,75);off(9,75);check(eventCount(b,75,MIDI_EVENT_NOTE,58)==1,"Rhythm2 independence");
     on(8,81);on(8,80);const auto triangleOffs=eventCount(a,81,MIDI_EVENT_NOTE,81);off(8,81);off(8,80);
     check(eventCount(a,81,MIDI_EVENT_SOUNDOFF)>0 && eventCount(a,81,MIDI_EVENT_NOTE,81)==triangleOffs,"triangle choke and tombstone OFF");
     on(8,16);on(8,21);check(eventCount(1,8,MIDI_EVENT_NOTE,16|(255<<8))==1,"mapped pedal chokes legacy Yamaha64 group");
-    off(8,16);off(8,21);check(eventCount(a,21,MIDI_EVENT_NOTE,44)==1,"pedal OFF source44");
+    off(8,16);off(8,21);check(eventCount(a,21,MIDI_EVENT_NOTE,44)==2,"pedal OFF source44");
     on(8,21);on(8,17);check(eventCount(a,21,MIDI_EVENT_SOUNDOFF)==0,"source96 does not choke64");
     off(8,17);off(8,21);
     check(eventCount(1,8,MIDI_EVENT_NOTE,16|(42<<8))==1,"UNKNOWN edge stays legacy");
@@ -76,7 +93,14 @@ int main(int argc,char** argv){
     for(int cc:{MIDI_EVENT_VOLUME,MIDI_EVENT_PAN,MIDI_EVENT_EXPRESSION,MIDI_EVENT_REVERB,MIDI_EVENT_CHORUS})
         check(mock_bass::events[{12,DWORD(cc)}]==production12.at({12,DWORD(cc)}),"melodic controller lane untouched");
     player.noteOn(12,60,0.5f);check(eventCount(1,12,MIDI_EVENT_NOTE,60|(64<<8))==1,"melodic accompaniment still reaches original stream");
+    player.noteOn(12,60,0.5f,AudioPathOrigin{12,60,0,0,2});
+    mock_bass::deferAuxReadbackUntilNote=false;
     auto snapshot=mock_bass::history;auto report=player.noteZoneReport();check(mock_bass::history==snapshot,"existing presence export remains read-only");
+    const auto unplayedAt=report.find("COMPATIBLE_ROUTE ch=8 sourceKey=69 ");
+    const auto unplayed=report.substr(unplayedAt,report.find('\n',unplayedAt)-unplayedAt);
+    check(unplayed.find("actualVerified=0")!=std::string::npos && unplayed.find("DEFERRED_UNTIL_REAL_NOTE")!=std::string::npos,"mapping-only readback cannot claim actual played verification");
+    check(report.find("STYLE_VELOCITY ch=12 count=1 min=64 max=64")!=std::string::npos,"passive velocity evidence observes actual production input");
+    mock_bass::deferAuxReadbackUntilNote=true;
     check(report.find("candidateKey=58")!=std::string::npos && report.find("semantic=COMPATIBLE_not_EXACT")!=std::string::npos,"measured routes explicitly reported");
     // All named transitions have stable same-kit routing, no production NOTESOFF.
     for(const char* transition:{"Main-Fill","Fill-Main","Intro-Main","Ending","Loop","Rapid"}) {
@@ -136,7 +160,7 @@ int main(int argc,char** argv){
     player.allNotesOff();mock_bass::failPreload=true;
     check(player.loadDrum(percussion_fixture::write(dir,"not-ready.sf2",128,0,true)),"legacy loader unaffected by optional preload failure");
     mock_bass::failPreload=false;player.setChannelPreset(8,128,73,"PopDrumKit");
-    const auto refused=mock_bass::noteOns;on(8,31);off(8,31);check(mock_bass::noteOns==refused+1,"unready candidate never steals a legacy event");
+    const auto refused=mock_bass::noteOns;on(8,75);off(8,75);check(mock_bass::noteOns==refused+1,"unready candidate never steals a legacy event");
     player.setChannelPreset(8,128,0,"native exact kit");on(8,31);off(8,31);check(mock_bass::noteOns==refused+2,"requested native preset is retained intact");
     std::cout<<"PERCUSSION_NATIVE checks="<<checks<<" production_adapter=true mock_API_not_original_PCM\n";
 }

@@ -21,6 +21,8 @@ player.noteOn(8,75,0.75f,AudioPathOrigin{8,75,127*128,0,1});
 if(!BASS_MIDI_StreamGetPreset(created.back(),75,&physical)||physical.bank!=0||physical.preset!=5){std::cerr<<"normalized bank not applied after real note\n"<<player.noteZoneReport();return 1;}
 std::vector<float> pcm(2048);double energy=0;for(int i=0;i<10;++i){player.render(pcm.data(),1024);for(float v:pcm)energy+=v*v;}
 if(energy<=0){std::cerr<<"no auxiliary PCM\n";return 1;}
+auto pcmEvidence=player.noteZoneReport();
+if(pcmEvidence.find("PCM_MIX samples=20480")==std::string::npos || pcmEvidence.find("STYLE_VELOCITY ch=8 count=1 min=95 max=95")==std::string::npos){std::cerr<<"PCM/input evidence mismatch\n";return 1;}
 if(productionOns!=0){std::cerr<<"production stream duplicated NOTE_ON\n";return 1;}
 player.noteOff(8,75,AudioPathOrigin{8,75,127*128,0,2});
 for(int i=0;i<10000;++i)player.noteOn(8,82,0.4f,AudioPathOrigin{8,82,127*128,i,i+3});
