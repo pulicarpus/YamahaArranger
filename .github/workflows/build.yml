@@ -93,6 +93,16 @@ jobs:
           persist-credentials: false
       - name: Verify #774 production trace unchanged
         run: python3 tools/compare_drum_shadow_baseline.py .shadow-baseline774 --label baseline774
+      - name: "Check out #786 working presence baseline (read only)"
+        uses: actions/checkout@v4
+        with:
+          ref: ee833203fc8c37091549a457f8e99cc08c60ab7b
+          path: .baseline786
+          persist-credentials: false
+      - name: Verify role PCM boundaries and #786 legacy MIDI trace
+        run: |
+          python3 tools/test_role_pcm_guards.py
+          python3 tools/compare_drum_shadow_baseline.py .baseline786 --label baseline786
       - name: Accept Android SDK licenses
         run: yes $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
       - name: Set up Android NDK r26d
@@ -193,6 +203,11 @@ jobs:
             build/percussion-inventory-replay.txt
             build/percussion-real-bass-proof.txt
             build/mix-response-proof.txt
+            build/role-pcm-real-proof.txt
+            build/role-pcm-real-report.txt
+            docs/ROLE_PCM_BALANCE_786.md
+            tests/fixtures/role_pcm786_protected_methods.json
+            tests/fixtures/role_pcm786_protected_sources.json
             docs/AFTER_785_MIX_SEMANTIC_CORRECTION.md
             app/build/test-results/testDebugUnitTest/TEST-*StyleMixFidelity*.xml
             docs/MIX_PERCUSSION_FIDELITY_784.md

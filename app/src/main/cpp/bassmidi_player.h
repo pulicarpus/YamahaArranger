@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 #include "audio_path_diagnostic.h"
+#include "role_pcm_meter.h"
 #include "chord_change_diagnostic.h"
 #include "sf2_zone_diagnostic.h"
 #include "drum_kit_audit.h"
@@ -98,6 +99,28 @@ private:
     std::array<VelocityEvidence,16> styleVelocityEvidence_{};
     uint64_t pcmSamples_=0,pcmClipped_=0,pcmNonfinite_=0;
     double pcmEnergy_=0;float pcmPeak_=0;
+
+    struct RolePcmWindow {
+        HSOUNDFONT font=0;int rawBank=-1,nativeBank=-1,pc=-1;
+        std::string path,fingerprint,preset,request;
+        uint64_t start=0,end=0,generation=0;
+        bool closed=false,readbackAttempted=false,verified=false,priorTailsPossible=false;
+        BASS_MIDI_FONT actual{};
+        role_pcm::Level level;role_pcm::Input input;
+    };
+    struct RolePcmMeter {
+        HSTREAM stream=0;HDSP dsp=0;int current=-1,count=0,error=0;
+        uint64_t omittedWindows=0;
+        std::array<RolePcmWindow,8> windows{};
+    };
+    std::array<RolePcmMeter,6> rolePcmMeters_{}; // melodic destinations 10..15 only
+    static void CALLBACK rolePcmTap(HDSP,DWORD,void*,DWORD,void*);
+    void updateRolePcmMeter(int channel); // configuration only, never NOTE_ON/render
+    void closeRolePcmWindows();
+    void clearRolePcmMeters();
+    void observeRolePcmNote(int channel,int key,int velocity,bool sent,const AudioPathOrigin&,int cc7,int cc11);
+    void observeRolePcmController(int channel,DWORD event,DWORD param);
+    std::string rolePcmReportLocked() const;
 
     void refreshMelodicChannels();
     void invalidateMelodicChannels();

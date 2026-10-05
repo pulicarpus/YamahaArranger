@@ -139,3 +139,8 @@ inline DWORD BASS_MIDI_StreamGetFonts(HSTREAM stream, BASS_MIDI_FONTEX2* maps, D
     const DWORD n=std::min(static_cast<DWORD>(current.size()),count & ~BASS_MIDI_FONT_EX2);
     std::copy(current.begin(),current.begin()+n,maps);return n;
 }
+
+inline HSTREAM BASS_MIDI_StreamGetChannel(HSTREAM parent,DWORD channel) {
+    mock_bass::roleChannelRequests.emplace_back(parent,channel);
+    return mock_bass::failRoleChannel?0:10000+channel;
+}

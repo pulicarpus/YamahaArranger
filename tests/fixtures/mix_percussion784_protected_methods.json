@@ -63,7 +63,8 @@
     "path": "app/src/main/cpp/bassmidi_player.cpp",
     "method": "void BassMidiPlayer::setChannelPreset(",
     "strip": [
-      "    if(wantDrum) preparePercussionLane(channel, audioDiagnostics_[channel].requestedPc);\n"
+      "    if(wantDrum) preparePercussionLane(channel, audioDiagnostics_[channel].requestedPc);\n",
+      "    updateRolePcmMeter(channel); // read-only PCM observation; MIDI selection unchanged\n"
     ],
     "sha256": "ed9e32c1c287f52d4adef25f077bbc55f6375c7968e96edc8f8ff28f223abdc5"
   },
@@ -71,7 +72,8 @@
     "path": "app/src/main/cpp/bassmidi_player.cpp",
     "method": "bool BassMidiPlayer::send(",
     "strip": [
-      "    if (sent) mirrorPercussionController(channel,event,param);\n"
+      "    if (sent) mirrorPercussionController(channel,event,param);\n",
+      "    if (sent) observeRolePcmController(channel,event,param); // counters only; controller event unchanged\n"
     ],
     "sha256": "ac1523105ea1c7d9aca47334455d5e7121314f2dfc882ef9605a7829bc71e83c"
   },

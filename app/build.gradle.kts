@@ -46,7 +46,7 @@ android {
 
     buildTypes {
         debug {
-            externalNativeBuild { cmake { arguments += "-DYAMAHA_COMPATIBLE_PERCUSSION=ON" } }
+            externalNativeBuild { cmake { arguments += listOf("-DYAMAHA_COMPATIBLE_PERCUSSION=ON", "-DYAMAHA_ROLE_PCM_METERS=ON") } }
         }
         release {
             isMinifyEnabled = false

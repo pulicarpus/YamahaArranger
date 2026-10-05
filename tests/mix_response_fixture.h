@@ -4,10 +4,10 @@
 #include <cmath>
 // Synthetic, identical PCM under different exported generator configurations.
 namespace mix_response_fixture {
-inline std::string write(const std::string& dir,int attenuation,int fixedVelocity) {
+inline std::string write(const std::string& dir,int attenuation,int fixedVelocity,const char* label="Response probe") {
     using namespace rich_fixture;
     Bytes ph(76),pb(8),pg,ins(44),ib(8),ig,sh(92),pd={'p','d','t','a'};
-    std::memcpy(ph.data(),"Response probe",14);word(ph,20,24);word(ph,62,1);std::memcpy(ph.data()+38,"EOP",3);
+    std::memcpy(ph.data(),label,std::min(size_t(20),std::strlen(label)));word(ph,20,24);word(ph,62,1);std::memcpy(ph.data()+38,"EOP",3);
     if(attenuation)gen(pg,48,attenuation);gen(pg,41,0);word(pb,4,pg.size()/4);gen(pg,0,0);
     std::memcpy(ins.data(),"Response probe",14);word(ins,42,1);std::memcpy(ins.data()+22,"EOI",3);
     gen(ig,58,60);if(fixedVelocity>=0)gen(ig,47,fixedVelocity);gen(ig,53,0);word(ib,4,ig.size()/4);gen(ig,0,0);

@@ -4,6 +4,9 @@
 #ifndef YAMAHA_COMPATIBLE_PERCUSSION
 #define YAMAHA_COMPATIBLE_PERCUSSION 0
 #endif
+#ifndef YAMAHA_ROLE_PCM_METERS
+#define YAMAHA_ROLE_PCM_METERS 0
+#endif
 #include <android/log.h>
 #include <algorithm>
 #include <fstream>
@@ -343,6 +346,7 @@ bool BassMidiPlayer::loadRole(const std::string& path, bool drum) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (!ensureEngine()) return false;
 
+    closeRolePcmWindows(); // measurement boundary only; no MIDI/resource routing writes
     retirePercussionStreams(); // auxiliary streams only; never clears the production stream
     HSOUNDFONT& target = drum ? drumFont_ : melodyFont_;
     if (drum) {
@@ -424,6 +428,7 @@ bool BassMidiPlayer::loadRole(const std::string& path, bool drum) {
     }
 
     rebuildPercussionCatalog();
+    for(int ch=10;ch<16;++ch) updateRolePcmMeter(ch);
     LOGI("BASSMIDI %s SF2 loaded: %s",
          drum ? "DRUM" : "MELODY", path.c_str());
     return true;
@@ -444,6 +449,7 @@ bool BassMidiPlayer::loadMelodyFallback(const std::string& path) {
     // Bounded pool: primary Yamaha + Colombo + optional Tyros. Optional
     // allocation failure cannot discard the established melody/drum pair.
     if (secondaryMelodies_.size() >= 2) return false;
+    closeRolePcmWindows(); // prevent attribution across an SF2 resource change
     SecondaryMelody secondary;
     secondary.path = path;
     secondary.bassPath = path + ".bassmidi-normalized.sf2";
@@ -487,6 +493,7 @@ bool BassMidiPlayer::loadMelodyFallback(const std::string& path) {
     }
     retirePercussionStreams();
     rebuildPercussionCatalog();
+    for(int ch=10;ch<16;++ch) updateRolePcmMeter(ch);
     LOGI("VOICE INVENTORY secondary=%u sf2='%s' melodicPresets=%u",
          static_cast<unsigned>(secondaryMelodies_.size()), path.c_str(),
          static_cast<unsigned>(secondaryMelodies_.back().presets.size()));
@@ -499,6 +506,7 @@ bool BassMidiPlayer::loadDrum(const std::string& path) {
 
 void BassMidiPlayer::unload() {
     std::lock_guard<std::mutex> lock(mutex_);
+    clearRolePcmMeters(); // remove read-only child DSPs before freeing their parent
     retirePercussionStreams();
     percussionCandidates_.clear();percussionAllCandidates_.clear();
     percussionLanes_ = {};
@@ -555,6 +563,7 @@ bool BassMidiPlayer::send(int channel, DWORD event, DWORD param) {
              static_cast<unsigned>(param), eventError);
     }
     if (sent) mirrorPercussionController(channel,event,param);
+    if (sent) observeRolePcmController(channel,event,param); // counters only; controller event unchanged
     if (sent && channel >= 4) {
         auto& d = audioDiagnostics_[channel];
         int* tracked = event == MIDI_EVENT_VOLUME ? &d.cc7 : event == MIDI_EVENT_EXPRESSION ? &d.cc11 : nullptr;
@@ -749,7 +758,7 @@ void BassMidiPlayer::rebuildDrumPresetCache(
     // parsing in noteOn/render; immutable metadata is also used to precompile
     // the independent, conservative percussion catalog at paused font load.
     drumZoneInventories_[path] = sf2_zones::parse(data);
-    if(YAMAHA_COMPATIBLE_PERCUSSION)percussionFingerprints_[path]=sf2_fingerprint::sha256(data);
+    if(YAMAHA_COMPATIBLE_PERCUSSION || YAMAHA_ROLE_PCM_METERS)percussionFingerprints_[path]=sf2_fingerprint::sha256(data);
     LOGI("DRUM ZONE CACHE valid=%d reason=%s presets=%u path=%s",
          drumZoneInventories_[path].valid ? 1 : 0, drumZoneInventories_[path].reason.c_str(),
          static_cast<unsigned>(drumZoneInventories_[path].presets.size()), path.c_str());
@@ -840,7 +849,7 @@ void BassMidiPlayer::rebuildMelodyPresetCache(const std::string& path) {
     }
 
     melodicZoneInventories_[path] = std::make_shared<const sf2_zones::Inventory>(sf2_zones::parse(data,true));
-    if(YAMAHA_COMPATIBLE_PERCUSSION)percussionFingerprints_[path]=sf2_fingerprint::sha256(data);
+    if(YAMAHA_COMPATIBLE_PERCUSSION || YAMAHA_ROLE_PCM_METERS)percussionFingerprints_[path]=sf2_fingerprint::sha256(data);
     noteZoneRows_.clear(); noteZoneLimit_=false;
     const size_t count = phdrSize / 38;
     for (size_t n = 0; n + 1 < count; ++n) {
@@ -1039,6 +1048,7 @@ void BassMidiPlayer::logAudioPath(int channel, int key, int velocity, bool sent,
     const int cc7 = static_cast<int>(BASS_MIDI_StreamGetEvent(stream_, channel, MIDI_EVENT_VOLUME));
     const int cc11 = static_cast<int>(BASS_MIDI_StreamGetEvent(stream_, channel, MIDI_EVENT_EXPRESSION));
     d.on(key, velocity, sent, cc7, cc11, now, channel == 8 || channel == 9);
+    observeRolePcmNote(channel,key,velocity,sent,origin,cc7,cc11);
     if (origin.sourceChannel >= 0 && channel >= 8) {
         auto& presence=partPresence_[channel];
         ++presence.attempts; presence.sent+=sent; presence.zeroController+=(cc7==0 || cc11==0);
@@ -1341,6 +1351,7 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program, const 
     // does not reintroduce the old synchronous render-thread stall.
     preloadCurrentPreset(channel);
     if(wantDrum) preparePercussionLane(channel, audioDiagnostics_[channel].requestedPc);
+    updateRolePcmMeter(channel); // read-only PCM observation; MIDI selection unchanged
 }
 
 void BassMidiPlayer::setChannelMixer(int channel, int volume, int pan,
@@ -1508,6 +1519,7 @@ std::string BassMidiPlayer::noteZoneReport() const {
                 << " rms=" << (v.count?std::sqrt(double(v.squares)/v.count):0)
                 << " scope=MIDI_input_not_SF2_response_or_PCM\n";
         }
+        presence << rolePcmReportLocked();
         for(int part=0;part<2;++part) {
             const auto& lane=percussionLanes_[part];
             presence << "PERCUSSION_FIDELITY enabled=" << YAMAHA_COMPATIBLE_PERCUSSION << " ch=" << part+8 << " pc=" << lane.requestedPc
@@ -2208,6 +2220,160 @@ void BassMidiPlayer::renderPercussion(float* out,int frames) {
         for(int i=0;i<samples;++i)out[offset*2+i]+=scratch[i];
         offset+=count;
     }
+}
+
+void CALLBACK BassMidiPlayer::rolePcmTap(HDSP,DWORD,void* buffer,DWORD length,void* user) {
+    // BASS calls this during the parent's synchronous decode, under mutex_.
+    // Channel streams are always float. Never call BASS, allocate, log, or write buffer.
+    auto& meter=*static_cast<RolePcmMeter*>(user);
+    if(buffer && meter.current>=0)
+        meter.windows[meter.current].level.consume(static_cast<const float*>(buffer),length/sizeof(float));
+}
+
+void BassMidiPlayer::closeRolePcmWindows() {
+    for(auto& m:rolePcmMeters_) if(m.current>=0) {
+        auto& w=m.windows[m.current];w.closed=true;w.end=pcmSamples_;m.current=-1;
+    }
+}
+
+void BassMidiPlayer::clearRolePcmMeters() {
+#if YAMAHA_ROLE_PCM_METERS
+    for(auto& m:rolePcmMeters_) {
+        if(m.dsp) BASS_ChannelRemoveDSP(m.stream,m.dsp);
+        if(m.stream) BASS_StreamFree(m.stream); // child only; never the production MIDI stream
+    }
+#endif
+    rolePcmMeters_={};
+}
+
+void BassMidiPlayer::updateRolePcmMeter(int channel) {
+#if YAMAHA_ROLE_PCM_METERS
+    if(channel<10 || channel>15 || !stream_)return;
+    const auto& state=channels_[channel];
+    if(!state.initialized || state.drum || state.melodySourceProgram<0)return;
+    auto& meter=rolePcmMeters_[channel-10];
+    const bool secondary=state.melodySource>0 && size_t(state.melodySource)<=secondaryMelodies_.size();
+    const auto* font=secondary?&secondaryMelodies_[state.melodySource-1]:nullptr;
+    const HSOUNDFONT handle=font?font->font:melodyFont_;
+    const auto& path=font?font->path:melodyPath_;
+    const auto& banks=font?font->banks:normalizedBanks_;
+    if(!handle)return;
+    int nativeBank=state.melodySourceBank;
+    for(const auto& b:banks)if(b.rawBank==state.melodySourceBank){nativeBank=b.virtualBank;break;}
+    if(meter.current>=0) {
+        const auto& old=meter.windows[meter.current];
+        if(old.font==handle && old.rawBank==state.melodySourceBank && old.pc==state.melodySourceProgram)return;
+        auto& w=meter.windows[meter.current];w.end=pcmSamples_;w.closed=true;meter.current=-1;
+    }
+    if(meter.count>=int(meter.windows.size())){++meter.omittedWindows;return;}
+    if(!meter.stream) {
+        // Never request Rhythm or keyboard streams: GetChannel changes per-key drum FX semantics.
+        meter.stream=BASS_MIDI_StreamGetChannel(stream_,channel);
+        if(!meter.stream){meter.error=BASS_ErrorGetCode();return;}
+        meter.dsp=BASS_ChannelSetDSPEx(meter.stream,rolePcmTap,&meter,0,BASS_DSP_READONLY);
+        if(!meter.dsp){meter.error=BASS_ErrorGetCode();BASS_StreamFree(meter.stream);meter.stream=0;return;}
+    }
+    auto& w=meter.windows[meter.count];
+    w.font=handle;w.path=path;w.rawBank=state.melodySourceBank;w.nativeBank=nativeBank;
+    w.pc=state.melodySourceProgram;w.preset=state.melodySourceName;w.request=state.requestedVoiceName;
+    w.start=pcmSamples_;w.generation=fontMappingGeneration_;
+    if(meter.count>0) {
+        const auto& prior=meter.windows[meter.count-1];
+        w.priorTailsPossible=prior.priorTailsPossible || prior.level.energy>0 || prior.input.sent || prior.input.other;
+    }
+    const auto fp=percussionFingerprints_.find(path);if(fp!=percussionFingerprints_.end())w.fingerprint=fp->second;
+    meter.current=meter.count++;
+#else
+    (void)channel;
+#endif
+}
+
+void BassMidiPlayer::observeRolePcmNote(int channel,int key,int velocity,bool sent,
+                                       const AudioPathOrigin& origin,int cc7,int cc11) {
+#if YAMAHA_ROLE_PCM_METERS
+    if(channel<10 || channel>15)return;
+    auto& m=rolePcmMeters_[channel-10];if(m.current<0)return;
+    auto& w=m.windows[m.current];
+    w.input.note(key,velocity,sent,origin.sourceChannel>=0 && origin.styleBank>=0,cc7,cc11);
+    if(sent && !w.readbackAttempted) {
+        w.readbackAttempted=true;
+        const bool ok=BASS_MIDI_StreamGetPreset(stream_,channel,&w.actual);
+        w.verified=ok && w.actual.font==w.font && w.actual.bank==w.nativeBank && w.actual.preset==w.pc;
+    }
+#else
+    (void)channel;(void)key;(void)velocity;(void)sent;(void)origin;(void)cc7;(void)cc11;
+#endif
+}
+
+void BassMidiPlayer::observeRolePcmController(int channel,DWORD event,DWORD param) {
+#if YAMAHA_ROLE_PCM_METERS
+    if(channel<10 || channel>15 || (event!=MIDI_EVENT_VOLUME && event!=MIDI_EVENT_EXPRESSION))return;
+    auto& m=rolePcmMeters_[channel-10];if(m.current<0)return;
+    auto& v=m.windows[m.current].input;
+    if(v.sent || v.other)v.control(event==MIDI_EVENT_VOLUME?7:11,int(param));
+#else
+    (void)channel;(void)event;(void)param;
+#endif
+}
+
+std::string BassMidiPlayer::rolePcmReportLocked() const {
+    std::ostringstream out;
+    out << "ROLE_PCM_SCOPE enabled=" << YAMAHA_ROLE_PCM_METERS
+        << " channels=10:15 excluded=Rhythm1/Rhythm2/RIGHT/LEFT dry_after_MIDI_controllers_and_master_before_shared_FX"
+        << " no_gain_write no_extra_NOTE_ON no_Yamaha_reference windowCap=8_per_channel\n";
+    static const char* roles[]={"Bass","Chord1","Chord2","Pad","Phrase1","Phrase2"};
+    for(int ch=10;ch<16;++ch) {
+        const auto& meter=rolePcmMeters_[ch-10];
+        out << "ROLE_PCM_STATUS ch=" << ch << " destinationRole=" << roles[ch-10]
+            << " tapReady=" << bool(meter.dsp) << " error=" << meter.error
+            << " windows=" << meter.count << " omittedWindows=" << meter.omittedWindows << '\n';
+        for(int i=0;i<meter.count;++i) {
+            const auto& w=meter.windows[i];const auto& level=w.level;const auto& v=w.input;
+            const uint64_t end=w.closed?w.end:pcmSamples_;
+            const auto span=end>=w.start?end-w.start:0;
+            out << "ROLE_PCM ch=" << ch << " destinationRole=" << roles[ch-10] << " window=" << i
+                << " SF2='" << w.path << "' fingerprint=" << w.fingerprint
+                << " selectedRawBank=" << w.rawBank << " nativeBank=" << w.nativeBank << " rawPC=" << w.pc
+                << " preset='" << w.preset << "' requestedVoice='" << w.request << "' generationAtStart=" << w.generation
+                << " bindingVerified=" << w.verified << " actualFont=" << w.actual.font << " actualBank=" << w.actual.bank
+                << " actualPC=" << w.actual.preset << " readbackStage=" << (w.readbackAttempted?"FIRST_REAL_NOTE":"NO_REAL_NOTE")
+                << " priorPresetTailsPossible=" << w.priorTailsPossible << " startFrame=" << w.start/2 << " endFrame=" << end/2
+                << " renderedSpanSamples=" << span << " callbackSamples=" << level.samples
+                << " activeBlockSamples=" << level.activeSamples << " callbackBlocks=" << level.blocks << " activeBlocks=" << level.activeBlocks << " dryRmsSpan=" << level.rms(span)
+                << " dryRmsCallback=" << level.rms(level.samples) << " dryRmsActiveBlocks=" << level.rms(level.activeSamples)
+                << " dryRmsSpanDbFS=" << role_pcm::db(level.rms(span)) << " peak=" << level.peak
+                << " peakDbFS=" << role_pcm::db(level.peak) << " clippedSamples=" << level.clipped
+                << " nonfiniteSamples=" << level.nonfinite << " styleOns=" << v.sent << " rejectedOns=" << v.rejected
+                << " otherOns=" << v.other << " velocityP10=" << v.percentile(10) << " velocityP50=" << v.percentile(50)
+                << " velocityP90=" << v.percentile(90) << " velocityMean=" << (v.sent?double(v.sum)/v.sent:0)
+                << " controllerScope=live_from_first_accepted_note CC7Range=" << (v.sent||v.other?v.cc7Min:-1) << ':' << v.cc7Max
+                << " CC11Range=" << (v.sent||v.other?v.cc11Min:-1) << ':' << v.cc11Max
+                << " lastKey=" << v.key << " lastVelocity=" << v.velocity
+                << " actualVoiceSampleId=UNAVAILABLE not_isolated_note_response_or_wet_role_level\n";
+            // Immutable inventory only, at explicit export; no SF2 I/O/scan on NOTE_ON.
+            const auto inv=melodicZoneInventories_.find(w.path);
+            if(inv==melodicZoneInventories_.end() || v.key<0 || !w.verified)continue;
+            const auto zones=inv->second->presets.find({w.rawBank,w.pc});
+            if(zones==inv->second->presets.end())continue;
+            unsigned eligible=0,printed=0;
+            for(const auto& z:zones->second) if(v.key>=z.keyLow && v.key<=z.keyHigh && v.velocity>=z.velLow && v.velocity<=z.velHigh) {
+                ++eligible;if(printed++>=12)continue;
+                out << "ROLE_LAYER ch=" << ch << " window=" << i << " last_note_only=true sampleId=" << z.sampleId
+                    << " instrument='" << z.instrument << "' sample='" << z.sample << "' keyRange=" << z.keyLow << ':' << z.keyHigh
+                    << " velocityRange=" << z.velLow << ':' << z.velHigh << " sampleType=" << z.sampleType << " sampleLink=" << z.sampleLink
+                    << " originalKey=" << z.rootKey << " rootOverride=" << (z.instrumentGenerators.has(58)?z.instrumentGenerators.amount[58]:-1)
+                    << " fixedVelocity=" << (z.instrumentGenerators.has(47)?z.instrumentGenerators.amount[47]:-1)
+                    << " presetAttenuationCb=" << (z.presetGenerators.has(48)?z.presetGenerators.amount[48]:0)
+                    << " instrumentAttenuationCb=" << (z.instrumentGenerators.has(48)?z.instrumentGenerators.amount[48]:0)
+                    << " effectiveAttenuationCb=" << sf2_zones::effective(z,48)
+                    << " attackTimecents=" << sf2_zones::effective(z,34)
+                    << " metadata_eligible_not_actual_voice_sample\n";
+            }
+            out << "ROLE_LAYER_COUNT ch=" << ch << " window=" << i << " eligible=" << eligible
+                << " omitted=" << (eligible>12?eligible-12:0) << '\n';
+        }
+    }
+    return out.str();
 }
 
 // Stage1/2 STOP-only observational snapshot. No NOTE hot-path hook or production-state writes.

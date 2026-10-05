@@ -1,0 +1,81 @@
+[
+  {
+    "method": "bool BassMidiPlayer::loadRole(",
+    "strip": [
+      "    closeRolePcmWindows(); // measurement boundary only; no MIDI/resource routing writes\n",
+      "    for(int ch=10;ch<16;++ch) updateRolePcmMeter(ch);\n"
+    ],
+    "sha256": "d737c5222b930f517da803b7c08a1f08f4b846fd8956988ae08dd25207f80a51"
+  },
+  {
+    "method": "bool BassMidiPlayer::loadMelodyFallback(",
+    "strip": [
+      "    closeRolePcmWindows(); // prevent attribution across an SF2 resource change\n",
+      "    for(int ch=10;ch<16;++ch) updateRolePcmMeter(ch);\n"
+    ],
+    "sha256": "5e7d202916ca74c4cdc3b8ed275c5a34b641aef48f1d4aa9ea476f69e27ab771"
+  },
+  {
+    "method": "void BassMidiPlayer::unload()",
+    "strip": [
+      "    clearRolePcmMeters(); // remove read-only child DSPs before freeing their parent\n"
+    ],
+    "sha256": "71c5612f015c47bddeebfe93d65f4ebefe0214616c6e4c6a86b2092fb77cdb2d"
+  },
+  {
+    "method": "void BassMidiPlayer::logAudioPath(",
+    "strip": [
+      "    observeRolePcmNote(channel,key,velocity,sent,origin,cc7,cc11);\n"
+    ],
+    "sha256": "d212b83a1a17aa03089309ea4b20ae3c2c7cc82c8096fca69ccc4f2d982ae285"
+  },
+  {
+    "method": "void BassMidiPlayer::setChannelPreset(",
+    "strip": [
+      "    updateRolePcmMeter(channel); // read-only PCM observation; MIDI selection unchanged\n"
+    ],
+    "sha256": "6d996ffd4d0b43f0242f53de19d5b7ed55caa1e73a8ef158d5300c50fadbf1a0"
+  },
+  {
+    "method": "void BassMidiPlayer::noteOn(",
+    "strip": [],
+    "sha256": "dba0d3a618c380d28e19e0cbefef724c89507f52695c9406a535764e2cf47d85"
+  },
+  {
+    "method": "void BassMidiPlayer::noteOff(",
+    "strip": [],
+    "sha256": "2020b3939713ec71179834411c556034a842bb7699b9ab517465fc5bd69de732"
+  },
+  {
+    "method": "void BassMidiPlayer::render(",
+    "strip": [],
+    "sha256": "f27fdda485689f7f142543b52ca3069acd3ff7c3e82b0b89efea31da2fd630da"
+  },
+  {
+    "method": "bool BassMidiPlayer::send(",
+    "strip": [
+      "    if (sent) observeRolePcmController(channel,event,param); // counters only; controller event unchanged\n"
+    ],
+    "sha256": "ead42102e6937c0e2f490f5142ff534f4ce614006b8b49d0fb0b1c1769191870"
+  },
+  {
+    "method": "void BassMidiPlayer::setChannelMixer(",
+    "strip": [],
+    "sha256": "e36868bedb8ceb0956a218eb4d0860c5bdeb754bdded2c0cb396a19013a2e79a"
+  },
+  {
+    "method": "void BassMidiPlayer::setChannelExpression(",
+    "strip": [],
+    "sha256": "e3140c42f7c603ff8cbcd3fbadafead8395a790b08d450873be082251727da4d"
+  },
+  {
+    "method": "void BassMidiPlayer::allNotesOff()",
+    "strip": [],
+    "sha256": "c47ebf1e036029157c34ca5270acb17553026f7e69748b7bfc661818586b57d8"
+  },
+  {
+    "method": "void BassMidiPlayer::setMasterGain(",
+    "strip": [],
+    "sha256": "70d0568f68956df07d6cff045757b9dd9b309e59f31f2bc7a799f62eb5b06242"
+  }
+]
