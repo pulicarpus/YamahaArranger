@@ -120,7 +120,8 @@ private:
     void clearRolePcmMeters();
     void observeRolePcmNote(int channel,int key,int velocity,bool sent,const AudioPathOrigin&,int cc7,int cc11);
     void observeRolePcmController(int channel,DWORD event,DWORD param);
-    std::string rolePcmReportLocked() const;
+    static std::string rolePcmReport(const std::array<RolePcmMeter,6>& meters,
+        const std::map<std::string,std::shared_ptr<const sf2_zones::Inventory>>& inventories,uint64_t samples);
 
     void refreshMelodicChannels();
     void invalidateMelodicChannels();

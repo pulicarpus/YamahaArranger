@@ -1,0 +1,6 @@
+{
+  "app/src/main/cpp/bassmidi_player.cpp": "e05620d74c2aafd979380c2e75e42eb3edb5d55cc18fae7fa37443be783c9fa1",
+  "app/src/main/cpp/bassmidi_player.h": "920c465612ec6ece71a4ef4caaaae7862c079d8e32fa548b0cde659cbb38a370",
+  "app/src/main/java/com/yourapp/ui/MainViewModel.kt": "e7e073395be9f953c3f66b7f66aff4d585824c978ae0d409d8dd93e820494ed8",
+  "app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt": "68b16cee11d4e888ce8b960e1a9fca6e001e4410b811e50ded206c8334d6cd1d"
+}

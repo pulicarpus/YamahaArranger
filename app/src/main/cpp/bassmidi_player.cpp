@@ -1501,48 +1501,35 @@ std::vector<unsigned char> BassMidiPlayer::diagnosticDrumWav(int bank,int pc,int
 
 std::string BassMidiPlayer::noteZoneReport() const {
     std::map<std::string,NoteZoneObservation> snapshot; bool limited;
-    std::ostringstream presence;
+    std::array<RolePcmMeter,6> meters;
+    std::map<std::string,std::shared_ptr<const sf2_zones::Inventory>> inventories;
+    std::array<VelocityEvidence,16> velocities;
+    uint64_t generation,samples,clipped,nonfinite;double energy;float peak;
+    struct RouteRow {percussion_fidelity::Candidate route;int key,group;bool verified,attempted;};
+    struct LaneRow {int requestedPc;HSTREAM stream;uint64_t generation,mappedOns,legacyOns,failedOns,overflowOns,chokes;
+        bool active;std::vector<RouteRow> routes;};
+    std::array<LaneRow,2> lanes;
+    struct NativeRow {PartPresence n;ChannelState state;int requestedBank,requestedPc,rawBank,cc7,cc11;
+        BASS_MIDI_FONT live{};bool liveOk;std::string name,path;std::shared_ptr<const sf2_zones::Inventory> inventory;};
+    std::array<NativeRow,8> native;
     {
-        std::lock_guard<std::mutex> lock(mutex_); snapshot=noteZoneRows_; limited=noteZoneLimit_;
-        presence << "=== ACCOMPANIMENT PART PRESENCE / NATIVE ===\n"
-            << "counters=process_lifetime explicit_style_origins_only; last binding and current mappingGeneration=" << fontMappingGeneration_
-            << "; accepted_event_not_audible_PCM; snapshot_never_sends_MIDI\n";
-        presence << "PCM_MIX samples=" << pcmSamples_ << " peak=" << pcmPeak_
-            << " rms=" << (pcmSamples_?std::sqrt(pcmEnergy_/pcmSamples_):0)
-            << " clippedSamples=" << pcmClipped_ << " nonfiniteSamples=" << pcmNonfinite_
-            << " scope=post_sum_pre_existing_output_clamp no_per_part_PCM_claim no_gain_adjustment\n";
-        for(int channel=8;channel<16;++channel) {
-            const auto& v=styleVelocityEvidence_[channel];
-            presence << "STYLE_VELOCITY ch=" << channel << " count=" << v.count
-                << " min=" << (v.count?v.minimum:-1) << " max=" << (v.count?v.maximum:-1)
-                << " mean=" << (v.count?double(v.sum)/v.count:0)
-                << " rms=" << (v.count?std::sqrt(double(v.squares)/v.count):0)
-                << " scope=MIDI_input_not_SF2_response_or_PCM\n";
-        }
-        presence << rolePcmReportLocked();
+        std::lock_guard<std::mutex> lock(mutex_);
+        snapshot=noteZoneRows_;limited=noteZoneLimit_;meters=rolePcmMeters_;inventories=melodicZoneInventories_;
+        velocities=styleVelocityEvidence_;generation=fontMappingGeneration_;samples=pcmSamples_;
+        clipped=pcmClipped_;nonfinite=pcmNonfinite_;energy=pcmEnergy_;peak=pcmPeak_;
         for(int part=0;part<2;++part) {
-            const auto& lane=percussionLanes_[part];
-            presence << "PERCUSSION_FIDELITY enabled=" << YAMAHA_COMPATIBLE_PERCUSSION << " ch=" << part+8 << " pc=" << lane.requestedPc
-                << " stream=" << lane.stream << " generation=" << lane.generation
-                << " activeForOn=" << (lane.stream && lane.requestedPc==audioDiagnostics_[part+8].requestedPc && lane.generation==percussionGeneration_)
-                << " compatibleOns=" << lane.mappedOns << " legacyOns=" << lane.legacyOns
-                << " failedOns=" << lane.failedOns << " overflowDropped=" << lane.overflowOns << " chokes=" << lane.chokes << '\n';
-            for(int key=0;key<128;++key) if(lane.stream && lane.routes[key].font) {
-                const auto& c=lane.routes[key]; BASS_MIDI_FONT actual{};
+            const auto& lane=percussionLanes_[part];auto& row=lanes[part];
+            row.requestedPc=lane.requestedPc;row.stream=lane.stream;row.generation=lane.generation;
+            row.mappedOns=lane.mappedOns;row.legacyOns=lane.legacyOns;row.failedOns=lane.failedOns;row.overflowOns=lane.overflowOns;row.chokes=lane.chokes;
+            row.active=lane.stream && lane.requestedPc==audioDiagnostics_[part+8].requestedPc && lane.generation==percussionGeneration_;
+            for(int key=0;key<128;++key)if(lane.stream && lane.routes[key].font) {
+                const auto& c=lane.routes[key];BASS_MIDI_FONT actual{};
                 const bool verified=lane.actualVerified[key] && BASS_MIDI_StreamGetPreset(lane.stream,key,&actual) && actual.font==c.font && actual.bank==c.nativeBank && actual.preset==c.pc;
-                presence << "COMPATIBLE_ROUTE ch=" << part+8 << " sourceKey=" << key << " candidateKey=" << c.key
-                    << " sf2='" << c.path << "' bank=" << c.bank << " nativeBank=" << c.nativeBank << " rawPC=" << c.pc
-                    << " fingerprint=" << c.fingerprint << " audition770=" << c.auditioned
-                    << " preset='" << c.preset << "' samples='" << c.samples << "' layers=" << c.layers
-                    << " sourceGroup=" << lane.groups[key] << " candidateExclusive=" << c.exclusive
-                    << " velocities=1:127 pitchOffset=0 controllerLane=" << key << " actualVerified=" << verified
-                    << " actualReadbackStage=" << (lane.actualVerified[key]?"FIRST_REAL_NOTE_VERIFIED":"DEFERRED_UNTIL_REAL_NOTE")
-                    << " sourceIdentity='" << (percussion_fidelity::sourceIdentity(127,0,lane.requestedPc,key)?percussion_fidelity::sourceIdentity(127,0,lane.requestedPc,key)->identity:"UNKNOWN")
-                    << "' sampleBundle=" << c.sampleIdentity
-                    << " actualVoiceSampleId=UNAVAILABLE semantic=COMPATIBLE_not_EXACT variantMatch=UNPROVEN\n";
+                row.routes.push_back({c,key,lane.groups[key],verified,lane.actualVerified[key]});
             }
         }
         for (int ch=8;ch<16;++ch) {
+            auto& row=native[ch-8];
             const auto& n=partPresence_[ch]; const auto& state=channels_[ch];
             BASS_MIDI_FONT live{};
             const bool liveOk=stream_ && BASS_MIDI_StreamGetPreset(stream_,ch,&live);
@@ -1558,22 +1545,78 @@ std::string BassMidiPlayer::noteZoneReport() const {
             const auto drum=drumZoneInventories_.find(path);
             if (bankKnown && melodic!=melodicZoneInventories_.end()) inventory=melodic->second.get();
             if (state.drum && drum!=drumZoneInventories_.end()) inventory=&drum->second;
-            sf2_zones::Match eligible{};
-            if (inventory && liveOk && n.lastKey>=0) eligible=sf2_zones::match(*inventory,rawBank,live.preset,n.lastKey,n.lastVelocity);
+            row.n=n;row.state=state;row.requestedBank=audioDiagnostics_[ch].requestedBank;row.requestedPc=audioDiagnostics_[ch].requestedPc;
+            row.live=live;row.liveOk=liveOk;row.name=name?name:"UNAVAILABLE";row.path=path;row.rawBank=rawBank;
+            row.cc7=stream_?BASS_MIDI_StreamGetEvent(stream_,ch,MIDI_EVENT_VOLUME):0;
+            row.cc11=stream_?BASS_MIDI_StreamGetEvent(stream_,ch,MIDI_EVENT_EXPRESSION):0;
+            // Shared melodic inventories survive unload; copy only the needed
+            // drum preset zones (two channels), never the complete SF2 inventory.
+            if(inventory && liveOk && n.lastKey>=0) {
+                if(!state.drum)row.inventory=melodicZoneInventories_.at(path);
+                else {auto copy=std::make_shared<sf2_zones::Inventory>();copy->valid=inventory->valid;copy->reason=inventory->reason;
+                    const auto preset=inventory->presets.find({rawBank,live.preset});
+                    if(preset!=inventory->presets.end())copy->presets.emplace(preset->first,preset->second);
+                    row.inventory=std::move(copy);}
+            }
+        }
+
+    } // No render/UI synth lock during formatting, layer scans, or detailedMatch.
+    std::ostringstream presence;
+        presence << "=== ACCOMPANIMENT PART PRESENCE / NATIVE ===\n"
+            << "counters=process_lifetime explicit_style_origins_only; last binding and current mappingGeneration=" << generation
+            << "; accepted_event_not_audible_PCM; snapshot_never_sends_MIDI\n";
+        presence << "PCM_MIX samples=" << samples << " peak=" << peak
+            << " rms=" << (samples?std::sqrt(energy/samples):0)
+            << " clippedSamples=" << clipped << " nonfiniteSamples=" << nonfinite
+            << " scope=post_sum_pre_existing_output_clamp no_per_part_PCM_claim no_gain_adjustment\n";
+        for(int channel=8;channel<16;++channel) {
+            const auto& v=velocities[channel];
+            presence << "STYLE_VELOCITY ch=" << channel << " count=" << v.count
+                << " min=" << (v.count?v.minimum:-1) << " max=" << (v.count?v.maximum:-1)
+                << " mean=" << (v.count?double(v.sum)/v.count:0)
+                << " rms=" << (v.count?std::sqrt(double(v.squares)/v.count):0)
+                << " scope=MIDI_input_not_SF2_response_or_PCM\n";
+        }
+        presence << rolePcmReport(meters,inventories,samples);
+        for(int part=0;part<2;++part) {
+            const auto& lane=lanes[part];
+            presence << "PERCUSSION_FIDELITY enabled=" << YAMAHA_COMPATIBLE_PERCUSSION << " ch=" << part+8 << " pc=" << lane.requestedPc
+                << " stream=" << lane.stream << " generation=" << lane.generation
+                << " activeForOn=" << lane.active
+                << " compatibleOns=" << lane.mappedOns << " legacyOns=" << lane.legacyOns
+                << " failedOns=" << lane.failedOns << " overflowDropped=" << lane.overflowOns << " chokes=" << lane.chokes << '\n';
+            for(const auto& route:lane.routes) {
+                const auto& c=route.route;const int key=route.key;const bool verified=route.verified;
+                presence << "COMPATIBLE_ROUTE ch=" << part+8 << " sourceKey=" << key << " candidateKey=" << c.key
+                    << " sf2='" << c.path << "' bank=" << c.bank << " nativeBank=" << c.nativeBank << " rawPC=" << c.pc
+                    << " fingerprint=" << c.fingerprint << " audition770=" << c.auditioned
+                    << " preset='" << c.preset << "' samples='" << c.samples << "' layers=" << c.layers
+                    << " sourceGroup=" << route.group << " candidateExclusive=" << c.exclusive
+                    << " velocities=1:127 pitchOffset=0 controllerLane=" << key << " actualVerified=" << verified
+                    << " actualReadbackStage=" << (route.attempted?"FIRST_REAL_NOTE_VERIFIED":"DEFERRED_UNTIL_REAL_NOTE")
+                    << " sourceIdentity='" << (percussion_fidelity::sourceIdentity(127,0,lane.requestedPc,key)?percussion_fidelity::sourceIdentity(127,0,lane.requestedPc,key)->identity:"UNKNOWN")
+                    << "' sampleBundle=" << c.sampleIdentity
+                    << " actualVoiceSampleId=UNAVAILABLE semantic=COMPATIBLE_not_EXACT variantMatch=UNPROVEN\n";
+            }
+        }
+    for(int ch=8;ch<16;++ch) {
+        const auto& row=native[ch-8];const auto& n=row.n;const auto& state=row.state;
+        const auto& live=row.live;const bool liveOk=row.liveOk;const char* name=row.name.c_str();const auto& path=row.path;
+        sf2_zones::Match eligible{};
+        if(row.inventory && liveOk && n.lastKey>=0)eligible=sf2_zones::match(*row.inventory,row.rawBank,live.preset,n.lastKey,n.lastVelocity);
             presence << "NATIVE ch=" << ch << " midiChannel=" << ch+1 << " attempts=" << n.attempts << " BASS_NOTE_ON_SENT=" << n.sent
                 << " familyOrMapRejected=" << n.familyOrMapRejected << " engineUnavailable=" << n.engineUnavailable << " sendFailed=" << n.sendFailed
                 << " zeroController=" << n.zeroController << " presetMapFailures=" << n.presetMapFailures
-                << " requestedBank=" << audioDiagnostics_[ch].requestedBank << " rawPC=" << audioDiagnostics_[ch].requestedPc
+                << " requestedBank=" << row.requestedBank << " rawPC=" << row.requestedPc
                 << " effectiveBank=" << state.bankMsb << ':' << state.bankLsb << " effectivePC=" << state.program
                 << " selectedRawBank=" << state.melodySourceBank << " selectedPC=" << state.melodySourceProgram
                 << " initialized=" << state.initialized << " admitted=" << (state.drum || state.melodySourceProgram>=0)
                 << " liveAvailable=" << liveOk << " font=" << live.font << " liveBank=" << live.bank << " livePC=" << live.preset
                 << " preset='" << (name?name:"UNAVAILABLE") << "' SF2='" << path << "' CC7="
-                << (stream_?BASS_MIDI_StreamGetEvent(stream_,ch,MIDI_EVENT_VOLUME):0) << " CC11="
-                << (stream_?BASS_MIDI_StreamGetEvent(stream_,ch,MIDI_EVENT_EXPRESSION):0)
+                << row.cc7 << " CC11="
+                << row.cc11
                 << " lastKey=" << n.lastKey << " lastVelocity=" << n.lastVelocity << " lastNoteMetadataKnown=" << eligible.known
                 << " lastNoteEligibleZones=" << eligible.zones << " last_note_only_not_all_velocity_proof\n";
-        }
     }
     std::ostringstream report;
     report << presence.str();
@@ -2316,7 +2359,10 @@ void BassMidiPlayer::observeRolePcmController(int channel,DWORD event,DWORD para
 #endif
 }
 
-std::string BassMidiPlayer::rolePcmReportLocked() const {
+std::string BassMidiPlayer::rolePcmReport(
+    const std::array<RolePcmMeter,6>& rolePcmMeters_,
+    const std::map<std::string,std::shared_ptr<const sf2_zones::Inventory>>& melodicZoneInventories_,
+    uint64_t pcmSamples_) {
     std::ostringstream out;
     out << "ROLE_PCM_SCOPE enabled=" << YAMAHA_ROLE_PCM_METERS
         << " channels=10:15 excluded=Rhythm1/Rhythm2/RIGHT/LEFT dry_after_MIDI_controllers_and_master_before_shared_FX"

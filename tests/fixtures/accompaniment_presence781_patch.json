@@ -1,17 +1,17 @@
 {
   "app/src/main/cpp/bassmidi_player.cpp": {
     "baseline776": "98c388e513f09b00dfa460959eb125f344d943dfea0dc484563a86dff20cf7ab",
-    "reviewedPresencePatch": "ab2a8ec88364f160aa39d11a7000f320d6a580506efa637718d77f4b165b6afc",
+    "reviewedPresencePatch": "5848334f6806db0153f0a26d5988e571a830cf23ec73c302faa54d549679f9e2",
     "scope": "#786 working presence preserved; read-only melodic role PCM meters only; no gain/routing/controller correction"
   },
   "app/src/main/cpp/bassmidi_player.h": {
     "baseline776": "e00e493c6a4c0e0e83acb33375df2aa96032bce0d4bfc6d1a9c69889f6d18537",
-    "reviewedPresencePatch": "c91323bb4fee488920436f3c8ace7de5ff39b7b01660839f89adafce3cc06d9f",
+    "reviewedPresencePatch": "164a286f2610ff74867422fa104e0d30aa89d4cdb671c401c4bc137571b931ab",
     "scope": "#786 working presence preserved; read-only melodic role PCM meters only; no gain/routing/controller correction"
   },
   "app/src/main/java/com/yourapp/ui/MainViewModel.kt": {
     "baseline776": "5a21f927d3ffdcc9ce000373f9c9bce430457e07b1baf6f7d69f51543a48fc89",
-    "reviewedPresencePatch": "f086c248b64ad8d8790837114dacc172022c95ac8a2eeeca345cecc5aca21e95",
+    "reviewedPresencePatch": "1d4325b25cc5496dfcaff4b4e7053f732f6b9ec5c0b031046fb63323d2e6ad1d",
     "scope": "Presence783 and mix785 preserved; after785 reviewed mix-cache/full-identity correction + passive level counters; baseline776 retained"
   },
   "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt": {
@@ -21,7 +21,7 @@
   },
   "app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt": {
     "baseline776": "2ead0dbd29ec54ebc423e4bb828618501555be6ff9055cabf189cb5859d01e76",
-    "reviewedPresencePatch": "af9a910356dad28e02bbe6cc0b7d5f5aeba48f7b146e23765209cb9e41fcb226",
+    "reviewedPresencePatch": "cac701d140f3cff842d092585950ab0194c065a6e1d81205e5d8fbb58eb222b7",
     "scope": "Presence783 and mix785 preserved; after785 reviewed mix-cache/full-identity correction + passive level counters; baseline776 retained"
   }
 }

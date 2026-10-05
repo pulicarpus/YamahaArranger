@@ -103,6 +103,16 @@ jobs:
         run: |
           python3 tools/test_role_pcm_guards.py
           python3 tools/compare_drum_shadow_baseline.py .baseline786 --label baseline786
+      - name: "Check out #787 ANR/session baseline (read only)"
+        uses: actions/checkout@v4
+        with:
+          ref: 79af5ef7016c658553cc36b933722d5821e8e7d1
+          path: .baseline787
+          persist-credentials: false
+      - name: Verify snapshot-only patch and byte-identical #787 audio
+        run: |
+          python3 tools/test_diagnostic788_guards.py .baseline787
+          python3 tools/compare_diagnostic788_audio.py .baseline787 /tmp/bass-linux /tmp/bassmidi-linux
       - name: Accept Android SDK licenses
         run: yes $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
       - name: Set up Android NDK r26d
@@ -205,6 +215,10 @@ jobs:
             build/mix-response-proof.txt
             build/role-pcm-real-proof.txt
             build/role-pcm-real-report.txt
+            build/diagnostic788-audio-proof.txt
+            docs/DIAGNOSTIC_ANR_SESSION_788.md
+            tests/fixtures/diagnostic788_protected_sources.json
+            app/build/test-results/testDebugUnitTest/TEST-*PartPresenceSession*.xml
             docs/ROLE_PCM_BALANCE_786.md
             tests/fixtures/role_pcm786_protected_methods.json
             tests/fixtures/role_pcm786_protected_sources.json

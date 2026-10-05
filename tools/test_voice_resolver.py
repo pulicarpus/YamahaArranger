@@ -85,6 +85,13 @@ with tempfile.TemporaryDirectory(prefix="yamaha-resolver-") as directory:
                     "-o",str(role_executable)],check=True)
     subprocess.run([str(role_executable),directory],check=True)
 
+    liveness_executable = Path(directory) / "diagnostic_snapshot_liveness_test"
+    subprocess.run([compiler,"-std=c++17","-O2","-pthread","-DYAMAHA_ROLE_PCM_METERS=1",
+                    "-I",str(root/"tests/mocks"),"-I",str(root/"app/src/main/cpp"),"-I",str(root/"tests"),
+                    str(root/"tests/diagnostic_snapshot_liveness_test.cpp"),str(root/"app/src/main/cpp/bassmidi_player.cpp"),
+                    "-o",str(liveness_executable)],check=True)
+    subprocess.run([str(liveness_executable),directory],check=True)
+
     shadow_executable = Path(directory) / "drum_shadow_readonly_test"
     subprocess.run([compiler, "-std=c++17", "-Wall", "-Wextra", "-O2", "-pthread", "-DSHADOW_OBSERVATION=1",
                     "-I", str(root / "tests/mocks"), "-I", str(root / "app/src/main/cpp"),
@@ -99,3 +106,5 @@ subprocess.run(["python3",str(root / "tools/test_mix_percussion_boundaries.py")]
 subprocess.run(["python3",str(root / "tools/evaluate_percussion_inventory.py")],check=True)
 
 subprocess.run(["python3",str(root/"tools/test_role_pcm_guards.py")],check=True)
+
+subprocess.run(["python3",str(root/"tools/test_diagnostic788_guards.py")],check=True)

@@ -19,7 +19,7 @@ for method in ['void CALLBACK BassMidiPlayer::rolePcmTap(','void BassMidiPlayer:
 assert 'channel<10 || channel>15' in body('void BassMidiPlayer::updateRolePcmMeter(')
 assert 'BASS_DSP_READONLY' in body('void BassMidiPlayer::updateRolePcmMeter(')
 assert 'static_cast<const float*>' in body('void CALLBACK BassMidiPlayer::rolePcmTap(')
-for name in ['std::string BassMidiPlayer::rolePcmReportLocked()','void BassMidiPlayer::updateRolePcmMeter(']:
+for name in ['std::string BassMidiPlayer::rolePcmReport(','void BassMidiPlayer::updateRolePcmMeter(']:
  t=body(name)
  for bad in ['BASS_MIDI_StreamEvent','BASS_MIDI_StreamSetFonts','BASS_MIDI_FontSetVolume','BASS_ChannelSetAttribute']:assert bad not in t,(name,bad)
 print('ROLE_PCM_GUARDS PASS: #786 working routing/controller/CASM/ACMP/scheduler/drum code intact; taps only melodic10..15; no gain, MIDI, font-map writes')

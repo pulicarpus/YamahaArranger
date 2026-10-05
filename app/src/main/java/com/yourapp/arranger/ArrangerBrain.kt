@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -49,7 +50,7 @@ class ArrangerBrain @Inject constructor(
     private val midiInputManager: MidiInputManager
 ) {
     private lateinit var sequencer: StyleSequencer
-    private var loadedStyle: ParsedStyle? = null
+    @Volatile private var loadedStyle: ParsedStyle? = null
     private var externalScope: CoroutineScope? = null
 
     // PSR-E343 default split point is F#2 (MIDI 54). Keys at or below it are
@@ -529,7 +530,26 @@ class ArrangerBrain @Inject constructor(
 
     fun armChordDiagnostic() { if (::sequencer.isInitialized) sequencer.armChordDiagnostic() }
     fun stopChordDiagnostic() { if (::sequencer.isInitialized) sequencer.stopChordDiagnostic() }
+    // Same authoritative style reference used by startStop/playSection, not a
+    // ViewModel-local diagnostic cache that is lost when the UI is recreated.
+    fun diagnosticActiveStyle(): ParsedStyle? = loadedStyle
     fun partPresenceReport(style:ParsedStyle):String = if (::sequencer.isInitialized) sequencer.partPresenceReport(style) else "PART PRESENCE unavailable: sequencer not initialized"
+    suspend fun compactPartPresenceReport(): String {
+        if (state.value.isPlaying) return "PART PRESENCE unavailable: STOP before export\n"
+        val style = diagnosticActiveStyle()
+            ?: return "PART PRESENCE unavailable: load a style first\n"
+        return withContext(Dispatchers.Default) {
+            val scheduler = partPresenceReport(style)
+            val native = audioEngine.noteZoneReport().substringBefore("=== ACTUAL BASS / STRINGS NOTE ZONES ===")
+            if (diagnosticActiveStyle() !== style || state.value.isPlaying)
+                return@withContext "PART PRESENCE unavailable: style/playback changed during export; STOP and retry\n"
+            com.yourapp.yamahaarranger.arranger.ChordReportBounds.lines(
+                "PART PRESENCE: scheduler=since_style_load; native=process_lifetime; fresh app/session recommended.\nNo playback/controller writes; NOTE_ON acceptance does not prove audible PCM.",
+                (native + scheduler).lines()
+            )
+        }
+    }
+
     fun compactChordDiagnosticReport(): String = if (::sequencer.isInitialized) sequencer.compactChordDiagnosticReport() else "CHORD STYLE unavailable: load style first"
     fun chordDiagnosticReport(): String = if (::sequencer.isInitialized) sequencer.chordDiagnosticReport() else "CHORD STYLE unavailable: load style first"
 
