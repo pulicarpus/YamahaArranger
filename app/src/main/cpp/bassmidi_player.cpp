@@ -1,5 +1,9 @@
 #include "bassmidi_player.h"
 #include "voice_resolver.h"
+#include "sf2_fingerprint.h"
+#ifndef YAMAHA_COMPATIBLE_PERCUSSION
+#define YAMAHA_COMPATIBLE_PERCUSSION 0
+#endif
 #include <android/log.h>
 #include <algorithm>
 #include <fstream>
@@ -339,6 +343,7 @@ bool BassMidiPlayer::loadRole(const std::string& path, bool drum) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (!ensureEngine()) return false;
 
+    retirePercussionStreams(); // auxiliary streams only; never clears the production stream
     HSOUNDFONT& target = drum ? drumFont_ : melodyFont_;
     if (drum) {
         drumPath_.clear();
@@ -418,6 +423,7 @@ bool BassMidiPlayer::loadRole(const std::string& path, bool drum) {
         }
     }
 
+    rebuildPercussionCatalog();
     LOGI("BASSMIDI %s SF2 loaded: %s",
          drum ? "DRUM" : "MELODY", path.c_str());
     return true;
@@ -479,6 +485,8 @@ bool BassMidiPlayer::loadMelodyFallback(const std::string& path) {
         send(ch, MIDI_EVENT_PROGRAM, static_cast<DWORD>(state.program));
         preloadCurrentPreset(ch);
     }
+    retirePercussionStreams();
+    rebuildPercussionCatalog();
     LOGI("VOICE INVENTORY secondary=%u sf2='%s' melodicPresets=%u",
          static_cast<unsigned>(secondaryMelodies_.size()), path.c_str(),
          static_cast<unsigned>(secondaryMelodies_.back().presets.size()));
@@ -491,6 +499,9 @@ bool BassMidiPlayer::loadDrum(const std::string& path) {
 
 void BassMidiPlayer::unload() {
     std::lock_guard<std::mutex> lock(mutex_);
+    retirePercussionStreams();
+    percussionCandidates_.clear();percussionAllCandidates_.clear();
+    percussionLanes_ = {};
 
     if (stream_) {
         for (int ch = 0; ch < 16; ++ch) {
@@ -543,6 +554,7 @@ bool BassMidiPlayer::send(int channel, DWORD event, DWORD param) {
              channel, static_cast<unsigned>(event),
              static_cast<unsigned>(param), eventError);
     }
+    if (sent) mirrorPercussionController(channel,event,param);
     if (sent && channel >= 4) {
         auto& d = audioDiagnostics_[channel];
         int* tracked = event == MIDI_EVENT_VOLUME ? &d.cc7 : event == MIDI_EVENT_EXPRESSION ? &d.cc11 : nullptr;
@@ -734,8 +746,10 @@ void BassMidiPlayer::rebuildDrumPresetCache(
         std::istreambuf_iterator<char>());
 
     // Reuse the bytes already read during font loading. No file I/O or SF2
-    // parsing in noteOn/render; this metadata never participates in routing.
+    // parsing in noteOn/render; immutable metadata is also used to precompile
+    // the independent, conservative percussion catalog at paused font load.
     drumZoneInventories_[path] = sf2_zones::parse(data);
+    if(YAMAHA_COMPATIBLE_PERCUSSION)percussionFingerprints_[path]=sf2_fingerprint::sha256(data);
     LOGI("DRUM ZONE CACHE valid=%d reason=%s presets=%u path=%s",
          drumZoneInventories_[path].valid ? 1 : 0, drumZoneInventories_[path].reason.c_str(),
          static_cast<unsigned>(drumZoneInventories_[path].presets.size()), path.c_str());
@@ -826,6 +840,7 @@ void BassMidiPlayer::rebuildMelodyPresetCache(const std::string& path) {
     }
 
     melodicZoneInventories_[path] = std::make_shared<const sf2_zones::Inventory>(sf2_zones::parse(data,true));
+    if(YAMAHA_COMPATIBLE_PERCUSSION)percussionFingerprints_[path]=sf2_fingerprint::sha256(data);
     noteZoneRows_.clear(); noteZoneLimit_=false;
     const size_t count = phdrSize / 38;
     for (size_t n = 0; n + 1 < count; ++n) {
@@ -1141,6 +1156,11 @@ void BassMidiPlayer::noteOn(int channel, int key, float velocity, const AudioPat
         return;
     }
 
+    bool compatibleSent=false;
+    if (percussionOn(channel,key,vel,origin,compatibleSent)) {
+        return; // exactly one NOTE_ON path; no production-channel program/font mutation
+    }
+
     // Never overwrite the channel's program/bank here. MIDI Voyager keeps
     // instrument state separate from note events; doing a forced Program 0
     // on every note was one of the diagnostic build's major correctness bugs.
@@ -1156,6 +1176,7 @@ void BassMidiPlayer::noteOff(int channel, int key, const AudioPathOrigin& origin
 
     channel = std::max(0, std::min(15, channel));
     key = std::max(0, std::min(127, key));
+    if (percussionOff(channel,key,origin)) return;
     captureChordState("OFF_PRE",channel,key,0,-1,0,origin);
     const bool sent = send(channel, MIDI_EVENT_NOTE, static_cast<DWORD>(key));
     const int offError = sent ? 0 : BASS_ErrorGetCode();
@@ -1174,6 +1195,10 @@ void BassMidiPlayer::noteOff(int channel, int key, const AudioPathOrigin& origin
 void BassMidiPlayer::allNotesOff() {
     std::lock_guard<std::mutex> lock(mutex_);
     if (!stream_) return;
+    for(auto& lane:percussionLanes_) {
+        if(lane.stream) for(int key=0;key<128;++key) BASS_MIDI_StreamEvent(lane.stream,key,MIDI_EVENT_SOUNDOFF,0);
+        lane.owners={};
+    }
     for (int ch = 0; ch < 16; ++ch) {
         const bool sent = send(ch, MIDI_EVENT_NOTESOFF, 0);
         if (ch >= 4 && sent) audioDiagnostics_[ch].allOff();
@@ -1310,6 +1335,7 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program, const 
     // non-blocking BASS_MIDI_FONTLOAD_NOWAIT path, so enabling it for drums
     // does not reintroduce the old synchronous render-thread stall.
     preloadCurrentPreset(channel);
+    if(wantDrum) preparePercussionLane(channel, audioDiagnostics_[channel].requestedPc);
 }
 
 void BassMidiPlayer::setChannelMixer(int channel, int volume, int pan,
@@ -1362,6 +1388,8 @@ void BassMidiPlayer::setMasterGain(float gain) {
     if (!stream_) return;
     BASS_ChannelSetAttribute(stream_, BASS_ATTRIB_MIDI_VOL,
                              std::max(0.0f, std::min(1.0f, gain)));
+    for(const auto& lane:percussionLanes_) if(lane.stream)
+        BASS_ChannelSetAttribute(lane.stream,BASS_ATTRIB_MIDI_VOL,std::clamp(gain,0.0f,1.0f));
 }
 
 void BassMidiPlayer::auditNoteZone(int channel,int key,int velocity,bool sent,const AudioPathOrigin& origin) {
@@ -1463,6 +1491,26 @@ std::string BassMidiPlayer::noteZoneReport() const {
         presence << "=== ACCOMPANIMENT PART PRESENCE / NATIVE ===\n"
             << "counters=process_lifetime explicit_style_origins_only; last binding and current mappingGeneration=" << fontMappingGeneration_
             << "; accepted_event_not_audible_PCM; snapshot_never_sends_MIDI\n";
+        for(int part=0;part<2;++part) {
+            const auto& lane=percussionLanes_[part];
+            presence << "PERCUSSION_FIDELITY enabled=" << YAMAHA_COMPATIBLE_PERCUSSION << " ch=" << part+8 << " pc=" << lane.requestedPc
+                << " stream=" << lane.stream << " generation=" << lane.generation
+                << " activeForOn=" << (lane.stream && lane.requestedPc==audioDiagnostics_[part+8].requestedPc && lane.generation==percussionGeneration_)
+                << " compatibleOns=" << lane.mappedOns << " legacyOns=" << lane.legacyOns
+                << " failedOns=" << lane.failedOns << " overflowDropped=" << lane.overflowOns << " chokes=" << lane.chokes << '\n';
+            for(int key=0;key<128;++key) if(lane.stream && lane.routes[key].font) {
+                const auto& c=lane.routes[key]; BASS_MIDI_FONT actual{};
+                const bool verified=BASS_MIDI_StreamGetPreset(lane.stream,key,&actual) && actual.font==c.font && actual.bank==c.nativeBank && actual.preset==c.pc;
+                presence << "COMPATIBLE_ROUTE ch=" << part+8 << " sourceKey=" << key << " candidateKey=" << c.key
+                    << " sf2='" << c.path << "' bank=" << c.bank << " nativeBank=" << c.nativeBank << " rawPC=" << c.pc
+                    << " fingerprint=" << c.fingerprint << " audition770=" << c.auditioned
+                    << " preset='" << c.preset << "' samples='" << c.samples << "' layers=" << c.layers
+                    << " sourceGroup=" << lane.groups[key] << " candidateExclusive=" << c.exclusive
+                    << " velocities=1:127 pitchOffset=0 controllerLane=" << key << " actualVerified=" << verified
+                    << " actualReadbackStage=" << (lane.actualVerified[key]?"FIRST_REAL_NOTE_VERIFIED":"DEFERRED_UNTIL_REAL_NOTE")
+                    << " actualVoiceSampleId=UNAVAILABLE semantic=COMPATIBLE_not_EXACT\n";
+            }
+        }
         for (int ch=8;ch<16;++ch) {
             const auto& n=partPresence_[ch]; const auto& state=channels_[ch];
             BASS_MIDI_FONT live{};
@@ -1761,6 +1809,7 @@ void BassMidiPlayer::render(float* out, int numFrames) {
     if (samples < numFrames * 2) {
         std::fill(out + samples, out + numFrames * 2, 0.0f);
     }
+    renderPercussion(out,numFrames);
 }
 
 
@@ -1874,6 +1923,263 @@ std::string BassMidiPlayer::compactChordDiagnosticReport() const {
     chord_diagnostic::Capture snapshot;
     { std::lock_guard<std::mutex> lock(mutex_); snapshot=chordCapture_; }
     return chord_diagnostic::compactReport(snapshot);
+}
+
+void BassMidiPlayer::retirePercussionStreams() {
+    ++percussionGeneration_;
+    percussionCandidates_.clear();percussionAllCandidates_.clear();
+    for(auto& lane:percussionLanes_) {
+        if(lane.stream) BASS_StreamFree(lane.stream);
+        lane.stream=0;lane.requestedPc=-1;lane.routes={};lane.groups={};lane.actualVerified={};
+        // Consume later OFFs from retired routed ONs, never send them to a new font/stream.
+        for(auto& queue:lane.owners) for(unsigned i=0;i<queue.size;++i) {
+            auto& o=queue.entries[(queue.head+i)%queue.entries.size()]; if(o.routed)o.choked=true;
+        }
+    }
+}
+
+void BassMidiPlayer::rebuildPercussionCatalog() {
+    using namespace percussion_fidelity;
+    percussionCandidates_.clear();
+    if(!YAMAHA_COMPATIBLE_PERCUSSION)return;
+    std::vector<Candidate> candidates;
+    auto append=[&](HSOUNDFONT font,const std::string& path,const std::vector<NormalizedBankMap>* banks) {
+        const sf2_zones::Inventory* inventory=nullptr;
+        auto m=melodicZoneInventories_.find(path);if(m!=melodicZoneInventories_.end())inventory=m->second.get();
+        if(!inventory) {auto d=drumZoneInventories_.find(path);if(d!=drumZoneInventories_.end())inventory=&d->second;}
+        if(!inventory || !font)return;
+        for(auto c:catalog(*inventory,font,path)) {
+            c.fingerprint=percussionFingerprints_[path];
+            for(const auto& evidence:auditionEvidence)
+                if(c.fingerprint==evidence.fingerprint && c.bank==evidence.bank && c.pc==evidence.pc && c.key==evidence.key)c.auditioned=true;
+            if(banks && c.bank<127) { c.nativeBank=-1; for(const auto& b:*banks)if(b.rawBank==c.bank)c.nativeBank=b.virtualBank; }
+            if(c.nativeBank>=0 && BASS_MIDI_FontGetPreset(font,c.pc,c.nativeBank))candidates.push_back(std::move(c));
+        }
+    };
+    append(drumFont_,drumPath_,nullptr);append(melodyFont_,melodyPath_,&normalizedBanks_);
+    for(const auto& f:secondaryMelodies_)append(f.font,f.path,&f.banks);
+    percussionAllCandidates_=candidates;
+    // Full loading is confined to paused import. The established legacy NOWAIT
+    // preload path stays unchanged. Failure/budget exhaustion simply leaves legacy.
+    std::set<std::tuple<unsigned,int,int>> ready,failed;
+    for(const auto& source:yamahaNotes) {
+        const auto f=family(source.identity);if(!supported(f))continue;
+        const auto* best=choose(candidates,f,source.key);if(!best)continue;
+        const auto binding=std::make_tuple(best->font,best->nativeBank,best->pc);
+        if(ready.count(binding) || failed.count(binding))continue;
+        if(ready.size()>=8 || !BASS_MIDI_FontLoadEx(best->font,best->pc,best->nativeBank,0,0))failed.insert(binding);
+        else ready.insert(binding);
+    }
+    for(auto& c:candidates) if(ready.count({c.font,c.nativeBank,c.pc}))percussionCandidates_.push_back(std::move(c));
+    LOGI("PERCUSSION catalog compatibleBundles=%u preloadedPresets=%u rejectedOrBudget=%u legacyNativeUnchanged=1",
+         unsigned(percussionCandidates_.size()),unsigned(ready.size()),unsigned(failed.size()));
+}
+
+void BassMidiPlayer::preparePercussionLane(int channel,int requestedPc) {
+    using namespace percussion_fidelity;
+    if(!YAMAHA_COMPATIBLE_PERCUSSION)return;
+    auto& lane=percussionLanes_[channel-8];
+    if(lane.requestedPc==requestedPc && lane.generation==percussionGeneration_)return;
+    // A program transition cannot retarget a held owner. Until it drains, new
+    // requests use legacy; no production all-notes-off, reset or generation churn.
+    for(auto& q:lane.owners) {q.expire(percussionRenderedFrames_);if(q.pending())return;}
+    if(lane.stream)BASS_StreamFree(lane.stream);
+    lane.stream=0;lane.routes={};lane.groups={};lane.actualVerified={};lane.requestedPc=requestedPc;lane.generation=percussionGeneration_;
+    HSOUNDFONT legacyFont=drumFont_?drumFont_:melodyFont_;
+    int exactBank=-1,exactPc=-1;
+    if(findDrumPreset(drumFont_?drumPath_:melodyPath_,requestedPc,exactBank,exactPc) && exactPc==requestedPc)return;
+    if(percussionCandidates_.empty())return;
+    // Finite sample-duration upper bounds are independent of semantic identity.
+    // An unproved loop/modulator stays pinned until explicit STOP; no guessed release.
+    lane.legacyLifetimeFrames.fill(UINT64_MAX);
+    const auto legacyInventory=drumZoneInventories_.find(drumFont_?drumPath_:melodyPath_);
+    if(legacyInventory!=drumZoneInventories_.end() && legacyInventory->second.valid) {
+        const auto p=legacyInventory->second.presets.find({exactBank,exactPc});
+        if(p!=legacyInventory->second.presets.end())for(int key=0;key<128;++key) {
+            double seconds=0;bool bounded=true;
+            for(const auto& z:p->second)if(z.keyLow<=key && key<=z.keyHigh) {
+                if(!z.sampleRate || z.start>=z.end || sf2_zones::effective(z,54)!=0 ||
+                   sf2_zones::effective(z,0)!=0 || sf2_zones::effective(z,1)!=0 ||
+                   sf2_zones::effective(z,4)!=0 || sf2_zones::effective(z,12)!=0 ||
+                   sf2_zones::effective(z,5)!=0 || sf2_zones::effective(z,6)!=0 || sf2_zones::effective(z,7)!=0 ||
+                   !z.presetGenerators.modsKnown || !z.instrumentGenerators.modsKnown ||
+                   !z.presetGenerators.mods.empty() || !z.instrumentGenerators.mods.empty()) {bounded=false;break;}
+                const int played=sf2_zones::effective(z,46)>=0?sf2_zones::effective(z,46):key;
+                const int cents=(played-root(z))*sf2_zones::effective(z,56)+sf2_zones::effective(z,51)*100+sf2_zones::effective(z,52);
+                const double duration=double(z.end-z.start)/z.sampleRate*std::exp2((std::abs(cents)+std::abs(z.pitchCorrection))/1200.0);
+                seconds=std::max(seconds,duration);
+            }
+            if(bounded && seconds<3600)lane.legacyLifetimeFrames[key]=uint64_t(std::ceil((seconds+5)*sampleRate_));
+        }
+    }
+    for(const auto& n:yamahaNotes) if(n.msb==127 && n.lsb==0 && n.pc==requestedPc) {
+        lane.groups[n.key]=n.group;
+        const auto* c=choose(percussionCandidates_,family(n.identity),n.key);
+        if(!c || !supported(family(n.identity)) || n.keyOff)continue; // scheduler has no rhythm OFF contract
+        // Retain an already compatible native zone instead of replacing a valid kit.
+        bool legacyCompatible=false;
+        for(const auto& known:percussionAllCandidates_)
+            if(known.font==legacyFont && known.bank==exactBank && known.pc==exactPc && known.key==n.key && known.family==family(n.identity))legacyCompatible=true;
+        if(!legacyCompatible)lane.routes[n.key]=*c;
+    }
+    bool any=false;for(const auto& r:lane.routes)if(r.font)any=true;if(!any)return;
+    const auto candidateStream=BASS_MIDI_StreamCreate(128,BASS_STREAM_DECODE|BASS_SAMPLE_FLOAT|BASS_MIDI_NOTEOFF1,sampleRate_);
+    if(!candidateStream) {lane.routes={};return;}
+    std::vector<BASS_MIDI_FONTEX2> maps;
+    for(int key=0;key<128;++key) {
+        const auto& c=lane.routes[key];if(!c.font)continue;
+        BASS_MIDI_FONTEX2 map{};map.font=c.font;map.spreset=c.pc;map.sbank=c.nativeBank;map.dpreset=0;map.dbank=128;
+        map.dbanklsb=0;map.minchan=static_cast<decltype(map.minchan)>(key);map.numchan=1;maps.push_back(map);
+    }
+    bool ok=BASS_MIDI_StreamSetFonts(candidateStream,maps.data(),DWORD(maps.size())|BASS_MIDI_FONT_EX2);
+    for(int key=0;key<128 && ok;++key) {
+        const auto& c=lane.routes[key];if(!c.font)continue;
+        ok=BASS_MIDI_StreamEvent(candidateStream,key,MIDI_EVENT_DRUMS,1) &&
+           BASS_MIDI_StreamEvent(candidateStream,key,MIDI_EVENT_BANK,0) &&
+           BASS_MIDI_StreamEvent(candidateStream,key,MIDI_EVENT_BANK_LSB,0) &&
+           BASS_MIDI_StreamEvent(candidateStream,key,MIDI_EVENT_PROGRAM,0);
+        for(const DWORD event:{MIDI_EVENT_VOLUME,MIDI_EVENT_PAN,MIDI_EVENT_EXPRESSION,MIDI_EVENT_REVERB,MIDI_EVENT_CHORUS})
+            ok=ok && BASS_MIDI_StreamEvent(candidateStream,key,event,BASS_MIDI_StreamGetEvent(stream_,channel,event));
+        // GetPreset has no information until a real note has played. Do not
+        // manufacture a warm-up NOTE_ON. Validate controls + the complete table
+        // here, then verify the actual binding after the first explicit style ON.
+        ok=ok && BASS_MIDI_StreamGetEvent(candidateStream,key,MIDI_EVENT_BANK)==0 &&
+            BASS_MIDI_StreamGetEvent(candidateStream,key,MIDI_EVENT_DRUMS)==1 &&
+            BASS_MIDI_StreamGetEvent(candidateStream,key,MIDI_EVENT_BANK_LSB)==0 &&
+            BASS_MIDI_StreamGetEvent(candidateStream,key,MIDI_EVENT_PROGRAM)==0;
+    }
+    const DWORD nativeCount=BASS_MIDI_StreamGetFonts(candidateStream,nullptr,0);
+    if(nativeCount!=maps.size())ok=false;
+    std::vector<BASS_MIDI_FONTEX2> installed(nativeCount);
+    if(ok && BASS_MIDI_StreamGetFonts(candidateStream,installed.data(),nativeCount|BASS_MIDI_FONT_EX2)!=nativeCount)ok=false;
+    for(size_t i=0;i<maps.size() && ok;++i) {
+        const auto& a=maps[i];const auto& b=installed[i];
+        ok=a.font==b.font && a.spreset==b.spreset && a.sbank==b.sbank && a.dpreset==b.dpreset &&
+           a.dbank==b.dbank && a.dbanklsb==b.dbanklsb && a.minchan==b.minchan && a.numchan==b.numchan;
+    }
+    float master=1.0f;
+    ok=ok && BASS_ChannelGetAttribute(stream_,BASS_ATTRIB_MIDI_VOL,&master) &&
+       BASS_ChannelSetAttribute(candidateStream,BASS_ATTRIB_MIDI_VOL,master) &&
+       BASS_ChannelSetAttribute(candidateStream,BASS_ATTRIB_MIDI_SRC,float(interpolation_));
+    // BASS_ATTRIB_BUFFER belongs to playback channels; auxiliary streams are DECODE.
+    if(!ok) {LOGI("PERCUSSION prepare refused ch=%d reason=font_table_or_controller_readback error=%d legacyPreserved=1",channel,BASS_ErrorGetCode());BASS_StreamFree(candidateStream);lane.routes={};return;}
+    lane.stream=candidateStream;
+    LOGI("PERCUSSION prepared ch=%d requestedPC=%d compatibleKeys=%u auxStream=%u productionFontTableUnchanged=1",
+         channel,requestedPc,unsigned(maps.size()),unsigned(lane.stream));
+}
+
+void BassMidiPlayer::mirrorPercussionController(int channel,DWORD event,DWORD param) {
+    if(channel!=8 && channel!=9)return;
+    if(event!=MIDI_EVENT_VOLUME && event!=MIDI_EVENT_PAN && event!=MIDI_EVENT_EXPRESSION && event!=MIDI_EVENT_REVERB && event!=MIDI_EVENT_CHORUS)return;
+    auto& lane=percussionLanes_[channel-8];if(!lane.stream)return;
+    for(int key=0;key<128;++key) if(lane.routes[key].font && !BASS_MIDI_StreamEvent(lane.stream,key,event,param)) {
+        // Reject subsequent substituted ONs. Existing OFF bindings remain intact.
+        lane.requestedPc=-1;
+    }
+}
+
+bool BassMidiPlayer::percussionOn(int channel,int key,int velocity,const AudioPathOrigin& origin,bool& accepted) {
+    using namespace percussion_fidelity;
+    if(channel!=8 && channel!=9)return false;
+    auto& lane=percussionLanes_[channel-8];
+    auto& queue=lane.owners[key];queue.expire(percussionRenderedFrames_);
+    if(!lane.stream && !queue.pending())return false;
+    const bool sourceKnown=origin.styleBank==127*128 && origin.sourceNote==key && origin.sourceChannel==channel && lane.requestedPc==audioDiagnostics_[channel].requestedPc;
+    const auto& route=lane.routes[key];
+    bool mapped=sourceKnown && lane.stream && lane.generation==percussionGeneration_ &&
+                      lane.requestedPc==audioDiagnostics_[channel].requestedPc && route.font;
+    Owner owner{mapped,false,false,mapped?route.key:key,sourceKnown?lane.groups[key]:0};
+    owner.stream=mapped?lane.stream:stream_;owner.font=mapped?route.font:(drumFont_?drumFont_:melodyFont_);
+    owner.generation=lane.generation;owner.bank=mapped?route.nativeBank:channels_[channel].bankMsb;
+    owner.pc=mapped?route.pc:channels_[channel].program;owner.lane=mapped?key:channel;
+    owner.sourceChannel=origin.sourceChannel;
+    owner.oneShot=origin.styleBank>=0 && origin.sourceChannel>=0;
+    const auto lifetime=mapped?uint64_t(std::ceil((route.seconds+5)*sampleRate_)):lane.legacyLifetimeFrames[key];
+    owner.endFrame=lifetime==UINT64_MAX?UINT64_MAX:percussionRenderedFrames_+lifetime;
+    if(!queue.push(owner)) {++lane.overflowOns;accepted=false;++partPresence_[channel].attempts;++partPresence_[channel].sendFailed;return true;}
+    // Only cross-stream relationships need an adapter. Native legacy pairs keep
+    // their normal behavior. A routed pedal/triangle uses Yamaha alternate groups,
+    // including directional 64 -> 96, never an assumed GM hat-key group.
+    if(owner.group && owner.group<96) for(int peer=0;peer<128;++peer) {
+        auto& held=lane.owners[peer];bool stopAux=false,stopLegacy=false;
+        for(unsigned i=0;i<held.size;++i) {const auto& o=held.entries[(held.head+i)%held.entries.size()];
+            if(o.accepted && !o.choked && chokes(owner.group,o.group) && (mapped || o.routed)) {
+                stopAux=stopAux||o.routed;stopLegacy=stopLegacy||!o.routed;
+            }
+        }
+        const bool auxOk=!stopAux || (lane.stream && BASS_MIDI_StreamEvent(lane.stream,peer,MIDI_EVENT_SOUNDOFF,0));
+        const bool legacyOk=!stopLegacy || BASS_MIDI_StreamEvent(stream_,channel,MIDI_EVENT_NOTE,DWORD(peer|(255<<8)));
+        for(unsigned i=0;i<held.size;++i) {auto& o=held.entries[(held.head+i)%held.entries.size()];
+            if(o.accepted && !o.choked && chokes(owner.group,o.group) && (mapped || o.routed) && (o.routed?auxOk:legacyOk))o.choked=true;
+        }
+        if((stopAux && auxOk) || (stopLegacy && legacyOk))++lane.chokes;
+        if(!auxOk || !legacyOk) {mapped=false;lane.requestedPc=-1;}
+    }
+    auto& stored=queue.entries[(queue.head+queue.size-1)%queue.entries.size()];
+    if(!mapped && stored.routed) {stored.routed=false;stored.stream=stream_;stored.lane=channel;stored.key=key;stored.font=drumFont_?drumFont_:melodyFont_;stored.pc=channels_[channel].program;stored.bank=channels_[channel].bankMsb;}
+    if(mapped) {
+        accepted=BASS_MIDI_StreamEvent(lane.stream,key,MIDI_EVENT_NOTE,DWORD(route.key|(velocity<<8)));
+        if(accepted && !lane.actualVerified[key]) {
+            BASS_MIDI_FONT actual{};
+            lane.actualVerified[key]=BASS_MIDI_StreamGetPreset(lane.stream,key,&actual) &&
+                actual.font==route.font && actual.bank==route.nativeBank && actual.preset==route.pc;
+            if(!lane.actualVerified[key]) {
+                // No audio callback can run under this mutex. Stop the unverified
+                // auxiliary note before rendering, then retain the legacy path.
+                const bool stopped=BASS_MIDI_StreamEvent(lane.stream,key,MIDI_EVENT_SOUNDOFF,0);
+                lane.requestedPc=-1;
+                if(!stopped) {
+                    BASS_StreamFree(lane.stream);lane.stream=0;
+                    for(auto& held:lane.owners)for(unsigned i=0;i<held.size;++i)if(held.entries[(held.head+i)%held.entries.size()].routed)held.entries[(held.head+i)%held.entries.size()].choked=true;
+                }
+                {stored.routed=false;stored.choked=false;stored.stream=stream_;stored.font=drumFont_?drumFont_:melodyFont_;stored.lane=channel;stored.key=key;
+                    stored.pc=channels_[channel].program;stored.bank=channels_[channel].bankMsb;
+                    accepted=send(channel,MIDI_EVENT_NOTE,DWORD(key|(velocity<<8)));stored.accepted=accepted;++lane.legacyOns;
+                    logAudioPath(channel,key,velocity,accepted,accepted?0:BASS_ErrorGetCode(),origin,"aux_binding_abstain_legacy",0);return true;}
+            }
+        }
+        stored.accepted=accepted;if(accepted)++lane.mappedOns;else ++lane.failedOns;
+        auto& presence=partPresence_[channel];++presence.attempts;
+        if(accepted)++presence.sent;else ++presence.sendFailed;presence.lastKey=key;presence.lastVelocity=velocity;
+        return true;
+    }
+    // Record legacy ownership too, so alternating native/substituted repeated
+    // notes or a program transition cannot misroute an OFF.
+    accepted=send(channel,MIDI_EVENT_NOTE,DWORD(key|(velocity<<8)));
+    stored.accepted=accepted;++lane.legacyOns;
+    logAudioPath(channel,key,velocity,accepted,accepted?0:BASS_ErrorGetCode(),origin,accepted?"bass_event_accepted":"bass_event_failed",0);
+    return true;
+}
+
+bool BassMidiPlayer::percussionOff(int channel,int key,const AudioPathOrigin& origin) {
+    if(channel!=8 && channel!=9)return false;
+    auto& lane=percussionLanes_[channel-8];percussion_fidelity::Owner owner;
+    if(!lane.owners[key].popSource(owner,origin.sourceChannel,origin.styleBank>=0 && origin.sourceChannel>=0))
+        return lane.stream!=0 || lane.owners[key].pending(); // an orphan OFF cannot release a foreign owner
+    if(owner.accepted && !owner.choked) {
+        if(owner.routed && lane.stream==owner.stream && lane.generation==owner.generation)
+            BASS_MIDI_StreamEvent(owner.stream,owner.lane,MIDI_EVENT_NOTE,DWORD(owner.key));
+        else if(!owner.routed && owner.stream==stream_)return false; // unchanged legacy OFF/capture/ledger path
+    }
+    if(!owner.routed && owner.accepted && owner.choked) {
+        const auto now=static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
+        audioDiagnostics_[channel].off(key,true,now); // observation only: choke already sent the stop
+    }
+    return true;
+}
+
+void BassMidiPlayer::renderPercussion(float* out,int frames) {
+    // No heap allocation, file I/O, SF2 scan or scoring in either audio hot path.
+    std::array<float,1024> scratch{};
+    percussionRenderedFrames_+=uint64_t(frames);
+    for(auto& lane:percussionLanes_)if(lane.stream) for(int offset=0;offset<frames;) {
+        const int count=std::min(512,frames-offset);
+        const DWORD got=BASS_ChannelGetData(lane.stream,scratch.data(),DWORD(count*2*sizeof(float))|BASS_DATA_FLOAT);
+        if(got==DWORD(-1) || !got) {lane.requestedPc=-1;break;}
+        const int samples=std::min(count*2,int(got/sizeof(float)));
+        for(int i=0;i<samples;++i)out[offset*2+i]+=scratch[i];
+        offset+=count;
+    }
 }
 
 // Stage1/2 STOP-only observational snapshot. No NOTE hot-path hook or production-state writes.

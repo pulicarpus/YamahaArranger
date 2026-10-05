@@ -56,6 +56,16 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         var chorusSend: Int = 0
     )
     private val mixerStates = Array(16) { MixerState() }
+    private var styleBusTrim = 127
+    fun setStyleBusTrim(value: Int) {
+        styleBusTrim = value.coerceIn(0,127)
+        for (channel in 8..15) {
+            val state = mixerStates[channel]
+            audioEngine.setChannelExpression(channel, effectiveExpression(channel, state.expression))
+        }
+    }
+    private fun effectiveExpression(channel: Int, source: Int): Int =
+        styleTrim(styleTrim(source, channelOverrides[channel]?.expression ?: 127), if(channel in 8..15) styleBusTrim else 127)
 
     private data class ActiveTransposedNote(
         val sourceChannel:Int,
@@ -134,26 +144,34 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     fun setChannelOverride(channel:Int, override:StyleChannelOverride){channelOverrides[channel]=override; appliedChannelStates.remove(channel);com.yourapp.yamahaarranger.ui.DebugLog.add("🎚 STYLE CH$channel: vol=${override.volume} prog=${override.program ?: "AUTO"} bank=${override.bank ?: "AUTO"} tr=${override.transpose} mute=${override.muted}")}
     fun channelOverride(channel:Int):StyleChannelOverride = channelOverrides[channel] ?: StyleChannelOverride()
     fun setChannelVolume(channel:Int, volume:Int){
+        if(channel !in 4..15) return
         val v=volume.coerceIn(0,127)
         val old=channelOverride(channel)
         setChannelOverride(channel, old.copy(volume=v))
-        audioEngine.setChannelVolume(channel, if(old.muted) 0 else v)
+        applyEffectiveMixer(channel)
     }
     fun setChannelMute(channel:Int, muted:Boolean){
+        if(channel !in 4..15) return
         val old=channelOverride(channel)
         setChannelOverride(channel, old.copy(muted=muted))
-        audioEngine.setChannelMixer(channel, volume=if(muted) 0 else old.volume, pan=old.pan, expression=old.expression, reverbSend=old.reverbSend, chorusSend=old.chorusSend)
+        applyEffectiveMixer(channel)
     }
-    fun setChannelMixer(channel:Int, volume:Int, pan:Int, expression:Int, reverbSend:Int, chorusSend:Int){
+    fun setChannelMixer(channel:Int, volume:Int, pan:Int?, expression:Int, reverbSend:Int?, chorusSend:Int?){
+        if(channel !in 4..15) return
         val old=channelOverride(channel)
         val v=volume.coerceIn(0,127)
-        val p=pan.coerceIn(0,127)
+        val p=pan?.coerceIn(0,127)
         val e=expression.coerceIn(0,127)
-        val r=reverbSend.coerceIn(0,127)
-        val ch=chorusSend.coerceIn(0,127)
-        val next=old.copy(volume=v, pan=p, expression=e, reverbSend=r, chorusSend=ch)
+        val r=reverbSend?.coerceIn(0,127)
+        val ch=chorusSend?.coerceIn(0,127)
+        val state = mixerStates[channel]
+        val next=old.copy(volume=v,
+            pan=if(p != null && p != (old.pan ?: state.pan)) p else old.pan,
+            expression=e,
+            reverbSend=if(r != null && r != (old.reverbSend ?: state.reverbSend)) r else old.reverbSend,
+            chorusSend=if(ch != null && ch != (old.chorusSend ?: state.chorusSend)) ch else old.chorusSend)
         setChannelOverride(channel,next)
-        audioEngine.setChannelMixer(channel, volume=if(next.muted) 0 else v, pan=p, expression=e, reverbSend=r, chorusSend=ch)
+        applyEffectiveMixer(channel)
     }
     fun setChannelProgramOverride(channel:Int, program:Int, bank:Int){
         val old=channelOverride(channel)
@@ -553,7 +571,6 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             if (destination in lockedChannels || destination in applied) return@forEach
             val drum = isDrumDestination(destination, c.voiceName)
             val override = channelOverrides[destination]
-            if (override?.muted == true) { applied += destination; return@forEach }
             val explicit = explicitByDestination[destination]
             val sourcePart = explicit ?: part
             val prog = override?.program ?: explicit?.program?.takeIf { it in 0..127 } ?: guessProgramFromVoiceName(c.voiceName)
@@ -568,6 +585,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                     93 -> state.chorusSend = e.velocity
                 }
             }
+            if (override?.muted == true) { applied += destination; return@forEach }
             val styleBank = sourcePart.bankMsb.coerceIn(0,127) * 128 + sourcePart.bankLsb.coerceIn(0,127)
             val audioBank = if (drum) 128 else styleBank
             val midiMsb = if (drum) 127 else sourcePart.bankMsb.coerceIn(0,127)
@@ -575,21 +593,9 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             val stringVoice = c.voiceName.lowercase().let {
                 it.contains("string") || it.contains("strg") || it.contains("strings")
             }
-            val volume = if (override?.volume != null) {
-                override.volume
-            } else if (stringVoice && destination in 13..14) {
-                maxOf(state.volume, 100)
-            } else {
-                state.volume
-            }
+            val volume = if (override?.muted == true) 0 else styleTrim(state.volume, override?.volume ?: 127)
             val pan = override?.pan ?: state.pan
-            val expression = if (override?.expression != null) {
-                override.expression
-            } else if (stringVoice && destination in 13..14) {
-                maxOf(state.expression, 100)
-            } else {
-                state.expression
-            }
+            val expression = effectiveExpression(destination, state.expression)
             val reverb = override?.reverbSend ?: state.reverbSend
             val chorus = override?.chorusSend ?: state.chorusSend
             val nativeState = AppliedChannelState(prog, audioBank, volume.coerceIn(0,127), pan.coerceIn(0,127),
@@ -637,19 +643,26 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         }
         val ov = channelOverrides[destinationChannel]
         // An expression event must not resend cached raw CC7 over the effective
-        // volume already installed at section activation (e.g. Strings 100).
+        // CC7 trim/mute already installed; CC11 retains the style envelope.
         if (event.note == 11) {
-            audioEngine.setChannelExpression(destinationChannel, ov?.expression ?: state.expression)
+            audioEngine.setChannelExpression(destinationChannel, effectiveExpression(destinationChannel, state.expression))
             return
         }
-        audioEngine.setChannelMixer(
-            destinationChannel,
-            volume = if (ov?.muted == true) 0 else state.volume,
-            pan = ov?.pan ?: state.pan,
-            expression = ov?.expression ?: state.expression,
-            reverbSend = ov?.reverbSend ?: state.reverbSend,
-            chorusSend = ov?.chorusSend ?: state.chorusSend
-        )
+        applyEffectiveMixer(destinationChannel)
+    }
+
+    // A trim never raises the source CC value or destroys intentional zeroes.
+    private fun styleTrim(source: Int, trim: Int): Int =
+        (source.coerceIn(0,127) * trim.coerceIn(0,127) + 63) / 127
+
+    private fun applyEffectiveMixer(channel: Int) {
+        if (channel !in 4..15) return
+        val state = mixerStates[channel]
+        val ov = channelOverrides[channel]
+        audioEngine.setChannelMixer(channel,
+            if (ov?.muted == true) 0 else styleTrim(state.volume, ov?.volume ?: 127),
+            ov?.pan ?: state.pan, effectiveExpression(channel, state.expression),
+            ov?.reverbSend ?: state.reverbSend, ov?.chorusSend ?: state.chorusSend)
     }
 
     private fun guessProgramFromVoiceName(name:String):Int{val n=name.lowercase();val numeric=Regex("(?:^|\\D)(\\d{1,3})\\s*$").find(n)?.groupValues?.getOrNull(1)?.toIntOrNull();if(numeric!=null&&numeric in 0..127)return numeric;return when{n.contains("piano")->0;n.contains("e.piano")||n.contains("ep")->4;n.contains("organ")->16;n.contains("accordion")->21;n.contains("guitar")||n.contains("gtr")->24;n.contains("bass")->33;n.contains("violin")->40;n.contains("cello")->42;n.contains("strg")||n.contains("str")->48;n.contains("choir")->52;n.contains("trumpet")->56;n.contains("trombone")->57;n.contains("brass")->61;n.contains("sax")->65;n.contains("oboe")->68;n.contains("clarinet")->71;n.contains("flute")->73;isDrumVoice(n)->0;n.contains("pad")->89;else->-1}}

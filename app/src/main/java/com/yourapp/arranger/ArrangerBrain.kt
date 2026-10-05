@@ -520,6 +520,8 @@ class ArrangerBrain @Inject constructor(
         sequencer.setChannelOverride(channel, override)
     }
 
+    fun setStyleBusTrim(value: Int) { ensureSequencer(); sequencer.setStyleBusTrim(value) }
+
     fun setStyleChannelVolume(channel: Int, volume: Int) {
         ensureSequencer()
         sequencer.setChannelVolume(channel, volume)
@@ -539,10 +541,10 @@ class ArrangerBrain @Inject constructor(
     fun setStyleChannelMixer(
         channel: Int,
         volume: Int,
-        pan: Int,
+        pan: Int?,
         expression: Int,
-        reverbSend: Int,
-        chorusSend: Int
+        reverbSend: Int?,
+        chorusSend: Int?
     ) {
         ensureSequencer()
         sequencer.setChannelMixer(channel, volume, pan, expression, reverbSend, chorusSend)

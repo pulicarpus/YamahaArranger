@@ -8,6 +8,7 @@
 #include "chord_change_diagnostic.h"
 #include "sf2_zone_diagnostic.h"
 #include "drum_kit_audit.h"
+#include "percussion_fidelity_policy.h"
 #include "drum_compatibility_report.h"
 #include "drum_compatibility_comparison.h"
 #include <bass.h>
@@ -124,6 +125,28 @@ private:
                            std::string& matchedName, int& sourceFont) const;
     bool findDrumPreset(const std::string& path, int requestedProgram,
                         int& sourceBank, int& sourceProgram) const;
+    // New bounded, drum-only compatible substitutions. Old Stage 3 remains absent.
+    struct PercussionLane {
+        HSTREAM stream=0; uint64_t generation=0; int requestedPc=-1;
+        std::array<percussion_fidelity::Candidate,128> routes{};
+        std::array<int,128> groups{};
+        std::array<bool,128> actualVerified{};
+        std::array<uint64_t,128> legacyLifetimeFrames{};
+        std::array<percussion_fidelity::Owners,128> owners{};
+        uint64_t mappedOns=0,legacyOns=0,failedOns=0,overflowOns=0,chokes=0;
+    };
+    std::array<PercussionLane,2> percussionLanes_{};
+    std::vector<percussion_fidelity::Candidate> percussionCandidates_;
+    std::vector<percussion_fidelity::Candidate> percussionAllCandidates_;
+    std::map<std::string,std::string> percussionFingerprints_;
+    uint64_t percussionGeneration_=0,percussionRenderedFrames_=0;
+    void retirePercussionStreams();
+    void rebuildPercussionCatalog(); // only on paused SF2 load/import
+    void preparePercussionLane(int channel,int requestedPc);
+    void mirrorPercussionController(int channel,DWORD event,DWORD param);
+    bool percussionOn(int channel,int key,int velocity,const AudioPathOrigin& origin,bool& accepted);
+    bool percussionOff(int channel,int key,const AudioPathOrigin& origin);
+    void renderPercussion(float* out,int frames);
     HSTREAM stream_ = 0;
     HSOUNDFONT melodyFont_ = 0;
     HSOUNDFONT drumFont_ = 0;

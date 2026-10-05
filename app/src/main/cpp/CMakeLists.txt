@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(yamahaarranger)
+option(YAMAHA_COMPATIBLE_PERCUSSION "Bounded compatible percussion device test; old Stage 3 absent" OFF)
 find_package(oboe REQUIRED CONFIG)
 set(JNILIBS_DIR ${CMAKE_SOURCE_DIR}/../jniLibs/${CMAKE_ANDROID_ARCH_ABI})
 set(BASS_SDK_DIR ${CMAKE_CURRENT_SOURCE_DIR}/basssdk)
@@ -39,3 +40,7 @@ target_link_libraries(yamaha_arranger_native
     fluidsynth_assetloader)
 
 target_compile_options(yamaha_arranger_native PRIVATE -Wall -Wextra)
+
+if(YAMAHA_COMPATIBLE_PERCUSSION)
+    target_compile_definitions(yamaha_arranger_native PRIVATE YAMAHA_COMPATIBLE_PERCUSSION=1)
+endif()

@@ -71,6 +71,13 @@ with tempfile.TemporaryDirectory(prefix="yamaha-resolver-") as directory:
                     str(root / "app/src/main/cpp/bassmidi_player.cpp"), "-o", str(presence_executable)], check=True)
     subprocess.run([str(presence_executable), directory], check=True)
 
+    percussion_executable = Path(directory) / "percussion_fidelity_test"
+    subprocess.run([compiler, "-std=c++17", "-Wall", "-Wextra", "-O2", "-pthread", "-DYAMAHA_COMPATIBLE_PERCUSSION=1",
+                    "-I", str(root / "tests/mocks"), "-I", str(root / "app/src/main/cpp"), "-I", str(root / "tests"),
+                    str(root / "tests/percussion_fidelity_test.cpp"), str(root / "app/src/main/cpp/bassmidi_player.cpp"),
+                    "-o", str(percussion_executable)], check=True)
+    subprocess.run([str(percussion_executable), directory], check=True)
+
     shadow_executable = Path(directory) / "drum_shadow_readonly_test"
     subprocess.run([compiler, "-std=c++17", "-Wall", "-Wextra", "-O2", "-pthread", "-DSHADOW_OBSERVATION=1",
                     "-I", str(root / "tests/mocks"), "-I", str(root / "app/src/main/cpp"),
@@ -80,3 +87,6 @@ with tempfile.TemporaryDirectory(prefix="yamaha-resolver-") as directory:
 subprocess.run(["python3",str(root / "tools/test_drum_shadow_guards.py")],check=True)
 
 subprocess.run(["python3",str(root / "tools/test_production_regression_bypass.py")],check=True)
+
+subprocess.run(["python3",str(root / "tools/test_mix_percussion_boundaries.py")],check=True)
+subprocess.run(["python3",str(root / "tools/evaluate_percussion_inventory.py")],check=True)

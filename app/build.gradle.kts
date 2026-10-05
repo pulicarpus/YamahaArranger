@@ -45,6 +45,9 @@ android {
     }
 
     buildTypes {
+        debug {
+            externalNativeBuild { cmake { arguments += "-DYAMAHA_COMPATIBLE_PERCUSSION=ON" } }
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")

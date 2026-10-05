@@ -15,6 +15,7 @@ on:
       - diag/sf2-semantic-inventory
       - fix/accompaniment-presence-781
       - test/bank-translation-783
+      - fix/mix-percussion-fidelity-784
     paths-ignore:
       - "docs/**"
       - "PROJECT_NOTES.md"
@@ -52,6 +53,15 @@ jobs:
           python3 tools/test_voice_resolver.py
           python3 tools/compare_drum_shadow_baseline.py .shadow-baseline
           python3 tools/compare_drum_shadow_baseline.py .shadow-baseline772 --label baseline772
+      - name: Test compatible percussion with actual BASSMIDI SDK
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/bass-linux /tmp/bassmidi-linux
+          curl -fL https://www.un4seen.com/files/bass24-linux.zip -o /tmp/bass-linux.zip
+          curl -fL https://www.un4seen.com/files/bassmidi24-linux.zip -o /tmp/bassmidi-linux.zip
+          unzip -q /tmp/bass-linux.zip -d /tmp/bass-linux
+          unzip -q /tmp/bassmidi-linux.zip -d /tmp/bassmidi-linux
+          python3 tools/test_percussion_real_bass.py /tmp/bass-linux /tmp/bassmidi-linux
       - name: "Check out #773 engineering baseline (read only)"
         uses: actions/checkout@v4
         with:
@@ -175,8 +185,18 @@ jobs:
             tests/fixtures/accompaniment_presence781_patch.json
             docs/ACCOMPANIMENT_PRESENCE_781.md
             docs/BANK_READBACK_783.md
+      - name: Upload mix and percussion proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: mix-percussion-proof
+          path: |
+            build/percussion-inventory-replay.txt
+            build/percussion-real-bass-proof.txt
+            app/build/test-results/testDebugUnitTest/TEST-*StyleMixFidelity*.xml
+            docs/MIX_PERCUSSION_FIDELITY_784.md
+            tests/fixtures/mix_percussion784_protected_methods.json
       - name: Send APK to Telegram
-        if: github.ref != 'refs/heads/diag/sf2-semantic-inventory' && github.ref != 'refs/heads/fix/accompaniment-presence-781' && github.ref != 'refs/heads/test/bank-translation-783'
+        if: github.ref != 'refs/heads/diag/sf2-semantic-inventory' && github.ref != 'refs/heads/fix/accompaniment-presence-781' && github.ref != 'refs/heads/test/bank-translation-783' && github.ref != 'refs/heads/fix/mix-percussion-fidelity-784'
         continue-on-error: true
         uses: appleboy/telegram-action@master
         with:

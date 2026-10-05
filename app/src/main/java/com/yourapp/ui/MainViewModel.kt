@@ -56,7 +56,7 @@ object DebugLog {
 
 data class VoiceSlot(
     val channel: Int, val label: String, val program: Int, val bank: Int = 0,
-    val locked: Boolean = false, val styleVolume: Int = 100, val styleMuted: Boolean = false,
+    val locked: Boolean = false, val styleVolume: Int = 127, val styleMuted: Boolean = false,
     val stylePan: Int = 64, val styleExpression: Int = 127,
     val styleReverb: Int = 40, val styleChorus: Int = 0, val sf2Name: String? = null
 ) {
@@ -157,7 +157,7 @@ data class MainUiState(
     val styleName: String = "No Style Loaded", val tempoBpm: Int = 120, val transpose: Int = 0,
     val isPlaying: Boolean = false, val activeSection: String = "Main A", val detectedChordLabel: String = "", val autoFill: Boolean = true,
     val midiStatus: String = "No MIDI device", val midiOutEnabled: Boolean = false, val soundFontName: String = "None",
-    val styleVolume: Int = 100, val leftVolume: Int = 100, val right1Volume: Int = 100, val right2Volume: Int = 100, val right3Volume: Int = 100, val masterVolume: Int = 100,
+    val styleVolume: Int = 127, val leftVolume: Int = 100, val right1Volume: Int = 100, val right2Volume: Int = 100, val right3Volume: Int = 100, val masterVolume: Int = 100,
     val activeBank: Int = 1, val activeRegSlot: Int = 0, val voiceName: String = "GrandPiano",
     val right2Name: String = "OFF", val splitPoint: String = "C4",
     val acmpEnabled: Boolean = true, val leftVoiceEnabled: Boolean = true, val sustainEnabled: Boolean = false, val releaseTime: Int = 64,
@@ -192,7 +192,7 @@ class MainViewModel @Inject constructor(
     private val _sf2Presets = MutableStateFlow<List<AudioEngineManager.SfPreset>>(emptyList())
     private val _sf2Reports = MutableStateFlow<List<SoundFontInspector.Report>>(emptyList())
     private val _sf2ScanInProgress = MutableStateFlow(false)
-    private val _styleVolume = MutableStateFlow(100)
+    private val _styleVolume = MutableStateFlow(127)
     private val _leftVolume = MutableStateFlow(100)
     private val _right1Volume = MutableStateFlow(100)
     private val _right2Volume = MutableStateFlow(100)
@@ -388,8 +388,7 @@ class MainViewModel @Inject constructor(
     }
     fun onStyleVolumeChange(value: Int) {
         val v = value.coerceIn(0, 127); _styleVolume.value = v
-        // Style parts currently render on destination channels 8..15.
-        for (ch in 8..15) audioEngine.setChannelExpression(ch, v)
+        arrangerBrain.setStyleBusTrim(v)
     }
     fun onLeftVolumeChange(value: Int) { _leftVolume.value = value.coerceIn(0, 127); audioEngine.setChannelExpression(3, _leftVolume.value) }
     fun onRight1VolumeChange(value: Int) { _right1Volume.value = value.coerceIn(0, 127); audioEngine.setChannelExpression(0, _right1Volume.value) }
@@ -447,7 +446,7 @@ class MainViewModel @Inject constructor(
 
     /** Build the mixer from channels/instruments actually present in the loaded style. */
     private fun voiceSlotsFromStyle(style: com.yourapp.yamahaarranger.style.ParsedStyle): List<VoiceSlot> {
-        data class Candidate(val name: String, val program: Int, val bank: Int)
+        data class Candidate(val name: String, val program: Int, val bank: Int, val pan: Int, val reverb: Int, val chorus: Int)
         val candidates = linkedMapOf<Int, Candidate>()
 
         style.sections.values.forEach { section ->
@@ -475,7 +474,8 @@ class MainViewModel @Inject constructor(
 
                 // Keep the first explicit instrument for a destination. CASM can
                 // legitimately have multiple source channels feeding one destination.
-                if (channel !in candidates) candidates[channel] = Candidate(styleName, program, bank)
+                if (channel !in candidates) candidates[channel] = Candidate(styleName, program, bank, part.pan.takeIf { it in 0..127 } ?: 64,
+                    part.reverbSend.takeIf { it in 0..127 } ?: 40, part.chorusSend.takeIf { it in 0..127 } ?: 0)
             }
         }
 
@@ -495,7 +495,8 @@ class MainViewModel @Inject constructor(
                 label = "Ch$channel ($role)",
                 program = candidate.program,
                 bank = candidate.bank,
-                sf2Name = candidate.name
+                sf2Name = candidate.name, stylePan = candidate.pan,
+                styleReverb = candidate.reverb, styleChorus = candidate.chorus
             )
         }
     }
@@ -520,6 +521,7 @@ class MainViewModel @Inject constructor(
     }
 
     fun setStyleChannelMixer(channel: Int, volume: Int, pan: Int, expression: Int, reverb: Int, chorus: Int) {
+        val previous = _voiceAssignments.value.firstOrNull { it.channel == channel } ?: return
         val v = volume.coerceIn(0, 127)
         val p = pan.coerceIn(0, 127)
         val e = expression.coerceIn(0, 127)
@@ -528,7 +530,8 @@ class MainViewModel @Inject constructor(
         _voiceAssignments.value = _voiceAssignments.value.map { slot ->
             if (slot.channel == channel) slot.copy(styleVolume = v, stylePan = p, styleExpression = e, styleReverb = r, styleChorus = c) else slot
         }
-        arrangerBrain.setStyleChannelMixer(channel, v, p, e, r, c)
+        arrangerBrain.setStyleChannelMixer(channel, v, p.takeIf { it != previous.stylePan }, e,
+            r.takeIf { it != previous.styleReverb }, c.takeIf { it != previous.styleChorus })
     }
 
     fun toggleStyleChannelMute(channel: Int) {

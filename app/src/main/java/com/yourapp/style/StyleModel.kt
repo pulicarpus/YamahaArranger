@@ -38,17 +38,17 @@ data class CasmPolicyModel(
     val sourceNoteHigh: Int = 127
 )
 
-/** Runtime overrides for a style destination channel. These do not modify the source style file. */
+/** Style-only CC7/CC11 trims (127 = unity); optional controller overrides. Source MIDI stays intact. */
 data class StyleChannelOverride(
     val volume: Int = 127,
     val program: Int? = null,
     val bank: Int? = null,
     val transpose: Int = 0,
     val muted: Boolean = false,
-    val pan: Int = 64,
+    val pan: Int? = null,
     val expression: Int = 127,
-    val reverbSend: Int = 40,
-    val chorusSend: Int = 0
+    val reverbSend: Int? = null,
+    val chorusSend: Int? = null
 )
 
 data class StylePartModel(

@@ -1,0 +1,88 @@
+[
+  {
+    "path": "app/src/main/cpp/bassmidi_player.cpp",
+    "method": "bool BassMidiPlayer::applyFonts()",
+    "sha256": "86cf7bf9b6be92432a38be406d2aeb7e17b918ec682f1687b4a7a52e8a60882d"
+  },
+  {
+    "path": "app/src/main/cpp/bassmidi_player.cpp",
+    "method": "bool BassMidiPlayer::normalizeMelodySf2(",
+    "sha256": "27bccd5cf1df469997de5980f3998ac2b1591727252c820947d1b1df9ef5c370"
+  },
+  {
+    "path": "app/src/main/cpp/bassmidi_player.cpp",
+    "method": "bool BassMidiPlayer::findMelodicPreset(",
+    "sha256": "241e45dcae9c5ea1f15d4dca779c9083262563ee6ce4ca970c11276199b6a0ef"
+  },
+  {
+    "path": "app/src/main/cpp/bassmidi_player.cpp",
+    "method": "void BassMidiPlayer::refreshMelodicChannels()",
+    "sha256": "03d625d935901d407a14e5bab2284887b946e639205382b82ecbd01eef0d0bd4"
+  },
+  {
+    "path": "app/src/main/cpp/bassmidi_player.cpp",
+    "method": "bool BassMidiPlayer::findDrumPreset(",
+    "sha256": "33973b5374bda3929d0b1571a633979fd1585b8ba268bab6b2eda52119f44288"
+  },
+  {
+    "path": "app/src/main/cpp/bassmidi_player.cpp",
+    "method": "bool BassMidiPlayer::publishedFontTableIntact()",
+    "sha256": "3dbbdd583047717a1557aa833bee0b59fd1f4597895872d16b00d3c5c296eb8f"
+  },
+  {
+    "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt",
+    "method": "fun queueSeamlessTransition(",
+    "sha256": "46171385fc43df5c8c208e4b07ecd903c989a08d81ea28b5d73ae579f7dc7fc1"
+  },
+  {
+    "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt",
+    "method": "private suspend fun playOnce(",
+    "sha256": "1db092880d030ac20b4ee68ef1bdbd737e5db90798302c4e2fd29184d3c0840d"
+  },
+  {
+    "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt",
+    "method": "private fun selectPolicy(",
+    "sha256": "6f66f51e7628a51790f612c215fcb82a9005925b23fa82b6b1caf1dfd7cfb00e"
+  },
+  {
+    "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt",
+    "method": "private fun endScheduledNote(",
+    "sha256": "6b7cb5780ffcca5da6adb45300a6d90da4cac871868f16dcf1a36d885bbca41c"
+  },
+  {
+    "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt",
+    "method": "private fun releaseActive(",
+    "sha256": "9c682ebb8eeb29fa53c961471820f8041d41d1e86bfe3ca3c3c6ac29db854fe8"
+  },
+  {
+    "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt",
+    "method": "private fun isDrumDestination(",
+    "sha256": "cb0994201b373959f0ac41a9bc14ce4cda8992f82ef2c06e1d1159d92f112916"
+  },
+  {
+    "path": "app/src/main/cpp/bassmidi_player.cpp",
+    "method": "void BassMidiPlayer::setChannelPreset(",
+    "strip": [
+      "    if(wantDrum) preparePercussionLane(channel, audioDiagnostics_[channel].requestedPc);\n"
+    ],
+    "sha256": "ed9e32c1c287f52d4adef25f077bbc55f6375c7968e96edc8f8ff28f223abdc5"
+  },
+  {
+    "path": "app/src/main/cpp/bassmidi_player.cpp",
+    "method": "bool BassMidiPlayer::send(",
+    "strip": [
+      "    if (sent) mirrorPercussionController(channel,event,param);\n"
+    ],
+    "sha256": "ac1523105ea1c7d9aca47334455d5e7121314f2dfc882ef9605a7829bc71e83c"
+  },
+  {
+    "path": "app/src/main/cpp/bassmidi_player.cpp",
+    "method": "void BassMidiPlayer::setChannelMixer(",
+    "sha256": "e36868bedb8ceb0956a218eb4d0860c5bdeb754bdded2c0cb396a19013a2e79a"
+  },
+  {
+    "path": "app/src/main/cpp/bassmidi_player.cpp",
+    "method": "void BassMidiPlayer::setChannelExpression(",
+    "sha256": "e3140c42f7c603ff8cbcd3fbadafead8395a790b08d450873be082251727da4d"
+  }
+]

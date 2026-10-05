@@ -69,7 +69,7 @@ class StyleExpressionRegressionTest {
         f.override(StyleChannelOverride(muted = true, expression = 90))
         f.cc(11, 126)
         assertEquals(0, f.volume)
-        assertEquals(90, f.expression)
+        assertEquals(89, f.expression)
         assertEquals(0, f.mixerWrites)
     }
     @Test fun expressionPreservesIntentionallyInstalledUserVolume() {
@@ -77,7 +77,7 @@ class StyleExpressionRegressionTest {
         f.override(StyleChannelOverride(volume = 55, expression = 85))
         f.cc(11, 126)
         assertEquals(55, f.volume)
-        assertEquals(85, f.expression)
+        assertEquals(84, f.expression)
     }
     @Test fun invalidOrUnrelatedControllersDoNotWriteMixer() {
         val f = Fixture()
