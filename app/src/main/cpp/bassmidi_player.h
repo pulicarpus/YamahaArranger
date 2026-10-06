@@ -8,6 +8,10 @@
 #include "role_pcm_meter.h"
 // MEASURED_BALANCE_BEGIN
 #include "measured_balance_profiles.h"
+// HEADROOM_OBSERVER_BEGIN
+#include "pcm_headroom.h"
+// HEADROOM_OBSERVER_END
+
 // MEASURED_BALANCE_END
 
 // PCM_PATH_OBSERVER_BEGIN
@@ -114,6 +118,12 @@ private:
 #endif
 // PCM_PATH_OBSERVER_END
 
+
+// HEADROOM_OBSERVER_BEGIN
+#if YAMAHA_PCM_HEADROOM
+    pcm_headroom::Meter headroom_;
+#endif
+// HEADROOM_OBSERVER_END
     double pcmEnergy_=0;float pcmPeak_=0;
 
     struct RolePcmWindow {
@@ -131,6 +141,12 @@ private:
         role_pcm::Level level;role_pcm::Input input;
     };
     struct RolePcmMeter {
+// HEADROOM_OBSERVER_BEGIN
+#if YAMAHA_PCM_HEADROOM
+        pcm_headroom::Level blockPost;
+#endif
+// HEADROOM_OBSERVER_END
+
         HSTREAM stream=0;HDSP dsp=0;int current=-1,count=0,error=0;
         uint64_t omittedWindows=0;
         std::array<RolePcmWindow,8> windows{};
@@ -138,6 +154,12 @@ private:
 
 // MEASURED_BALANCE_BEGIN
     struct MeasuredBalance {
+// HEADROOM_OBSERVER_BEGIN
+#if YAMAHA_PCM_HEADROOM
+        pcm_headroom::Level blockPre;float blockGainMin=1,blockGainMax=1;
+#endif
+// HEADROOM_OBSERVER_END
+
         HSTREAM stream=0;HDSP dsp=0;int error=0;
         measured_balance::Ramp ramp;
         float db=0;std::string fingerprint,evidence="NONE";

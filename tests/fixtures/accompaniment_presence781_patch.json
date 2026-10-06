@@ -1,13 +1,13 @@
 {
   "app/src/main/cpp/bassmidi_player.cpp": {
     "baseline776": "98c388e513f09b00dfa460959eb125f344d943dfea0dc484563a86dff20cf7ab",
-    "reviewedPresencePatch": "8631241cc0ce4a6c37ab85ce831e870c51c842b007eb698ffcb435e658431885",
-    "scope": "#786 working presence preserved; read-only melodic role PCM meters only; no gain/routing/controller correction; callback/lifecycle/decode observation only, musical body pinned to #787; measured response trim only, MIDI/state code pinned"
+    "reviewedPresencePatch": "b500ba1b279e4c7ebd80f04f6c01bc8537a68335c8c74524a2149f12f298d34e",
+    "scope": "#786 working presence preserved; read-only melodic role PCM meters only; no gain/routing/controller correction; callback/lifecycle/decode observation only, musical body pinned to #787; measured response trim only, MIDI/state code pinned; #791 musical body identical after enumerated read-only headroom observers"
   },
   "app/src/main/cpp/bassmidi_player.h": {
     "baseline776": "e00e493c6a4c0e0e83acb33375df2aa96032bce0d4bfc6d1a9c69889f6d18537",
-    "reviewedPresencePatch": "7a073e9881ef00ed34b804f9a6b4669dc2dbd01e1c8c4c99fe7021b76f0ae966",
-    "scope": "#786 working presence preserved; read-only melodic role PCM meters only; no gain/routing/controller correction; callback/lifecycle/decode observation only, musical body pinned to #787; measured response trim only, MIDI/state code pinned"
+    "reviewedPresencePatch": "acbe85d6f83fba70af15d083c8ddcae18094f6fab442b762073d1bf45e1f5b35",
+    "scope": "#786 working presence preserved; read-only melodic role PCM meters only; no gain/routing/controller correction; callback/lifecycle/decode observation only, musical body pinned to #787; measured response trim only, MIDI/state code pinned; #791 musical body identical after enumerated read-only headroom observers"
   },
   "app/src/main/java/com/yourapp/ui/MainViewModel.kt": {
     "baseline776": "5a21f927d3ffdcc9ce000373f9c9bce430457e07b1baf6f7d69f51543a48fc89",

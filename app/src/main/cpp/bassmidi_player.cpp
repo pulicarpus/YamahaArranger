@@ -1505,6 +1505,12 @@ std::vector<unsigned char> BassMidiPlayer::diagnosticDrumWav(int bank,int pc,int
 
 std::string BassMidiPlayer::noteZoneReport() const {
     std::map<std::string,NoteZoneObservation> snapshot; bool limited;
+// HEADROOM_OBSERVER_BEGIN
+#if YAMAHA_PCM_HEADROOM
+    pcm_headroom::Meter headroom;float snapshotMaster=0;bool masterOk=false;
+#endif
+// HEADROOM_OBSERVER_END
+
     std::array<RolePcmMeter,6> meters;
 // MEASURED_BALANCE_BEGIN
     std::array<MeasuredBalance,6> balance;
@@ -1528,6 +1534,12 @@ std::string BassMidiPlayer::noteZoneReport() const {
     std::array<NativeRow,8> native;
     {
         std::lock_guard<std::mutex> lock(mutex_);
+
+// HEADROOM_OBSERVER_BEGIN
+#if YAMAHA_PCM_HEADROOM
+        headroom=headroom_;masterOk=stream_ && BASS_ChannelGetAttribute(stream_,BASS_ATTRIB_MIDI_VOL,&snapshotMaster);
+#endif
+// HEADROOM_OBSERVER_END
         snapshot=noteZoneRows_;limited=noteZoneLimit_;meters=rolePcmMeters_;inventories=melodicZoneInventories_;
 // MEASURED_BALANCE_BEGIN
         balance=measuredBalance_;
@@ -1586,6 +1598,12 @@ std::string BassMidiPlayer::noteZoneReport() const {
 
     } // No render/UI synth lock during formatting, layer scans, or detailedMatch.
     std::ostringstream presence;
+// HEADROOM_OBSERVER_BEGIN
+#if YAMAHA_PCM_HEADROOM
+    presence << headroom.report(snapshotMaster,masterOk);
+#endif
+// HEADROOM_OBSERVER_END
+
         presence << "=== ACCOMPANIMENT PART PRESENCE / NATIVE ===\n"
             << "counters=process_lifetime explicit_style_origins_only; last binding and current mappingGeneration=" << generation
             << "; accepted_event_not_audible_PCM; snapshot_never_sends_MIDI\n";
@@ -1919,6 +1937,13 @@ void BassMidiPlayer::render(float* out, int numFrames) {
         return;
     }
 
+
+// HEADROOM_OBSERVER_BEGIN
+#if YAMAHA_PCM_HEADROOM
+    headroom_.begin(pcmDecode_.calls,pcmSamples_/2,fontMappingGeneration_);
+    for(unsigned i=0;i<6;++i){rolePcmMeters_[i].blockPost={};auto& b=measuredBalance_[i];b.blockPre={};b.blockGainMin=b.blockGainMax=b.ramp.current;}
+#endif
+// HEADROOM_OBSERVER_END
     const DWORD wanted =
         static_cast<DWORD>(numFrames * 2 * sizeof(float));
     const DWORD got = BASS_ChannelGetData(
@@ -1946,7 +1971,20 @@ void BassMidiPlayer::render(float* out, int numFrames) {
     if (samples < numFrames * 2) {
         std::fill(out + samples, out + numFrames * 2, 0.0f);
     }
+
+// HEADROOM_OBSERVER_BEGIN
+#if YAMAHA_PCM_HEADROOM
+    for(unsigned i=0;i<6;++i){const auto& b=measuredBalance_[i];headroom_.role(i,b.blockPre,rolePcmMeters_[i].blockPost,bool(b.dsp),b.blockGainMin,b.blockGainMax);}
+    headroom_.current.parent.consume(out,numFrames*2);
+#endif
+// HEADROOM_OBSERVER_END
     renderPercussion(out,numFrames);
+// HEADROOM_OBSERVER_BEGIN
+#if YAMAHA_PCM_HEADROOM
+    headroom_.finish(out,numFrames*2);
+#endif
+// HEADROOM_OBSERVER_END
+
     // Sum before AudioEngine's existing output clamp. O(n) PCM only, no MIDI,
     // allocation/logging or synth-state change; exports never render extra notes.
     for(int i=0;i<numFrames*2;++i) {
@@ -2323,6 +2361,12 @@ void BassMidiPlayer::renderPercussion(float* out,int frames) {
         const DWORD got=BASS_ChannelGetData(lane.stream,scratch.data(),DWORD(count*2*sizeof(float))|BASS_DATA_FLOAT);
         if(got==DWORD(-1) || !got) {lane.requestedPc=-1;break;}
         const int samples=std::min(count*2,int(got/sizeof(float)));
+
+// HEADROOM_OBSERVER_BEGIN
+#if YAMAHA_PCM_HEADROOM
+        headroom_.current.lanes[&lane-percussionLanes_.data()].consume(scratch.data(),samples);
+#endif
+// HEADROOM_OBSERVER_END
         for(int i=0;i<samples;++i)out[offset*2+i]+=scratch[i];
         offset+=count;
     }
@@ -2332,6 +2376,12 @@ void CALLBACK BassMidiPlayer::rolePcmTap(HDSP,DWORD,void* buffer,DWORD length,vo
     // BASS calls this during the parent's synchronous decode, under mutex_.
     // Channel streams are always float. Never call BASS, allocate, log, or write buffer.
     auto& meter=*static_cast<RolePcmMeter*>(user);
+// HEADROOM_OBSERVER_BEGIN
+#if YAMAHA_PCM_HEADROOM
+    if(buffer)meter.blockPost.consume(static_cast<const float*>(buffer),length/sizeof(float));
+#endif
+// HEADROOM_OBSERVER_END
+
     if(buffer && meter.current>=0)
         meter.windows[meter.current].level.consume(static_cast<const float*>(buffer),length/sizeof(float));
 }
@@ -2527,7 +2577,20 @@ std::string BassMidiPlayer::rolePcmReport(
 
 // MEASURED_BALANCE_BEGIN
 void CALLBACK BassMidiPlayer::measuredBalanceTap(HDSP,DWORD,void* buffer,DWORD length,void* user) {
+
+// HEADROOM_OBSERVER_BEGIN
+#if YAMAHA_PCM_HEADROOM
+    auto& b=*static_cast<MeasuredBalance*>(user);
+    if(buffer){b.blockPre.consume(static_cast<const float*>(buffer),length/sizeof(float));b.blockGainMin=std::min(b.blockGainMin,b.ramp.current);b.blockGainMax=std::max(b.blockGainMax,b.ramp.current);}
+#endif
+// HEADROOM_OBSERVER_END
     if(buffer)static_cast<MeasuredBalance*>(user)->ramp.process(static_cast<float*>(buffer),length/sizeof(float));
+// HEADROOM_OBSERVER_BEGIN
+#if YAMAHA_PCM_HEADROOM
+    b.blockGainMin=std::min(b.blockGainMin,b.ramp.current);b.blockGainMax=std::max(b.blockGainMax,b.ramp.current);
+#endif
+// HEADROOM_OBSERVER_END
+
 }
 void BassMidiPlayer::clearMeasuredBalance() {
     for(auto& b:measuredBalance_) {

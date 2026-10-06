@@ -115,6 +115,7 @@ jobs:
           python3 tools/compare_diagnostic788_audio.py .baseline787 /tmp/bass-linux /tmp/bassmidi-linux
           python3 tools/test_pcm_path_evidence.py .baseline787 /tmp/bass-linux /tmp/bassmidi-linux
           python3 tools/test_measured_balance.py /tmp/bass-linux /tmp/bassmidi-linux
+          python3 tools/test_pcm_headroom.py /tmp/bass-linux /tmp/bassmidi-linux
       - name: Accept Android SDK licenses
         run: yes $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
       - name: Set up Android NDK r26d
@@ -219,6 +220,9 @@ jobs:
             build/role-pcm-real-report.txt
             build/diagnostic788-audio-proof.txt
             build/pcm-path-proof.txt
+            build/headroom-proof.txt
+            build/headroom-*.txt
+            docs/PCM_HEADROOM_792.md
             build/balance791-proof.txt
             build/balance791-*-response.tsv
             build/balance791-*-balance-report.txt
