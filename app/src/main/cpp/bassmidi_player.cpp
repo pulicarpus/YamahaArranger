@@ -1505,6 +1505,12 @@ std::string BassMidiPlayer::noteZoneReport() const {
     std::map<std::string,std::shared_ptr<const sf2_zones::Inventory>> inventories;
     std::array<VelocityEvidence,16> velocities;
     uint64_t generation,samples,clipped,nonfinite;double energy;float peak;
+// PCM_PATH_OBSERVER_BEGIN
+#if YAMAHA_ROLE_PCM_METERS
+    pcm_path::Decode decode;
+#endif
+// PCM_PATH_OBSERVER_END
+
     struct RouteRow {percussion_fidelity::Candidate route;int key,group;bool verified,attempted;};
     struct LaneRow {int requestedPc;HSTREAM stream;uint64_t generation,mappedOns,legacyOns,failedOns,overflowOns,chokes;
         bool active;std::vector<RouteRow> routes;};
@@ -1517,6 +1523,12 @@ std::string BassMidiPlayer::noteZoneReport() const {
         snapshot=noteZoneRows_;limited=noteZoneLimit_;meters=rolePcmMeters_;inventories=melodicZoneInventories_;
         velocities=styleVelocityEvidence_;generation=fontMappingGeneration_;samples=pcmSamples_;
         clipped=pcmClipped_;nonfinite=pcmNonfinite_;energy=pcmEnergy_;peak=pcmPeak_;
+// PCM_PATH_OBSERVER_BEGIN
+#if YAMAHA_ROLE_PCM_METERS
+        decode=pcmDecode_;
+#endif
+// PCM_PATH_OBSERVER_END
+
         for(int part=0;part<2;++part) {
             const auto& lane=percussionLanes_[part];auto& row=lanes[part];
             row.requestedPc=lane.requestedPc;row.stream=lane.stream;row.generation=lane.generation;
@@ -1565,6 +1577,12 @@ std::string BassMidiPlayer::noteZoneReport() const {
         presence << "=== ACCOMPANIMENT PART PRESENCE / NATIVE ===\n"
             << "counters=process_lifetime explicit_style_origins_only; last binding and current mappingGeneration=" << generation
             << "; accepted_event_not_audible_PCM; snapshot_never_sends_MIDI\n";
+
+// PCM_PATH_OBSERVER_BEGIN
+#if YAMAHA_ROLE_PCM_METERS
+        presence << decode.report();
+#endif
+// PCM_PATH_OBSERVER_END
         presence << "PCM_MIX samples=" << samples << " peak=" << peak
             << " rms=" << (samples?std::sqrt(energy/samples):0)
             << " clippedSamples=" << clipped << " nonfiniteSamples=" << nonfinite
@@ -1863,7 +1881,19 @@ std::string BassMidiPlayer::presetList() const {
 
 void BassMidiPlayer::render(float* out, int numFrames) {
     std::lock_guard<std::mutex> lock(mutex_);
+// PCM_PATH_OBSERVER_BEGIN
+#if YAMAHA_ROLE_PCM_METERS
+    ++pcmDecode_.calls;
+#endif
+// PCM_PATH_OBSERVER_END
+
     if (!stream_) {
+// PCM_PATH_OBSERVER_BEGIN
+#if YAMAHA_ROLE_PCM_METERS
+        ++pcmDecode_.noStream;
+#endif
+// PCM_PATH_OBSERVER_END
+
         std::fill(out, out + numFrames * 2, 0.0f);
         return;
     }
@@ -1874,11 +1904,23 @@ void BassMidiPlayer::render(float* out, int numFrames) {
         stream_, out, wanted | BASS_DATA_FLOAT);
 
     if (got == static_cast<DWORD>(-1)) {
+// PCM_PATH_OBSERVER_BEGIN
+#if YAMAHA_ROLE_PCM_METERS
+        ++pcmDecode_.failed;pcmDecode_.lastError=BASS_ErrorGetCode();
+#endif
+// PCM_PATH_OBSERVER_END
+
         LOGE("BASS_ChannelGetData failed error=%d", BASS_ErrorGetCode());
         std::fill(out, out + numFrames * 2, 0.0f);
         return;
     }
 
+
+// PCM_PATH_OBSERVER_BEGIN
+#if YAMAHA_ROLE_PCM_METERS
+    ++pcmDecode_.success;pcmDecode_.bytes+=got;pcmDecode_.shortReads+=(got<wanted);
+#endif
+// PCM_PATH_OBSERVER_END
     const int samples = static_cast<int>(got / sizeof(float));
     if (samples < numFrames * 2) {
         std::fill(out + samples, out + numFrames * 2, 0.0f);
@@ -2320,6 +2362,12 @@ void BassMidiPlayer::updateRolePcmMeter(int channel) {
     w.font=handle;w.path=path;w.rawBank=state.melodySourceBank;w.nativeBank=nativeBank;
     w.pc=state.melodySourceProgram;w.preset=state.melodySourceName;w.request=state.requestedVoiceName;
     w.start=pcmSamples_;w.generation=fontMappingGeneration_;
+// PCM_PATH_OBSERVER_BEGIN
+#if YAMAHA_ROLE_PCM_METERS
+    w.decodeCallsAtStart=pcmDecode_.calls;
+#endif
+// PCM_PATH_OBSERVER_END
+
     if(meter.count>0) {
         const auto& prior=meter.windows[meter.count-1];
         w.priorTailsPossible=prior.priorTailsPossible || prior.level.energy>0 || prior.input.sent || prior.input.other;
@@ -2338,6 +2386,12 @@ void BassMidiPlayer::observeRolePcmNote(int channel,int key,int velocity,bool se
     auto& m=rolePcmMeters_[channel-10];if(m.current<0)return;
     auto& w=m.windows[m.current];
     w.input.note(key,velocity,sent,origin.sourceChannel>=0 && origin.styleBank>=0,cc7,cc11);
+// PCM_PATH_OBSERVER_BEGIN
+#if YAMAHA_ROLE_PCM_METERS
+    w.decodeCallsAtLastNote=pcmDecode_.calls;
+#endif
+// PCM_PATH_OBSERVER_END
+
     if(sent && !w.readbackAttempted) {
         w.readbackAttempted=true;
         const bool ok=BASS_MIDI_StreamGetPreset(stream_,channel,&w.actual);
@@ -2396,6 +2450,14 @@ std::string BassMidiPlayer::rolePcmReport(
                 << " CC11Range=" << (v.sent||v.other?v.cc11Min:-1) << ':' << v.cc11Max
                 << " lastKey=" << v.key << " lastVelocity=" << v.velocity
                 << " actualVoiceSampleId=UNAVAILABLE not_isolated_note_response_or_wet_role_level\n";
+
+// PCM_PATH_OBSERVER_BEGIN
+#if YAMAHA_ROLE_PCM_METERS
+            out << "ROLE_PCM_PATH ch=" << ch << " window=" << i
+                << " decodeCallsAtStart=" << w.decodeCallsAtStart
+                << " decodeCallsAtLastNote=" << w.decodeCallsAtLastNote << "\n";
+#endif
+// PCM_PATH_OBSERVER_END
             // Immutable inventory only, at explicit export; no SF2 I/O/scan on NOTE_ON.
             const auto inv=melodicZoneInventories_.find(w.path);
             if(inv==melodicZoneInventories_.end() || v.key<0 || !w.verified)continue;

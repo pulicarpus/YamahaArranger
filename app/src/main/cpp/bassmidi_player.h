@@ -6,6 +6,12 @@
 #include <memory>
 #include "audio_path_diagnostic.h"
 #include "role_pcm_meter.h"
+// PCM_PATH_OBSERVER_BEGIN
+#if YAMAHA_ROLE_PCM_METERS
+#include "pcm_path_evidence.h"
+#endif
+// PCM_PATH_OBSERVER_END
+
 #include "chord_change_diagnostic.h"
 #include "sf2_zone_diagnostic.h"
 #include "drum_kit_audit.h"
@@ -98,9 +104,21 @@ private:
     struct VelocityEvidence {uint64_t count=0,sum=0,squares=0;int minimum=128,maximum=0;};
     std::array<VelocityEvidence,16> styleVelocityEvidence_{};
     uint64_t pcmSamples_=0,pcmClipped_=0,pcmNonfinite_=0;
+// PCM_PATH_OBSERVER_BEGIN
+#if YAMAHA_ROLE_PCM_METERS
+    pcm_path::Decode pcmDecode_;
+#endif
+// PCM_PATH_OBSERVER_END
+
     double pcmEnergy_=0;float pcmPeak_=0;
 
     struct RolePcmWindow {
+// PCM_PATH_OBSERVER_BEGIN
+#if YAMAHA_ROLE_PCM_METERS
+        uint64_t decodeCallsAtStart=0,decodeCallsAtLastNote=0;
+#endif
+// PCM_PATH_OBSERVER_END
+
         HSOUNDFONT font=0;int rawBank=-1,nativeBank=-1,pc=-1;
         std::string path,fingerprint,preset,request;
         uint64_t start=0,end=0,generation=0;

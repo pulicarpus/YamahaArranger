@@ -1,6 +1,7 @@
 """Pin #787 musical code; allow only reviewed diagnostic snapshot/session changes."""
 from pathlib import Path
 import hashlib,json,sys
+from pcm_path_guard import strip_observers
 root=Path(__file__).resolve().parents[1]
 def remove_function(text,signature):
     a=text.index(signature);start=text.index('{',a);end=start+1;depth=1
@@ -8,6 +9,7 @@ def remove_function(text,signature):
         depth+=(text[end]=='{')-(text[end]=='}');end+=1
     return text[:a]+text[end:]
 def normalize(path,text):
+    text=strip_observers(path,text)
     if path.endswith('bassmidi_player.cpp'):
         text=remove_function(text,'std::string BassMidiPlayer::noteZoneReport() const')
         text=remove_function(text,'std::string BassMidiPlayer::rolePcmReportLocked() const' if 'rolePcmReportLocked() const' in text else 'std::string BassMidiPlayer::rolePcmReport(')

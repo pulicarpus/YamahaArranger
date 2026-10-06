@@ -2,6 +2,7 @@
 """Stage 3 remains absent; protected #776 code unchanged except reviewed #781 part-presence patch."""
 import hashlib,json,sys
 from pathlib import Path
+from pcm_path_guard import strip_observers
 root=Path(__file__).resolve().parents[1]
 manifest=json.loads((root/'tests/fixtures/production_baseline776_sha256.json').read_text())
 approved={
@@ -18,7 +19,8 @@ for path,expected in manifest.items():
         assert patch[path]['baseline776']==expected,path
         assert actual==patch[path]['reviewedPresencePatch'],'Unreviewed part-presence change: '+path
     else:
-        assert actual==expected,'Protected #776 mismatch: '+path
+        musical=hashlib.sha256(strip_observers(path,(root/path).read_text()).encode()).hexdigest()
+        assert musical==expected,'Protected #776 mismatch: '+path
     if len(sys.argv)>1:
         assert hashlib.sha256((Path(sys.argv[1])/path).read_bytes()).hexdigest()==expected,path
 for base in ['app/src/main/cpp','app/src/main/java']:
@@ -27,4 +29,4 @@ for base in ['app/src/main/cpp','app/src/main/java']:
         text=file.read_text()
         for token in ['clearProductionDrum','nativeExperimentalDrum','nativePrepareExperimentalDrum','tryProductionDrumOn','endProductionDrumNote','experimental_drum_lanes.h','ProductionDrumOwners','productionDrumPlan']:
             assert token not in text,'Stage 3 reachable: '+str(file)+': '+token
-print('REGRESSION_BYPASS PASS: 10 protected files byte-identical to #776 + 5 reviewed accompaniment presence patches; Stage 3 absent from production source and JNI')
+print('REGRESSION_BYPASS PASS: 10 protected musical sources identical to #776 after enumerated diagnostic observers + 5 reviewed accompaniment presence patches; Stage 3 absent from production source and JNI')

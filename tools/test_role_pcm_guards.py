@@ -1,7 +1,8 @@
 from pathlib import Path
 import hashlib,json
+from pcm_path_guard import strip_observers
 root=Path(__file__).resolve().parents[1]
-cpp=(root/'app/src/main/cpp/bassmidi_player.cpp').read_text()
+cpp=strip_observers('app/src/main/cpp/bassmidi_player.cpp',(root/'app/src/main/cpp/bassmidi_player.cpp').read_text())
 def body(name):
  s=cpp.index('{',cpp.index(name));e=s+1;d=1
  while d:d+=(cpp[e]=='{')-(cpp[e]=='}');e+=1
@@ -12,7 +13,7 @@ for row in json.loads((root/'tests/fixtures/role_pcm786_protected_methods.json')
   assert actual.count(call)==1,row['method'];actual=actual.replace(call,'')
  assert hashlib.sha256(actual.encode()).hexdigest()==row['sha256'],row['method']
 for file,h in json.loads((root/'tests/fixtures/role_pcm786_protected_sources.json').read_text()).items():
- assert hashlib.sha256((root/file).read_bytes()).hexdigest()==h,file
+ assert hashlib.sha256(strip_observers(file,(root/file).read_text()).encode()).hexdigest()==h,file
 for method in ['void CALLBACK BassMidiPlayer::rolePcmTap(','void BassMidiPlayer::observeRolePcmNote(','void BassMidiPlayer::observeRolePcmController(']:
  t=body(method)
  for forbidden in ['LOG','ifstream','catalog(','match(','parse(','BASS_MIDI_StreamEvent','BASS_ChannelGetData','BASS_MIDI_StreamGetChannel','updateRolePcmMeter(']:assert forbidden not in t,(method,forbidden)

@@ -36,6 +36,12 @@ static void uiLog(const char* fmt, ...) {
 #define LOGE(...) uiLog(__VA_ARGS__)
 
 bool AudioEngine::start() {
+// PCM_PATH_OBSERVER_BEGIN
+#if YAMAHA_ROLE_PCM_METERS
+    pcmOutput_.startAttempt();
+#endif
+// PCM_PATH_OBSERVER_END
+
     LOGI("AudioEngine.start() called");
 
     oboe::AudioStreamBuilder builder;
@@ -63,6 +69,12 @@ bool AudioEngine::start() {
         LOGE("Failed to open audio stream: %s",
              oboe::convertToText(result));
         stream_.reset();
+
+// PCM_PATH_OBSERVER_BEGIN
+#if YAMAHA_ROLE_PCM_METERS
+        pcmOutput_.startResult(int(result));
+#endif
+// PCM_PATH_OBSERVER_END
         return false;
     }
 
@@ -96,14 +108,32 @@ bool AudioEngine::start() {
         LOGE("Failed to start stream: %s", oboe::convertToText(result));
         stream_->close();
         stream_.reset();
+
+// PCM_PATH_OBSERVER_BEGIN
+#if YAMAHA_ROLE_PCM_METERS
+        pcmOutput_.startResult(int(result));
+#endif
+// PCM_PATH_OBSERVER_END
         return false;
     }
 
     LOGI("AudioEngine started OK, burst=%d", stream_->getFramesPerBurst());
+
+// PCM_PATH_OBSERVER_BEGIN
+#if YAMAHA_ROLE_PCM_METERS
+    pcmOutput_.startResult(0);
+#endif
+// PCM_PATH_OBSERVER_END
     return true;
 }
 
 void AudioEngine::stop() {
+// PCM_PATH_OBSERVER_BEGIN
+#if YAMAHA_ROLE_PCM_METERS
+    pcmOutput_.stop();
+#endif
+// PCM_PATH_OBSERVER_END
+
     if (stream_) {
         stream_->requestStop();
         stream_->close();
@@ -149,6 +179,12 @@ void AudioEngine::unloadSoundFont() {
 oboe::DataCallbackResult AudioEngine::onAudioReady(
     oboe::AudioStream* stream, void* audioData, int32_t numFrames) {
     (void)stream;
+// PCM_PATH_OBSERVER_BEGIN
+#if YAMAHA_ROLE_PCM_METERS
+    pcmOutput_.callback(numFrames);
+#endif
+// PCM_PATH_OBSERVER_END
+
 
     auto* out = static_cast<float*>(audioData);
     const int sampleCount = numFrames * 2;
@@ -158,14 +194,32 @@ oboe::DataCallbackResult AudioEngine::onAudioReady(
         // Do not add a second compressor/soft-clip/DC filter here. MIDI
         // Voyager leaves BASS/BASSMIDI's synth dynamics intact; the SF2
         // itself is normally operated around 90% volume to avoid overload.
+
+// PCM_PATH_OBSERVER_BEGIN
+#if YAMAHA_ROLE_PCM_METERS
+        pcmOutput_.synth();
+#endif
+// PCM_PATH_OBSERVER_END
         soundFont_.render(out, numFrames);
 
         for (int i = 0; i < sampleCount; ++i) {
             out[i] = std::max(-1.0f, std::min(1.0f, out[i]));
         }
+
+// PCM_PATH_OBSERVER_BEGIN
+#if YAMAHA_ROLE_PCM_METERS
+        pcmOutput_.returned();
+#endif
+// PCM_PATH_OBSERVER_END
         return oboe::DataCallbackResult::Continue;
     }
 
+
+// PCM_PATH_OBSERVER_BEGIN
+#if YAMAHA_ROLE_PCM_METERS
+    pcmOutput_.fallback();
+#endif
+// PCM_PATH_OBSERVER_END
     std::lock_guard<std::mutex> lock(voiceMutex_);
     for (auto& v : voices_) {
         if (v.isActive()) {
@@ -176,6 +230,12 @@ oboe::DataCallbackResult AudioEngine::onAudioReady(
     for (int i = 0; i < sampleCount; ++i) {
         out[i] = std::max(-1.0f, std::min(1.0f, out[i]));
     }
+
+// PCM_PATH_OBSERVER_BEGIN
+#if YAMAHA_ROLE_PCM_METERS
+    pcmOutput_.returned();
+#endif
+// PCM_PATH_OBSERVER_END
     return oboe::DataCallbackResult::Continue;
 }
 
@@ -216,7 +276,15 @@ void AudioEngine::sfSetChannelExpression(int channel, int expression) {
 std::vector<unsigned char> AudioEngine::sfDiagnosticDrumWav(int bank,int pc,int key,int velocity) {
     return soundFont_.diagnosticDrumWav(bank,pc,key,velocity);
 }
-std::string AudioEngine::sfNoteZoneReport() const { return soundFont_.noteZoneReport(); }
+std::string AudioEngine::sfNoteZoneReport() const {
+// PCM_PATH_OBSERVER_BEGIN
+#if YAMAHA_ROLE_PCM_METERS
+    return pcmOutput_.report() + soundFont_.noteZoneReport();
+#endif
+// PCM_PATH_OBSERVER_END
+
+    return soundFont_.noteZoneReport();
+}
 std::string AudioEngine::sfDrumKitCoverage(const std::vector<drum_audit::Hit>& hits) const {
     return soundFont_.drumKitCoverage(hits);
 }

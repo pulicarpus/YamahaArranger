@@ -5,6 +5,12 @@
 #include <string>
 #include "voice.h"
 #include "bassmidi_player.h"
+// PCM_PATH_OBSERVER_BEGIN
+#if YAMAHA_ROLE_PCM_METERS
+#include "pcm_path_evidence.h"
+#endif
+// PCM_PATH_OBSERVER_END
+
 
 class AudioEngine : public oboe::AudioStreamDataCallback {
 public:
@@ -49,6 +55,12 @@ private:
     std::mutex voiceMutex_;
     int outputSampleRate_=48000;
     BassMidiPlayer soundFont_;
+// PCM_PATH_OBSERVER_BEGIN
+#if YAMAHA_ROLE_PCM_METERS
+    pcm_path::Output pcmOutput_;
+#endif
+// PCM_PATH_OBSERVER_END
+
     float dcLastInL_=0,dcLastOutL_=0,dcLastInR_=0,dcLastOutR_=0;
 };
 
