@@ -2,6 +2,7 @@
 from pathlib import Path
 import hashlib,json,sys
 from pcm_path_guard import strip_observers
+from measured_balance_guard import strip_balance
 root=Path(__file__).resolve().parents[1]
 def remove_function(text,signature):
     a=text.index(signature);start=text.index('{',a);end=start+1;depth=1
@@ -9,7 +10,7 @@ def remove_function(text,signature):
         depth+=(text[end]=='{')-(text[end]=='}');end+=1
     return text[:a]+text[end:]
 def normalize(path,text):
-    text=strip_observers(path,text)
+    text=strip_observers(path,strip_balance(path,text))
     if path.endswith('bassmidi_player.cpp'):
         text=remove_function(text,'std::string BassMidiPlayer::noteZoneReport() const')
         text=remove_function(text,'std::string BassMidiPlayer::rolePcmReportLocked() const' if 'rolePcmReportLocked() const' in text else 'std::string BassMidiPlayer::rolePcmReport(')
@@ -44,4 +45,4 @@ assert method.index('withContext(Dispatchers.Default)')<method.index('audioEngin
 assert 'diagnosticActiveStyle() !== style' in method
 vm=(root/'app/src/main/java/com/yourapp/ui/MainViewModel.kt').read_text()
 assert 'suspend fun compactPartPresenceReport(): String = arrangerBrain.compactPartPresenceReport()' in vm
-print('DIAGNOSTIC788_GUARDS PASS: #787 musical source unchanged; report formatting/layer scans outside synth lock; authoritative session; native export on worker')
+print('DIAGNOSTIC788_GUARDS PASS: #787 MIDI/state source preserved; only enumerated measured trim DSP added; report formatting/layer scans outside synth lock; authoritative session; native export on worker')

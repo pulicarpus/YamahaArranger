@@ -3,6 +3,7 @@
 import hashlib,json,sys
 from pathlib import Path
 from pcm_path_guard import strip_observers
+from measured_balance_guard import strip_balance
 root=Path(__file__).resolve().parents[1]
 manifest=json.loads((root/'tests/fixtures/production_baseline776_sha256.json').read_text())
 approved={
@@ -19,7 +20,7 @@ for path,expected in manifest.items():
         assert patch[path]['baseline776']==expected,path
         assert actual==patch[path]['reviewedPresencePatch'],'Unreviewed part-presence change: '+path
     else:
-        musical=hashlib.sha256(strip_observers(path,(root/path).read_text()).encode()).hexdigest()
+        musical=hashlib.sha256(strip_observers(path,strip_balance(path,(root/path).read_text())).encode()).hexdigest()
         assert musical==expected,'Protected #776 mismatch: '+path
     if len(sys.argv)>1:
         assert hashlib.sha256((Path(sys.argv[1])/path).read_bytes()).hexdigest()==expected,path

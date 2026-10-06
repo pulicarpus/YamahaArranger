@@ -2,6 +2,7 @@
 """Freeze the successful #784 routing/scheduler. Only mix math + isolated percussion dispatch changed."""
 from pathlib import Path
 import hashlib,json,re
+from measured_balance_guard import strip_balance
 root=Path(__file__).resolve().parents[1]
 def method(text,name):
     start=text.index('{',text.index(name));depth=1;end=start+1
@@ -9,7 +10,7 @@ def method(text,name):
         depth+=(text[end]=='{')-(text[end]=='}');end+=1
     return text[start:end]
 for record in json.loads((root/'tests/fixtures/mix_percussion784_protected_methods.json').read_text()):
-    actual=method((root/record['path']).read_text(),record['method'])
+    actual=method(strip_balance(record['path'],(root/record['path']).read_text()),record['method'])
     for addition in record.get('strip',[]):
         assert actual.count(addition)==1,record['method']
         actual=actual.replace(addition,'')

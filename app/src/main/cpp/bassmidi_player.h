@@ -6,6 +6,10 @@
 #include <memory>
 #include "audio_path_diagnostic.h"
 #include "role_pcm_meter.h"
+// MEASURED_BALANCE_BEGIN
+#include "measured_balance_profiles.h"
+// MEASURED_BALANCE_END
+
 // PCM_PATH_OBSERVER_BEGIN
 #if YAMAHA_ROLE_PCM_METERS
 #include "pcm_path_evidence.h"
@@ -131,6 +135,19 @@ private:
         uint64_t omittedWindows=0;
         std::array<RolePcmWindow,8> windows{};
     };
+
+// MEASURED_BALANCE_BEGIN
+    struct MeasuredBalance {
+        HSTREAM stream=0;HDSP dsp=0;int error=0;
+        measured_balance::Ramp ramp;
+        float db=0;std::string fingerprint,evidence="NONE";
+    };
+    std::array<MeasuredBalance,6> measuredBalance_{};
+    static void CALLBACK measuredBalanceTap(HDSP,DWORD,void*,DWORD,void*);
+    void updateMeasuredBalance(int channel);
+    void clearMeasuredBalance();
+    friend class MeasuredBalanceTestAccess; // native fixture injection; no runtime API
+// MEASURED_BALANCE_END
     std::array<RolePcmMeter,6> rolePcmMeters_{}; // melodic destinations 10..15 only
     static void CALLBACK rolePcmTap(HDSP,DWORD,void*,DWORD,void*);
     void updateRolePcmMeter(int channel); // configuration only, never NOTE_ON/render

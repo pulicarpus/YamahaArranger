@@ -507,6 +507,10 @@ bool BassMidiPlayer::loadDrum(const std::string& path) {
 void BassMidiPlayer::unload() {
     std::lock_guard<std::mutex> lock(mutex_);
     clearRolePcmMeters(); // remove read-only child DSPs before freeing their parent
+// MEASURED_BALANCE_BEGIN
+    clearMeasuredBalance();
+// MEASURED_BALANCE_END
+
     retirePercussionStreams();
     percussionCandidates_.clear();percussionAllCandidates_.clear();
     percussionLanes_ = {};
@@ -1502,6 +1506,10 @@ std::vector<unsigned char> BassMidiPlayer::diagnosticDrumWav(int bank,int pc,int
 std::string BassMidiPlayer::noteZoneReport() const {
     std::map<std::string,NoteZoneObservation> snapshot; bool limited;
     std::array<RolePcmMeter,6> meters;
+// MEASURED_BALANCE_BEGIN
+    std::array<MeasuredBalance,6> balance;
+// MEASURED_BALANCE_END
+
     std::map<std::string,std::shared_ptr<const sf2_zones::Inventory>> inventories;
     std::array<VelocityEvidence,16> velocities;
     uint64_t generation,samples,clipped,nonfinite;double energy;float peak;
@@ -1521,6 +1529,10 @@ std::string BassMidiPlayer::noteZoneReport() const {
     {
         std::lock_guard<std::mutex> lock(mutex_);
         snapshot=noteZoneRows_;limited=noteZoneLimit_;meters=rolePcmMeters_;inventories=melodicZoneInventories_;
+// MEASURED_BALANCE_BEGIN
+        balance=measuredBalance_;
+// MEASURED_BALANCE_END
+
         velocities=styleVelocityEvidence_;generation=fontMappingGeneration_;samples=pcmSamples_;
         clipped=pcmClipped_;nonfinite=pcmNonfinite_;energy=pcmEnergy_;peak=pcmPeak_;
 // PCM_PATH_OBSERVER_BEGIN
@@ -1595,6 +1607,15 @@ std::string BassMidiPlayer::noteZoneReport() const {
                 << " rms=" << (v.count?std::sqrt(double(v.squares)/v.count):0)
                 << " scope=MIDI_input_not_SF2_response_or_PCM\n";
         }
+
+// MEASURED_BALANCE_BEGIN
+        for(int ch=10;ch<16;++ch){const auto& b=balance[ch-10];
+            presence << "MEASURED_BALANCE ch=" << ch << " active=" << bool(b.dsp && b.db!=0)
+                << " fingerprint=" << b.fingerprint << " trimDb=" << b.db << " currentGain=" << b.ramp.current
+                << " targetGain=" << b.ramp.target << " error=" << b.error << " evidence=" << b.evidence
+                << " scope=fixed_binding_response_trim_not_CC_velocity_or_Yamaha_exact\n";
+        }
+// MEASURED_BALANCE_END
         presence << rolePcmReport(meters,inventories,samples);
         for(int part=0;part<2;++part) {
             const auto& lane=lanes[part];
@@ -2325,6 +2346,11 @@ void BassMidiPlayer::clearRolePcmMeters() {
 #if YAMAHA_ROLE_PCM_METERS
     for(auto& m:rolePcmMeters_) {
         if(m.dsp) BASS_ChannelRemoveDSP(m.stream,m.dsp);
+
+// MEASURED_BALANCE_BEGIN
+        const auto index=&m-rolePcmMeters_.data();
+        if(m.stream!=measuredBalance_[index].stream)
+// MEASURED_BALANCE_END
         if(m.stream) BASS_StreamFree(m.stream); // child only; never the production MIDI stream
     }
 #endif
@@ -2332,6 +2358,10 @@ void BassMidiPlayer::clearRolePcmMeters() {
 }
 
 void BassMidiPlayer::updateRolePcmMeter(int channel) {
+// MEASURED_BALANCE_BEGIN
+    updateMeasuredBalance(channel); // fixed response trim, independent of diagnostic ON/OFF
+// MEASURED_BALANCE_END
+
 #if YAMAHA_ROLE_PCM_METERS
     if(channel<10 || channel>15 || !stream_)return;
     const auto& state=channels_[channel];
@@ -2353,10 +2383,20 @@ void BassMidiPlayer::updateRolePcmMeter(int channel) {
     if(meter.count>=int(meter.windows.size())){++meter.omittedWindows;return;}
     if(!meter.stream) {
         // Never request Rhythm or keyboard streams: GetChannel changes per-key drum FX semantics.
+
+// MEASURED_BALANCE_BEGIN
+        if(measuredBalance_[channel-10].stream)meter.stream=measuredBalance_[channel-10].stream;
+        else
+// MEASURED_BALANCE_END
         meter.stream=BASS_MIDI_StreamGetChannel(stream_,channel);
+
         if(!meter.stream){meter.error=BASS_ErrorGetCode();return;}
         meter.dsp=BASS_ChannelSetDSPEx(meter.stream,rolePcmTap,&meter,0,BASS_DSP_READONLY);
-        if(!meter.dsp){meter.error=BASS_ErrorGetCode();BASS_StreamFree(meter.stream);meter.stream=0;return;}
+        if(!meter.dsp){meter.error=BASS_ErrorGetCode();
+// MEASURED_BALANCE_BEGIN
+            if(meter.stream!=measuredBalance_[channel-10].stream)
+// MEASURED_BALANCE_END
+            BASS_StreamFree(meter.stream);meter.stream=0;return;}
     }
     auto& w=meter.windows[meter.count];
     w.font=handle;w.path=path;w.rawBank=state.melodySourceBank;w.nativeBank=nativeBank;
@@ -2483,6 +2523,54 @@ std::string BassMidiPlayer::rolePcmReport(
     }
     return out.str();
 }
+
+
+// MEASURED_BALANCE_BEGIN
+void CALLBACK BassMidiPlayer::measuredBalanceTap(HDSP,DWORD,void* buffer,DWORD length,void* user) {
+    if(buffer)static_cast<MeasuredBalance*>(user)->ramp.process(static_cast<float*>(buffer),length/sizeof(float));
+}
+void BassMidiPlayer::clearMeasuredBalance() {
+    for(auto& b:measuredBalance_) {
+        if(b.dsp)BASS_ChannelRemoveDSP(b.stream,b.dsp);
+        if(b.stream)BASS_StreamFree(b.stream); // child only, once, after the read-only meter is detached
+    }
+    measuredBalance_={};
+}
+void BassMidiPlayer::updateMeasuredBalance(int channel) {
+    if(channel<10 || channel>15 || !stream_)return;
+    auto& b=measuredBalance_[channel-10];const auto& state=channels_[channel];
+    measured_balance::Profile profile;std::string fingerprint;
+    if(state.initialized && !state.drum && state.melodySourceProgram>=0) {
+        const bool secondary=state.melodySource>0 && size_t(state.melodySource)<=secondaryMelodies_.size();
+        const auto* font=secondary?&secondaryMelodies_[state.melodySource-1]:nullptr;
+        const auto handle=font?font->font:melodyFont_;const auto& path=font?font->path:melodyPath_;
+        const auto& banks=font?font->banks:normalizedBanks_;
+        const auto fp=percussionFingerprints_.find(path);
+        if(fp!=percussionFingerprints_.end()) {
+            fingerprint=fp->second;profile=measured_balance::lookup(fingerprint,state.melodySourceBank,state.melodySourceProgram);
+        }
+        if(profile.db!=0) {
+            int nativeBank=state.melodySourceBank;
+            for(const auto& bank:banks)if(bank.rawBank==nativeBank){nativeBank=bank.virtualBank;break;}
+            BASS_MIDI_FONT actual{};
+            if(!handle || !BASS_MIDI_StreamGetPreset(stream_,channel,&actual) || actual.font!=handle ||
+                actual.bank!=nativeBank || actual.preset!=state.melodySourceProgram)profile={};
+        }
+    }
+    b.db=profile.db;b.fingerprint=fingerprint;b.evidence=profile.evidence;
+    if(profile.db==0){b.ramp.set(1);return;}
+    if(!b.dsp) {
+        const auto existing=rolePcmMeters_[channel-10].stream;
+        b.stream=existing?existing:BASS_MIDI_StreamGetChannel(stream_,channel);
+        if(!b.stream){b.error=BASS_ErrorGetCode();b.db=0;return;}
+        // Higher priority than the read-only meter: exports measure corrected dry PCM.
+        b.dsp=BASS_ChannelSetDSPEx(b.stream,measuredBalanceTap,&b,1,0);
+        if(!b.dsp){b.error=BASS_ErrorGetCode();if(!existing)BASS_StreamFree(b.stream);b.stream=0;b.db=0;return;}
+    }
+    b.ramp.set(measured_balance::gain(profile.db));
+}
+
+// MEASURED_BALANCE_END
 
 // Stage1/2 STOP-only observational snapshot. No NOTE hot-path hook or production-state writes.
 std::string BassMidiPlayer::shadowDrumSnapshot() const {
