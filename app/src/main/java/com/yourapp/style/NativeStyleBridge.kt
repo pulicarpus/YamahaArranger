@@ -9,7 +9,8 @@ class NativeStyleBridge @Inject constructor() {
 
     external fun nativeParseStyle(styBytes: ByteArray): Boolean
 /* SFF_DIALECT_METADATA_BEGIN */    external fun nativeGetDialectCode(): Int
-/* SFF_DIALECT_METADATA_END */    external fun nativeGetPpq(): Int
+/* SFF_DIALECT_METADATA_END *//* SFF_CASM_METADATA_BEGIN */    external fun nativeGetCasmSemanticMetadata(): String
+/* SFF_CASM_METADATA_END */    external fun nativeGetPpq(): Int
     external fun nativeGetDefaultTempoBpm(): Double
     external fun nativeGetSectionNames(): Array<String>
     external fun nativeGetSectionLengthTicks(sectionName: String): Int

@@ -1,0 +1,71 @@
+{
+  "baseline_commit": "253e1cf65e75aadf73c0a480e665bd91c9c98c76",
+  "files": {
+    "app/src/main/cpp/native_lib.cpp": {
+      "blocks_sha256": [
+        "f3884cdf27dd9a5eb101b0461b7c7dd8600f5e56ecade4680fb3542c99687790",
+        "a96f3a24ab52f9c8d454c05c540a6e6dd71b1683ba8e3662e06c634a31698aed"
+      ],
+      "new_sha256": "350d6f5c097a21a877b0815630686268fa4b535cea88063a5998f0800c1e5b3e",
+      "old_sha256": "f5428a8066baae7536b15fc3a8e51646f7efa7edbd299ec8cc89be0a8e81d506",
+      "reason": "Read-only semantic JNI snapshot plus metadata-only null/failed-load reset; no new global state"
+    },
+    "app/src/main/cpp/style_parser.cpp": {
+      "blocks_sha256": [
+        "920aa23c0de0da8b8c9d77ee6e8bcbe19418de7289c39b8589ff5b996917884d",
+        "08684b3c11fc8f41b47a980bd006a82076176a078f6e7c8ea505795dd68e37a4",
+        "6f538ff25563952bd491c1f3a51468ee2632984c96e928614c2e09039725a75b",
+        "9e13544a258ed6bec1ae708c93287c7bf69fba1c9ebc73c4c9f8758d15dc2a9b",
+        "e33a2f952045244204e99fa98addca815a9b31d0a7a4caa72798bf39ed4009d2",
+        "5b8338bb8f923f91774a27638cd602b6ae6d1c18c7f90dc73574993553c60bb2",
+        "5abeee5a22b47006d01c7f0414ed2fda21b5dadac938098dbe29990c81647166",
+        "8b9340d1505557978e362a59e3175c36af435d6dd75d049301598015df5f72d9",
+        "58f85fa3e14a7927c4f7770b060a6d2ee0f7dc1f3230dc0235ba175e2551d809",
+        "6ced697fb4f903e82cf21bd0500f0a3651b3c1c35c595ff29cf2a5533f86c5da"
+      ],
+      "new_sha256": "bf95fbd19a841129dd0c5e5573e037f29541f4b021d8446fa71d8c621d826d20",
+      "old_sha256": "4d35cb694cd71d1c1d849e80a5892a58de4fc65a9a3a8648f4a723c5073b5807",
+      "reason": "Observe existing bounded chunk walk; retain full raw payload/offset/CSEG; attach descriptor/Cntt IDs and serialize read-only snapshot; original parsing/override fields untouched"
+    },
+    "app/src/main/cpp/style_parser.h": {
+      "blocks_sha256": [
+        "924794627f60598b2b70415a812cd6f9cda6c446282cd8371cfa81186a7fde8a",
+        "0a342638eea5bd5166c59829eda1f4c429d8acf39e7a63836bdbd4c9ef064cca",
+        "0f2671e4599cf1d7ad245e35f6e9fbdbed6cea03c62c549fd480f8793b67a0cd",
+        "f36b5a51300561241fb16bceef076bd42dae58f443ba504da5eec9e531e0700b"
+      ],
+      "new_sha256": "dfbd8ad856e6eb49f227e474da833248a44515bd0d73a50945fa9b2ba81a557d",
+      "old_sha256": "e73e91387000e0af41a0c96d549d87140edbe4711f67ae7604c8b3a03b8eccd1",
+      "reason": "Raw descriptor registry and per-policy provenance IDs, const getters and metadata-only reset; original CasmPolicy fields intact"
+    },
+    "app/src/main/java/com/yourapp/style/NativeStyleBridge.kt": {
+      "blocks_sha256": [
+        "e548e0c856fecb67d2a3bbe55e4ebdaf7325276a6eec35d5b70fdcc256b9baa3"
+      ],
+      "new_sha256": "49990624f074b056525940a39cfc30a3d84de3e168e33ab091ff925a39b54ea7",
+      "old_sha256": "7b17ae5285dc0e5c2d5bf64a016b6cbb5949432ba5a6d4cef7b65e7575e3dfef",
+      "reason": "Expose read-only semantic snapshot JNI method"
+    },
+    "app/src/main/java/com/yourapp/style/StyleModel.kt": {
+      "blocks_sha256": [
+        "31702d472187a05b56b6acb7d38d1a65450bd660f21bb4ec565ed6dfe92e3bcd",
+        "0a858aba6099bd2ed52dda9cf15261a2774d66013d74f4e70e0b47e71f3d6c9d",
+        "60504df6f1a5ed06fbb10c3e94e13ddfe9fbcbad610b988aec4751239847c03f"
+      ],
+      "new_sha256": "dbffebdc953b6d45bd5f9ddbfa3cfeed12b538e95a1fbf817e0eef55535a71e6",
+      "old_sha256": "bbfa15d06f4097a2b0364c2f0f5cb6ec666f21300bd2a36bcbf25ab7a692d375",
+      "reason": "Typed raw words/enums and immutable descriptor/binding carriers on style/section; CasmPolicyModel and musical fields intact"
+    },
+    "app/src/main/java/com/yourapp/yamahaarranger/style/StyleRepository.kt": {
+      "blocks_sha256": [
+        "e0cba971ad59434b41c0d2be3a7c18bf9b4b116b9ab73f35659555910199d05a",
+        "724e7ab5c1adcd4b2850e3489ae003a2e43475fe7bbc0efe93cffbdcc76951f3",
+        "9a77245dd461f5968456d14220b83c4865255ee98bc3fc7f273a6abf6def9e53"
+      ],
+      "new_sha256": "a6ecd4d4c1978159e5045ccffee0d08d30813dee265bc47c7cc7ce71b1865079",
+      "old_sha256": "7243584bb78a77b36de1be5e42ff78d7d97b509f828ef592c626aed2d304d76b",
+      "reason": "Decode and attach separate provenance snapshot, preserving original parts/events/policy references; unknown metadata cannot alter playback"
+    }
+  },
+  "schema": 1
+}

@@ -18,6 +18,7 @@ import subprocess
 import sys
 import tempfile
 import zipfile
+from sff_casm_source_guard import FIXTURE as S3_SOURCE_GUARD, verify_metadata_sources as verify_s3_sources
 from sff_dialect_source_guard import FIXTURE as S2_SOURCE_GUARD, strip_metadata, verify_metadata_sources
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -450,6 +451,7 @@ def compile_driver(output):
 
 
 def production_identity():
+    s3_sources=verify_s3_sources()
     metadata_sources=verify_metadata_sources()
     names=subprocess.check_output(["git","ls-tree","-r","--name-only",BASELINE,"--","app/src/main"],cwd=ROOT,text=True).splitlines()
     require(names,"missing baseline source tree")
@@ -468,6 +470,8 @@ def production_identity():
             "tracked_files":files,"verified_working_tree_sha256":digest(files)}
     if metadata_sources:
         result["s2_metadata_source_guard_sha256"]=file_sha(S2_SOURCE_GUARD)
+    if s3_sources:
+        result["s3_metadata_source_guard_sha256"]=file_sha(S3_SOURCE_GUARD)
     return result
 
 

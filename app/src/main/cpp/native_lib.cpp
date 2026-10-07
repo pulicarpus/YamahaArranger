@@ -144,10 +144,15 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_Nativ
     const auto safe=sanitizeUtf8ForJni(report.c_str());
     return env->NewStringUTF(safe.c_str());
 }
-extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeParseStyle(JNIEnv* env,jobject,jbyteArray styBytes){/* SFF_DIALECT_METADATA_BEGIN */if(g_lastParsedStyle)g_lastParsedStyle->clearDialectMetadata();/* SFF_DIALECT_METADATA_END */if(styBytes==nullptr)return JNI_FALSE;jsize len=env->GetArrayLength(styBytes);std::vector<uint8_t>buf(len);env->GetByteArrayRegion(styBytes,0,len,reinterpret_cast<jbyte*>(buf.data()));g_lastParsedStyle=std::make_unique<StyleParser>();return g_lastParsedStyle->parse(buf.data(),buf.size())?JNI_TRUE:JNI_FALSE;}
+extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeParseStyle(JNIEnv* env,jobject,jbyteArray styBytes){/* SFF_DIALECT_METADATA_BEGIN */if(g_lastParsedStyle)g_lastParsedStyle->clearDialectMetadata();/* SFF_DIALECT_METADATA_END *//* SFF_CASM_METADATA_BEGIN */if(g_lastParsedStyle)g_lastParsedStyle->clearCasmSemanticMetadata();/* SFF_CASM_METADATA_END */if(styBytes==nullptr)return JNI_FALSE;jsize len=env->GetArrayLength(styBytes);std::vector<uint8_t>buf(len);env->GetByteArrayRegion(styBytes,0,len,reinterpret_cast<jbyte*>(buf.data()));g_lastParsedStyle=std::make_unique<StyleParser>();return g_lastParsedStyle->parse(buf.data(),buf.size())?JNI_TRUE:JNI_FALSE;}
 /* SFF_DIALECT_METADATA_BEGIN */
 extern "C" JNIEXPORT jint JNICALL Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeGetDialectCode(JNIEnv*,jobject){return g_lastParsedStyle?static_cast<jint>(g_lastParsedStyle->dialect()):0;}
-/* SFF_DIALECT_METADATA_END */extern "C" JNIEXPORT jint JNICALL Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeGetSectionCount(JNIEnv*,jobject){return g_lastParsedStyle?static_cast<jint>(g_lastParsedStyle->sections().size()):0;}
+/* SFF_DIALECT_METADATA_END *//* SFF_CASM_METADATA_BEGIN */
+extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeGetCasmSemanticMetadata(JNIEnv* env,jobject){
+    const std::string snapshot=g_lastParsedStyle?g_lastParsedStyle->casmSemanticProtocol():"S3\t1\t0\n";
+    return env->NewStringUTF(snapshot.c_str());
+}
+/* SFF_CASM_METADATA_END */extern "C" JNIEXPORT jint JNICALL Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeGetSectionCount(JNIEnv*,jobject){return g_lastParsedStyle?static_cast<jint>(g_lastParsedStyle->sections().size()):0;}
 extern "C" JNIEXPORT jint JNICALL Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeGetPpq(JNIEnv*,jobject){return g_lastParsedStyle?g_lastParsedStyle->ppq():480;}
 extern "C" JNIEXPORT jdouble JNICALL Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeGetDefaultTempoBpm(JNIEnv*,jobject){return g_lastParsedStyle?g_lastParsedStyle->defaultTempoBpm():120.0;}
 extern "C" JNIEXPORT jobjectArray JNICALL Java_com_yourapp_yamahaarranger_style_NativeStyleBridge_nativeGetSectionNames(JNIEnv* env,jobject){jclass stringClass=env->FindClass("java/lang/String");if(!g_lastParsedStyle)return env->NewObjectArray(0,stringClass,nullptr);const auto&sections=g_lastParsedStyle->sections();jobjectArray result=env->NewObjectArray(static_cast<jsize>(sections.size()),stringClass,nullptr);int i=0;for(const auto&[sec,data]:sections)env->SetObjectArrayElement(result,i++,env->NewStringUTF(styleSectionToString(sec).c_str()));return result;}

@@ -9,6 +9,7 @@ import json
 import os
 import re
 from pathlib import Path
+from sff_casm_source_guard import normalize_s3
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "tests/fixtures/sff_dialect_source_identity_s2.json"
@@ -20,6 +21,7 @@ def source_rules():
 
 
 def validate_source(path, data):
+    data=normalize_s3(path,data)
     rule=source_rules()[path]
     actual=hashlib.sha256(data).hexdigest()
     assert actual in (rule["old_sha256"],rule["new_sha256"]), "S2 source identity drift: " + path
@@ -35,6 +37,7 @@ def validate_source(path, data):
 
 
 def strip_metadata(path, text):
+    text=normalize_s3(path,text.encode()).decode()
     rules = source_rules()
     blocks = re.findall(PATTERN, text, re.S)
     if path not in rules:
@@ -51,7 +54,7 @@ def strip_metadata(path, text):
 def verify_metadata_sources():
     profiles=set()
     for path, rule in source_rules().items():
-        actual=hashlib.sha256((ROOT/path).read_bytes()).hexdigest()
+        actual=hashlib.sha256(normalize_s3(path,(ROOT/path).read_bytes())).hexdigest()
         profiles.add("S2" if actual==rule["new_sha256"] else "S1")
         old = strip_metadata(path, (ROOT / path).read_text())
         assert hashlib.sha256(old.encode()).hexdigest() == rule["old_sha256"], "S2 changed non-metadata bytes: " + path

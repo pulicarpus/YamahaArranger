@@ -82,7 +82,7 @@ class StyleRepository @Inject constructor(private val bridge: NativeStyleBridge)
         }
 
         if (sections.isEmpty()) { Timber.w("Style parsed but yielded no sections: $fileName"); return null }
-        return /* SFF_DIALECT_METADATA_BEGIN */withDialectMetadata(/* SFF_DIALECT_METADATA_END */ParsedStyle(fileName, ppq, sections, voiceMap, defaultTempoBpm, meter)/* SFF_DIALECT_METADATA_BEGIN */, bridge.nativeGetDialectCode())/* SFF_DIALECT_METADATA_END */
+        return /* SFF_CASM_METADATA_BEGIN */withCasmSemanticMetadata(/* SFF_CASM_METADATA_END *//* SFF_DIALECT_METADATA_BEGIN */withDialectMetadata(/* SFF_DIALECT_METADATA_END */ParsedStyle(fileName, ppq, sections, voiceMap, defaultTempoBpm, meter)/* SFF_DIALECT_METADATA_BEGIN */, bridge.nativeGetDialectCode())/* SFF_DIALECT_METADATA_END *//* SFF_CASM_METADATA_BEGIN */, bridge.nativeGetCasmSemanticMetadata())/* SFF_CASM_METADATA_END */
     }
 
 /* SFF_DIALECT_METADATA_BEGIN */    /** Snapshot identity once; share the same immutable value with sections. */
@@ -93,7 +93,54 @@ class StyleRepository @Inject constructor(private val bridge: NativeStyleBridge)
         })
     }
 
-/* SFF_DIALECT_METADATA_END */    /** Read MIDI time-signature meta FF 58 04 nn dd cc bb. */
+/* SFF_DIALECT_METADATA_END *//* SFF_CASM_METADATA_BEGIN */    /** Separate read-only provenance snapshot: legacy policy objects stay identical. */
+    private fun withCasmSemanticMetadata(style: ParsedStyle, protocol: String): ParsedStyle {
+        val descriptors = ArrayList<CasmSemanticDescriptor>()
+        val bindings = ArrayList<CasmSemanticBinding>()
+        var valid = style.dialectIdentity.dialect == StyleDialect.SFF1
+        try {
+            val rows = protocol.lineSequence().filter { it.isNotEmpty() }.toList()
+            require(rows.firstOrNull() == "S3\t1\t1")
+            var sawBinding = false
+            for(row in rows.drop(1)) {
+                val fields = row.split('\t')
+                when(fields.first()) {
+                    "D" -> {
+                        require(!sawBinding && fields.size == 6)
+                        val index = fields[1].toInt(); val cseg = fields[2].toInt(); val offset = fields[4].toLong()
+                        require(index == descriptors.size && cseg >= 0 && offset >= 0)
+                        require(fields[3].length == 4 && fields[5].length % 2 == 0 && fields[5].all { it in "0123456789abcdef" })
+                        descriptors += CasmSemanticDescriptor(index,cseg,fields[3],offset,fields[5])
+                    }
+                    "B" -> {
+                        sawBinding = true
+                        require(fields.size == 6)
+                        val section = fields[1]; val part = fields[2].toInt(); val policy = fields[3].toInt()
+                        val descriptor = fields[4].toInt(); val cntt = fields[5].toInt()
+                        val effective = style.sections.getValue(section).parts[part].casmPolicies[policy]
+                        val raw = descriptors[descriptor]
+                        require(raw.tag == "Ctab" && raw.ctab != null && raw.ctab!!.source == effective.sourceChannel)
+                        require(cntt == -1 || descriptors[cntt].tag == "Cntt")
+                        require(bindings.none { it.section == section && it.partIndex == part && it.policyIndex == policy })
+                        bindings += CasmSemanticBinding(section,part,policy,descriptor,cntt,effective,raw,if(cntt == -1) null else descriptors[cntt])
+                    }
+                    else -> require(false) { "Unknown metadata row" }
+                }
+            }
+            val policyCount = style.sections.values.sumOf { section -> section.parts.sumOf { it.casmPolicies.size } }
+            require(bindings.size == policyCount)
+        } catch (_: IllegalArgumentException) { valid = false
+        } catch (_: IndexOutOfBoundsException) { valid = false
+        } catch (_: NoSuchElementException) { valid = false }
+        val snapshot = if(valid) CasmSemanticSnapshot(CasmSemanticStatus.PRESERVED,
+            java.util.Collections.unmodifiableList(descriptors),java.util.Collections.unmodifiableList(bindings),protocol)
+            else CasmSemanticSnapshot(rawProtocol=protocol)
+        return style.copy(casmSemanticSnapshot=snapshot, sections=style.sections.mapValues { (name,section) ->
+            section.copy(casmSemanticBindings=java.util.Collections.unmodifiableList(snapshot.bindings.filter { it.section == name }))
+        })
+    }
+
+/* SFF_CASM_METADATA_END */    /** Read MIDI time-signature meta FF 58 04 nn dd cc bb. */
     private fun detectStyleMeter(rawBytes: ByteArray, ppq: Int): StyleMeter {
         for (i in 0 until rawBytes.size - 7) {
             if ((rawBytes[i].toInt() and 0xFF) == 0xFF &&

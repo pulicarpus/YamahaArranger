@@ -25,6 +25,8 @@ def main(argv=None):
     parser.add_argument("--fetch-dependencies",action="store_true",help="fetch missing SHA-pinned jars from official Maven Central")
     parser.add_argument("--output",type=Path,default=ROOT/"build/sff1-jvm")
     parser.add_argument("--existing-regressions",action="store_true",help="also run five relevant existing JUnit classes")
+    parser.add_argument("--s3-protocols",type=Path,help="full 503 generated semantic matrices for S3 host test")
+    parser.add_argument("--s3",action="store_true",help="also run CASM preservation tests")
     parser.add_argument("--s2",action="store_true",help="also run dialect metadata tests; S1 captures stay pinned")
     parser.add_argument("--record-digests",action="store_true",help="create initial expected capture digest; never overwrite")
     args=parser.parse_args(argv)
@@ -59,6 +61,9 @@ def main(argv=None):
     if args.s2:
         sources.append(test_root/"SffDialectBoundaryTest.kt")
         tests.append("com.yourapp.yamahaarranger.arranger.SffDialectBoundaryTest")
+    if args.s3:
+        sources.append(test_root/"SffCasmSemanticPreservationTest.kt")
+        tests.append("com.yourapp.yamahaarranger.arranger.SffCasmSemanticPreservationTest")
     if args.existing_regressions:
         sources += [test_root/(name+".kt") for name in EXISTING]
         tests += ["com.yourapp.yamahaarranger.arranger."+name for name in EXISTING]
@@ -76,6 +81,8 @@ def main(argv=None):
     # Start Mockito's pinned agent explicitly: sandboxed hosts may disallow
     # self-attach. This is JVM test tooling, never an app/production agent.
     command=["java","-Xmx1g",f"-javaagent:{deps/'byte-buddy-agent.jar'}",f"-Dsff1.output={capture}","-cp",runtime]
+    if args.s3_protocols:
+        command.insert(2,f"-Dsff3.protocols={args.s3_protocols.resolve()}")
     if args.record_digests:
         command.insert(2,"-Dsff1.record.observations=true")
     command += ["org.junit.runner.JUnitCore",*tests]

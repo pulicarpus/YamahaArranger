@@ -71,7 +71,8 @@ data class StyleSectionModel(
     val name: String,
     val lengthTicks: Int,
     val parts: List<StylePartModel>/* SFF_DIALECT_METADATA_BEGIN */,
-    val dialectIdentity: StyleDialectIdentity = StyleDialectIdentity()/* SFF_DIALECT_METADATA_END */
+    val dialectIdentity: StyleDialectIdentity = StyleDialectIdentity()/* SFF_DIALECT_METADATA_END *//* SFF_CASM_METADATA_BEGIN */,
+    val casmSemanticBindings: List<CasmSemanticBinding> = emptyList()/* SFF_CASM_METADATA_END */
 )
 
 data class StyleMeter(
@@ -92,7 +93,8 @@ data class ParsedStyle(
     val voiceMap: Map<Int, String> = emptyMap(),
     val defaultTempoBpm: Int = 120,
     val meter: StyleMeter = StyleMeter(4, 4, ppq)/* SFF_DIALECT_METADATA_BEGIN */,
-    val dialectIdentity: StyleDialectIdentity = StyleDialectIdentity()/* SFF_DIALECT_METADATA_END */
+    val dialectIdentity: StyleDialectIdentity = StyleDialectIdentity()/* SFF_DIALECT_METADATA_END *//* SFF_CASM_METADATA_BEGIN */,
+    val casmSemanticSnapshot: CasmSemanticSnapshot = CasmSemanticSnapshot()/* SFF_CASM_METADATA_END */
 )/* SFF_DIALECT_METADATA_BEGIN */
 
 enum class StyleDialect { UNKNOWN, SFF1, SFF2 }
@@ -111,4 +113,47 @@ data class StyleDialectIdentity(
         }
     }
 }
-/* SFF_DIALECT_METADATA_END */
+/* SFF_DIALECT_METADATA_END *//* SFF_CASM_METADATA_BEGIN */
+/** S3 observation/preservation only. None of these fields drives playback. */
+enum class CasmSemanticStatus { PRESERVED, SOURCE_ABSENT, PARSED_BUT_UNATTACHED, PARSED_BUT_FILTERED, PROJECTION_LOSS, COLLAPSED, UNSUPPORTED, UNKNOWN }
+data class CasmRawNtr(val raw: Int) { val executionCode: Int get() = raw and 127; val hasExplicitExecutionBranch: Boolean get() = executionCode in 0..3 }
+data class CasmRawNtt(val raw: Int) { val executionCode: Int get() = raw and 127; val hasExplicitExecutionBranch: Boolean get() = executionCode in 0..5 }
+data class CasmRawRtr(val raw: Int) { val executionCode: Int get() = raw and 127; val hasExplicitExecutionBranch: Boolean get() = executionCode in 0..5 }
+data class CasmRawCtab(
+    val source: Int, val destination: Int, val flagByte10: Int, val rootSelectionWordRaw: Int,
+    val chordFieldHex: String, val sourceChordRoot: Int, val sourceChordType: Int,
+    val ntr: CasmRawNtr, val nttByte: CasmRawNtt, val highKey: Int,
+    val noteLow: Int, val noteHigh: Int, val rtr: CasmRawRtr, val tailHex: String
+)
+data class CasmSemanticDescriptor(val index: Int, val cseg: Int, val tag: String, val payloadOffset: Long, val rawHex: String) {
+    private fun byte(offset: Int): Int = rawHex.substring(offset*2,offset*2+2).toInt(16)
+    val ctab: CasmRawCtab? get() = if(tag != "Ctab" || rawHex.length < 54) null else CasmRawCtab(
+        byte(0),byte(9),byte(10),(byte(11) shl 8) or byte(12),rawHex.substring(26,36),byte(18),byte(19),
+        CasmRawNtr(byte(20)),CasmRawNtt(byte(21)),byte(22),byte(23),byte(24),CasmRawRtr(byte(25)),rawHex.substring(52))
+    val status: CasmSemanticStatus get() = when {
+        tag == "Ctb2" -> CasmSemanticStatus.UNSUPPORTED // No verified fixture/typed SFF2 schema.
+        tag == "Ctab" && ctab != null -> CasmSemanticStatus.PRESERVED
+        tag == "Cntt" && rawHex.length >= 4 -> CasmSemanticStatus.PRESERVED
+        tag == "Sdec" -> CasmSemanticStatus.PRESERVED
+        else -> CasmSemanticStatus.UNKNOWN
+    }
+}
+data class CasmSemanticBinding(
+    val section: String, val partIndex: Int, val policyIndex: Int, val descriptorIndex: Int,
+    val cnttDescriptorIndex: Int, val effectivePolicy: CasmPolicyModel,
+    val descriptor: CasmSemanticDescriptor, val cnttDescriptor: CasmSemanticDescriptor?
+)
+data class CasmSemanticSnapshot(
+    val status: CasmSemanticStatus = CasmSemanticStatus.UNKNOWN,
+    val descriptors: List<CasmSemanticDescriptor> = emptyList(),
+    val bindings: List<CasmSemanticBinding> = emptyList(),
+    val rawProtocol: String = ""
+) {
+    fun descriptorStatus(index: Int): CasmSemanticStatus {
+        val descriptor = descriptors.getOrNull(index) ?: return CasmSemanticStatus.UNKNOWN
+        if(descriptor.status != CasmSemanticStatus.PRESERVED)return descriptor.status
+        return if(descriptor.tag == "Ctab" && bindings.none { it.descriptorIndex == index })
+            CasmSemanticStatus.PARSED_BUT_UNATTACHED else CasmSemanticStatus.PRESERVED
+    }
+}
+/* SFF_CASM_METADATA_END */

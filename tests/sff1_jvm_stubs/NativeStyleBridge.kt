@@ -6,6 +6,7 @@ package com.yourapp.yamahaarranger.style
 class NativeStyleBridge {
     fun nativeGetDialectCode(): Int = error("JNI facade must not execute")
     fun nativeParseStyle(bytes: ByteArray): Boolean = error("JNI facade must not execute")
+    fun nativeGetCasmSemanticMetadata(): String = error("JNI facade must not execute")
     fun nativeGetPpq(): Int = error("JNI facade must not execute")
     fun nativeGetDefaultTempoBpm(): Double = error("JNI facade must not execute")
     fun nativeGetSectionNames(): Array<String> = error("JNI facade must not execute")
