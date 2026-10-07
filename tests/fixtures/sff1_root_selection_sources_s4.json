@@ -1,0 +1,1424 @@
+{
+  "certification_rule": "Do not promote corpus/document agreement to CERTIFIED without independent authoritative specification or labeled Yamaha input-root/track-output validation, including zero-word and state boundaries.",
+  "certification_status": "UNRESOLVED",
+  "hardware_input_chord_output_fixtures": 0,
+  "history": {
+    "available": 157,
+    "records": [
+      {
+        "available": true,
+        "commit": "015aabcd177534fd6e1a512974445035593f332f",
+        "content_sha256": "408fedaed4b47ce40c363b3a03c8c85f93dba439516c5c61237f0542ba06eb23",
+        "hits": [],
+        "message": "fix: normalize propagated SX setup events at section start",
+        "path": "app/src/main/cpp/style_parser.cpp"
+      },
+      {
+        "available": true,
+        "commit": "061eda48decbe31fd9166b2a37ef1bc741df9b63",
+        "content_sha256": "7a6b9ca5c005218b9641ad3bf3799339b4094b4176cbed48f811abaab020b2bd",
+        "hits": [],
+        "message": "Preserve non-note MIDI events in style parts",
+        "path": "app/src/main/cpp/style_parser.cpp"
+      },
+      {
+        "available": true,
+        "commit": "16b7af55518fd6f1114585f778346d83df087b71",
+        "content_sha256": "03d0170f0d966f0016411dc12e60bbd689c9a89f6e20bebec3219dfe05153197",
+        "hits": [],
+        "message": "Preserve CASM voice metadata and MIDI program setup",
+        "path": "app/src/main/cpp/style_parser.cpp"
+      },
+      {
+        "available": true,
+        "commit": "199135b7a9cef7de62129734bd7f425995878d93",
+        "content_sha256": "3ab9fcc3c2fb01b4ed6e6e6416fb3d6a82e913a0fab5fe41936ff367b8a078d8",
+        "hits": [],
+        "message": "Preserve exact program and bank with CASM",
+        "path": "app/src/main/cpp/style_parser.cpp"
+      },
+      {
+        "available": true,
+        "commit": "1bc3c2da949c4df3df02cb8a9c4ca65a9f1b6b13",
+        "content_sha256": "230235404ea4296566e866d41eec76f13a1be2ab49ba477e13fc74c0d5b5ac5d",
+        "hits": [],
+        "message": "update app/src/main/cpp/style_parser.cpp",
+        "path": "app/src/main/cpp/style_parser.cpp"
+      },
+      {
+        "available": true,
+        "commit": "21a39ac0ab1e705858e2ff6b751cf40afb17f09e",
+        "content_sha256": "e7b31be742940d24d200b927c42afdab34a493d41163d29a3a4fd17932add341",
+        "hits": [],
+        "message": "Decode all Ctb2 note-range transforms",
+        "path": "app/src/main/cpp/style_parser.cpp"
+      },
+      {
+        "available": true,
+        "commit": "253e1cf65e75aadf73c0a480e665bd91c9c98c76",
+        "content_sha256": "4d35cb694cd71d1c1d849e80a5892a58de4fc65a9a3a8648f4a723c5073b5807",
+        "hits": [],
+        "message": "Add explicit SFF dialect metadata boundary with frozen S1 behavior guards",
+        "path": "app/src/main/cpp/style_parser.cpp"
+      },
+      {
+        "available": true,
+        "commit": "2781c0a0d16eaed3019e269f5de21ba5175f470d",
+        "content_sha256": "bf95fbd19a841129dd0c5e5573e037f29541f4b021d8446fa71d8c621d826d20",
+        "hits": [],
+        "message": "Preserve raw SFF1 CASM semantics and provenance without playback changes",
+        "path": "app/src/main/cpp/style_parser.cpp"
+      },
+      {
+        "available": true,
+        "commit": "2d6a51ecd1b4db20287887a9caad57bc853db123",
+        "content_sha256": "a5d6ebbaafeb3aad1ad46daadee06f8bb7ce3acea8cf579d09c6bf4bda624bd4",
+        "hits": [],
+        "message": "Recognize Yamaha Fill In BA as Break",
+        "path": "app/src/main/cpp/style_parser.cpp"
+      },
+      {
+        "available": true,
+        "commit": "42f1a6d6f9728051d8ffe7a7a500d52e421ece7b",
+        "content_sha256": "3f76b85243d3cbcb461786daa605fa47bda53cd47b3e59181a7e96d6c4b8d224",
+        "hits": [],
+        "message": "Parse SFF2 Ctb2 CASM policies",
+        "path": "app/src/main/cpp/style_parser.cpp"
+      },
+      {
+        "available": true,
+        "commit": "43820fed77ed92b1e6cb401b0eb5bf3a4f93c0a3",
+        "content_sha256": "ac0cd2c4ca8522bae2c418eb4f8328a7f6cdc49d7937295c6f38a4933e9a296f",
+        "hits": [],
+        "message": "fix: preserve directional Fill sections in parser",
+        "path": "app/src/main/cpp/style_parser.cpp"
+      },
+      {
+        "available": true,
+        "commit": "4b682f4c7380a9f72c989c86fd428a39c0f3276a",
+        "content_sha256": "351a3c2bccc9d0148ece90801e6d230f564eef2a47eae05903e19e3641b75f2a",
+        "hits": [],
+        "message": "fix parser handling of Yamaha Fill In directional markers",
+        "path": "app/src/main/cpp/style_parser.cpp"
+      },
+      {
+        "available": true,
+        "commit": "4f3d24046649de92502ba95045002393e6a32fce",
+        "content_sha256": "f448a0b8bd774556a24600b1a9018ad9d3d6f1cd9e6c71188d3e46f7aa3bd3fc",
+        "hits": [],
+        "message": "Apply Yamaha Cntt NTT overrides",
+        "path": "app/src/main/cpp/style_parser.cpp"
+      },
+      {
+        "available": true,
+        "commit": "65d32b7990c3bec5e32f0f5331a9757dec9f0d02",
+        "content_sha256": "c356f12561d7e17c0014b16eb59a08ef2db04bf4e70b7d8701ddb3a6333b9deb",
+        "hits": [],
+        "message": "integrate CASM style parser with BASSMIDI engine",
+        "path": "app/src/main/cpp/style_parser.cpp"
+      },
+      {
+        "available": true,
+        "commit": "7e00841fa8c632f6e663cb728bfbb00fcd4d2c65",
+        "content_sha256": "3d9cbf1dcaa443ce71340c7cf4691e6426c93e9da45beff2c54123725734d238",
+        "hits": [],
+        "message": "Initial commit: YamahaArranger project",
+        "path": "app/src/main/cpp/style_parser.cpp"
+      },
+      {
+        "available": true,
+        "commit": "8c27e5f0dd031326344af6d49517d8d42af8f566",
+        "content_sha256": "b0104679640bafe107a0af0531e34195aa083587cf9a7b5a751cae35b4d8bb04",
+        "hits": [],
+        "message": "update app/src/main/cpp/style_parser.cpp",
+        "path": "app/src/main/cpp/style_parser.cpp"
+      },
+      {
+        "available": true,
+        "commit": "9101732c8b7e21e9624fb5d7022a2b3023cd718d",
+        "content_sha256": "b528572f12df019c390f75ae78c4f43dc46915717366d146fea46620109ba84e",
+        "hits": [],
+        "message": "Parse Yamaha CASM chord mute mask",
+        "path": "app/src/main/cpp/style_parser.cpp"
+      },
+      {
+        "available": true,
+        "commit": "ad9464dbf9aaf677ce7c0ab46fe25793c9a3e139",
+        "content_sha256": "374cdf5e780645da51cbd70b3ad940bec91aa3857344608eecf8aeda53dad072",
+        "hits": [],
+        "message": "Parse section-scoped SFF1 Ctab CASM policies",
+        "path": "app/src/main/cpp/style_parser.cpp"
+      },
+      {
+        "available": true,
+        "commit": "0ae5fcb680100310fced4d1fd62a77a9c84be9c9",
+        "content_sha256": "4e8c701c15cede6dc130726625b82bffd2e24b88b8ec447f0fbee4540c0db4f9",
+        "hits": [],
+        "message": "fix: preserve directional Fill sections in parser",
+        "path": "app/src/main/cpp/style_parser.h"
+      },
+      {
+        "available": true,
+        "commit": "227028ff46acb50b93bc5a4c52cea27bd40c244a",
+        "content_sha256": "e192fcc2e98c70e7b0d5f773dc8f96c16cad2b7f5547e6cdba7f062346c62555",
+        "hits": [],
+        "message": "Expose style default tempo",
+        "path": "app/src/main/cpp/style_parser.h"
+      },
+      {
+        "available": true,
+        "commit": "22b86698116511889cd5e565ea19fac4adc00267",
+        "content_sha256": "c330b7db374fe61e98ce1abcfd88c8e9e458201071909efa7d892f7ae88f0f1e",
+        "hits": [],
+        "message": "Store CASM chord mute mask",
+        "path": "app/src/main/cpp/style_parser.h"
+      },
+      {
+        "available": true,
+        "commit": "253e1cf65e75aadf73c0a480e665bd91c9c98c76",
+        "content_sha256": "e73e91387000e0af41a0c96d549d87140edbe4711f67ae7604c8b3a03b8eccd1",
+        "hits": [],
+        "message": "Add explicit SFF dialect metadata boundary with frozen S1 behavior guards",
+        "path": "app/src/main/cpp/style_parser.h"
+      },
+      {
+        "available": true,
+        "commit": "2781c0a0d16eaed3019e269f5de21ba5175f470d",
+        "content_sha256": "dfbd8ad856e6eb49f227e474da833248a44515bd0d73a50945fa9b2ba81a557d",
+        "hits": [],
+        "message": "Preserve raw SFF1 CASM semantics and provenance without playback changes",
+        "path": "app/src/main/cpp/style_parser.h"
+      },
+      {
+        "available": true,
+        "commit": "580f0d8025467c9dc547cca799a396b512dfd52d",
+        "content_sha256": "3f99c0d8035526bc4641e9d8a81b6540e77288cec4b8ea554df90f21f13c6bcc",
+        "hits": [],
+        "message": "Fix CASM model for section-specific Ctab policies",
+        "path": "app/src/main/cpp/style_parser.h"
+      },
+      {
+        "available": true,
+        "commit": "7e00841fa8c632f6e663cb728bfbb00fcd4d2c65",
+        "content_sha256": "3c86a03cd853d9d3a776b21b8fea869ea52b8ac3cf3d65c2ec9fa237b1a0601e",
+        "hits": [],
+        "message": "Initial commit: YamahaArranger project",
+        "path": "app/src/main/cpp/style_parser.h"
+      },
+      {
+        "available": true,
+        "commit": "bd483dcfe408a20af7f18d1bc88a84b411f31111",
+        "content_sha256": "a42dca810ac3ae7baa002e1e23010859d5e468f7dd227941c42283db87a5f435",
+        "hits": [],
+        "message": "Preserve style part bank and program setup",
+        "path": "app/src/main/cpp/style_parser.h"
+      },
+      {
+        "available": true,
+        "commit": "bd4c304a7512bb0f2fcaaff1c2d546514bf9a55f",
+        "content_sha256": "dc1269ca4f2e326453518d45a4051029c94e67d7c9d6cb7620692aaf235c38c6",
+        "hits": [],
+        "message": "update app/src/main/cpp/style_parser.h",
+        "path": "app/src/main/cpp/style_parser.h"
+      },
+      {
+        "available": true,
+        "commit": "ccb0a739ca385f972d6883449415450a2a0b00bf",
+        "content_sha256": "ed3d16de7d36c53b189d6945f3eb5d6a7d503e8b329b90c6b85dca1ab43f6aee",
+        "hits": [],
+        "message": "Parse Ctb2 note-range policies",
+        "path": "app/src/main/cpp/style_parser.h"
+      },
+      {
+        "available": true,
+        "commit": "eee95fd48ef7ddba7c2b33be795131e7a9ce2ca7",
+        "content_sha256": "823c1f08240d7ef8a713623b0b2cbef60cc6ffb726bc5e4bc471099b96a53e1b",
+        "hits": [],
+        "message": "Add Yamaha CASM policy model to style parser",
+        "path": "app/src/main/cpp/style_parser.h"
+      },
+      {
+        "available": true,
+        "commit": "fabf87d49fa5e050f4b5e94e6d4efe86bf854001",
+        "content_sha256": "27027e5d962a1d8d0146e2278083d11b4621be2bd5a25f14273b8cf44ab26fb9",
+        "hits": [],
+        "message": "Add program and bank to CASM policy",
+        "path": "app/src/main/cpp/style_parser.h"
+      },
+      {
+        "available": true,
+        "commit": "0b783f3f7d9555c218562f073926a92e7e59e543",
+        "content_sha256": "bfa7993c50b8bcbb7ca5b963616ae99fb0157e93f3e25c6c3419b74a123e02f8",
+        "hits": [],
+        "message": "update app/src/main/java/com/yourapp/arranger/StyleSequencer.kt",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "0d4b9f3b788fa13d90b44b6d0bde255d4a0dbcc2",
+        "content_sha256": "6b81a154c35d0716a08579af5c6d72e4b52b4f3a468fecfd9de55ed92d7ef710",
+        "hits": [],
+        "message": "update app/src/main/java/com/yourapp/arranger/StyleSequencer.kt",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "140520097c8afacc08e623eb19d821f293c2e6b1",
+        "content_sha256": "69662c98d259d71aa82cfbd13580f4f88246faeaf2dec1421b61e3a9c0428e9a",
+        "hits": [],
+        "message": "update app/src/main/java/com/yourapp/arranger/StyleSequencer.kt",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": false,
+        "commit": "1609183a0cd991b8a7bba874de0b806fea5bcddc",
+        "content_sha256": null,
+        "hits": [],
+        "message": "Remove duplicate StyleSequencer source causing build failure",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "1b1d89a9f55c96fc37c3728a9df4d8b54dc0341c",
+        "content_sha256": "053d340b56064ec6f71d3fca1a5339385682140598b37d23480955f5f3d30ef5",
+        "hits": [],
+        "message": "update app/src/main/java/com/yourapp/arranger/StyleSequencer.kt",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "1c4e17dfafbfddcdd28ea5cb5fa002ef0adadeba",
+        "content_sha256": "bfb6eb4933ec5d881230f1f104ba2474f87c8f8ea9466d189971b02c8a228f41",
+        "hits": [],
+        "message": "Route style notes to MIDI OUT and E343",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "37a7ebad6e04609a46629075394c04f160fb1d37",
+        "content_sha256": "78fc68d9924964fe1cb26d2f91846b72680882577518eec9f13e9056ccf4bd48",
+        "hits": [],
+        "message": "update app/src/main/java/com/yourapp/arranger/StyleSequencer.kt",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "3dbdd80e041f5becbc29f130ee7e8778d74aae1c",
+        "content_sha256": "109bbfa1e7cd7c47fc53e4594910a113dd015b0828a37e258a227125042e6bb7",
+        "hits": [],
+        "message": "update app/src/main/java/com/yourapp/arranger/StyleSequencer.kt",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "3dd4726fb96c59de3a9b4f73f9d6d055100b01e1",
+        "content_sha256": "b4ffaf137262d1b5640ee418c878e8c4d724945aefbb47b1fc9e75a3c9b7918b",
+        "hits": [],
+        "message": "update app/src/main/java/com/yourapp/arranger/StyleSequencer.kt",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "489424782535392af1cbc48386967489dc640831",
+        "content_sha256": "d7b7b8a67da6a81fbe6dc65c382a41aa74df2814845b8a308624e209f449fa0e",
+        "hits": [],
+        "message": "update app/src/main/java/com/yourapp/arranger/StyleSequencer.kt",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "48b58423ab644b7d76fc3bea0c598135229cd65f",
+        "content_sha256": "84846b62d2b869c8bf5cf1e3d00baaeaf8f44e255d740f1ecb54776ad87edb4e",
+        "hits": [],
+        "message": "update app/src/main/java/com/yourapp/arranger/StyleSequencer.kt",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "4a606af4d91dd43b609aaef95c8556489ac4e763",
+        "content_sha256": "b25a1b2b9f055120c27a026374c89c9507353854e68d5bcabca8776d7afd26c5",
+        "hits": [],
+        "message": "Route style notes through CASM NTR NTT transform",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "578ae35bbb919815f565d0ed10d0b462e4335c26",
+        "content_sha256": "5a2a787828a3ee76d127520dec50f8c66825632e10b41c392b54c691c3fa6be4",
+        "hits": [],
+        "message": "update app/src/main/java/com/yourapp/arranger/StyleSequencer.kt",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "62170845e05b9acde7ec62fcd9617d3350bc1feb",
+        "content_sha256": "950cebf733b5ad0717e0cec24c0166ac84717ccf13261c63856dd3e2d63b3f6c",
+        "hits": [],
+        "message": "Finalize CASM routing phase for CI build",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "644f6c313ddae8dec58a29aa551da8e52573bc1b",
+        "content_sha256": "1e6e42dbdc8ba38f7e38318830f5be014e4ef42aa518457efadd707818702b30",
+        "hits": [],
+        "message": "Route Yamaha drum parts to percussion channel",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "64d9ec10896451f6997f86d0c703ebbfe03bdd76",
+        "content_sha256": "9873d9224f8d232723e4d8d922dc48ee06f4a2782d4e19bb11e22ccce1d56774",
+        "hits": [],
+        "message": "update app/src/main/java/com/yourapp/arranger/StyleSequencer.kt",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "653503775b307e423d195c4bdecece01fe1b95a8",
+        "content_sha256": "2fcd79f7166f1847e916942606beca0f1a9b4fd1c90da0c20cae65d3c7c9edb3",
+        "hits": [],
+        "message": "update app/src/main/java/com/yourapp/arranger/StyleSequencer.kt",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "6588ae1d849e506ef4fed1eeefe6b7b4bab77155",
+        "content_sha256": "17e5ffcb484c0c15a5ccc0779534c6f3b989ff9935f1ca2691f9979f8dd2513c",
+        "hits": [],
+        "message": "Keep preserved non-note events out of note scheduler",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "6c3813597a4f9543ad869c9006ad1ef1f9ccac0e",
+        "content_sha256": "f7af1e7f77e2707ce5a78a7897715c902553ae3b8ce4aa4cb6613bcff603ae0f",
+        "hits": [],
+        "message": "update app/src/main/java/com/yourapp/arranger/StyleSequencer.kt",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "6cfd4767a56129a921699b51ba82a82e705972ae",
+        "content_sha256": "85d949fab07608b905fd94284ebf4130c4ffcd166bb8f3f253bb8fa5b1909f0c",
+        "hits": [],
+        "message": "update app/src/main/java/com/yourapp/arranger/StyleSequencer.kt",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "6eb4c095e2b0144e24835ca5daecaae763aa571a",
+        "content_sha256": "ca55e1859422c3be2a190806d1f0f4807745d485e11154be0641cd84a152246d",
+        "hits": [],
+        "message": "Reserve channels 1-3 for RIGHT voices",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "78ec005583133c90917568bfb2fc6c14da0d1c0f",
+        "content_sha256": "2479247acbe23f8f40c7c4161831af3ecdccc0f428bfe2d94e53233d57b538cb",
+        "hits": [],
+        "message": "update app/src/main/java/com/yourapp/arranger/StyleSequencer.kt",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "7c0a5f5cb4b5a60e111ba178c6bdfea93d4fd5b1",
+        "content_sha256": "17c362da1248c9b9cdff6c60e5ef74cc7ba2ce39eb1aeb65957aab28c450f899",
+        "hits": [],
+        "message": "Map numeric CASM voice suffixes to GM programs",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "7e00841fa8c632f6e663cb728bfbb00fcd4d2c65",
+        "content_sha256": "a86cfb7695794a3b294f48d70aeeb78483bd884c45bbdc010ef77d85a86a9b75",
+        "hits": [],
+        "message": "Initial commit: YamahaArranger project",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "8d89ae4b2e217e12beb9fc62497fc7c1892e9347",
+        "content_sha256": "9798a1c0a4152d9858726f7d9b5cf77c511fee8f533a0e97a589fcd8f0030618",
+        "hits": [],
+        "message": "update app/src/main/java/com/yourapp/arranger/StyleSequencer.kt",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "935cdece9c2204eba30f0989d38d9b713bf70b1f",
+        "content_sha256": "b91f365f2a1b17dbdb42f2d23ae44a72687480a3851f36ebf3b598f030377a8d",
+        "hits": [],
+        "message": "Fix style note-off across chord changes",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "a35796e6ec73e2a5f4a3bb7cacddbb35dac967cc",
+        "content_sha256": "367877357f2ee87cfd5a6ce506a0b0ce8febee5baa95b746fbce6a6f36fa7c04",
+        "hits": [],
+        "message": "Fix StyleSequencer debug string syntax",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "a8345c3144881a423526d0a40ea303255218e7d7",
+        "content_sha256": "a25c86b7f26b01d5f4e7d50561469fef8f47a0dc210ddd7aaf154261169cc142",
+        "hits": [],
+        "message": "update app/src/main/java/com/yourapp/arranger/StyleSequencer.kt",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "aad89db019991643361616883c923ee2e329f8e6",
+        "content_sha256": "fc6888db5beb77f24155f39a28afa84b2d0759b974b81544131f23c37aebc9f0",
+        "hits": [],
+        "message": "update app/src/main/java/com/yourapp/arranger/StyleSequencer.kt",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "b207afb88fc0e6fa11944c22f7ea73a5512dbc0b",
+        "content_sha256": "9a9b6ba118f81ebe63239db64f4981f3500ccf6d1eee79e75aa28a833e00017a",
+        "hits": [],
+        "message": "Select CASM phrases by source chord type",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": false,
+        "commit": "b56297e393b0ad3ae56158b20e504c58d83eb633",
+        "content_sha256": null,
+        "hits": [],
+        "message": "Remove duplicate legacy StyleSequencer",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "be4ee764da391b3db1a811c3cfae1daf6228883f",
+        "content_sha256": "40f347af34fd3d2c0c93af7108cf0f3796c9726c8db31bfce64e275c6bc16bd4",
+        "hits": [],
+        "message": "Route Yamaha crash and percussion parts to drum SF2",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "bf4a488e23f8bcd485d24fa48ed806822dd34b89",
+        "content_sha256": "e4d08eebccf1eeb98bbd336641839c205e098ec3a5e29c646facd392ccd46d46",
+        "hits": [],
+        "message": "update app/src/main/java/com/yourapp/arranger/StyleSequencer.kt",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "bf62a9ec781dc327b8f19cbba317c9fa3bdcecbf",
+        "content_sha256": "49ef1c364b4cd783abb77abb8782c12f78da47c04e730258ba625b3257efc41e",
+        "hits": [],
+        "message": "Restore StyleSequencer and fix MIDI package",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "cb6a1722f7a5c14b606db75c6631ba1d174044be",
+        "content_sha256": "768d3bed13bd363de6097f2ca9ecaceea2374464a17e7eda3063c0d040d0f7ef",
+        "hits": [],
+        "message": "Route accompaniment through section CASM destinations",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "cfb1deae8902a38290e286d9bd4c3950824dcc13",
+        "content_sha256": "4786d937217d3bae902c9fb237d2071c6afc12d9d0edba805343236f72f675fc",
+        "hits": [],
+        "message": "Fix StyleSequencer MIDI manager import",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": false,
+        "commit": "d248cd00ed1f51b14b05600337e549e226b8870c",
+        "content_sha256": null,
+        "hits": [],
+        "message": "Remove duplicate legacy StyleSequencer",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "dd93ff766e1092a0eb8354c70004aa2c1b484528",
+        "content_sha256": "a3f12ff23162c93b42ffb85e49778f0f4b494054a1e48c2886789c9f964d3e1e",
+        "hits": [],
+        "message": "update app/src/main/java/com/yourapp/arranger/StyleSequencer.kt",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "e9e63c0577ab55008b156731044f6962630279b4",
+        "content_sha256": "3e75f9d587d71fefac831aa61cecfd4fc0ac9c2abf0727c437368e56e96fc153",
+        "hits": [],
+        "message": "Fix CASM voice lookup by MIDI channel",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "ec09afe459f75531028a0b94c48501b098e16d8e",
+        "content_sha256": "3360d6ee911cac55788689de60e62da4a5602d37c871108736fb03f3d75b5eca",
+        "hits": [],
+        "message": "update app/src/main/java/com/yourapp/arranger/StyleSequencer.kt",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "f791786ef5102f7f64c5397d74ab20bf9c3f152a",
+        "content_sha256": "91debb0d27e125888f61156f71517f57e19cdeec13f34d0961c1ab644f44044c",
+        "hits": [],
+        "message": "Add seamless style section playback",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "fdfc1f742f0ca95fce45c5b1d3bff1533e896822",
+        "content_sha256": "afc445903aee959768f20610ca2e0f194d7d60c6250116bcc908c95abed952c6",
+        "hits": [],
+        "message": "Select CASM policy by source note range",
+        "path": "app/src/main/java/com/yourapp/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "1251c282fd09086f07b38399bf98062856ede3aa",
+        "content_sha256": "2202d714af4b6ac41bc664a3303051f443170dc75a5aa8b404b9a5fa08ce344c",
+        "hits": [],
+        "message": "Preserve full MIDI event metadata in style model",
+        "path": "app/src/main/java/com/yourapp/style/StyleModel.kt"
+      },
+      {
+        "available": true,
+        "commit": "130cc20c79284892142f742dbf5edc2d5c7e31a4",
+        "content_sha256": "875a573f4200b72f6d0d1366a6efe2ed8048b76576be2be5b69744ca67f257a9",
+        "hits": [],
+        "message": "fix(style): preserve authored mix and route proven percussion families",
+        "path": "app/src/main/java/com/yourapp/style/StyleModel.kt"
+      },
+      {
+        "available": true,
+        "commit": "146e80ec8fae1040eae4dea756247af0e17d0c45",
+        "content_sha256": "3093d0f4e7253f2c1f9864c0dd42d3d887d2ebe1a3dc56d6653a75858b16444a",
+        "hits": [],
+        "message": "update app/src/main/java/com/yourapp/style/StyleModel.kt",
+        "path": "app/src/main/java/com/yourapp/style/StyleModel.kt"
+      },
+      {
+        "available": true,
+        "commit": "253e1cf65e75aadf73c0a480e665bd91c9c98c76",
+        "content_sha256": "bbfa15d06f4097a2b0364c2f0f5cb6ec666f21300bd2a36bcbf25ab7a692d375",
+        "hits": [],
+        "message": "Add explicit SFF dialect metadata boundary with frozen S1 behavior guards",
+        "path": "app/src/main/java/com/yourapp/style/StyleModel.kt"
+      },
+      {
+        "available": true,
+        "commit": "2781c0a0d16eaed3019e269f5de21ba5175f470d",
+        "content_sha256": "dbffebdc953b6d45bd5f9ddbfa3cfeed12b538e95a1fbf817e0eef55535a71e6",
+        "hits": [
+          {
+            "line": 123,
+            "text": "val source: Int, val destination: Int, val flagByte10: Int, val rootSelectionWordRaw: Int,"
+          },
+          {
+            "line": 131,
+            "text": "byte(0),byte(9),byte(10),(byte(11) shl 8) or byte(12),rawHex.substring(26,36),byte(18),byte(19),"
+          }
+        ],
+        "message": "Preserve raw SFF1 CASM semantics and provenance without playback changes",
+        "path": "app/src/main/java/com/yourapp/style/StyleModel.kt"
+      },
+      {
+        "available": true,
+        "commit": "350f235b1f6b978f0243e9149033c164eb5fe56b",
+        "content_sha256": "efcaf41cad66390c91948e0ada6be0254e6146b689119356fcecb936a705ad32",
+        "hits": [],
+        "message": "Stage 2B: extend style channel mixer model",
+        "path": "app/src/main/java/com/yourapp/style/StyleModel.kt"
+      },
+      {
+        "available": true,
+        "commit": "735d988eef7ddd227b5e5b04f1afe71381f110f3",
+        "content_sha256": "c6b987a2bebbdbf682f2b0665af9c0ca1259938e1345f9c13e56075943a2e267",
+        "hits": [],
+        "message": "Preserve actual style MIDI voice setup",
+        "path": "app/src/main/java/com/yourapp/style/StyleModel.kt"
+      },
+      {
+        "available": true,
+        "commit": "7e00841fa8c632f6e663cb728bfbb00fcd4d2c65",
+        "content_sha256": "5762d9e9bbd53610e55d13852d90bc52ed39121752eecf8fd8b3f4d62760ad9e",
+        "hits": [],
+        "message": "Initial commit: YamahaArranger project",
+        "path": "app/src/main/java/com/yourapp/style/StyleModel.kt"
+      },
+      {
+        "available": true,
+        "commit": "7fd7eb9956b0a1bb34681a1c3cd3e41eca774022",
+        "content_sha256": "ee3f7878d42aa68498123a3bb4536b097b3dc7d9889348e23e152b393f590cd2",
+        "hits": [],
+        "message": "Model Ctb2 source note ranges",
+        "path": "app/src/main/java/com/yourapp/style/StyleModel.kt"
+      },
+      {
+        "available": true,
+        "commit": "adfd8724471525e6b29771ae73041bb8e4bdd68f",
+        "content_sha256": "989b29aa96a1a88793ca534ee9b65bb264149db6225de340914b341e289a5efe",
+        "hits": [],
+        "message": "Preserve Yamaha CASM chord mute mask",
+        "path": "app/src/main/java/com/yourapp/style/StyleModel.kt"
+      },
+      {
+        "available": true,
+        "commit": "bf77c6d7c2a3ba5e05d498d8a05697b14c40af4f",
+        "content_sha256": "a4c7a7d4efa7678fe147ea2728cdd0fb8741697141991b72ae45468ae77d1080",
+        "hits": [],
+        "message": "update app/src/main/java/com/yourapp/style/StyleModel.kt",
+        "path": "app/src/main/java/com/yourapp/style/StyleModel.kt"
+      },
+      {
+        "available": true,
+        "commit": "c3398c23596f96407312e98491b1bd5f40f50049",
+        "content_sha256": "6da7975493fe639c7a942a6a431b0c746c5ae1b2164ccfc03e6b49b4d6ebe3b1",
+        "hits": [],
+        "message": "Store style time signature meter",
+        "path": "app/src/main/java/com/yourapp/style/StyleModel.kt"
+      },
+      {
+        "available": true,
+        "commit": "d972239a2ffc79d8aa00cea951f087ec25d10f89",
+        "content_sha256": "9d4201375593bf27b36cc25fa5a9514c1770d2040fdf919dfbab71d533790a04",
+        "hits": [],
+        "message": "Carry section-specific CASM policy into style model",
+        "path": "app/src/main/java/com/yourapp/style/StyleModel.kt"
+      },
+      {
+        "available": true,
+        "commit": "e51c34a55265d8e27ec05dbbb1d309b3227db8f5",
+        "content_sha256": "1d77919797c1396a25d1536433da7b0b913fbc70d047e6fb540f446d2d4626a2",
+        "hits": [],
+        "message": "Add runtime style channel override model",
+        "path": "app/src/main/java/com/yourapp/style/StyleModel.kt"
+      },
+      {
+        "available": true,
+        "commit": "eb5c2f49b078d8a985b46a09650f7ce63dd0ad94",
+        "content_sha256": "569dfa13a4ae03fbc7e0a58c1d3c68c1ff53638f809f1c632d18e166b2ff7541",
+        "hits": [],
+        "message": "Preserve Yamaha section mixer setup",
+        "path": "app/src/main/java/com/yourapp/style/StyleModel.kt"
+      },
+      {
+        "available": true,
+        "commit": "f2b960ffcfc069d2792a35369763cd95943dc565",
+        "content_sha256": "a4c7a7d4efa7678fe147ea2728cdd0fb8741697141991b72ae45468ae77d1080",
+        "hits": [],
+        "message": "update app/src/main/java/com/yourapp/style/StyleModel.kt",
+        "path": "app/src/main/java/com/yourapp/style/StyleModel.kt"
+      },
+      {
+        "available": true,
+        "commit": "f32aba9f566b9204be28450a8478ba6639c3fd86",
+        "content_sha256": "5762d9e9bbd53610e55d13852d90bc52ed39121752eecf8fd8b3f4d62760ad9e",
+        "hits": [],
+        "message": "update app/src/main/java/com/yourapp/style/StyleModel.kt",
+        "path": "app/src/main/java/com/yourapp/style/StyleModel.kt"
+      },
+      {
+        "available": true,
+        "commit": "f61137150d213757f685754656d9b173af23c93f",
+        "content_sha256": "f53212b5b437728d6c7c767c2b0fbe41ba8abc3bb91b5b3f9fd421f4d0aa1a76",
+        "hits": [],
+        "message": "Add complete Yamaha style time-signature model",
+        "path": "app/src/main/java/com/yourapp/style/StyleModel.kt"
+      },
+      {
+        "available": true,
+        "commit": "05ba616f49a7afafde5d7f4c1895d740308234fc",
+        "content_sha256": "c1816268cb17d471a3e30a43f339be60f7e6bf1ede2dae33199d03889de95748",
+        "hits": [],
+        "message": "Preserve independent style channel overrides",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "065d8c0fbc341d37c65ac490e9a5a3a86f61e459",
+        "content_sha256": "bc9632f1e9d503d57b1fb034fbc0a0306683e1d0ba44136f604ed404e25cab49",
+        "hits": [],
+        "message": "Apply full Yamaha bank and mixer setup per section",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "0d13b7e3e12c5d3388463706cf6d9f5f960b50dd",
+        "content_sha256": "958da37d8ebeb811199195e2cc22522b4446818a4f9b2636836c95eff9a8d399",
+        "hits": [],
+        "message": "fix: reapply string presets on section activation",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "0d3121932c4e31e96a68ade08ab904139736f3b3",
+        "content_sha256": "9a3308042d76f856f1e57a83fed8aa43500f2459d8464178ed4bbb3716b98364",
+        "hits": [],
+        "message": "Keep full Yamaha bank range in style overrides",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "10752c942c139bf084fa371b4cd2b37b149f3a78",
+        "content_sha256": "5f0e8bccf61fc841442f5ae19d80b7fa33f624696d54515378aa53fee25b6e04",
+        "hits": [],
+        "message": "Stage 2: add real arranger channel mixer",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "130cc20c79284892142f742dbf5edc2d5c7e31a4",
+        "content_sha256": "ce10512024a89b7da5b138265e171edda29ff223537cbf94da727c43231d0bd3",
+        "hits": [],
+        "message": "fix(style): preserve authored mix and route proven percussion families",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "16538ea7d6b489636bbe65c7c20c44adfa49f744",
+        "content_sha256": "9a7d0063dc7c1889c2bb0f1c8f245b7a721737ea68a33e478132096aa67b9ff2",
+        "hits": [],
+        "message": "Honor CASM chord mute instead of fallback policy",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "1a30eb711e8d4f537f3a6b4eb54949c78f750ad4",
+        "content_sha256": "63195455cb2a2d3844ce8e072719a6f11a14a23b784dcbe2569225480d4f8364",
+        "hits": [],
+        "message": "Fix first chord retarget and shared CASM voice channels",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "23fd301cd93d9c6e2483a9fecf79edf444372996",
+        "content_sha256": "09056c775f417cc72a2dfb553dc4c03a8cd815f700e0010f4e3777611bf2b1e6",
+        "hits": [],
+        "message": "Add runtime style channel mixer overrides",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "2644e229006f546b42997b972db1f1c11e3edf71",
+        "content_sha256": "1d72ecf69d947607b89857248ec349f16ff48d98b5c45ee1d344ef9e6e2c7f9d",
+        "hits": [],
+        "message": "fix: declare string mix role before level calculation",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "2fbbb02ce569675a7b623983d5baf2cf25393ce6",
+        "content_sha256": "4642446926f154ac631b630892ddbf11417df641704fb6e19fe319f5cbe4e432",
+        "hits": [],
+        "message": "Add bounded chord-retarget trace with pre/post live BASS preset evidence",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "337ea0eed82e1847e44a1671c1874ac7a7623265",
+        "content_sha256": "2b34b456c7692ecb08293d4a2c543baa72a77dfb0785e1dd9ad2c9fe03dbd6fb",
+        "hits": [],
+        "message": "fix: repair StyleSequencer syntax after string mix patch",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "393c2b48ef094bc9df6eb1eabea7f1a10ae3cf07",
+        "content_sha256": "ca799ef08f59aeabb85a21b28be7db05c3e163e8ad07d20e65b7a6874e164a91",
+        "hits": [],
+        "message": "Keep one master tick through Main Fill Main transitions",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "3b887f8fcc5ca8bba45e91a15f26659136799610",
+        "content_sha256": "159f823e7524011c71ae0e181bdcbf8bf4419f22482b28cd76588dd98f3e1fe7",
+        "hits": [],
+        "message": "Fix Intro/Ending master-clock transitions",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "3babca41560fd78f91c53149376b939544828190",
+        "content_sha256": "4fea8dcc28305d358565887122e019e58ef480b6e9070271ceeedd234376f8dd",
+        "hits": [],
+        "message": "Fix section transition phase to start each section at tick zero [CI validation]",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "41a962fedb8e960c654f9ce29dd7faa676bdb4b3",
+        "content_sha256": "6036f7a3983b145cf9ae7f672ba655f3ce7ac06b2618bda5010edd039ddd25cd",
+        "hits": [],
+        "message": "Reserve keyboard channels from style playback",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "43ccabd266e5f06a0f7f173ebdfa39192b986e90",
+        "content_sha256": "cb30983b63b7cf8f849dc9d1fb0bceea39b21f1a8202fc9ef13c21984eadaee3",
+        "hits": [],
+        "message": "Fix StyleSequencer chord retarget brace",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "48cf72f48830ef11195e13f7fd3d14d6c361cf1e",
+        "content_sha256": "a1858b48a2340c8eba85e85ca6ee3cf0c9c2f5a3a87754b4d6a976c0b7833c8c",
+        "hits": [],
+        "message": "Stage 2B: wire full style channel mixer",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "4cd542d2af832753b1f064623aa32a728ef03950",
+        "content_sha256": "9d8e96da53569785dfee981249e83f37d22fee5058fce7faec4092f4357b619a",
+        "hits": [],
+        "message": "Preserve chord across section switches for immediate retargeting",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "55883d0347fa41c8715b447987b892049f0de7af",
+        "content_sha256": "3715277cbcceb049b30bb041adb40d6d08214cbc8bcb6f3b16c781d9d30ad8d8",
+        "hits": [],
+        "message": "fix: remove duplicate string voice declaration",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "5d8be7a4cdd1ef5e4bc4eed0534ffebb6580c1b2",
+        "content_sha256": "55a4c1450914bae8dd82d697a339f0b0bb44928ea60641afe9e522208021a86f",
+        "hits": [],
+        "message": "Use Yamaha CASM chord mute for policy selection",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "605b7f04ae337dc254275f224659e4f31ae902a8",
+        "content_sha256": "57f26131140e9163d0a896196a90b94abd8fd07cde5c99aa396a0aa5bdfde53e",
+        "hits": [],
+        "message": "Add long String/CASM trace recorder",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "6165472684088d5c58e6bb23bc31f0d9d90a38cf",
+        "content_sha256": "55e6c1b857195ba77cc41bfc9f71a14dede5ba595f797e68c66b0a13dd658fb9",
+        "hits": [],
+        "message": "Honor CASM source chord type for style parts",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "63fbbe8a96a720eef7841abc4bd97cdda015bdca",
+        "content_sha256": "91cdd615b99af89e8dd9938fd48fc91abc6efc91ce1e66372226abb32a5f20aa",
+        "hits": [],
+        "message": "Fix StyleSequencer playOnce brace after transition work",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "6532ad937a1a1123dbb3a2038c991c282ba84341",
+        "content_sha256": "518bb35b4b404628cdeda736f62af2b444bbf82ad83366df26c934f9cf268208",
+        "hits": [],
+        "message": "fix: reduce Fill\u2192Main audio gaps from redundant preset writes",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "6b5bb65abe9188423a8e9b647cf95b75fd27f5dc",
+        "content_sha256": "b4202da6c7f033be4e83a1cd130e723768bbab0453c603c603966c237cc33ffe",
+        "hits": [],
+        "message": "Stage 1: make CASM policy selection deterministic",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "6bc5f3aa006f908f4cc98d39ba6d7449ee3c9a84",
+        "content_sha256": "1d8d3698a2efdbcc5273275d6a793a06cd0e5262e4c4275ad176b33c4f82cbe7",
+        "hits": [],
+        "message": "fix: quarantine Stage 3 and restore build 776 production playback",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "6e9b001b518751fd643696badcdcae8f5fa209ca",
+        "content_sha256": "391118043f929f3453495831e6f4e63e448167dc94821c19901a4f01d538beb5",
+        "hits": [],
+        "message": "Fix StyleSequencer brace after CASM retarget",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "6ebd05e4a90d43628cdacea208cf885cab2676aa",
+        "content_sha256": "5fef8dd53e0920f343f82594f8b570ac940ce4cae2450557a37a17ffa0501029",
+        "hits": [],
+        "message": "fix: restore StyleSequencer and apply string mix floor safely",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "759fd032297235db2e3c501e7c8e630301465043",
+        "content_sha256": "53250309a7ec8470e1ae4ae5eb64961618917210bc67645385986b76d7349a2a",
+        "hits": [],
+        "message": "Fix style voice routing and preserve drum playback",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "76429b1273c2144d436ee302dabf412b942af5ea",
+        "content_sha256": "f9e283abf2cb9310d363c5efaa42d82fc1ac13ee1d717e2cb1ab1c4f35bdbd56",
+        "hits": [],
+        "message": "fix: give style string layers a useful mix floor",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "76d47ed4ee29e8eda11f127e80b22217db69a9c0",
+        "content_sha256": "7c0d6a9e403a8d7095d747bc7c9433cce10bb0be3508f2bbea45ad3b7c8776f4",
+        "hits": [],
+        "message": "Reset chord state on style section changes",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "7bc7529c7e54cabba45bda4ce301ba8069e6b3dd",
+        "content_sha256": "c5b2464831c087d77d692b22d83279b03f95bbd7e880bbead41eca890992bae5",
+        "hits": [],
+        "message": "Quantize sections from real sequencer bar clock",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "7c919e99af1c0451985d38aecfcb20ef69292acd",
+        "content_sha256": "4292044165bd81b66129f3d1e9e6dbdda962c907b75a8d3fce008ca52b077c8f",
+        "hits": [],
+        "message": "feat: add guarded Stage 3 native drum lanes and captured-owner routing",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "81fab5265048d36c54ffc9fb2017b30806872845",
+        "content_sha256": "994eade9bbf25741ac4fdc342b9a01b5793f3883a0f1d06d48b3fab67787f2dd",
+        "hits": [],
+        "message": "Implement CASM RTR handling for held style notes",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "824f034b6ef631cbfdeac563befb819ce65c8d92",
+        "content_sha256": "8997423f801891050f622f0af73d0c1ed63cdd6c88b8c2c59ac462cc6f702cad",
+        "hits": [],
+        "message": "Trace and prevent stale String destination notes",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "8344604838cd9e4cae903c45218592f80d1d486d",
+        "content_sha256": "a8923ac4e9b3ec6bc46967eb87c2b51ca01e1c6937df6c67cf2702bfc0c57116",
+        "hits": [],
+        "message": "fix(audio): preserve effective channel volume on style CC11 updates",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "8816b4b51c28434966ffd2764ee4392e5e0b5a7b",
+        "content_sha256": "97f94027f097d2478c14f0525d888958967ebefc4503ffa03c032cf5dcf2c04a",
+        "hits": [],
+        "message": "Add audio timing diagnostics and cached drum preset lookup",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "8def797ace9da1646784e74c7f1019b278eee7ab",
+        "content_sha256": "e2b1fb8f215d482097617f485b308b953ae5f74aa6e267ba76b2f541f81d8347",
+        "hits": [],
+        "message": "diag: audit active drum SF2 key and velocity zones from runtime evidence",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "9351d274df902d0d1dfb247bd72ac8806c1ab95d",
+        "content_sha256": "3f5bff094f33b9190633546f326493db5ddca5a890a98b5af175d73e5719d52f",
+        "hits": [],
+        "message": "Route style events through section-specific CASM destinations",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "949ce693149600f6e65adee01b364f7b411efc64",
+        "content_sha256": "a61e587a0439253818dacea1bdd1a3652c37c53e49cfec576ae0b4994612ced0",
+        "hits": [],
+        "message": "Treat both Yamaha rhythm destinations as drums",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "97acaa452726a8e455537e0f0e0e4f17542c4ec5",
+        "content_sha256": "0576890c6f8ee69347a45d7604a0daf84e424b84586736fbd6e81fcf09d33fd9",
+        "hits": [],
+        "message": "Avoid transposing CASM-defined percussion voices",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "9cdd9f2ade7e8a2b6dbd86fb55db78056b8c65e8",
+        "content_sha256": "28464c33d3577e8bdaf50e33246324c3b5b69c004f6533eb5c7594ad58c75114",
+        "hits": [],
+        "message": "fix: use CASM source channel for dynamic bank state",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "9fbac8225a3c437ef5e20e6a8e6d5fd377532281",
+        "content_sha256": "e87bdf18487c8cb825cac10b0ee1cff85e28fa1ff1508471abf09df7af469d13",
+        "hits": [],
+        "message": "Make bar quantization honor style time signature denominator",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "a2ac09af47c0b7c3f2b17cb0ee5dbab05e9ca8fb",
+        "content_sha256": "37c5c7172821f69f54b8e6b563284cf259c9b98286d905ec8e6dab9ca7f520b1",
+        "hits": [],
+        "message": "feat: resolve CASM voices using Yamaha voice names",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": false,
+        "commit": "a4e1b8e68288e6b0b385a5308c7f88ff44b84a39",
+        "content_sha256": null,
+        "hits": [],
+        "message": "Remove duplicate arranger source path",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "a562de9e610a248d779686b5310b76be3a41b3a5",
+        "content_sha256": "d13a0a86e560087af4d8aee12c31a864d46493784073888c1ad3a8d74929a84a",
+        "hits": [],
+        "message": "Preserve complete String/CASM trace for sharing",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "a8da9819a89411923e33fa57de5d138df2dcf2b1",
+        "content_sha256": "5b9df2b15c739f6589adf12b85f833c5a2809cb00e26f97917ecf545e2675ef7",
+        "hits": [],
+        "message": "Observe chord replacement ownership and note age; compress capture with independent preset states",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "a957d5460b7c56585b6249d89b2d6d17ecb2a2b6",
+        "content_sha256": "1d8d3698a2efdbcc5273275d6a793a06cd0e5262e4c4275ad176b33c4f82cbe7",
+        "hits": [],
+        "message": "Fix stale RTR owner resurrection with atomic note lifecycle validation",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "b2e556d397c13cfbb5daab2021f7f9c4f5b97d59",
+        "content_sha256": "52e779dd771a8c611c8d20cf13f0d715ca39720dab26c3f8facf36d974662794",
+        "hits": [],
+        "message": "fix: preserve Yamaha bank on dynamic program changes",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "b8626ff923c8272a7377ba3a88a7811830ffe6a7",
+        "content_sha256": "cd7c0f2f3310b30994254d95d882f5d84c97f52b70b39c4aedb71fd2b25ef01a",
+        "hits": [],
+        "message": "integrate CASM scheduler with BASSMIDI state cache",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "b8b485c1b9085f1dd0005f4b053cdbc19fafdc22",
+        "content_sha256": "5767280de86be2689b2a4474b9a21c716f4d9f902d0e9766d3927cdc828017b5",
+        "hits": [],
+        "message": "Trace String chord lifecycle",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "c03d0a1b1767868cba5c61e2f4d65cf3a03e88a2",
+        "content_sha256": "44cb726ca2ce28b0ec3ac96cd2ed7b4fcda95117d63b8d2b967985fd2449e1bd",
+        "hits": [],
+        "message": "Make style section transitions use one continuous master clock",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "cb4d92b889e9d5a87ac5d287a34f46d661103341",
+        "content_sha256": "99cbd23a1488f3b79a5974c15da14ce3143123e1dc9fb4c58075a9f76abc4a6e",
+        "hits": [],
+        "message": "fix(style): isolate verified font-map failures and preserve accompaniment roles",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "cf5e41565c1f8668795b850bf594ac4a7c48a348",
+        "content_sha256": "da31fc4221823f5ec808c0947d8c4bb1fc0765086907ef0ef2ea331fa6931b45",
+        "hits": [],
+        "message": "diag: trace actual style audio paths for drums, bass, piano and strings",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "d915e1bbfc2baed69560dbe26687bfecf05048de",
+        "content_sha256": "b3a1ef6dc93296d6d8381ed8071abf78e25da18f942e9aa10dadceb4489ba501",
+        "hits": [],
+        "message": "Keep all CASM parts across chord changes",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "d97149295b0e6c418c3d1ef9f6daf1f29973d325",
+        "content_sha256": "26bc780cf25ad0047f6ee389389313d38c2e9404dec8073e4c227df09f3f4cb1",
+        "hits": [],
+        "message": "Move style scheduler off UI dispatcher",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "e2a8915d6ee49f3d8603d34688ce58bef2b715a8",
+        "content_sha256": "58e3018a5d20511c3e0be35bcb52130418626fe526b73f4bc4a9e55f0c40a409",
+        "hits": [],
+        "message": "Prefer exact SFF2 chord-type CASM policies",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "e69a39a7b0c9023a3d7afc8e0c106ee6fafb3ed5",
+        "content_sha256": "6a4106f6ad8014c073c5d876cfe76ef6acdde73ccedf677376622ea7741e426a",
+        "hits": [],
+        "message": "Fix master timeline double-advance after section playback",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "eb09646cb2a7a1d80076126b190d8b09ed4ac631",
+        "content_sha256": "6e6ed4e8a34c699500be1ff456a6cb235a7c607a7900e0508aa6d323a874e60c",
+        "hits": [],
+        "message": "Fix CASM policy selection by chord family",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "ebcc1a6cf99780f640373cc82a41c41cf4d10699",
+        "content_sha256": "caec04b686b16f9a72caedfd2f5156a19300b51259e23161bf3153e6ddade5f0",
+        "hits": [],
+        "message": "Suppress unsupported MegaVoice StrumFX and trim strings",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "ee833203fc8c37091549a457f8e99cc08c60ab7b",
+        "content_sha256": "d3db007c26f320cfff86c34ff8b27dfe4dae1d91b83d6760bd1efe6470aaea33",
+        "hits": [],
+        "message": "Fix style mix cache and preserve percussion target identities",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "eec7d90af9e578e2b5ab428f9cc69fd8ec9afc5e",
+        "content_sha256": "1c73c8db488eac0b265bbee6364f1ed4fc838623c8989977996e022744b1dfa6",
+        "hits": [],
+        "message": "Stage 1: fix CASM range and source metadata selection",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "f102b2bdfb5df0204b3a4ce33c7c6bf070d87aab",
+        "content_sha256": "a9079154a43f2ce9788ac38fe016660736bc76576d9cb0319c0745af107fb22d",
+        "hits": [],
+        "message": "Add small standalone chord report with bounded event windows and ch11 priority",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "f153c61a3f563d03b6a09cf332a860950aae8d49",
+        "content_sha256": "d47a358f0dba6f068594b38e8fede968fdd410c5783c5b6287f8eac0bbf64f1f",
+        "hits": [],
+        "message": "Treat Yamaha Rhythm 1 and 2 as drum destinations",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "f5116e9da8d32f16b6fac315c597e81597313167",
+        "content_sha256": "2d93063c5b4e9af34ee899f0ed599c8742d334211a3c9085302b72cbd9ec6080",
+        "hits": [],
+        "message": "Release held style notes when chord state becomes No Chord",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "f6936ec89c305343e5189244e49b4e29a34219d1",
+        "content_sha256": "36f4257baa00a4dbedc1caa6452beef34479240b75b66460fcab8169b8b75c90",
+        "hits": [],
+        "message": "Make Fill and Main phase-continuous at the button beat",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "f6cfa0cbea06f94fbd54d6cda51c85e5f3f161d3",
+        "content_sha256": "e5c8dec74ac9a1e090391c13de33fd9b3e43b644f3412fb0c4966aab679552ac",
+        "hits": [],
+        "message": "Restore seamless style section playback API",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": false,
+        "commit": "f8ab1bee3837ffad60f503ff50944d933ec46099",
+        "content_sha256": null,
+        "hits": [],
+        "message": "Remove duplicate arranger sequencer",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "fa2e74925f881cdf35340949a1e21fc0ed0d31a0",
+        "content_sha256": "bf596d36b89ef1b6b95e0108ffb0b1c0603f9d17e36be055d60d56b3404d8ff7",
+        "hits": [],
+        "message": "Retarget active CASM notes when chord changes",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "fb960515dcda3c8a1097b2ffcf91d17b6d7e3a97",
+        "content_sha256": "7a2321281ade22f9b9543c17c940ffa09ef4a0cdc5a1e81a0ba8b8a418d6a773",
+        "hits": [],
+        "message": "Release only outgoing style notes at phase-continuous transition",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      },
+      {
+        "available": true,
+        "commit": "fe0858ed1c9ac3f3ff0e73b5b16e4f94ddb00083",
+        "content_sha256": "ec00b5a0f9d16937315a1c2d0283208dfb487ddd1680c45912db812ba9b9a37d",
+        "hits": [],
+        "message": "Fix mixer volume from double-scaling note velocity",
+        "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      }
+    ],
+    "scope": "reachable branch history, five exact paths including old dormant sequencer and Kotlin model; lists exhausted (<100 each); not all branches or unknown renamed paths",
+    "versions": 162
+  },
+  "normative_yamaha_oracle": false,
+  "schema": 1,
+  "sources": [
+    {
+      "authority": "community experimentation/compilation; authors explicitly not Yamaha-approved",
+      "authors": [
+        "Peter Wierzba",
+        "Michael P. Bedesem"
+      ],
+      "document_claim": {
+        "context": "current chord root, not recorded source root or event-note pitch class",
+        "field_offsets": [
+          11,
+          12
+        ],
+        "one_allows": true,
+        "pitch_bit_locations": [
+          [
+            12,
+            0
+          ],
+          [
+            12,
+            1
+          ],
+          [
+            12,
+            2
+          ],
+          [
+            12,
+            3
+          ],
+          [
+            12,
+            4
+          ],
+          [
+            12,
+            5
+          ],
+          [
+            12,
+            6
+          ],
+          [
+            12,
+            7
+          ],
+          [
+            11,
+            0
+          ],
+          [
+            11,
+            1
+          ],
+          [
+            11,
+            2
+          ],
+          [
+            11,
+            3
+          ]
+        ],
+        "zero_word_default_exception_documented": false
+      },
+      "id": "WIERZBA_BEDesEM_V21",
+      "limitation": "No measured Yamaha output for zero word, lifecycle transitions, chord-null, cancel or high reserved bits",
+      "locator": "printed pp.16-17 Ctab table; p.37 section5.2.4; p.4 disclaimer; p.48 open issues",
+      "retrieval": "GitHub-independent web PDF text; direct shell PDF download blocked by proxy8080; no PDF byte SHA claimed",
+      "status": "SUPPORTED",
+      "title": "Style Files - Introduction and Details",
+      "url": "https://wierzba.hier-im-netz.de/StyleFileDescription_v21.pdf",
+      "version": "2.1, 2 April 2015"
+    },
+    {
+      "authority": "third-party author source, mixed SFF1/SFF2 writer; not runtime oracle",
+      "claim": "writes Ctab bytes11/12 as0F/FF but adjacent comment says0=audible and MSB-first",
+      "commit": "121f2006a46050e7d77f69d4a6c55bb6f00a7e6e",
+      "content_sha256": "5604520ae1a80caa9d7e2cc5e7d8c11378e97246ec0d1788658959c51a52a439",
+      "id": "STYLE_STUDIO_WRITER",
+      "limitation": "constant-only writer cannot certify polarity or bit order; comment conflicts with cited community layout, and independence of derivation is unestablished",
+      "status": "UNKNOWN",
+      "url": "https://github.com/jozphe/Yamaha-Style-Studio/blob/121f2006a46050e7d77f69d4a6c55bb6f00a7e6e/src/lib/binary/sff2Writer.ts"
+    },
+    {
+      "authority": "author-maintained Scheme/MIDI project",
+      "id": "LAML_AUTHOR_REFERENCE",
+      "limitation": "search index names note-mute and points to Wierzba/Bedesem; direct page opens failed; not counted as independent corroboration or oracle",
+      "status": "UNKNOWN",
+      "url": "https://homes.cs.aau.dk/~normark/laml-distributions/laml/styles/xml-in-laml/midi/man/midi-mirror.html"
+    },
+    {
+      "id": "YAMAHA_OFFICIAL_SEARCH",
+      "limitation": "search produced no relevant Ctab11-12 binary/runtime specification; bounded search is not proof none exists",
+      "query": "site:yamaha.com \"Note Mute\" style",
+      "status": "UNKNOWN"
+    },
+    {
+      "baseline": "2781c0a0d16eaed3019e269f5de21ba5175f470d",
+      "id": "REPO_AND_WORKSPACE",
+      "limitation": "existing local documents label semantics unknown; no vendor Ctab binary specification or labeled keyboard root-output fixture found in scanned workspace/repo files; local Git stores only9 commit objects",
+      "status": "PROVEN"
+    }
+  ]
+}

@@ -27,6 +27,7 @@ def main(argv=None):
     parser.add_argument("--existing-regressions",action="store_true",help="also run five relevant existing JUnit classes")
     parser.add_argument("--s3-protocols",type=Path,help="full 503 generated semantic matrices for S3 host test")
     parser.add_argument("--s3",action="store_true",help="also run CASM preservation tests")
+    parser.add_argument("--s4",action="store_true",help="also run read-only root-selection evidence tests")
     parser.add_argument("--s2",action="store_true",help="also run dialect metadata tests; S1 captures stay pinned")
     parser.add_argument("--record-digests",action="store_true",help="create initial expected capture digest; never overwrite")
     args=parser.parse_args(argv)
@@ -64,6 +65,9 @@ def main(argv=None):
     if args.s3:
         sources.append(test_root/"SffCasmSemanticPreservationTest.kt")
         tests.append("com.yourapp.yamahaarranger.arranger.SffCasmSemanticPreservationTest")
+    if args.s4:
+        sources.append(test_root/"SffRootSelectionEvidenceTest.kt")
+        tests.append("com.yourapp.yamahaarranger.arranger.SffRootSelectionEvidenceTest")
     if args.existing_regressions:
         sources += [test_root/(name+".kt") for name in EXISTING]
         tests += ["com.yourapp.yamahaarranger.arranger."+name for name in EXISTING]

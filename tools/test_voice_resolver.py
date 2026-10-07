@@ -115,3 +115,4 @@ subprocess.run(["python3",str(root/"tools/test_sff_dialect_source_guard.py")],ch
 subprocess.run(["python3",str(root/"tools/sff_casm_source_guard.py")],check=True)
 subprocess.run(["python3",str(root/"tools/test_sff_casm_source_guard.py")],check=True)
 subprocess.run(["python3",str(root/"tools/test_sff_casm_native.py")],check=True)
+subprocess.run(["python3",str(root/"tools/test_sff_root_selection.py")],check=True)
