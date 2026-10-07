@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Read-only shadow guard; explicit reviewed #781 accompaniment patch allowlist."""
 import hashlib,json
+from sff_dialect_source_guard import strip_metadata
 from pathlib import Path
 root=Path(__file__).resolve().parents[1]
 protected={'app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt': '1d8d3698a2efdbcc5273275d6a793a06cd0e5262e4c4275ad176b33c4f82cbe7', 'app/src/test/java/com/yourapp/yamahaarranger/arranger/CasmNoteTransformerTest.kt': '07bacec7ea5a9f8078c25ae704e047f853afb7d9bbb8d0f7444a71376882b951', 'app/src/main/java/com/yourapp/yamahaarranger/arranger/CasmNoteTransformer.kt': '2d993aa83733ec6f9e9685b1c0eb0d47f131bd2c253df734a599b7c3cd102ebf', 'app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt': '2ead0dbd29ec54ebc423e4bb828618501555be6ff9055cabf189cb5859d01e76'}
@@ -11,7 +12,7 @@ for path,expected in protected.items():
     if path in patch:
         assert patch[path]['baseline776']==expected,path
         expected=patch[path]['reviewedPresencePatch']
-    assert hashlib.sha256((root/path).read_bytes()).hexdigest()==expected, "#770 production path changed: "+path
+    assert hashlib.sha256(strip_metadata(path,(root/path).read_text()).encode()).hexdigest()==expected, "#770 production path changed: "+path
 native=(root/'app/src/main/cpp/bassmidi_player.cpp').read_bytes()
 marker=b"// Stage1/2 STOP-only observational snapshot."
 assert marker in native, "shadow snapshot marker missing"

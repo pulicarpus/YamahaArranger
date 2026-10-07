@@ -25,6 +25,7 @@ def main(argv=None):
     parser.add_argument("--fetch-dependencies",action="store_true",help="fetch missing SHA-pinned jars from official Maven Central")
     parser.add_argument("--output",type=Path,default=ROOT/"build/sff1-jvm")
     parser.add_argument("--existing-regressions",action="store_true",help="also run five relevant existing JUnit classes")
+    parser.add_argument("--s2",action="store_true",help="also run dialect metadata tests; S1 captures stay pinned")
     parser.add_argument("--record-digests",action="store_true",help="create initial expected capture digest; never overwrite")
     args=parser.parse_args(argv)
     require(shutil.which("java") is not None,"JVM17 required")
@@ -55,6 +56,9 @@ def main(argv=None):
     test_root=ROOT/"app/src/test/java/com/yourapp/yamahaarranger/arranger"
     tests=[S1_CLASS]
     sources.append(test_root/"Sff1ProductionPipelineRegressionTest.kt")
+    if args.s2:
+        sources.append(test_root/"SffDialectBoundaryTest.kt")
+        tests.append("com.yourapp.yamahaarranger.arranger.SffDialectBoundaryTest")
     if args.existing_regressions:
         sources += [test_root/(name+".kt") for name in EXISTING]
         tests += ["com.yourapp.yamahaarranger.arranger."+name for name in EXISTING]

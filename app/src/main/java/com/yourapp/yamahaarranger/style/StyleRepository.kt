@@ -82,10 +82,18 @@ class StyleRepository @Inject constructor(private val bridge: NativeStyleBridge)
         }
 
         if (sections.isEmpty()) { Timber.w("Style parsed but yielded no sections: $fileName"); return null }
-        return ParsedStyle(fileName, ppq, sections, voiceMap, defaultTempoBpm, meter)
+        return /* SFF_DIALECT_METADATA_BEGIN */withDialectMetadata(/* SFF_DIALECT_METADATA_END */ParsedStyle(fileName, ppq, sections, voiceMap, defaultTempoBpm, meter)/* SFF_DIALECT_METADATA_BEGIN */, bridge.nativeGetDialectCode())/* SFF_DIALECT_METADATA_END */
     }
 
-    /** Read MIDI time-signature meta FF 58 04 nn dd cc bb. */
+/* SFF_DIALECT_METADATA_BEGIN */    /** Snapshot identity once; share the same immutable value with sections. */
+    private fun withDialectMetadata(style: ParsedStyle, nativeCode: Int): ParsedStyle {
+        val identity = StyleDialectIdentity.fromNativeCode(nativeCode)
+        return style.copy(dialectIdentity = identity, sections = style.sections.mapValues { (_, section) ->
+            section.copy(dialectIdentity = identity)
+        })
+    }
+
+/* SFF_DIALECT_METADATA_END */    /** Read MIDI time-signature meta FF 58 04 nn dd cc bb. */
     private fun detectStyleMeter(rawBytes: ByteArray, ppq: Int): StyleMeter {
         for (i in 0 until rawBytes.size - 7) {
             if ((rawBytes[i].toInt() and 0xFF) == 0xFF &&

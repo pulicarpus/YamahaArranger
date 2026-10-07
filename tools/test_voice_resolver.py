@@ -108,3 +108,6 @@ subprocess.run(["python3",str(root / "tools/evaluate_percussion_inventory.py")],
 subprocess.run(["python3",str(root/"tools/test_role_pcm_guards.py")],check=True)
 
 subprocess.run(["python3",str(root/"tools/test_diagnostic788_guards.py")],check=True)
+
+subprocess.run(["python3",str(root/"tools/sff_dialect_source_guard.py")],check=True)
+subprocess.run(["python3",str(root/"tools/test_sff_dialect_source_guard.py")],check=True)

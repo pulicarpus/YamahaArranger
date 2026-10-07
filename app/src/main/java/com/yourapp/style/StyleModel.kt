@@ -70,7 +70,8 @@ data class StylePartModel(
 data class StyleSectionModel(
     val name: String,
     val lengthTicks: Int,
-    val parts: List<StylePartModel>
+    val parts: List<StylePartModel>/* SFF_DIALECT_METADATA_BEGIN */,
+    val dialectIdentity: StyleDialectIdentity = StyleDialectIdentity()/* SFF_DIALECT_METADATA_END */
 )
 
 data class StyleMeter(
@@ -90,5 +91,24 @@ data class ParsedStyle(
     val sections: Map<String, StyleSectionModel>,
     val voiceMap: Map<Int, String> = emptyMap(),
     val defaultTempoBpm: Int = 120,
-    val meter: StyleMeter = StyleMeter(4, 4, ppq)
-)
+    val meter: StyleMeter = StyleMeter(4, 4, ppq)/* SFF_DIALECT_METADATA_BEGIN */,
+    val dialectIdentity: StyleDialectIdentity = StyleDialectIdentity()/* SFF_DIALECT_METADATA_END */
+)/* SFF_DIALECT_METADATA_BEGIN */
+
+enum class StyleDialect { UNKNOWN, SFF1, SFF2 }
+enum class StyleDialectEvidence { NONE, SMF_TICK0_MARKER_SFF1 }
+
+/** Identity is evidence, never a promise of musical semantic support. */
+data class StyleDialectIdentity(
+    val dialect: StyleDialect = StyleDialect.UNKNOWN,
+    val evidence: StyleDialectEvidence = StyleDialectEvidence.NONE
+) {
+    companion object {
+        const val SFF2_DETECTION_STATUS = "UNVERIFIED_NEEDS_FIXTURE"
+        fun fromNativeCode(code: Int): StyleDialectIdentity = when(code) {
+            1 -> StyleDialectIdentity(StyleDialect.SFF1, StyleDialectEvidence.SMF_TICK0_MARKER_SFF1)
+            else -> StyleDialectIdentity() // Includes reserved SFF2 code: no verified positive detector.
+        }
+    }
+}
+/* SFF_DIALECT_METADATA_END */

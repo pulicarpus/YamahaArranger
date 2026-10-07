@@ -1,0 +1,65 @@
+{
+  "authorization": "S2 dialect metadata only; old/new hashes and exact removable blocks; existing behavioral expectations frozen",
+  "baseline_commit": "dedeb58ac2ed5f9c2116e30b8cd696cfd16c47c4",
+  "files": {
+    "app/src/main/cpp/native_lib.cpp": {
+      "blocks_sha256": [
+        "cc82059de556002aaa94a5b80a334ab004142c7d074aabc39c782568efe33d54",
+        "fe232ee1dda3b4ab72f7fc8bffbc21ff171dbc3bc2c001fa6f2af3c4c4c063e7"
+      ],
+      "new_sha256": "f5428a8066baae7536b15fc3a8e51646f7efa7edbd299ec8cc89be0a8e81d506",
+      "old_sha256": "4b26fbd8d1af84c04f0c3686f2a31c2ce57f071ff2d423bcc763366e17b31dde",
+      "reason": "Read-only dialect JNI accessor plus metadata-only invalid/null-load reset; no new global state"
+    },
+    "app/src/main/cpp/style_parser.cpp": {
+      "blocks_sha256": [
+        "1615c0efc2645672b8caaa0d08d1e65012b363ba7479cf33f891c7e6c4a375cf",
+        "a2f28881afa70436e39f34f3e4de679fb0a47639f9a9ff4d2207389873e8db0e",
+        "110b2de163b8193e2b221e8da2db6418e93126f622fcc5e20bca5fdfda5ac7c2"
+      ],
+      "new_sha256": "4d35cb694cd71d1c1d849e80a5892a58de4fc65a9a3a8648f4a723c5073b5807",
+      "old_sha256": "351a3c2bccc9d0148ece90801e6d230f564eef2a47eae05903e19e3641b75f2a",
+      "reason": "Reset/read/copy dialect metadata only; retain exact original parse, event order, policy projection and return logic"
+    },
+    "app/src/main/cpp/style_parser.h": {
+      "blocks_sha256": [
+        "2b84d3ba916125dba8925915dda36edb2ac05048f3668b09223659370f87b061",
+        "cb8953c55496778c6fdf95e8bc6daa8ea3c45863d499cb61ec5a9e5e7c6c9018",
+        "1790af96524ae7f1ffe127373b1009ad83a0ceace72a083b4bc5937c36d03f32",
+        "f0af3e7b84d633b0a22ae0452117394618fd72d62c6fbd5300268e06ff75bab0"
+      ],
+      "new_sha256": "e73e91387000e0af41a0c96d549d87140edbe4711f67ae7604c8b3a03b8eccd1",
+      "old_sha256": "4e8c701c15cede6dc130726625b82bffd2e24b88b8ec447f0fbee4540c0db4f9",
+      "reason": "Per-parser typed dialect and section metadata; read existing decoded SMF declaration only, no CASM interpretation"
+    },
+    "app/src/main/java/com/yourapp/style/NativeStyleBridge.kt": {
+      "blocks_sha256": [
+        "3a99e0822245b6bcb70db921d459d347d4082f3fcd0836a0cc8e38b430efd317"
+      ],
+      "new_sha256": "7b17ae5285dc0e5c2d5bf64a016b6cbb5949432ba5a6d4cef7b65e7575e3dfef",
+      "old_sha256": "8899fda96a679671103cc9436207db5ec4a1c58f37a83708252ead365843237b",
+      "reason": "Expose parser-owned typed numeric dialect snapshot via JNI"
+    },
+    "app/src/main/java/com/yourapp/style/StyleModel.kt": {
+      "blocks_sha256": [
+        "d526eed60c228385ff74d98c231f1766ee5811a9d59932afedfec4938617d2e3",
+        "d526eed60c228385ff74d98c231f1766ee5811a9d59932afedfec4938617d2e3",
+        "3888b6de789c997f92befd0312f70a5fa2b8b92a475f44c8ccbc68025178b833"
+      ],
+      "new_sha256": "bbfa15d06f4097a2b0364c2f0f5cb6ec666f21300bd2a36bcbf25ab7a692d375",
+      "old_sha256": "875a573f4200b72f6d0d1366a6efe2ed8048b76576be2be5b69744ca67f257a9",
+      "reason": "Immutable style/section metadata, explicit UNKNOWN and reserved unverified SFF2; no musical fields changed"
+    },
+    "app/src/main/java/com/yourapp/yamahaarranger/style/StyleRepository.kt": {
+      "blocks_sha256": [
+        "9556b6382a01742b63abbc02fe3f520f0e6ae61c7ace6a4f9d353f9a0f62e68e",
+        "3ee10c6b2ebf888963cfdc3db645317fd319924a566b6ed6e84e82ed1c6299db",
+        "ec2ffe1c84e3137c381e9f3e44b8db7ae06184a30a602bf47b1c8b6c36fc2756"
+      ],
+      "new_sha256": "7243584bb78a77b36de1be5e42ff78d7d97b509f828ef592c626aed2d304d76b",
+      "old_sha256": "f024ed422f8e8c3af1cb3e3cef0d2e2f6a8e7d148dfe6b7f6340ed9a848ca5cd",
+      "reason": "Attach one native identity snapshot to result and sections, preserving all original musical values/references"
+    }
+  },
+  "schema": 1
+}
