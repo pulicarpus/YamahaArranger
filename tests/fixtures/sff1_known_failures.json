@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "baseline_commit": "05cdb1f0998d082d701bc0d1979580270ae2eefc",
+  "purpose": "Observed baseline defects are regression observations, never Yamaha musical targets. No S1 playback repairs.",
+  "findings": [
+    {"id":"F01","status":"BASELINE_KNOWN_FAILURE","reason":"Ctab bytes11-12 not represented in native/Kotlin policy; root bit semantics UNKNOWN","evidence":"corpus.root_field_nondefault; native-policy-field comparison"},
+    {"id":"F02","status":"BASELINE_KNOWN_FAILURE","reason":"ON-first same-tick reorder and preset too late","evidence":"production Kotlin sameTickOff and sameTickProgram captures"},
+    {"id":"F03","status":"BASELINE_KNOWN_FAILURE","reason":"Single source:key owner replaces overlapping instance","evidence":"523 original-SMF overlaps; production Kotlin overlap capture"},
+    {"id":"F04","status":"BASELINE_KNOWN_FAILURE","reason":"Policy-rejected melodic source8/9 falls back to rhythm8/9","evidence":"production parser->repository->sequencer golden captures: Baroque44, Unplugged256 extra"},
+    {"id":"F05","status":"BASELINE_KNOWN_FAILURE","reason":"Rhythm and no-policy fallback ON do not receive scheduled OFF","evidence":"production Kotlin rhythmOff and noPolicyOff captures"},
+    {"id":"F06","status":"BASELINE_KNOWN_FAILURE","reason":"Partial non-note dispatch, external MIDI lacks style CC7/bend","evidence":"production Kotlin nonNote capture; preserved raw/projection event digests"},
+    {"id":"F07","status":"UNKNOWN_SEMANTICS","reason":"NTT6/9 base fallback observed, exact Yamaha meaning not certified","evidence":"42 raw effective policies; production transformer source pin"},
+    {"id":"F08","status":"BASELINE_KNOWN_FAILURE","reason":"No explicit dialect identity in production model; this alone does not prove silence","evidence":"503 SFF1 markers; native/Kotlin model source pin"},
+    {"id":"F09","status":"UNKNOWN_SEMANTICS","reason":"First-destination setup arbitration observed; Yamaha correctness unresolved","evidence":"9373 multi-source groups; production preset/call digests"},
+    {"id":"F10","status":"NOT_APPLICABLE","reason":"Ctb2 legacy voiceMap is not an SFF1 source of truth; Ctab voice preserved","evidence":"raw Ctb2=0; applicable policy comparison; empty legacy map golden replay"},
+    {"id":"F11","status":"UNKNOWN_SEMANTICS","reason":"Melodic source banks preserved; output percussion translation needs backend/device evidence","evidence":"production preset/MIDI capture; no native acceptance or PCM assertion"},
+    {"id":"F12","status":"BASELINE_KNOWN_FAILURE","reason":"FillBA preserved but terminal section includes last tick+1","evidence":"FillBA lengths7681x463,5761x39,3841x1; raw EOT projection"},
+    {"id":"F13","status":"UNKNOWN_SEMANTICS","reason":"True meter metadata preserved; exact real-clock transitions unmeasured","evidence":"meters4/4=463,3/4=39,2/4=1; host replay is not timing certification"},
+    {"id":"F14","status":"PROVEN_PRESERVED","reason":"No synthetic notes for absent parsed source; 1990 descriptor copies still omitted from model","evidence":"projection/missing-copy provenance; 8BeatPiano1 absent roles golden capture"},
+    {"id":"F15","status":"UNKNOWN_SEMANTICS","reason":"Full five-byte chord field preserved; bit/type/root semantic oracle missing","evidence":"raw Ctab->applicable policy comparison; no guessed mapping"}
+  ]
+}

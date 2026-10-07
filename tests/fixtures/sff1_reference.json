@@ -1,0 +1,2829 @@
+{
+  "aggregate": {
+    "attached_applicable_copies": 71239,
+    "cntt": 32913,
+    "cseg": 3584,
+    "ctab": 32913,
+    "ctb2": 0,
+    "expected_section_policy_copies": 73229,
+    "maximum_note_multiplicity": 2,
+    "maximum_sources_per_destination": 11,
+    "meter": {
+      "2/4": 1,
+      "3/4": 39,
+      "4/4": 463,
+      "6/8": 0
+    },
+    "missing_copies": 1990,
+    "missing_sections": 1084,
+    "missing_styles": 196,
+    "multi_source_destination_groups": 9373,
+    "nondefault_root_records": 257,
+    "nondefault_root_styles": 49,
+    "ntt": {
+      "0": 15068,
+      "1": 4866,
+      "2": 10600,
+      "3": 760,
+      "4": 36,
+      "5": 1541,
+      "6": 28,
+      "9": 14
+    },
+    "overlap_styles": 47,
+    "overlapping_on": 523,
+    "parse_success": 503,
+    "raw_descriptors_never_attached": 157,
+    "raw_events_verified": 3218027,
+    "sdec": 3584,
+    "sff1_casm": 503,
+    "smf0_one_track_ppq1920": 503,
+    "styles": 503,
+    "terminal_fill_ba_lengths": {
+      "3841": 1,
+      "5761": 39,
+      "7681": 463
+    }
+  },
+  "audited_archive_sha256": "a9b89b90e1dee25c714a076a125d6c7173bcca0e8d2029c57092b3295035d465",
+  "baseline_commit": "05cdb1f0998d082d701bc0d1979580270ae2eefc",
+  "compact_reference_schema": 1,
+  "corpus_identity_mode": "archive-sha-or-exact-relative-path-file-sha-set",
+  "deterministic_manifest_content_sha256": "4e2fd4a9719b826cd810a6e1eac62fc3e40dbb3eb2996ff9374e04b87da2d543",
+  "generated_full_manifest_bytes": 32192551,
+  "generated_full_manifest_sha256": "77a95fafee170fbd72366946751b72deda1c72facbc3ef2b7b9346c0ffd36809",
+  "golden_resource_sha256": "5136410612a6a721b2fc2b8e06cdb20f1fa38129870e7a5b4943f176c9c3b1a4",
+  "known_failure_ledger_sha256": "dfe533cd86acde187fa4fa23fc11e5e12d2bfc8b3aaedb9197450d5c1c603a70",
+  "pipeline_capture_resource_sha256": "751eaeef7e8cb58a1b74cfb02363e0a1331302f427f6cd49edd28616a5cbd8a2",
+  "policy_record_columns": ["id","cseg_ordinal","subchunk_ordinal","payload_byte_offset","source","destination","raw_sha256","mapped_fields_sha256","root_field_raw","effective_ntt","bass_on","attached_sections","missing_sections"],
+  "production_source_identity": {
+    "baseline_commit": "05cdb1f0998d082d701bc0d1979580270ae2eefc",
+    "main_tree_git_oid": "856c7ae49c267c10d966676124820c33935581ab",
+    "tracked_files": {
+      "app/src/main/AndroidManifest.xml": "876359a2255b46cf98c026437280767fecdf7f0138276855998c595c6b9c05e2",
+      "app/src/main/cpp/CMakeLists.txt": "2022a1b11fcbc9fe54c08e7b1aedb664514807874de634cd2859cedeeae70382",
+      "app/src/main/cpp/audio_engine.cpp": "2986204d15598c05180a60d98beab855ed118a03f1b7e52e21f3ec7f7cd51d3a",
+      "app/src/main/cpp/audio_engine.h": "96dc706d62db43696e901119757ee5d6d7ebe6cbde8e98e2c056f312f1fd2e5f",
+      "app/src/main/cpp/audio_path_diagnostic.h": "2c527c0b4b5faa38356befcedcf5994d7a52b7b3b2768ab7e66ed3f636a26a85",
+      "app/src/main/cpp/bassmidi_player.cpp": "b500ba1b279e4c7ebd80f04f6c01bc8537a68335c8c74524a2149f12f298d34e",
+      "app/src/main/cpp/bassmidi_player.h": "acbe85d6f83fba70af15d083c8ddcae18094f6fab442b762073d1bf45e1f5b35",
+      "app/src/main/cpp/chord_change_diagnostic.h": "65032fbb7ce526ca7af02dcd86eacfe33016348a5da5f17892de8b6790945869",
+      "app/src/main/cpp/drum_compatibility_comparison.h": "c865bc9207035ed774b81ea6b568dcfeb3bf56d8a1ae84bd807f397046afc988",
+      "app/src/main/cpp/drum_compatibility_report.h": "7215f5adf57ee8bf6a6e955d3b53a2267489d464160b4e0c28f742a06eeb1a23",
+      "app/src/main/cpp/drum_kit_audit.h": "a9ebcf159e228f4f8b4bc945a9a5ec9fed2308effb4667a4485bf2c6bec4b8e4",
+      "app/src/main/cpp/fluidsynth/include/fluidsynth.h": "1a8c0c4dea3ec78c74d328d8594e7835af76371d612a2b4e6f39cd4dcf0cc710",
+      "app/src/main/cpp/fluidsynth/include/fluidsynth/audio.h": "41032746d04f2b921b193adef7bc2bbcfb307b3983b030bce96f8d05de9553ca",
+      "app/src/main/cpp/fluidsynth/include/fluidsynth/event.h": "62381353436138d715eb5b1297460f01776f8f72b0712a2aa71f72d32019e868",
+      "app/src/main/cpp/fluidsynth/include/fluidsynth/gen.h": "c88a076b9434b8c893df626404f2b991eb2360ed3ce1318751a5f1402b3be1eb",
+      "app/src/main/cpp/fluidsynth/include/fluidsynth/ladspa.h": "4473732d1dfb83daa988016d425a52ac2454fe69d8c77d20429d70a66735e159",
+      "app/src/main/cpp/fluidsynth/include/fluidsynth/log.h": "2f0f0baa9c7c0de43afb88fd576ef5dc12242bbd70e39841befb9507b14061aa",
+      "app/src/main/cpp/fluidsynth/include/fluidsynth/midi.h": "088ab41abfab317a3c41ab3d5748951d9ba0d3fa63f8e2731110adfc6b90762d",
+      "app/src/main/cpp/fluidsynth/include/fluidsynth/misc.h": "7788777117a7f1aeb5b36e7ff71386a08f4c377a2bd6229743cb8584c91622f5",
+      "app/src/main/cpp/fluidsynth/include/fluidsynth/mod.h": "8aa5b6bbcc4aeee771462d3a3baa2d071584a9b0e24d2a2f0b47d32d5fa5de87",
+      "app/src/main/cpp/fluidsynth/include/fluidsynth/seq.h": "12e96dd53da619444bc382afff8fda530fcacb773fe7e17252b5072b60cfa785",
+      "app/src/main/cpp/fluidsynth/include/fluidsynth/seqbind.h": "83066df18b9bc9fd22ffd63793f32ebe45fa994b8074b1dba14e8dae602de953",
+      "app/src/main/cpp/fluidsynth/include/fluidsynth/settings.h": "b394167f4c5fde05f6e3572bc26e939772ee8ae9a84e050350e5c841c24723c9",
+      "app/src/main/cpp/fluidsynth/include/fluidsynth/sfont.h": "3299834b060fb617c4943d229c63641680ad0b1f0444a4d0000ea1160007a21a",
+      "app/src/main/cpp/fluidsynth/include/fluidsynth/shell.h": "320c62bc7742afacc3b365491220e7b4eb3685ff1b023b0bff80a77f8d73c18b",
+      "app/src/main/cpp/fluidsynth/include/fluidsynth/synth.h": "2d25fe10b3b3392b16d5dadad8147d27ea91e3e47bd44def7525548dea0bbb9a",
+      "app/src/main/cpp/fluidsynth/include/fluidsynth/types.h": "4a71536a2d1530af11f0a701c5e7d214e4b7ede700db9f45f96105863c7df25b",
+      "app/src/main/cpp/fluidsynth/include/fluidsynth/version.h": "495eab87abf552037daa9fa0c098b0a047ffbb213e3a6bb6f841d7a6e20d6d9f",
+      "app/src/main/cpp/fluidsynth/include/fluidsynth/voice.h": "644a4d55d4aaa225709c20df401a14bbe6ed61c78a6761c4132f4fc8c3d3eef2",
+      "app/src/main/cpp/managed_sf2_audition.cpp": "0d033dc3d040d6741edb30108736057c413ee75995fb86ac399bf9f828ed7842",
+      "app/src/main/cpp/managed_sf2_audition.h": "46fbe20118093b0530065df58b0e3d06d6ef97843a18d0320f3443eb3d14dce5",
+      "app/src/main/cpp/measured_balance_profiles.h": "2cc120411dcd8decb6841cc354824b3b89d1096e95ea19e45280e894bfa3cf03",
+      "app/src/main/cpp/native_lib.cpp": "4b26fbd8d1af84c04f0c3686f2a31c2ce57f071ff2d423bcc763366e17b31dde",
+      "app/src/main/cpp/pcm_headroom.h": "134c90eb15ef69153f61fd664d999c87aa5fc7dea9fa8f403f6588ffe0034d74",
+      "app/src/main/cpp/pcm_path_evidence.h": "afaf4aa1507638b24f8631b7a62ea994421cc2d9a24f6243be195dee8ee8b0a2",
+      "app/src/main/cpp/percussion_audition_evidence.h": "376ad5a7b0c2685b2a4b85da1e0a3cb1a976ebbf1ae2e9e8508bd254fe8ba46e",
+      "app/src/main/cpp/percussion_fidelity_policy.h": "cfebb74c76a9057f37045905d3a2165a4e4c9e96aa0bcdfc9f4f14c26b016d69",
+      "app/src/main/cpp/role_pcm_meter.h": "98391cae5a11f21c0dc93758f457e78135d0fc8ba7bade8e16440d0f1a0be52e",
+      "app/src/main/cpp/sf2_fingerprint.h": "119af469bf2fb4f6c29da33c4408af49b2f4cd84d562768a66c201b413a285fe",
+      "app/src/main/cpp/sf2_zone_diagnostic.h": "51f6f0528c38ba57a1c84930dd6ff67b51235d1800c87c43e3f2dc3d424b2d7a",
+      "app/src/main/cpp/smf_reader.cpp": "64102da2c3c9ed6d2b8807e0d33eb4b72065ede02907beb74af901f9e416a26d",
+      "app/src/main/cpp/smf_reader.h": "de4058abcf5c22c9f8b594d5fa9586c7807fd2e4bbcc2bd5f686f47db8e74267",
+      "app/src/main/cpp/soundfont_player.cpp": "342cb87225bfd18298bdabe20ae81b33a6de26b1aff261ca17425113b72d83f1",
+      "app/src/main/cpp/soundfont_player.h": "08208f3b9072326c70d902e1167490cd15a7e1d7edc0ddcd6813c0b57bd6413c",
+      "app/src/main/cpp/style_parser.cpp": "351a3c2bccc9d0148ece90801e6d230f564eef2a47eae05903e19e3641b75f2a",
+      "app/src/main/cpp/style_parser.h": "4e8c701c15cede6dc130726625b82bffd2e24b88b8ec447f0fbee4540c0db4f9",
+      "app/src/main/cpp/style_tempo_jni.cpp": "112dcc423c297fbdf5e33e95c37fcb05a7def01388dfcc5586bb08bd5ff5bb94",
+      "app/src/main/cpp/voice.cpp": "fafe3aa7f1e69eaaba34b1dd09c7772e39f3fe4aaf0e1071c3254a03da8fa413",
+      "app/src/main/cpp/voice.h": "6cc84ef898cb8b2c0300b972f0d1bdca8ef108723ff4127b050aea84748f1904",
+      "app/src/main/cpp/voice_resolver.h": "8fab33a64f530ccf77cd94de238ea6471571661eb8a761f6c6e54c5f299e29e0",
+      "app/src/main/cpp/yamaha_drum_semantics.h": "82066af22a51040ea5499b91b308161f3c8b5da38516bda87f6899675a623739",
+      "app/src/main/java/com/yourapp/YamahaArrangerApp.kt": "9ff5e02900cda6fb91ceab6ace08f29fa6d3aa6969907113cdc4f3afb7134acc",
+      "app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt": "cac701d140f3cff842d092585950ab0194c065a6e1d81205e5d8fbb58eb222b7",
+      "app/src/main/java/com/yourapp/arranger/NoteTransposer.kt": "930167aaf5039d75e8206aed6ed28b6068744dd79f546bd28e1baad661492731",
+      "app/src/main/java/com/yourapp/audio/DrumEngineeringProof.kt": "47912750a6889de71e4b9530dc195a7e4a3866aba01a4883f225fca41a0540c7",
+      "app/src/main/java/com/yourapp/audio/DrumSemanticEvidenceRegistry.kt": "e8dc4bcfa5eb8a27eb3d0f1467b3756e617c3c4f8857be55c87fb31ce38fc1e5",
+      "app/src/main/java/com/yourapp/audio/DrumShadowPlanner.kt": "2594ef4cb0b8f519d94a05dafcb0ba33f88e86b0d4f61612cadf7a10367ca75b",
+      "app/src/main/java/com/yourapp/audio/GenericDrumResolver.kt": "74288e78d62721fcddb73daf854ff703dc47347cb4c428991e337dde5f833a7c",
+      "app/src/main/java/com/yourapp/audio/GenericDrumShadowExport.kt": "606a5fcc785aca7d2518d6183b922b40b01a95bf6c8da338039a04d771568415",
+      "app/src/main/java/com/yourapp/audio/GenericDrumShadowRehearsal.kt": "2d6b5c5ede402a2c3f77731e9b85cc44fb7cda12c4838e8c8118542defa11276",
+      "app/src/main/java/com/yourapp/audio/ManagedSf2Audition.kt": "9f89b0d94f087671c96744228c8ebbcecc7ba5735067835730b09b14243e420e",
+      "app/src/main/java/com/yourapp/audio/ManagedSf2AuditionNative.kt": "fa4d250d45715775168d54c1a37413ab29018c821a108d2c080c92425a65a67b",
+      "app/src/main/java/com/yourapp/audio/SampleProvider.kt": "dba7a37559fe4f188e9f1f90c76542e0cd77dbc0b2b70dd7d04c4630c110f244",
+      "app/src/main/java/com/yourapp/audio/Sf2SemanticInventory.kt": "218cb6e6a2895f4a7f447095633a588fc9bf03f2c65716905209eb98262f30ef",
+      "app/src/main/java/com/yourapp/audio/ShadowDrumRuntime.kt": "428be25a9e15aaba88b68273b759333f18ccae243b7f15fc28bcc9963cc7bc3e",
+      "app/src/main/java/com/yourapp/audio/SilentPlaceholderSampleProvider.kt": "39a9d154e95647df5842933f0815c426b9f7c854fc5308dd491be545b7ddb704",
+      "app/src/main/java/com/yourapp/audio/SoundFontInspector.kt": "967baa6606b07cff308fc6e0966d1fd5eb69cdffbf424d178f478ac1afa9296b",
+      "app/src/main/java/com/yourapp/chord/AcmpChordAnalyzer.kt": "13775c9526c8f1ce317cec5ab609046fd542af089c3f1e7c0862eddca8d3f88a",
+      "app/src/main/java/com/yourapp/chord/ChordDetector.kt": "bf22694d06cffdcbcf8536cff9b7afd1c37f8ab838724794cacf5b74e95a26fc",
+      "app/src/main/java/com/yourapp/chord/ChordModeController.kt": "c353ad807a57ddbd57306074d032085d89f89cedb544f099cf15612b59bc92d2",
+      "app/src/main/java/com/yourapp/data/AppDatabase.kt": "7e1fbadf288e8c5b36756b21a79240b23c8d72c2979c2b6362e289d8511d2ce7",
+      "app/src/main/java/com/yourapp/data/RegistrationMemory.kt": "030020413cf13a5ca11915a6e9d04b76195f1350cf6cfc3c6dd444ef8df34adf",
+      "app/src/main/java/com/yourapp/di/AppModule.kt": "b194b8a525f5426a40be62e589a9e9915ff4a6052bb0170ee483303f8a010b33",
+      "app/src/main/java/com/yourapp/midi/MidiInputManager.kt": "2a88d27fb1ba7988eb75b36d22d109bdb6b71f45a05315a62b1d9e56fa25c9d2",
+      "app/src/main/java/com/yourapp/style/NativeStyleBridge.kt": "8899fda96a679671103cc9436207db5ec4a1c58f37a83708252ead365843237b",
+      "app/src/main/java/com/yourapp/style/StyleModel.kt": "875a573f4200b72f6d0d1366a6efe2ed8048b76576be2be5b69744ca67f257a9",
+      "app/src/main/java/com/yourapp/ui/ChordModeSelector.kt": "28b5fb2815b20bf97568469a9d96fc69a95fd8a0f45f7f966bcfa0f79706efc7",
+      "app/src/main/java/com/yourapp/ui/ComposeColumnCompat.kt": "337f43d0d587affd9965b76ba9d48a1be485b9ff7ca4fa6d2041d18ff86c3630",
+      "app/src/main/java/com/yourapp/ui/ContentResolverProvider.kt": "8d0617d2aec3fb8f2b276eac9ed9131c05b0974fc36f5c247eec2f7e7269ca52",
+      "app/src/main/java/com/yourapp/ui/DrumShadowDialog.kt": "39dde779116b293d5f5e4e88eeb1838617dda3a63dc191baff1b73e245370c0e",
+      "app/src/main/java/com/yourapp/ui/MainActivity.kt": "7474a82a4ee8f2e22195ed9d318b185f1d14f1cff00233584036fa5d8d84da80",
+      "app/src/main/java/com/yourapp/ui/MainScreen.kt": "cd1d798f37c45072ee3d7d871aeda26ca859675b207917c27a68ddf5d208884d",
+      "app/src/main/java/com/yourapp/ui/MainViewModel.kt": "1d4325b25cc5496dfcaff4b4e7053f732f6b9ec5c0b031046fb63323d2e6ad1d",
+      "app/src/main/java/com/yourapp/ui/ManagedSf2AuditionDialog.kt": "893457c9b902e21632877d6ff2f13a98f20ce49073086855c48d42fe372cf297",
+      "app/src/main/java/com/yourapp/ui/PianoKeyboard.kt": "0bcfdade4743df512444596f74d364c42dcba5af88af1c0514cfe4e8c7ef1f87",
+      "app/src/main/java/com/yourapp/ui/Sf2StyleInspectorScreen.kt": "b5ecdf4db1e4fb66f99041647fea4ba4821ce61d9b646d92c0adaa5dd2e3c1c5",
+      "app/src/main/java/com/yourapp/ui/SxMainScreen.kt": "4140c86b91f7f6f01ca24a08802745858f9a82af1816236d4810990fb5fa29fb",
+      "app/src/main/java/com/yourapp/ui/Theme.kt": "cdfc12c9bf23b6e88621f88acecc82de079f7787fa09f261065e927dc0d2feba",
+      "app/src/main/java/com/yourapp/yamahaarranger/arranger/CasmNoteTransformer.kt": "2d993aa83733ec6f9e9685b1c0eb0d47f131bd2c253df734a599b7c3cd102ebf",
+      "app/src/main/java/com/yourapp/yamahaarranger/arranger/ChordChangeDiagnostic.kt": "d0b5214d288816b438b0cfbef32ff96799d34d8ff9f4321e513b47648acbde44",
+      "app/src/main/java/com/yourapp/yamahaarranger/arranger/DrumCompatibilityProfile.kt": "26fd8b51a0d895b975d3473f1ac97d55dd5edaee1f40f94cf0e0d7a9d6113cf5",
+      "app/src/main/java/com/yourapp/yamahaarranger/arranger/DrumStyleAuditProfile.kt": "04cdc39e1d730f64aa77c23b995f03fe6295e60a8508701ee709f4d8f1d61310",
+      "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleAudioPathDiagnostic.kt": "5b21a3405e69d20a17d6eff206bf2c2c1839a5d28d1fc108565db18275fe2feb",
+      "app/src/main/java/com/yourapp/yamahaarranger/arranger/StylePartPresence.kt": "61ce5fd80809ef2669d45a749ac8f3a8145f5c71658ebfa96ae88245fabd6fde",
+      "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt": "d3db007c26f320cfff86c34ff8b27dfe4dae1d91b83d6760bd1efe6470aaea33",
+      "app/src/main/java/com/yourapp/yamahaarranger/audio/AudioEngineManager.kt": "eca0503f15fd73d5d8115379fce9960ad77c82d57ddeffb7fabf90bcc8454857",
+      "app/src/main/java/com/yourapp/yamahaarranger/audio/NativeAudioBridge.kt": "83be9ea0b73766b387ad307491e98172a35c7deda693c503a9b582471f3417a3",
+      "app/src/main/java/com/yourapp/yamahaarranger/style/StyleRepository.kt": "f024ed422f8e8c3af1cb3e3cef0d2e2f6a8e7d148dfe6b7f6340ed9a848ca5cd",
+      "app/src/main/jniLibs/arm64-v8a/libFLAC.so": "e735c83b906a3579544c7f381d0a18c22935e018887b3f6958c3b3259cbdc06d",
+      "app/src/main/jniLibs/arm64-v8a/libfluidsynth-assetloader.so": "61450b9303515f0465e9ff28630d47facb00befc3dfea2b77c2dc136544808a9",
+      "app/src/main/jniLibs/arm64-v8a/libfluidsynth.so": "998fff6de7dc217dc08abd4dbbbe67943e62bebb667e1213f3f8fea8a7f20b96",
+      "app/src/main/jniLibs/arm64-v8a/libogg.so": "8cea8156130a0e6c65f36478df8de6dae39fc3b109c7b18ba0def9b543253669",
+      "app/src/main/jniLibs/arm64-v8a/libopus.so": "f88ccea0d465c8bb7fda99db33a4c84620801649bb3d70046567f637f3243e25",
+      "app/src/main/jniLibs/arm64-v8a/libsndfile.so": "d09e995dea0c595ced8bd010afb0f3c51e32b54bc33a6bbb34d6539e30258106",
+      "app/src/main/jniLibs/arm64-v8a/libvorbis.so": "ab5cf49d4bf38cd7e9d310bb6db98b1dd9689673481033176ed972cf885e40ba",
+      "app/src/main/jniLibs/arm64-v8a/libvorbisenc.so": "b119116b8c4a9e8413dbb3b960913f367de1b7a44314da823ded45d6012a7714",
+      "app/src/main/jniLibs/arm64-v8a/libvorbisfile.so": "af4ee876db0385be7e99dd760bcc023d7e6552ead38c4e4521acbfb3aa018fff",
+      "app/src/main/jniLibs/armeabi-v7a/libFLAC.so": "55693cebd47c665b10f2da5dc3e9ccc3715354da93ad6d32f44835fc976055d7",
+      "app/src/main/jniLibs/armeabi-v7a/libfluidsynth-assetloader.so": "70fe52b3250286e211f3cc2276ea1e64aade2ce77e8df91d32f5f1d44fc60fb7",
+      "app/src/main/jniLibs/armeabi-v7a/libfluidsynth.so": "6e4cdbe7898859e4f2a35f5533b670a2f6e3f20dfc9582acf8db4f23c208eee9",
+      "app/src/main/jniLibs/armeabi-v7a/libogg.so": "2113c75f21e606b5ff1e9919501426b46184c6bf834bb3388d4699d980398219",
+      "app/src/main/jniLibs/armeabi-v7a/libopus.so": "33e2631e374089bd4ded6a32c038cd7a91bfb5663984ed9220197847dd0dcb15",
+      "app/src/main/jniLibs/armeabi-v7a/libsndfile.so": "6413655f6662ad4097cdbadd89d04cf426db12c56193fa09a6d6c83c839a735a",
+      "app/src/main/jniLibs/armeabi-v7a/libvorbis.so": "3b142d41e16294ee014851b06eece0488e1020cd46ef67e6ad0eae4fa515c74e",
+      "app/src/main/jniLibs/armeabi-v7a/libvorbisenc.so": "e29fa801eb9661d81059a77482554b54fb98b4a7cc9d65e649ba3f76cf4a2026",
+      "app/src/main/jniLibs/armeabi-v7a/libvorbisfile.so": "22f6ad7f826b907eaddbbfb0a1e9b404a3447048c4b23cd389d85351ce8f4c46",
+      "app/src/main/res/drawable/.gitkeep": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "app/src/main/res/drawable/ic_launcher_foreground.xml": "c69da81cfdce68e432184f48a182c2cf6035ea4924c40c08ffa0b5b91687f74f",
+      "app/src/main/res/mipmap-anydpi-v26/.gitkeep": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml": "6927a113289970d19895d1ba48b285543a91986b957d7043d6bf559486a1695b",
+      "app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml": "6927a113289970d19895d1ba48b285543a91986b957d7043d6bf559486a1695b",
+      "app/src/main/res/values/colors.xml": "13869a3382a9d4cbae1673bd47e904ca840a1d8d02427fc21bfe9ca7abb93b59",
+      "app/src/main/res/values/strings.xml": "22099c3690b61b2bed3a61e8c565f224957354b58f00abd8022bb4189db7026a",
+      "app/src/main/res/values/themes.xml": "8431ae6908ede9361e354df38dcd086355ead8aa3c19b12e9eb094039f534e61",
+      "app/src/main/resources/drum_shadow_audit770_v1.tsv": "7348e3f22a7116a202a0010691c2dd6108ed9dc20923d63324a6d9e38285b399"
+    },
+    "verified_working_tree_sha256": "bd572a56bfc35959468e79a687ea6a7603aa5cf6f240857c20dbb3d9b60ebe6a"
+  },
+  "schema": 1,
+  "styles": {
+    "Ballad/16Beat01.T110.bcs": {
+      "bytes": 37369,
+      "file_sha256": "c3e21485b5f212a5c10fb06bb26823ccb8e319933cae1070e85b4bf5c6832882",
+      "full_style_content_sha256": "312dca711963c3d2c676611e4515e84b5560db4ae272b25e57bbcfb4c7935e8e"
+    },
+    "Ballad/16Beat02.T105.bcs": {
+      "bytes": 38830,
+      "file_sha256": "8a25fa83508d464743dce2c8e667c0ef69ed651868a760284ed0e510c97221cd",
+      "full_style_content_sha256": "dbffdb2b167546e28016e9b0b51f2f04351f9fc2114137258ec33aa1258eb470"
+    },
+    "Ballad/16Beat03.S736.bcs": {
+      "bytes": 37460,
+      "file_sha256": "44fdeac396e10bc2e3f12f1e234f98a56d0c53c2192e96f2351f761ad55909ef",
+      "full_style_content_sha256": "1c1d28e879c9e51529dcdf103e6b29b2a63bb3807a89f4f7b94364e4b8367877"
+    },
+    "Ballad/16Beat04.S145.bcs": {
+      "bytes": 49726,
+      "file_sha256": "ee97779870043d4f0b9aa1aafc3103b4f4d269dbeeef00be22de2fb6c6fa12c8",
+      "full_style_content_sha256": "45a9dd5f3c09bcab2751f992c686bacd904b85dcc6ad52190814f83d6c054608"
+    },
+    "Ballad/16Beat05.S333.bcs": {
+      "bytes": 39372,
+      "file_sha256": "de8ec1813f16e9861ab013ade98395fb1755a8ebd3354c4d64830a34f6c90247",
+      "full_style_content_sha256": "bb59e61282d70382fb11282a04e417415fd07bb4423fc971c75d392b1d66a485"
+    },
+    "Ballad/16Beat06.S778.bcs": {
+      "bytes": 36148,
+      "file_sha256": "d40a842adbc7bc8998c0cb53464d9a35468defd7c4b8c9fad53dfe596e5c66e2",
+      "full_style_content_sha256": "2d6a71378eaa88e2491bdf25f0538a7ccdcf7819a1915297fffe9fc43fc2e9a4"
+    },
+    "Ballad/16Beat07.S014.bcs": {
+      "bytes": 35822,
+      "file_sha256": "9414e316b7e5fdf5a58ac4384a2be2b6d349d525df6aeb32122ad0230d88ee2e",
+      "full_style_content_sha256": "fd26bdb53b13de8f8937691a553a5ebc21ce8c3aff2c26b65bdb91cc97715376"
+    },
+    "Ballad/16Beat08.T155.bcs": {
+      "bytes": 40975,
+      "file_sha256": "76bd0027fa7df5939cecd5ec20540867dd3019198b2630dbaf5af9746e09514a",
+      "full_style_content_sha256": "a5da09d2099cf2b5b3776f03579f1691068e42b2d7193be1c1cc8ab4334697bc"
+    },
+    "Ballad/16Beat09.S688.bcs": {
+      "bytes": 45030,
+      "file_sha256": "36dde2eb3c4d1d08bddc1c2a093d19d1206a70b3319fc5a6399ab8c7fd6c49c9",
+      "full_style_content_sha256": "6aacabe5a52a8359b1cc79b653c67e2b6c1007ba8a496f7f7ef03b4d9cbca05c"
+    },
+    "Ballad/16Beat10.T108.prs": {
+      "bytes": 41595,
+      "file_sha256": "67626efc89c5f22bab3ba22516572a98829affca15a6432176c2348809a3e214",
+      "full_style_content_sha256": "9854fc9993ad136d9f59f638af8710ae8cbbf17411de3c9563e7b8b6f9266387"
+    },
+    "Ballad/16Beat11.S556.prs": {
+      "bytes": 44850,
+      "file_sha256": "6ee05259d7397020d795b0eabccfd4edb1614cd35f809f3f62e1f63f54eb1205",
+      "full_style_content_sha256": "eae02ab6b1762769379349e75b1776fbf5734aa3193dc08b0a5074e535d09537"
+    },
+    "Ballad/16BeatBallad02.S790.bcs": {
+      "bytes": 50936,
+      "file_sha256": "1bca8dddcfc9669962daea4556dba424060a18d9b9d3a806b30c47c4d04481d4",
+      "full_style_content_sha256": "d17948677278e03d94aa3491e5125a7ecdbdb4e75ca6a5cffb6a587c61aff8a5"
+    },
+    "Ballad/16BeatBallad03.S928.bcs": {
+      "bytes": 37231,
+      "file_sha256": "08cce3f11b6f13d807db0c886e4cd9d6a2f1f46811d692eee017fa765a0a2781",
+      "full_style_content_sha256": "ca78c36a64f23c22b8b0ae651b817a13be421ef1cb09900b2e8a869275ac7200"
+    },
+    "Ballad/16BeatBallad04.S645.bcs": {
+      "bytes": 36416,
+      "file_sha256": "3b9bac1e73c3557064e938bf03541d776107444d4a2cea96fc79c4b466dca5e6",
+      "full_style_content_sha256": "529e0b0e31338144daba63fc86f85589c193f01c4239c70f5278e9c8f5e7bc82"
+    },
+    "Ballad/16BeatBallad05.S716.bcs": {
+      "bytes": 45444,
+      "file_sha256": "eb9ef694b9e29e2ec19c657cf4c0235a22d858d6db1a22a72ae08fa17fb5aa5c",
+      "full_style_content_sha256": "a8505a7d20f5d4234740828aa56ee622ff3577216f340921b1b4d9054056fe4b"
+    },
+    "Ballad/16BeatBallad06.S726.prs": {
+      "bytes": 34634,
+      "file_sha256": "1b472ae5d646a1b6f0bbf40c8727958bba575749c36d23ac36cd8704f219b536",
+      "full_style_content_sha256": "c6ed99be9ce49c588d0ff767781871524f024f6b8ff1e13608aabe0ade87f33a"
+    },
+    "Ballad/16BeatBallad07.S077.prs": {
+      "bytes": 40037,
+      "file_sha256": "a194f653ecd3fb995a56a7572b95a0dd938048e11c2aea47b954bb40da8f7957",
+      "full_style_content_sha256": "0feb72bd2fea2bd5a10e6fb1763fd2123a76dfaca508608a87f683394e9b49cb"
+    },
+    "Ballad/16BeatBallad08.S085.prs": {
+      "bytes": 37468,
+      "file_sha256": "2d3971f8e2f0c348ba96411fb7a7815c2825493c61f4fdb860a66c8e77c69612",
+      "full_style_content_sha256": "b9d7e7ca5dbe6a1c8d741b6fc378aaa404f106e992879de7e4450f3e41458ef3"
+    },
+    "Ballad/16BeatBallad09.S332.prs": {
+      "bytes": 41693,
+      "file_sha256": "c609ab3d459f6da6bece87a67fd6e3ef7689c2c304cce27602861c7435c96fa3",
+      "full_style_content_sha256": "532aafe88aec28d1add8af1f14daaf008a7a3bdbe5321d45012ec3d10bfc1469"
+    },
+    "Ballad/16BeatBallad10.S779.prs": {
+      "bytes": 60031,
+      "file_sha256": "4927b5c878067f32d08dc083bbba0bc0a0778d1d0ac067e725b9d3cb8a2c5ac4",
+      "full_style_content_sha256": "eb30329f8751a1f187798f26f91e435844af290ccda1d2e9e211c98613db262b"
+    },
+    "Ballad/6-8Modern1.S332.bcs": {
+      "bytes": 35763,
+      "file_sha256": "a2433ff471ffb529a45bca7ac7ffa8293b267d9042caaf43278beff6bd4e51f2",
+      "full_style_content_sha256": "140eec48411d42e82f41eac5a03d323fcbead7b6df4f9f7f016e03ab75a31124"
+    },
+    "Ballad/6-8Modern2.S560.prs": {
+      "bytes": 40497,
+      "file_sha256": "1f174c1c1162ab25f1bfd357390f5b5202602030aaa47c40a28e359451b18738",
+      "full_style_content_sha256": "02edf1856e7a52721a47c6f97e741646dbea8f04fe8cec365860859643cc4b1d"
+    },
+    "Ballad/6-8Modern3.T006.prs": {
+      "bytes": 41689,
+      "file_sha256": "44ea6cd586db5f8a12aa4d4d8024ddde7b9b0736627f8735c7b696170c7f14d3",
+      "full_style_content_sha256": "a6f58deba6c6626fe359c425c391f3c3ddd26303bc9b043b4272d9fc9e9d9662"
+    },
+    "Ballad/6-8Modern4.S736.prs": {
+      "bytes": 41322,
+      "file_sha256": "45c57df371dc1e742e691e23295d2f3fc362be64d7780f678c9bb08ba06524fb",
+      "full_style_content_sha256": "54435adf796b4bd3831e0422e2c411cdfcd5b148a3dba0b91f8c716219e0d614"
+    },
+    "Ballad/6-8Orchestral1.S850.prs": {
+      "bytes": 43230,
+      "file_sha256": "c2c3cc487344e0078c294e53d5ea79c79378536484a32bd061d1e22427641a43",
+      "full_style_content_sha256": "561a0b9bcaab13a084dc2c5f20fe5a5b8b8aec32ed173d76a952a27a0de51858"
+    },
+    "Ballad/6-8Orchestral2.S249.prs": {
+      "bytes": 43721,
+      "file_sha256": "7f3cacb9edc466cc05465c1f918b5e013063d320fec3b6c29efdfaf0fdfafeb5",
+      "full_style_content_sha256": "3237e84159d3ba5f933f16b8a986e396c46338a31cb7b6a0b2a0b8fc648de3c3"
+    },
+    "Ballad/6-8Orchestral3.S731.prs": {
+      "bytes": 59093,
+      "file_sha256": "0106df954d873bc215474b02b3632db461fddf48fd3da770316490b1916e3aca",
+      "full_style_content_sha256": "9dcef07186c060f01ccd08c375ea7084c1b85fa962f95b2ba697ad905c041e85"
+    },
+    "Ballad/6-8SlowRock1.S706.bcs": {
+      "bytes": 37520,
+      "file_sha256": "d175d60db1aff9beab75ba6b96e78c347c2c397c4b755c3a0c839ecd96f8607a",
+      "full_style_content_sha256": "081e7685fc95a26145cf0cbf5a74bfaa230f29132be35c9276109d20d2dd72b4"
+    },
+    "Ballad/6-8SlowRock2.S637.prs": {
+      "bytes": 34600,
+      "file_sha256": "142f5d1f667921a43116a965f10675ea76a1d0e4fa32a4108843fe0132fba676",
+      "full_style_content_sha256": "69f560e1a3219a8bb79d7c3b2dbf07a7e59a02f910b4bb81b4d7c48a51bb1bca"
+    },
+    "Ballad/6-8SlowRock3.T006.prs": {
+      "bytes": 37057,
+      "file_sha256": "2827afe66ed10ca493291aafab794d53a071e0948306bea8e392a64ef5863b20",
+      "full_style_content_sha256": "60fda576b4fa5e927213c7699fb1892c0d18cde1eeb0ab825d5c48c593b1152d"
+    },
+    "Ballad/6-8SlowRock4.S711.prs": {
+      "bytes": 52070,
+      "file_sha256": "82771bc211337b2cdfecbeba95fdb082989fd1339aae12fb23a463447feec1c5",
+      "full_style_content_sha256": "a8fd1583d27dc335f7c49a1f629c0232ad597bcb03f5428d46d1dc65f2e1d335"
+    },
+    "Ballad/70'sPopBallad1.S077.prs": {
+      "bytes": 46709,
+      "file_sha256": "6306e07dfa4e9351bab9c9230a6e5df0fb919714aa48bc3f110a4f8974d27f90",
+      "full_style_content_sha256": "65b623e2f40805a57e211d9173191b90028ef2afbeffff53e1776a03f4f8b810"
+    },
+    "Ballad/70'sPopBallad2.S042.prs": {
+      "bytes": 52253,
+      "file_sha256": "102bcd7098d297eb458ac49471a80435864e6ca80e60956f59747b4c512acb8f",
+      "full_style_content_sha256": "b63b192ac40955f2a522bb1ab27452aadc1eb178a2a9f75fe8e958b6bf91e3b8"
+    },
+    "Ballad/8BeatBallad1.S731.bcs": {
+      "bytes": 45078,
+      "file_sha256": "157202ade493ba0a52916de2c72d27da72bcdfba15985a6e467a4fa15f5ae320",
+      "full_style_content_sha256": "d1325ed9013b8b2b670336943f6b7fcd9c551457c9e980288c46c1174e07baaf"
+    },
+    "Ballad/8BeatBallad2.S853.bcs": {
+      "bytes": 37684,
+      "file_sha256": "9c32eff9db564e6970be242eeb43eae697e37fc5ed98c4b1010bc51dacad9b8b",
+      "full_style_content_sha256": "53e2d42da1f8d33116a25204e996047796d34d1098b570af3368d9444d293786"
+    },
+    "Ballad/8BeatBallad3.S687.bcs": {
+      "bytes": 36532,
+      "file_sha256": "f07d35aaf67d26aea4220616a78f68d071f55f0e936f10dca531ca57829839e5",
+      "full_style_content_sha256": "9611950409e83b427c7ad3a2a0f944c08cfb115330a55cf937f649a0e60cbc2f"
+    },
+    "Ballad/8BeatBallad4.S686.prs": {
+      "bytes": 53657,
+      "file_sha256": "1337ee3c9c9eaf4d461ea194a694aa9cfd61729ae01eae8f71dad4269fddfd11",
+      "full_style_content_sha256": "8428f7a970e36e618def7848fcb03a2b6c5d8c9e4be2325229b42b02ce8d3dc5"
+    },
+    "Ballad/8BeatPiano1.T107.pcs": {
+      "bytes": 29063,
+      "file_sha256": "4eece11634833daad14dc7f3381957bc9731add39c032475aa1de8c64b06e11a",
+      "full_style_content_sha256": "5a508be9ed6c31d67ee9282bbb43b3fe915b1c237f7714ae5faa14a4f261bb53",
+      "golden_baseline_expectation": {
+        "chord": "C_MAJOR",
+        "destinations": {
+          "10": 8,
+          "11": 24,
+          "12": 8,
+          "9": 32
+        },
+        "dispatched_on": 72,
+        "raw_on": 72,
+        "section": "MainD",
+        "status": "BASELINE_OBSERVATION_NOT_MUSICAL_ORACLE"
+      },
+      "golden_main_d_protocol_sha256": "2971c4b1f01503121a1ea3db0da33b0d4432c4649ec353508f3c5de3777fe83d"
+    },
+    "Ballad/8BeatPiano2.S725.pcs": {
+      "bytes": 28116,
+      "file_sha256": "0d38687dfe591e3a9faea1689f44205600ab2e1dd597db1d9631a5c6712d5aef",
+      "full_style_content_sha256": "782cb31cd297fe3249d961bb05fc4380d0b4b52d81a5d717a56f307dfe96483d"
+    },
+    "Ballad/8BeatSoft.S686.bcs": {
+      "bytes": 39207,
+      "file_sha256": "f31e6569fe4d30880dfa82dfd70389e543d580e5001208a5b884f02e82bc250a",
+      "full_style_content_sha256": "e6eb8eeee23bffe69e3779cd2edc42e09e9fada329feba10dea769d1e5cad4d1",
+      "golden_baseline_expectation": {
+        "chord": "C_MAJOR",
+        "destinations": {
+          "10": 15,
+          "11": 41,
+          "12": 18,
+          "13": 3,
+          "14": 24,
+          "8": 26,
+          "9": 14
+        },
+        "dispatched_on": 141,
+        "raw_on": 153,
+        "section": "MainD",
+        "status": "BASELINE_OBSERVATION_NOT_MUSICAL_ORACLE"
+      },
+      "golden_main_d_protocol_sha256": "364d5098266cf718422097f3b85e952944720304988456697fd87d7f29c7365c"
+    },
+    "Ballad/AcousticBallad1.S720.bcs": {
+      "bytes": 43881,
+      "file_sha256": "a877c3d60a17a19f6905ef81bd8a97400f1bd7a463c593e7a1b11a914bc18484",
+      "full_style_content_sha256": "d4bd25219b3ca85b78156cb947f59a658e0e275fc36f13caaf29939bf707936c"
+    },
+    "Ballad/AcousticBallad2.T006.prs": {
+      "bytes": 40551,
+      "file_sha256": "b1b3c3c62f6eafada718f8bac5b2fb4b4316939f43bc736aea775f9cb23e3852",
+      "full_style_content_sha256": "10a1ea062abe523feaa93e788bafe0d287352a7e0361990db671a71649b26ab7"
+    },
+    "Ballad/AnalogBallad1.S150.bcs": {
+      "bytes": 35171,
+      "file_sha256": "4ee0dd70bda2b7815785a07821c9fc21c03ad41c8146585b686da462efdb55ec",
+      "full_style_content_sha256": "b51b87ddc6112b73e733a7bcade2716c3a3cece510f6f10d6e11430891150181"
+    },
+    "Ballad/AnalogBallad2.S130.prs": {
+      "bytes": 37559,
+      "file_sha256": "1f79b5c296766be723dfd73b0dfb4ce375ca6284bbe4c605c594d7e6e832018b",
+      "full_style_content_sha256": "353971adeb8d35d933d48b28a300dc465a4fcd286ffd8e729a404306fd97fc73"
+    },
+    "Ballad/AnalogBallad3.S130.prs": {
+      "bytes": 41786,
+      "file_sha256": "b35485d4149331bbd27d11c20494d38819aa10cd5d4ba6d9235f1b2694db867e",
+      "full_style_content_sha256": "945269ae7b6d0f1aeede877132f5f21639070f20a19d254f60ce68a2074d8f5d"
+    },
+    "Ballad/AnalogPop.S014.bcs": {
+      "bytes": 41454,
+      "file_sha256": "fd6885e52bc2d1314f4dd2b87e1bf7c84a0b3f71f89bd816b6fd74f868ab4aa1",
+      "full_style_content_sha256": "969c52b03160e311b643e896e2d9f246f06e24898903c55be8e6270768f23c71"
+    },
+    "Ballad/Chillout1.S736.prs": {
+      "bytes": 83161,
+      "file_sha256": "af4665ca5cf11b8b2c21cdfeed6c368dd707e6dcd44caf0496e354bbc8e586f3",
+      "full_style_content_sha256": "de67f4b80f8d5091552c289f8f1f51a672f925b5db7089ae2779facc1ad6cb28"
+    },
+    "Ballad/Chillout2.S737.prs": {
+      "bytes": 81338,
+      "file_sha256": "ab8bfc7a707cc76c7c384c71ec99ee674ab9b7c8aae07caa61904b2b088acc66",
+      "full_style_content_sha256": "c210e0041fc3005c25c27901bb15305b411caa3d89428021ad0d30f91de3bd94"
+    },
+    "Ballad/Chillout3.S850.prs": {
+      "bytes": 41241,
+      "file_sha256": "63a22f0b88a2e0545c8eb0a934d759e450750deaa3fa068ca2e1a4156a81983c",
+      "full_style_content_sha256": "be1eb9bae18cab2704e7044697e4ac7e86369942a4dba9a49bd010b3ad151543"
+    },
+    "Ballad/EP-Ballad1.S332.bcs": {
+      "bytes": 32558,
+      "file_sha256": "d05b75a54b9bf6b44ae1ecde23a58b03b4d609450ebdd57b5d04e73cd63c9523",
+      "full_style_content_sha256": "cd8fc2ec376f51b521dd3f5812293c1a7491c468df2900cbad1e97959b641bcf"
+    },
+    "Ballad/EP-Ballad2.S632.prs": {
+      "bytes": 41580,
+      "file_sha256": "8ea42bbd717dffde897e61f3d8a376a874445ad6881ffd08fa596adbd44ed993",
+      "full_style_content_sha256": "6fb26af3c1462685e0d85b67f88ec7e5fa9dcbc20924ef32d10122f011df62f1"
+    },
+    "Ballad/EP-Ballad3.S859.prs": {
+      "bytes": 44830,
+      "file_sha256": "4dd07c38872c2b3c47e06c1cfafc0e895e4625f53e635edd7d41dc8f34fbfd37",
+      "full_style_content_sha256": "98e18a00a137ea8dd52f31d7ec5ee7a1f76113e2916f3dedf78f25b35f4e5713"
+    },
+    "Ballad/EasyBallad1.S286.prs": {
+      "bytes": 53433,
+      "file_sha256": "baaf56c030d68464aff3b6891378cc3cc5e7502a4d361fcb5f3329740f0dea73",
+      "full_style_content_sha256": "1752d0f983719542df7cfa03d64c1d70ed9d84b2e4eb1a5d9f9e61e4ef72c241"
+    },
+    "Ballad/EasyBallad2.S249.prs": {
+      "bytes": 62122,
+      "file_sha256": "5d691fad8611687c82ed16f8a8c1ee4f184d9a88c2ecfe5274c0d1f40730e2bc",
+      "full_style_content_sha256": "ebd4da7b9463e5b1a0edcf5b71ef600528861d0b53d98fe77cc16a480010beae"
+    },
+    "Ballad/GuitarBallad.S081.bcs": {
+      "bytes": 33450,
+      "file_sha256": "5d39f1a526f9d6d8d8e185027bdc6e850d1165e8fe2190fa3513285adf62e4bb",
+      "full_style_content_sha256": "470448fb54118c1ee5ce49a3e8c40ce21551b9fc39372d925118e9b25e3b3763"
+    },
+    "Ballad/GuitarSerenade1.S631.bcs": {
+      "bytes": 26755,
+      "file_sha256": "1649e0d46bc14ff4e5e6167e8e8cf89f3a8ed14c63fccabfc49cc8fcb358533b",
+      "full_style_content_sha256": "179d9c59c16251de6061e79b2ebf47e738f6f8e8f323ae08700e2c228928c7e1"
+    },
+    "Ballad/GuitarSerenade2.S727.prs": {
+      "bytes": 26974,
+      "file_sha256": "b4bae4298b0658e66a6264707106c03d31f2c382713b675baadf299ccd003e84",
+      "full_style_content_sha256": "9938fd3668f409f31cd705c549e747fa653ae7cfd52c97464c343f1f1e339bf5"
+    },
+    "Ballad/J-16Ballad.S130.prs": {
+      "bytes": 35533,
+      "file_sha256": "c8f5964a46928459fb865763598c6275e179be18baa5e57750b1d4c52cf473cd",
+      "full_style_content_sha256": "6d30a1e52e4a34250c85618e7d2f79189970ae80d924e47bf6c7c1254f30bf7a"
+    },
+    "Ballad/J-Ballad1.S686.prs": {
+      "bytes": 36271,
+      "file_sha256": "2023ddd5314bfd88d77aa00fa4e4e39e067a0150d5f7ebbebc91e0e2e07c357f",
+      "full_style_content_sha256": "b9af8987d0c06ecf904a2200b628a019f0d61ed16c4626bcdf456e5ff41f0c20"
+    },
+    "Ballad/J-Ballad2.S261.prs": {
+      "bytes": 40399,
+      "file_sha256": "2938cdd500b628eabe88f44ce670f1af9ee7dee54b23599d8ded045b31f3a2c9",
+      "full_style_content_sha256": "9a5e2a2d66615e24a540c63f8e13b4d094d625802939bdf00bf4d87c4ef6ac94"
+    },
+    "Ballad/LoveSong1.S686.bcs": {
+      "bytes": 38469,
+      "file_sha256": "ad7a8125bdc959246b711dbb6dcebff25e7f4130deb8af4f2b2d1d2f8c1248dd",
+      "full_style_content_sha256": "5bdb4af6e086b3f23528a1cf3da6e96b02cad578d7afb976ab17fd645cb05171"
+    },
+    "Ballad/LoveSong2.S566.prs": {
+      "bytes": 38206,
+      "file_sha256": "e725927f6169a798754d9a43c4ae4fe6cc921268622e04931762e70fd78be673",
+      "full_style_content_sha256": "b26e2a13d900fa4abca1862d826e8fcb1cccbe13d24bbedebbf0a10262890e15"
+    },
+    "Ballad/LoveSong3.S687.prs": {
+      "bytes": 50294,
+      "file_sha256": "5c3dc10c4d20be5a28d6b572f7341bbb2889c2d0854b17f3ee5fe8fb26698773",
+      "full_style_content_sha256": "e898f663a3724aca9a6aea430f0f75af412d932c83a881fa8058b7baf98d4bdb",
+      "golden_baseline_expectation": {
+        "chord": "C_MAJOR",
+        "destinations": {
+          "10": 19,
+          "11": 70,
+          "12": 192,
+          "13": 3,
+          "14": 2,
+          "8": 117,
+          "9": 80
+        },
+        "dispatched_on": 483,
+        "raw_on": 503,
+        "section": "MainD",
+        "status": "BASELINE_OBSERVATION_NOT_MUSICAL_ORACLE"
+      },
+      "golden_main_d_protocol_sha256": "fa8bc3db1b1cf29068968a46571878a87196dd342e419ac801042735daee100d"
+    },
+    "Ballad/NewR&BBallad.S733.prs": {
+      "bytes": 51341,
+      "file_sha256": "8809c55f7aa5888de88e16a856455d0bd54d3f457cfaa7d52ded83d535bde1b9",
+      "full_style_content_sha256": "a4642eefe570c94d6995ca5ce5a233157a143f4cbbd2af78a95c3162c077fbb8"
+    },
+    "Ballad/OrganBallad1.S807.bcs": {
+      "bytes": 38596,
+      "file_sha256": "702702f00c216c0f2c596d48be046190ece36b9b57af4954ad5e04d2caf64aa8",
+      "full_style_content_sha256": "783f1abd0e3a12fc8e5f96d37601df27c9b4aaebd54b9a5d19883c2e775b9479"
+    },
+    "Ballad/OrganBallad2.T307.prs": {
+      "bytes": 42855,
+      "file_sha256": "89f7a496af8534f22abdb82814772c6b9db5baef7dfda111c8a149b80b5252d8",
+      "full_style_content_sha256": "291394f2f47b18e9f4cd7625f1115c4fc7a3bfad85374723777e82f903704f8e"
+    },
+    "Ballad/OrganBallad3.S042.prs": {
+      "bytes": 75045,
+      "file_sha256": "b41ff6e4d3141711074c9474a36dc369c8d14b6e1bf33e3d200e088f3f8389a2",
+      "full_style_content_sha256": "6be71167f22e479d860f711cf314490fa4eb3189895bbcdf81fc8912eb527a08"
+    },
+    "Ballad/OrganBallad4.S068.prs": {
+      "bytes": 78486,
+      "file_sha256": "0f52aac6162efe69a2765f247723a4d7a44d17be475549d35ebe9ee2a80fbddd",
+      "full_style_content_sha256": "4dc5b72421e671ae3c91bb0d2c4aebf6695dc23c00ccb0789452d34f6df56458"
+    },
+    "Ballad/Piano16Beat1.T107.pcs": {
+      "bytes": 30326,
+      "file_sha256": "fab023b3735056bda7c2a2241dadc7823fb6f5baaeac626484c45198a5eac1c1",
+      "full_style_content_sha256": "911251202501d96f7c76733150ccd8cdeb0472e6caef2e1a8b9d9b9c153221c7"
+    },
+    "Ballad/Piano16Beat2.S725.pcs": {
+      "bytes": 30075,
+      "file_sha256": "ebcbcfefaecc33fbc24005e78f6234adb470be64323decf1900e8b1bf7171b57",
+      "full_style_content_sha256": "c83e096c98373e480aa0c0377a24391d034431596865cd7238127837b49a4322"
+    },
+    "Ballad/PianoBallad1.S399.bcs": {
+      "bytes": 43352,
+      "file_sha256": "9d2c43b8896bcc4f666d8c723055d09e3e6f96a4dadced3c0a9558cb7f1f77f3",
+      "full_style_content_sha256": "f7f64dcade37cbf3dd5ad02bde0cda512db96b74c2bab375b8f40cb001543655"
+    },
+    "Ballad/PianoBallad2.S001.bcs": {
+      "bytes": 37831,
+      "file_sha256": "0aef2eed844f836689e9fada1a9ce2f8b881aa71838dc7a5df11378a0f29c153",
+      "full_style_content_sha256": "388e22d351e8da7837dd9be6ccf9ec7cb06dbb9a90776e870af38262e07e01fa"
+    },
+    "Ballad/PianoBallad3.S530.prs": {
+      "bytes": 36349,
+      "file_sha256": "e5b1a34009958ea8babe2d522077b2d82432762b257baa9d8dac40beb0e89d15",
+      "full_style_content_sha256": "de94b50b21e00a5ec2bf3303518698ae8baec0cd096a696ffe982376e47d7928"
+    },
+    "Ballad/PianoBallad4.S950.prs": {
+      "bytes": 37874,
+      "file_sha256": "401abbecdd926d402685ef7dfdc3584179285835c4de75b068302878a9b5ec3c",
+      "full_style_content_sha256": "3f6d252b652eecf67cdd36553d3123ddb9a199e07335d0355caaa14a18c53415"
+    },
+    "Ballad/PopBallad1.S732.bcs": {
+      "bytes": 40323,
+      "file_sha256": "ead8cae1efcd2cd903be6605a66763f9e557108d167705b2b8abd3f780027ffd",
+      "full_style_content_sha256": "3aecaf7346bfee105b00c93765170ba2146d80a81ec06206e15960c81f0b0f2d"
+    },
+    "Ballad/PopBallad2.S726.bcs": {
+      "bytes": 52906,
+      "file_sha256": "26f609fc24259b2cd41710186bd9cfaeba6a417f4f322830361276efb03bea80",
+      "full_style_content_sha256": "652488dac61c48737af1a40efecf6e0cafc568dd61047e1a90a0eae2fb05ad94"
+    },
+    "Ballad/PopBallad3.S374.bcs": {
+      "bytes": 48179,
+      "file_sha256": "7dd44845b3662fbae9cc3d801a6c50491bf5b54e52a9c31e56ebb68971b26793",
+      "full_style_content_sha256": "bb7f6ed7a5d9f8fb8dac6422fae47c2b654e9330321fea9482f740aead4bf210"
+    },
+    "Ballad/PopBallad4.S281.bcs": {
+      "bytes": 45296,
+      "file_sha256": "60253426e6f432fe243f16750d3d27c1682ea06a12bc713fd8ac5d3d1c9623c0",
+      "full_style_content_sha256": "ce7874016b8e2c193581dbfd4d90e0b4803eef25008327eef3f3b6c678068124"
+    },
+    "Ballad/PopBallad5.S852.bcs": {
+      "bytes": 45576,
+      "file_sha256": "f169f14e26d141ae8fa0778e6d59a72a88b1aef86c17865aa4b1a203c8272e46",
+      "full_style_content_sha256": "c437e8a2c3b7e207dd4ae0e513649c66915990146f7ec9bcb1ab97afe98aedb5"
+    },
+    "Ballad/PopBallad6.S540.prs": {
+      "bytes": 49961,
+      "file_sha256": "62391f557910f02c174597ca8fd1de028cf4b2cb2d15fc01239a8e51103b951b",
+      "full_style_content_sha256": "88af5519242de87350b5fbf140f069c955d9fb376774889922ff92732b275545"
+    },
+    "Ballad/PopBallad7.S375.prs": {
+      "bytes": 50322,
+      "file_sha256": "8629f43bc7b65ec4e7ea53eb633ee275b99841429bd54711f6163ecfb97edace",
+      "full_style_content_sha256": "ab50671578bed04a8223afee2370ae3773a316e5fa9a31840901570033edf7dd"
+    },
+    "Ballad/PopWaltz2.S662.bcs": {
+      "bytes": 38768,
+      "file_sha256": "23895de931e0e885015bcad742eae8fea2ce18af4948d9f775c39ea1a19ebe55",
+      "full_style_content_sha256": "7e5e74f213b2a55e858794e856f7f6b92caefb5e1f0196ce94ae8bbd1830db95",
+      "golden_baseline_expectation": {
+        "chord": "C_MAJOR",
+        "destinations": {
+          "10": 9,
+          "11": 14,
+          "12": 56,
+          "13": 3,
+          "14": 33,
+          "8": 69,
+          "9": 47
+        },
+        "dispatched_on": 231,
+        "raw_on": 236,
+        "section": "MainD",
+        "status": "BASELINE_OBSERVATION_NOT_MUSICAL_ORACLE"
+      },
+      "golden_main_d_protocol_sha256": "954ae5bd6ce5ceb429c684fece9bff32e846f73b8565dae9531c018ec598f407"
+    },
+    "Ballad/PopWaltz3.S663.prs": {
+      "bytes": 40904,
+      "file_sha256": "d1858bb6f5c2432885a05f84abcab33bd74883982b5a081f1a4b0e904fc7f722",
+      "full_style_content_sha256": "d12998c4303a4f7db89500e285a4054764a8b11ee8ec640507462221bc474df9"
+    },
+    "Ballad/PowerBallad1.S725.prs": {
+      "bytes": 56739,
+      "file_sha256": "4eef3c48ee7ce307de4861cbfdfd4e7e25cbbc692556998712edcf60def6ea97",
+      "full_style_content_sha256": "250c4057a98395bbb39d7e05be65907b62c8ef5a5f26f8399544cdae07badba6"
+    },
+    "Ballad/PowerBallad2.S928.prs": {
+      "bytes": 59883,
+      "file_sha256": "d375782233f53e011208a0b1d5187d2c20aaa1630a2ae8eba5b105f44a6e5558",
+      "full_style_content_sha256": "b238af175ffd9589c7dc545d1e1994359a6073ab67e8720f7cb34902a7b805ce"
+    },
+    "Ballad/RomanticBallad.S642.prs": {
+      "bytes": 36911,
+      "file_sha256": "e114948367f57e84ee0a913ac52b206fff9fd15243ab718ed3af673ff60a8f93",
+      "full_style_content_sha256": "27f95c4259d70e74eaffe92fbc478717b199a3309a60efd02836dc1901177946"
+    },
+    "Ballad/RomanticPiano1.T107.pcs": {
+      "bytes": 28914,
+      "file_sha256": "f6258b4fcfe78920315eea16787de8f36056f70e48a93e312c95bd335b7cc43e",
+      "full_style_content_sha256": "a3b284dc9ce739234a65348afb37b0b9a03045609875003354ff7937b84bf066"
+    },
+    "Ballad/RomanticPiano2.S725.pcs": {
+      "bytes": 30908,
+      "file_sha256": "6b9b9da4c5e884fe654fe41d1236e60dd40b8631c9f631f08767ee4a583f0930",
+      "full_style_content_sha256": "1b7aca5b4a6a6420ab0ab81dff2a3ac933d409e0e5a0c9c17fb5ad8202bc81b1"
+    },
+    "Ballad/Slow&Easy1.S736.bcs": {
+      "bytes": 35211,
+      "file_sha256": "6da6ec2e650b5a672b83b7b3f88c3171828b5438bca403af880c7cb88ad67dbd",
+      "full_style_content_sha256": "b3409b3ca439d45cb847d2611984339edf5b619d8e1556ad147c5c98656c80ad"
+    },
+    "Ballad/Slow&Easy2.S738.prs": {
+      "bytes": 35702,
+      "file_sha256": "a6ab1d5db6c521b00012268610720b0dab2c6708625f47dfc5d76bdb398d305d",
+      "full_style_content_sha256": "145a8df48b8e0e2a06be93bc13728c063d53f93d9ab7299902856e1489730594"
+    },
+    "Ballad/Slow&Easy3.S727.prs": {
+      "bytes": 37937,
+      "file_sha256": "c12683220b9e888047822f369e687d569d9b7ae9f2f8d2162a4890de9b9010d1",
+      "full_style_content_sha256": "03bd9501dc541ba2f04be65ee464debf091a0efb71378923bfac424f2f154b3d"
+    },
+    "Ballad/SlowBallad1.S711.bcs": {
+      "bytes": 38107,
+      "file_sha256": "ca3d8441108fa85f8a86224c08e85a9f61c1f47b548e7c38e4cdcbaf3c8e963e",
+      "full_style_content_sha256": "8ebe655fe8312b0c113a5adb1bd041e5d0dbda6da01d2cadd8b2e40b2c21f4a2"
+    },
+    "Ballad/SlowBallad2.S850.prs": {
+      "bytes": 42246,
+      "file_sha256": "13fc1253b2d1a314c6168a82e1f93854277c200c9c3286e31a3393be68dd1ff8",
+      "full_style_content_sha256": "3ae6e1285327477863a0b01674c3ce248e3056f19ab3f51a5a3ef3d8a593001d"
+    },
+    "Ballad/SlowRock1.S145.bcs": {
+      "bytes": 41524,
+      "file_sha256": "00c8d8715016852fa7db51243b2d2a6656711989a1f2e47fdacb4f2cf8a61e0b",
+      "full_style_content_sha256": "cfd5756c28ff71cc4278079dd01bbedd954bbe7fcd1da278ee94f94215690727"
+    },
+    "Ballad/SlowRock2.S533.bcs": {
+      "bytes": 34568,
+      "file_sha256": "a0a7c36d8c428e4db4200aa2ceef294f21f475fac6109c166e720152f9ff907f",
+      "full_style_content_sha256": "a5fe9a4360788ff016889d4809f199f9d87a3d02c184b5df17ccdcb5d6c49635"
+    },
+    "Ballad/US-Ballad.S745.bcs": {
+      "bytes": 51251,
+      "file_sha256": "c96b5e0817c975b9a5cb5acb73d14e415e51ee2488a811cb25d3085ba95aa101",
+      "full_style_content_sha256": "7db2d52a774398f927b1db7f2ea88ac38bdb4302fe6b4554a747bb9791e85a63"
+    },
+    "Ballrom/9-8Waltz.S721.prs": {
+      "bytes": 45410,
+      "file_sha256": "c99241a943b85cac6389827031cf432c86eb22439815bba29829c3bfa9153583",
+      "full_style_content_sha256": "76c1b5ded0768d6531fe5eb81bc5829d428feef3899bd301e018e228aa54f3e8"
+    },
+    "Ballrom/ChaChaCha1.T008.bcs": {
+      "bytes": 37885,
+      "file_sha256": "18e216ff0102530a171bddf88156e1c55d027047ae34fb42631896764926dd81",
+      "full_style_content_sha256": "fd357478361fdce310ad9daa91346ce222c6cabcfba12a7a72171ff58c1ea4a6"
+    },
+    "Ballrom/ChaChaCha2.S562.bcs": {
+      "bytes": 41610,
+      "file_sha256": "34b642389d53ad3e92f30d0e99bde657342a2ec4b7d6ca00d51c1303441ec5e8",
+      "full_style_content_sha256": "8913707a84b4d4185f841b27a946064b51d4786f9673f6dc643e8a0bf64f2d11"
+    },
+    "Ballrom/ChaChaCha3.S722.prs": {
+      "bytes": 41732,
+      "file_sha256": "e8e669d3af7954ef06e15d5888dcad8f4fdf5ab80188cbd96d2b8b3302023098",
+      "full_style_content_sha256": "977942b753effb566b886893acd8bb0c73979f9463eaa19ee6a29c4b03bf15d9"
+    },
+    "Ballrom/ChaChaCha4.S628.prs": {
+      "bytes": 52225,
+      "file_sha256": "5d840eac0a988d6b37641d478a836c2779c08fbb0b32df7937a4312a6888f07e",
+      "full_style_content_sha256": "68ef36c58ee526ca3e4b61c6f9e8b227cf975824241d439aca3d0f347d3d183c"
+    },
+    "Ballrom/ChaChaCha5.S639.prs": {
+      "bytes": 58423,
+      "file_sha256": "ea7673e095bb96e0adbfd215207454f37eb1f1d9b9ac7cbfe2e91f67e975b0e9",
+      "full_style_content_sha256": "b8006805feb27acfd8dada445c53f8537c3a433200ad173b05abbf3c14d545b5"
+    },
+    "Ballrom/ClassicWaltz1.T107.pcs": {
+      "bytes": 25370,
+      "file_sha256": "eff2c9648ce3b46b870f9eadc0ad4854b1c7dcdaf2b375a1d46bf8c25d17c032",
+      "full_style_content_sha256": "10625abe55e14878e69fc6fed068be87b37d60a1deebb6f32852a61108b107fa"
+    },
+    "Ballrom/ClassicWaltz2.S725.pcs": {
+      "bytes": 25681,
+      "file_sha256": "d18db801e9a204bf78a7a822c75464b42d1313f264a90d34f908b69e941e8120",
+      "full_style_content_sha256": "a02ed656bd23e4010a61b66bb52583bac2605f9962aaf6e943574bae7ab27505"
+    },
+    "Ballrom/EnglishWaltz1.S720.bcs": {
+      "bytes": 39513,
+      "file_sha256": "7268ccd8af2f95e7478250fec66c547996023c32004033fc06479fea43598ab6",
+      "full_style_content_sha256": "57736b39726d4ce120273627efd839b136d88bb50a9d2a338a915391a060365e"
+    },
+    "Ballrom/EnglishWaltz2.S519.prs": {
+      "bytes": 36254,
+      "file_sha256": "90c9efb49ad1a7c3db4ae99b2f15cf4f4da9e2789f7e75efd6a3ab23df9e94a3",
+      "full_style_content_sha256": "54ce91923a14c72b45ee3baf7cf3aeebc322663876970fa454d3fd490be95ed6"
+    },
+    "Ballrom/EnglishWaltz3.S518.prs": {
+      "bytes": 41936,
+      "file_sha256": "b1ba36cee50f9683cfd0d62464354f929ef339d7762e03e897998babd4d8450d",
+      "full_style_content_sha256": "c57b5a97fc53dbde2d137a2a9d2f00eb96e1520e9a0265bbad597ce12bf357b1"
+    },
+    "Ballrom/EnglishWaltz4.S653.prs": {
+      "bytes": 56147,
+      "file_sha256": "b3ad71bdb645e4882c81cac3be38753665b82d093a73787568d72e953275ee04",
+      "full_style_content_sha256": "9287ad284b64f4c152e7cdcfe35fa428383212dd3a09a54f4063574a110624c5"
+    },
+    "Ballrom/Foxtrot1.S600.bcs": {
+      "bytes": 30632,
+      "file_sha256": "91e8f3ca78099c06e1d5832cad074e24e456f33af23bc2fa81b424c54995e5b5",
+      "full_style_content_sha256": "7631f26d417a56d6f6987d08ab2878f2654cd06469c4012b8e4c4b408f024d15"
+    },
+    "Ballrom/Foxtrot2.S641.bcs": {
+      "bytes": 34564,
+      "file_sha256": "8eec8d221d4c84c95cde06f2abb97a1ae8f84caa0265930fb691ff6b73c2074f",
+      "full_style_content_sha256": "d9a201475a6af19b4f0d492794eb530d400dc038ba20b5fb4bc279819daf6ac4"
+    },
+    "Ballrom/Foxtrot3.S661.prs": {
+      "bytes": 28951,
+      "file_sha256": "1deb1882e8545af207ac55402eb1cd4f038c1b6a6c42fbf78c9a617dce8103dd",
+      "full_style_content_sha256": "22596ee852c44e6c74a8c510872c0340b2aa7a0a96068685ac1458cd0ed5a9c2"
+    },
+    "Ballrom/Foxtrot4.S724.prs": {
+      "bytes": 49966,
+      "file_sha256": "edfe73e28d3b5d0a815aa87f639a69b2a2cc33a68d993ef09b1322de0772e8d8",
+      "full_style_content_sha256": "32ef7e3d155e5289a6f3f29917ddede43441f4ff55a9d3734281f0e87e17aafd"
+    },
+    "Ballrom/Jive1.S608.bcs": {
+      "bytes": 43048,
+      "file_sha256": "75b283a3d1ee84b3b0e6a97f0438f950efbafd38093af28d0d3ea23dfafa84dc",
+      "full_style_content_sha256": "0fb5a9a565fc225c52bdfde96591c41917276bec043e9ec62d54fbd7914a3091"
+    },
+    "Ballrom/Jive2.S609.prs": {
+      "bytes": 42283,
+      "file_sha256": "f1ea3a5887844f70774437b4c60a082bf6439328df62db3bfe0b758b2561ac06",
+      "full_style_content_sha256": "a80d843f32a19be9e065d7cff147162a83887582faf28a4eec9414e1e3fdde99"
+    },
+    "Ballrom/Jive3.S567.prs": {
+      "bytes": 47423,
+      "file_sha256": "a95be5a510121db6f913ee1d64468207bbffa08461a695fbf1a9c2fb6a97ad61",
+      "full_style_content_sha256": "d3e9a5751926e645c46f12bc581de38412bd10a3590ca3f67019d6b4451dfe62"
+    },
+    "Ballrom/MidnightWaltz1.T107.pcs": {
+      "bytes": 26039,
+      "file_sha256": "81082f17274c8b82b6ebd35c4821817d8e22162121b960705f351b469b285825",
+      "full_style_content_sha256": "bfb777ed9544e883f35670273755ef2bd60f656c669e8af52a79818f7aebcacd"
+    },
+    "Ballrom/MidnightWaltz2.S725.pcs": {
+      "bytes": 26623,
+      "file_sha256": "bdaeb32980b6338ff4936205c40d2c79ef099640652ddb155ba6d6d4e0c92d80",
+      "full_style_content_sha256": "81b345c76d44225a40fb91c479549fe6b3c94caccea6642584bd672a938fb6db"
+    },
+    "Ballrom/OrganQuickstep1.S807.bcs": {
+      "bytes": 30795,
+      "file_sha256": "014d320e3bb99952729c97759ecb7fc0ff64c1a6c67ac9c97973cf5630b8bfc3",
+      "full_style_content_sha256": "137a90f0b3602ab743a74188474c42b1411a4a6e23e89a59589792907a76d57e"
+    },
+    "Ballrom/OrganQuickstep2.T307.prs": {
+      "bytes": 34632,
+      "file_sha256": "210b1f1526d86a64291141de53ab12e39f645f329c6d2e6b3845b6c00cefaf66",
+      "full_style_content_sha256": "0dae383e8fbed4ee94a060211c38f3208d8ca7c25e67604ebf4e624208e101d2"
+    },
+    "Ballrom/OrganQuickstep3.S068.prs": {
+      "bytes": 35009,
+      "file_sha256": "9176120a72b7c4c56bbc6c21880f3f4e08c17695187ed13a19f6f756c49a5521",
+      "full_style_content_sha256": "128f0b343c308955eae3f39ffe7a15098be7f2a742e917d8e2df9ae86600f6f8"
+    },
+    "Ballrom/OrganQuickstep4.S043.prs": {
+      "bytes": 45320,
+      "file_sha256": "16410623139f04f6649b0fd2d16b38c35045f677c4aa454bc870d69adbeb25c9",
+      "full_style_content_sha256": "3e9c8e316bf27ac317acf4533695d6b2a29b27c927d3084946ab59db81d06726"
+    },
+    "Ballrom/OrganSamba1.S038.sst": {
+      "bytes": 95342,
+      "file_sha256": "2951a2d01fc879ff4999f5601fb7d125350f7764be039b30b5cf0f87fe674424",
+      "full_style_content_sha256": "c23303f3de994348497453c6258cd1c6ae13e2b7a0af91636be5c85383eb3f43"
+    },
+    "Ballrom/OrganSamba2.S042.sst": {
+      "bytes": 76530,
+      "file_sha256": "4e182b079b5420d72aec8b76b33f196183d70b3a238c41017cbca8a26c9a6130",
+      "full_style_content_sha256": "897a9df1ecd98c4de795695f37bdf9640f8ac1d64acb642ab2c5db069936386a"
+    },
+    "Ballrom/OrganSwing1.S056.prs": {
+      "bytes": 60236,
+      "file_sha256": "398fd756df81fd70cd78167e20a2f4b5e4b9b2e3205f401cae7f8ea833cf7fbc",
+      "full_style_content_sha256": "6791b1ed5747571ccd8c6c286089f411b0e7078abb166207bc6496f8a1fb0104"
+    },
+    "Ballrom/OrganSwing2.S054.prs": {
+      "bytes": 61015,
+      "file_sha256": "51f8499d462f8b5840b82b3d2f3727cdabd49e24a48dfba03845e9dc2937989f",
+      "full_style_content_sha256": "562ea1f45b5a5f64619daf9571632c1b710b7a87dae45c064e6f3aec41310d80"
+    },
+    "Ballrom/Pasodoble1.S447.bcs": {
+      "bytes": 38313,
+      "file_sha256": "420431d2c68070c120d3991605adf9b0ea5c09dd865b8e4aa8e832b784d9b56b",
+      "full_style_content_sha256": "dd2a9f2cc0e5477ec18622a4149b198234bd2bcb2b13b7d98b87e572f06513fd"
+    },
+    "Ballrom/Pasodoble2.S731.bcs": {
+      "bytes": 58394,
+      "file_sha256": "531d826ccd17bbb497f6c33fe4cbf2c59b1dcc73262a5c5dd3990239dd670a3a",
+      "full_style_content_sha256": "81d7aa538b4434cc098799485b1639860d8fb11e6d5e36c57fa709047b1aad54"
+    },
+    "Ballrom/Pasodoble3.T443.prs": {
+      "bytes": 43845,
+      "file_sha256": "e802cbd3b9a23238744d4e3c89a7725f7d7cf762817baa72fd2486a410251aca",
+      "full_style_content_sha256": "e2c27ef3393f03e74c3fe6365dad6fd4ed83b919cf1f376a09e58a4ccf53febf"
+    },
+    "Ballrom/Pasodoble4.T447.prs": {
+      "bytes": 47225,
+      "file_sha256": "9bd8c47f8ae090788c30aba91edac1823726d97f116ca99e6287580c342edd6e",
+      "full_style_content_sha256": "3b503eed5b665ec512cc6342954e0a4f6fc6d116017402effda8f8fe9e2ef07e"
+    },
+    "Ballrom/Quickstep2.S660.bcs": {
+      "bytes": 61056,
+      "file_sha256": "92b8e4e3ebee0f9f305ef194edb1c2536d230db613e457927467755bc212e211",
+      "full_style_content_sha256": "137054df4b96823c26bc27bb99621cfa718322cc874690b21a1f5d0e4da9664c"
+    },
+    "Ballrom/Quickstep3.S815.bcs": {
+      "bytes": 33992,
+      "file_sha256": "72341fb3072415c64f7c002c8553ae696853b1356193151f204a69316db5ffa1",
+      "full_style_content_sha256": "dc4df6ea2142b6fe60225656bf2c693087b7c388ff94b2b1c7738d46e429c6e9"
+    },
+    "Ballrom/Quickstep4.S528.prs": {
+      "bytes": 33911,
+      "file_sha256": "8be5a0c87bdb1143669f348c7dd78c2544a184b5be433f0c8620853c74f58620",
+      "full_style_content_sha256": "4e7c2bb8cef1a36198d3663c2b10c304a8cc95aca35ce4c2f42be74feeb8516a"
+    },
+    "Ballrom/Quickstep5.S722.prs": {
+      "bytes": 50466,
+      "file_sha256": "0d691a9b404517f7244c1efcf5e64821c59d133b3b8cc2bee098fc0a47117d33",
+      "full_style_content_sha256": "15431535bbeb514b6d70f6ee8407eca13c2438c62ae9add2959d85eb55f70c06"
+    },
+    "Ballrom/Rhumba.T006.bcs": {
+      "bytes": 39822,
+      "file_sha256": "3f43e58f4f51bc1b4f0492628d5682f636a26676486196e4d5ee2c6b7d3523e2",
+      "full_style_content_sha256": "8218ea80f4bf72ecdcc44a2840fe2608d12d923f0e925f4bba2402c9ffba5216"
+    },
+    "Ballrom/Rumba1.S686.bcs": {
+      "bytes": 35831,
+      "file_sha256": "5941665742983a55a2fe67b7454e5849269423ceae19349fad77f88cce7448fe",
+      "full_style_content_sha256": "6c4b7e3ba8d72e7ab13e34a5be10963dcb7c94ce4c21429ea3f3ff83818633b4"
+    },
+    "Ballrom/Rumba2.S722.prs": {
+      "bytes": 39551,
+      "file_sha256": "794776c6dd2da59d985100bf8d01b7ead2bfdb3e62795d4fd71a6ff47f160129",
+      "full_style_content_sha256": "96d723d9217ca95abe7ed17123603a3727b31f89b7ae165a85ec14f83c995f66"
+    },
+    "Ballrom/Rumba3.S723.prs": {
+      "bytes": 35276,
+      "file_sha256": "3c83ec1cfa87af275b5515c030b5c0b9bb97233db756022736be2182defb9ac9",
+      "full_style_content_sha256": "eb3334897302cb18817f4793569c15776050370cab45ffe53ab1948ac3427f7d"
+    },
+    "Ballrom/Rumba4.S720.prs": {
+      "bytes": 54855,
+      "file_sha256": "06fe54771e62f93c42da068931fa62d5efc476fafdc93cde8bd8bad9fb6be527",
+      "full_style_content_sha256": "a00e2a5a1cd685e2824e9a60eae6f1796d9818ca87fcf0059584a0d6044c0202"
+    },
+    "Ballrom/Rumba5.S641.prs": {
+      "bytes": 59822,
+      "file_sha256": "5ece155b260e5a50881338e008afdffddfb14d21e152d4cd75a35d66ea2f6113",
+      "full_style_content_sha256": "ad6205b664cad82d735aae8a495e4a0ce66c1a04c0f734cc8ed0422c340346d7"
+    },
+    "Ballrom/Samba1.S623.bcs": {
+      "bytes": 49738,
+      "file_sha256": "e8303207e25ce24a59624524c05da50c76bb110ce15fc89767eabe609b9bb11c",
+      "full_style_content_sha256": "2709671dca04d5c0ce3267e2c1dcb235ba0c42cc47ae6912ea458590bce91ed7"
+    },
+    "Ballrom/Samba2.S722.prs": {
+      "bytes": 50292,
+      "file_sha256": "83ccae06b019c7aa6f72de3d3db96ec52182e374a91413f7867d96198f1a077f",
+      "full_style_content_sha256": "34693019bbd06960ae2bbe2bca45b191bc87934d0bbab03a42dcb1c670a720b7"
+    },
+    "Ballrom/Samba3.S635.prs": {
+      "bytes": 61025,
+      "file_sha256": "1bfe2021556a12c2ceb5017fb56c71df57a468eb2ed7f68c1f6b128db03d90f3",
+      "full_style_content_sha256": "7b0758a9afd4228b58b0ea9b8dd460279dc681edaa4b5f5085166a81dbf78243"
+    },
+    "Ballrom/Samba4.S000.prs": {
+      "bytes": 55156,
+      "file_sha256": "3df932fe854717341f3970dc0399e57c249acf4adf472b9f284a480a37b4642d",
+      "full_style_content_sha256": "e0916a71217636a11f7a9fb8f4cb3a940777d0dc70adba4092d8545404124100"
+    },
+    "Ballrom/SlowWaltz.S720.bcs": {
+      "bytes": 33768,
+      "file_sha256": "58d3cf597ff521a6943d1c8c5218825dd15177cfaa779a82e32777a6d65bc0d5",
+      "full_style_content_sha256": "d45fb86f06dc85ecb66465dd3b3082e1305d88a47f93dfa73a73406664fdc774"
+    },
+    "Ballrom/Slowfox1.S688.bcs": {
+      "bytes": 31844,
+      "file_sha256": "9dba96997a26d71da7dfab22b0afac3807bab17af91e7fcb8847ead1f8766b3c",
+      "full_style_content_sha256": "a653023d61e2a53019798625b17f0704f30e7b2e3db9ddbe153b780ff97b1594"
+    },
+    "Ballrom/Slowfox2.S663.bcs": {
+      "bytes": 32224,
+      "file_sha256": "96e353e744cc7f8f5d85857ddef2c82cdd25676da14b61df35e0a79496250fb1",
+      "full_style_content_sha256": "fc45b7ebb461eb5a930d801166fc441680cae4ee25a913032a660268f8e66691"
+    },
+    "Ballrom/Slowfox3.S732.prs": {
+      "bytes": 40760,
+      "file_sha256": "012153a30df8a6ecd1f2ff313b00ca2a2b12d71156fa94b87be227efcf0945e9",
+      "full_style_content_sha256": "c4287b4bfe7b4e55824501d760afe43016274ddb8dfffe4fc430deb076b19609"
+    },
+    "Ballrom/Slowfox4.S231.prs": {
+      "bytes": 40937,
+      "file_sha256": "d843e7c8a5e674cc52305473d62a7059fe97dcbf58c7932cdfb5344e7a6c5b41",
+      "full_style_content_sha256": "d1fd7c37bd52f5e193810776430b9f688ee52737787a4da580dab8d379be7dde"
+    },
+    "Ballrom/Slowfox5.S662.prs": {
+      "bytes": 54945,
+      "file_sha256": "eb88b01589eff8464a26a21569cf16d45040c131f89a630167ee89d3034093c2",
+      "full_style_content_sha256": "c09469e327605629fe1a623ecf1253462450a32af0a974cfcd60ee8b975c73e1"
+    },
+    "Ballrom/SwingWaltz1.S702.bcs": {
+      "bytes": 36870,
+      "file_sha256": "28432209d64792d1a8ff6eb3647ee848c3e473567cf9e7bc40e3bbde61074230",
+      "full_style_content_sha256": "f94187639ebbe18c46c126fb914d1cdff0866ac91d4b0c212c95bfb5eba4f74a"
+    },
+    "Ballrom/SwingWaltz2.S714.prs": {
+      "bytes": 35004,
+      "file_sha256": "a67afc53f60d4db8ea78befed02b5e49da2f19f400ad41c3573c3f1b3b4dac3a",
+      "full_style_content_sha256": "73d21c09d064e8499435466cc82ab826cfcd662466fbf1e10ae2d6180da3c4b5"
+    },
+    "Ballrom/SwingWaltz3.S684.prs": {
+      "bytes": 34100,
+      "file_sha256": "7d4f00eb0c9910a936b624a94d1edf580dedb2d3cfe95999cf42e0978d9edb9b",
+      "full_style_content_sha256": "e57990a4e6b9017838b0fc648f663d9abb6a0d1e4522feefee6b218217c1f326"
+    },
+    "Ballrom/SwingWaltz4.S720.prs": {
+      "bytes": 38878,
+      "file_sha256": "38b1fa6da675241a5c1b8a533ae7a9e3df3abd71a457831ae59e81d9ff0c1b22",
+      "full_style_content_sha256": "f60f3a6be1654220f3c6c612ee207bad1b6ab3e371803d46159d40a7ea32903d"
+    },
+    "Ballrom/SwingWaltz5.S519.prs": {
+      "bytes": 39086,
+      "file_sha256": "bdcdbf21c8ac47eecd11200d05e72f1bf162d1cd8ed9a39e72fff9ce7f09b60f",
+      "full_style_content_sha256": "c0a4acc0a0bccbe1f6607dfa60110e60c37806bd2cc85c8860615e4b7b8012fe"
+    },
+    "Ballrom/Swingfox1.S722.bcs": {
+      "bytes": 34039,
+      "file_sha256": "d42d793d4176df508efd27903f1c77064cbed66f4b35d7f732b3ad8eab687313",
+      "full_style_content_sha256": "5c898ce756f304516f546a99456a406fa52c8a16058913cea0f92bb51dbc1cb1"
+    },
+    "Ballrom/Swingfox2.S665.prs": {
+      "bytes": 33488,
+      "file_sha256": "0e8bd8e271b3f3834566b029362ccb26ce66e7b84103496b8c14078b5b2d6772",
+      "full_style_content_sha256": "1fac62d96113066838a3a656aaacaa181ab34c589de5f095d5d7415ea67499d9"
+    },
+    "Ballrom/Swingfox3.S632.prs": {
+      "bytes": 35832,
+      "file_sha256": "2dd2a4c36531f2971ca37d1132453bc220fc86c5f7ae7400ae21921b48f0f555",
+      "full_style_content_sha256": "288a8b4edaa2ddd074cac27309365ddb14ee91db11cb21cb6a8f06b8fbae387a"
+    },
+    "Ballrom/Tango1.S069.bcs": {
+      "bytes": 44984,
+      "file_sha256": "ead1cc63b0e300d610b5a5d126f74ebb6d0c53cfedd46095d3d61e2751136ed0",
+      "full_style_content_sha256": "80a42775cd517b9965b61f2f9dd79f0b28314172b61383e0f8e2b3db3fb364f2"
+    },
+    "Ballrom/Tango2.S732.bcs": {
+      "bytes": 31942,
+      "file_sha256": "e0181c7b7b5f850725a10f186eb0c4cbe6583f58d7901cab6eb207be33311d91",
+      "full_style_content_sha256": "a4b552ce5dddb477295797a5a0d5c02f10b5c4c54acb16b91e4c9cdbd16aa58c"
+    },
+    "Ballrom/Tango3.S729.prs": {
+      "bytes": 45042,
+      "file_sha256": "245b422c670e1fa72928e6173c63f3212b77003e95d447bb1e24bc6f627b52f5",
+      "full_style_content_sha256": "4f81908cbff8b94fafe170bd9c9537f8fa86a0a237d9bcfa41ace799ffb8cb07"
+    },
+    "Ballrom/Tango4.S156.prs": {
+      "bytes": 46920,
+      "file_sha256": "3f38eb77086b7ad96a1a61853d98f8ca903e37deb7173e2d8807145dcd88cbd4",
+      "full_style_content_sha256": "51365ec59f55039ae78a2c32303220a0edca418ed5f351f2b72f08c1e6da56d5"
+    },
+    "Ballrom/Tango5.S073.prs": {
+      "bytes": 45512,
+      "file_sha256": "d72fcbd842e3257bd34243b756984742301acfa8d70d61412a5486e12bd6625a",
+      "full_style_content_sha256": "e5bf4af8410dd29355386d76e65b9b77fc09fcb3acfbba7eeb8ad1a756fd166c"
+    },
+    "Ballrom/TraditionalWaltz1.S069.bcs": {
+      "bytes": 35053,
+      "file_sha256": "0cda1a2b355d6ccf1385318816f2b5786fa43f8fbefb4de39e3a6c66f63bf64b",
+      "full_style_content_sha256": "8cf950a5166d4b1e74080d107bac645d08609ec480d1ba99249c8615a816639a"
+    },
+    "Ballrom/TraditionalWaltz2.S069.prs": {
+      "bytes": 34846,
+      "file_sha256": "8f124e7b669197d8f42d603761dbe33b1c6a6bbcf102b29dfff678c9759d6d23",
+      "full_style_content_sha256": "f683e3a07ae31ae8afee72a9df00ec838df1f2da394cc966fb9301920ce946a8"
+    },
+    "Ballrom/TraditionalWaltz3.S729.prs": {
+      "bytes": 41619,
+      "file_sha256": "c037c18f9bd219b38d76ae5007cfbd2e29839c3026d9b5ab4d65178e47cded9f",
+      "full_style_content_sha256": "21eeb909653045487a2fa4f798a3828aadaaaeaa0520da9f6d3a60fca5b433d8"
+    },
+    "Ballrom/VienneseWaltz1.S720.bcs": {
+      "bytes": 29419,
+      "file_sha256": "dd8fe43eaefa2be1137f8865a15159b4ee3594ff8d696891e4db4568f93df182",
+      "full_style_content_sha256": "37977a0819f5ec9f3f35bc8cd871b43dfcb3d09e0ee2aae8ab5ebb3ff94cf096"
+    },
+    "Ballrom/VienneseWaltz2.S721.prs": {
+      "bytes": 32489,
+      "file_sha256": "17452510f1619a00203c8c3da4e4012797c429d16ad0762aa1fdc4b385151ad6",
+      "full_style_content_sha256": "d60a984fc2346525540f4580dafe60360ba00c52131965bea466043e2613ac62"
+    },
+    "Ballrom/VienneseWaltz3.S641.prs": {
+      "bytes": 46252,
+      "file_sha256": "7f41185de84b3668d941012bdc9f63bc8f127e92402165a9704ac0ea67789dae",
+      "full_style_content_sha256": "9522bdbdaa6463764cb9927525c9756dce1e3539a40041a9058e67c62b0e236e"
+    },
+    "Ballrom/VienneseWaltz4.T406.prs": {
+      "bytes": 50811,
+      "file_sha256": "1c2af5ed8ef9e14f429ea3e5725b64b55cd383628c7ec8811e34293ee31fd258",
+      "full_style_content_sha256": "2e5c8a61793815c42ea01b615ba9e0f6cbfd0c145c186684a9630b0c2f38d5cf"
+    },
+    "Country/Bluegrass1.S174.bcs": {
+      "bytes": 44189,
+      "file_sha256": "196cc317b8d97cb1b2970d47cb6183df554cc9fa2d0ccd47f93976f84a83739b",
+      "full_style_content_sha256": "a8924f7870bea0d98bf444eba591a2a8de5b5b851ba46267f80f4f5725f96304"
+    },
+    "Country/Bluegrass2.S728.bcs": {
+      "bytes": 38072,
+      "file_sha256": "95bc59af9efbe0879000aee404b491d90e0b1f31541aad1de60c885190771bdf",
+      "full_style_content_sha256": "8ee817fc3913712e136b6f9b6f35a5a840f540f7fd4e8d8bae524b7ee90ab86e"
+    },
+    "Country/Bluegrass3.S174.prs": {
+      "bytes": 44372,
+      "file_sha256": "a6b63ef3ac3ce154858f3966132dc8f8bebba27f425b66db3c70aa047c3f9796",
+      "full_style_content_sha256": "3105a0bc5a7999753e842d4708389c044654d70501a4bd2e9ce5dd41218a518d"
+    },
+    "Country/Bluegrass4.S648.prs": {
+      "bytes": 35420,
+      "file_sha256": "b5456b2b871b37b987d85b61ee55c7d4be432190423a1b5874a560036bf2ed91",
+      "full_style_content_sha256": "708d8b5ca6da1e763c6739a454db662d0b75f6ae5c22044387967088bc1f97b1"
+    },
+    "Country/Bluegrass5.S082.prs": {
+      "bytes": 52094,
+      "file_sha256": "c0ba5a837a4631fab25a19658cf9496948daa6c4d5183c4423745c26ee7b59d0",
+      "full_style_content_sha256": "58cbd57ada2190ea7f6e2690f532a1b857207b8b663767a36d4eed3197c3067a"
+    },
+    "Country/Carpenter.T002.bcs": {
+      "bytes": 34652,
+      "file_sha256": "594066a52ed76bc8a5f64703b0072286bb49ca96792cffbac4c3964597522beb",
+      "full_style_content_sha256": "63fee541756656589db29ed2de46241f24f34a8cd88ca83797e2c5bae0c93a2d"
+    },
+    "Country/Country2-4~1.S793.bcs": {
+      "bytes": 31902,
+      "file_sha256": "3559a80cff1f9cbc7fb296b4fdd8e3c1fe26e1f7ef6fb48322596a343b3e7430",
+      "full_style_content_sha256": "3c3c6318187f65599b2eab839cab287f9ea921edaa86c0b00f6ff725b3875a8d"
+    },
+    "Country/Country2-4~2.S794.prs": {
+      "bytes": 31849,
+      "file_sha256": "d14a70e34b1e923358584f665af1e134bafbdc73c1838c98bdfec8ca0a5821e8",
+      "full_style_content_sha256": "85429312cbdc8ed0b897a9f04032338d64d78e3ae18b87a8de8ec0297e1cea7d"
+    },
+    "Country/Country2-4~3.S932.prs": {
+      "bytes": 35177,
+      "file_sha256": "0d61868366b794b5135913e02ae53dc12d8bed8bfb1c40a5240aa34e001d93ae",
+      "full_style_content_sha256": "13f7049f205c902646bde6e2c962e803eccc1aa6988d7b8b0ecc913ffe377042"
+    },
+    "Country/Country2-4~4.S651.prs": {
+      "bytes": 39153,
+      "file_sha256": "69976c81f0f8e61db32d690fe4be22117773804d1f784c46d22bf31d6f64fdae",
+      "full_style_content_sha256": "86e2e1cd717280d72eab11171c9cc8fd349bfd9ff9107117ee70a251afb332b8"
+    },
+    "Country/Country8Beat2.S781.bcs": {
+      "bytes": 33297,
+      "file_sha256": "2f37c87d5af427bac0c590917d52a2c7dfbe4e1dc8bfc2ce628af9a11044f42d",
+      "full_style_content_sha256": "7cc8cbaf033e9734228c207ec3d2d33e08eaf4efa6641df063f589002d21aa27"
+    },
+    "Country/Country8Beat3.T151.bcs": {
+      "bytes": 33970,
+      "file_sha256": "560e62238b27d875d088c718c197e68ca2594b4915248d7378a9d2e49521900f",
+      "full_style_content_sha256": "5b38fc1bc613dc104c2dc4e10b32af7c10b7b358c0c50717489cbd9621724cb4"
+    },
+    "Country/Country8Beat4.S652.prs": {
+      "bytes": 34623,
+      "file_sha256": "ec26bb7a1c5ac4174e0b4ba8b79c6e4fca20a538b3df2139ed8b9255c42f64a9",
+      "full_style_content_sha256": "f66387c1e92b3ba6ce0802a8fdb30f4f23f5a33ab760eb6ab491ae86d9fe5c9d"
+    },
+    "Country/Country8Beat5.T010.prs": {
+      "bytes": 38580,
+      "file_sha256": "eedd2274b6debc9de14260187302e59410e52bed4e8598048d4d11e690fce0da",
+      "full_style_content_sha256": "32d85ee4a191f7d2bd3402456c6d0b492bb7ef957264f870fd03865ba550ebb6"
+    },
+    "Country/Country8Beat6.S999.prs": {
+      "bytes": 40679,
+      "file_sha256": "e8d5071b358526854d6229553998eebcd626fcd6a2aa3550a8214986cc3f0504",
+      "full_style_content_sha256": "18be183e694208b688149fa32c08fddafff277e501e96139b6092793d20cdab0"
+    },
+    "Country/CountryBallad2.T003.bcs": {
+      "bytes": 50365,
+      "file_sha256": "9fab92c92d9246507ca3825b41bc48c28f23a47817f2f927855eb3993986b593",
+      "full_style_content_sha256": "48f79818fc65dab1a6d2170b32c62c08d991526080cca01d878c168a05169ab6"
+    },
+    "Country/CountryBallad3.S529.prs": {
+      "bytes": 51859,
+      "file_sha256": "0d4e7121bcca2f9f3cd5782de023abf02073de463453a187d4a8ea6d40d5cdc2",
+      "full_style_content_sha256": "edc794d8450e18e699ea9d7a3b88ce6058f76d9b94a764fc95f951b9d3cb14b1"
+    },
+    "Country/CountryBallad4.S999.prs": {
+      "bytes": 49399,
+      "file_sha256": "3a56ef9695c60c42dcafbd7aa72d4e18d9fcf6bb2e3e38e9cb0c75a8f9ff10dd",
+      "full_style_content_sha256": "6915cf83ff49ac215920bc7b76e128aa50cb65a8105041db8449f96a0ec9879d"
+    },
+    "Country/CountryBallad5.S654.prs": {
+      "bytes": 49300,
+      "file_sha256": "65a3a2c11f6da78c5b2d192e4c92b20fd695bf7c623f4e2c51b9b1bb20cd8271",
+      "full_style_content_sha256": "ecf8a189e32835a9d68f158a88b6997e47504fbe51480f26bb8f8a25bd325ed1"
+    },
+    "Country/CountryBrothers1.S559.bcs": {
+      "bytes": 38614,
+      "file_sha256": "f63669102c7f1eefbe646de95a8b50ab91a2c009c525ef2463e082c57319432d",
+      "full_style_content_sha256": "ff016ec2e90501003a6f88d11a1da947e07207c946d731e3f71874c480dc0486"
+    },
+    "Country/CountryBrothers2.S281.prs": {
+      "bytes": 42364,
+      "file_sha256": "7ac2ab67c50572b5be2c23b48ad1aeda807c1165508003e699f0c61cd125f39c",
+      "full_style_content_sha256": "7f214218b9cbb016c3c9065328e70f1a850d1296c48f034458576d7fc668745f"
+    },
+    "Country/CountryHits.T446.prs": {
+      "bytes": 58255,
+      "file_sha256": "1a39d023acc12dcfae32a1b17c513f2515dfe851242de8c30a69a803cf68103b",
+      "full_style_content_sha256": "6b8727b7b3c10994e0001c74070913de9bbda61e878b90ec1a097cf6b75c353e"
+    },
+    "Country/CountryPop1.S564.bcs": {
+      "bytes": 33600,
+      "file_sha256": "92732c7c2bbca483191f91cbd6dba81a59669264940a46178314a03692a7ddd9",
+      "full_style_content_sha256": "68e9b2650a90743354829af1e649607d12323dc86e1c3055e8f2a085eb1f4f70"
+    },
+    "Country/CountryPop2.S631.prs": {
+      "bytes": 46116,
+      "file_sha256": "698a85f330b243d2e461f6465a438bf92c648cf26c50c31c7b578c0d59c3ff42",
+      "full_style_content_sha256": "ba9979591259e1adc8395cf3c82a60aa755925c4279c926a635b6127456edb99"
+    },
+    "Country/CountryPop3.S654.prs": {
+      "bytes": 39120,
+      "file_sha256": "819ca2c7f6c64de033a6313afb32a7901b9f92668990eb57eb2ebfd06dbd1fdf",
+      "full_style_content_sha256": "e0033b6ccfa6ca7ed42c2a40c84f1e8b362662c158b27cce1baa81c96306fc1e"
+    },
+    "Country/CountryPop4.S631.prs": {
+      "bytes": 43102,
+      "file_sha256": "2c5ea8b72041b12b6733672466782ee6f36a6223c5dbc48df85b442bedf95c5e",
+      "full_style_content_sha256": "bea19c67f983c54f2bc7cb6957409ea1e5888a2039ed86b6fdb7db6bbfaa3a2d"
+    },
+    "Country/CountryPop5.S529.prs": {
+      "bytes": 45698,
+      "file_sha256": "b729fe22a3ce3c4cc4213ca2ed40d056b92286a915152b922bf3148e49edca32",
+      "full_style_content_sha256": "4b7c829301b2dc96ffbcb654e4ef076ac8f3d342a9fc67ed2aa2749dd5d574fa"
+    },
+    "Country/CountryRock1.S564.bcs": {
+      "bytes": 48548,
+      "file_sha256": "986c28b31c299c341e374663ec514d307a5972224fae5ff57869eca551abed90",
+      "full_style_content_sha256": "48b72e279a097baf66cd66d73dd58a076b5a98de0e887ac7ae49f816695bac25"
+    },
+    "Country/CountryRock2.S087.bcs": {
+      "bytes": 32525,
+      "file_sha256": "95a26952c2824703cfcbd5f95c2fa429442f9f924868d7a9ecee1cfad04f6a21",
+      "full_style_content_sha256": "94204ac0e7787779393c9a7814cf50b483065f5610f6f4b5e51e9ba901dccdeb"
+    },
+    "Country/CountryRock3.S084.prs": {
+      "bytes": 39704,
+      "file_sha256": "14a03de83a01f9f99e1bdd63596d2e8d3f7bdc3a59c810cec04f7e2b85fc1506",
+      "full_style_content_sha256": "33c0d3acb172480309c882f19256194f5079466fb5ddef98d6ecc1aa28e41a78"
+    },
+    "Country/CountryRock4.S644.prs": {
+      "bytes": 39601,
+      "file_sha256": "a3ba33df0826a1d1a562d3ea7967a99bc7dda10ab07abf93e927d2a6f4a04eb1",
+      "full_style_content_sha256": "8c68d76a1ae257457113d13aed947cb817ea6d915cc3d6f6894f62f2efe3ca7d"
+    },
+    "Country/CountryShuffle1.S689.bcs": {
+      "bytes": 27460,
+      "file_sha256": "8f5cda99073d0525063125aa5c0638e58f167a2e979c8b16f301c0f03b5c7efc",
+      "full_style_content_sha256": "10f3ed03b39e5525e95b78feefce1db8b89fb39a1c24c5f91380e2f22c61533f"
+    },
+    "Country/CountryShuffle2.S564.prs": {
+      "bytes": 38170,
+      "file_sha256": "41c36c655d9cf5ea2f20dac135423dfa4bdfd797f51a9fd843e16b3f56c12b02",
+      "full_style_content_sha256": "98db5834bdd9a0a027dd30c93c7dacea37cea479eabc9d808882156711fab204"
+    },
+    "Country/CountryShuffle3.S654.prs": {
+      "bytes": 26087,
+      "file_sha256": "b112b9d5d2d3beef1fbf1a15ba3e77b6991e5bcebed3f7edf3f740207c688872",
+      "full_style_content_sha256": "f03979e372cb39db8beae3dc84fc72c1a76912bfe2734b56ec851a0950f7933e"
+    },
+    "Country/CountryShuffle4.S858.prs": {
+      "bytes": 37729,
+      "file_sha256": "51c13e73116bc726c0bccd35ac9078ed8ee3d3bc209b55495e2eff901f78c4e6",
+      "full_style_content_sha256": "23b1e917bf4e4c0da1bb48ed34dc4bb9f14302e1b0608039698bd9e7a1b96599"
+    },
+    "Country/CountrySing-along.S815.prs": {
+      "bytes": 49800,
+      "file_sha256": "189e1700dc422d705f24abeee628852b6f2720252af67c6723c3cc59a0fd9939",
+      "full_style_content_sha256": "df8b260bc876148b779b31b90012b04e187fdfe754d2c9544382835c3993ad87"
+    },
+    "Country/CountrySlide.S082.prs": {
+      "bytes": 34093,
+      "file_sha256": "6dd2e05d6f9cb7f7b4150ef9fc0b532ffa4e3f7c165cfc6ede24af353dfddcf3",
+      "full_style_content_sha256": "bd749a9e42bf3386fcc9aff73421409ef0aeaa29002d24d913c3910406486f41"
+    },
+    "Country/CountrySwing1.S631.bcs": {
+      "bytes": 43731,
+      "file_sha256": "bd314ec7064a36275a947014514577fd8c8cde8390e2f35f74a3e199f9b0144a",
+      "full_style_content_sha256": "44bf210811d370cebb8c75bddfbc5e24b4bfbf6f76b16a6688df5d510e7d8c9c"
+    },
+    "Country/CountrySwing2.S082.bcs": {
+      "bytes": 33544,
+      "file_sha256": "5ec9296f309d9bbc4720a9a32161a7f8ebe1d8f4c792fa82fc09542e52821842",
+      "full_style_content_sha256": "47e2b4eda7742bd87c7625250b6bbbe1ffb776d31af7f2591f8821fb566c65c3"
+    },
+    "Country/CountrySwing3.S580.prs": {
+      "bytes": 38688,
+      "file_sha256": "11b60f71add1b0bab295d40539c6efb39212c3fb197a2e95dc7232257027b669",
+      "full_style_content_sha256": "191b697befd401f6431051967c643c91dc5060818a1d5b958f3de138ac27548b"
+    },
+    "Country/CountrySwing4.S535.prs": {
+      "bytes": 31515,
+      "file_sha256": "42f6f5fcddd1778f435cba4ba620e426b351155ccd5d66c331ec9c1763d540f3",
+      "full_style_content_sha256": "929c927686da6e95fb1ed4caad3bf5fb616f1653b23c310631625fd122342dc0"
+    },
+    "Country/CountrySwing5.S580.prs": {
+      "bytes": 44454,
+      "file_sha256": "d30b490d0787076a17af6ad4cf51221b212a75560e688cbed4c412850e53c2da",
+      "full_style_content_sha256": "bc7d164bc1d0366a3d0341424400a617a9641ceeb749b1ad365ac7bc2895a46b"
+    },
+    "Country/CountryTwoStep1.S564.bcs": {
+      "bytes": 45997,
+      "file_sha256": "82ac438cc40120c80d647360ebcc2899a1d25edbefaf779eb7a4cb7898891741",
+      "full_style_content_sha256": "a7501d20b0ca7ed91d363361a1995f923eb53e448fce5806b6ea8375d8186209"
+    },
+    "Country/CountryTwoStep2.T147.prs": {
+      "bytes": 50851,
+      "file_sha256": "0d6bd4138c4b3db2f3f635fbcef6cebf274e1d0ddeffab81413b74cf3c8bc599",
+      "full_style_content_sha256": "e2ccd4c891c41cc04fbc3bf7e34dcc44b2bf5ca273454a0b2faa9ce3a1dfbb3f"
+    },
+    "Country/CountryTwoStep3.S582.prs": {
+      "bytes": 59491,
+      "file_sha256": "0a52bf2f229b2cc2ff11c25029d0c722e2f48ee6c81b0a08309f1f1ff09db10b",
+      "full_style_content_sha256": "55b8da79ecfeaabae18ec2204802903e334ca15882db4e94de89a4b26d075d83"
+    },
+    "Country/CountryUnplugged.S727.prs": {
+      "bytes": 36383,
+      "file_sha256": "975071f91e2e95dc2088bc717b3765f87d24049ad76a0da7cc983e44061aea06",
+      "full_style_content_sha256": "33ce8645293b32bf4252d3415fcee34ac01fb4c083975de46380f890e4ba7f14"
+    },
+    "Country/CountryWaltz1.S720.bcs": {
+      "bytes": 37379,
+      "file_sha256": "07ab15b63d1b56cf898e6b7a50d3549c4f342452735ef0b3e4c2d274a55e8dfa",
+      "full_style_content_sha256": "d5e3cb8ed9c20d4ffb97f05bb309750f1647ec30e6c4f72f0d29f65556c2dc9a"
+    },
+    "Country/CountryWaltz2.S661.bcs": {
+      "bytes": 31418,
+      "file_sha256": "545e873c0feda9e331f67572d8c041d1c15d2bf630bceb097573fb701dd63569",
+      "full_style_content_sha256": "ddc7af25fe55ab636bcdd5d743c6c2c7aa26fc20344710fff08f6378dc8484e8"
+    },
+    "Country/CountryWaltz3.S653.prs": {
+      "bytes": 31271,
+      "file_sha256": "ddbeae303c199f24c52ff60641769bfe4bc968f9805368804dbaf2f15d3da2a8",
+      "full_style_content_sha256": "83909e90f50547ff47b76265b028802e545bd45559d5a90c821717c0908cd195"
+    },
+    "Country/CountryWaltz4.S535.prs": {
+      "bytes": 43720,
+      "file_sha256": "2ab5d06736ea76535ff972404745e5c0e2d9354b7174a35beb185cc0d2c11be3",
+      "full_style_content_sha256": "d2f9ab1c017a30c8ead3d959b0aaa731628713cf284777930c754a5e5e9689ae"
+    },
+    "Country/CowboyBoogie1.S626.bcs": {
+      "bytes": 34805,
+      "file_sha256": "485d38ed84ed9336e51272738f07e856c3233089898e3a567475d0c01ff73403",
+      "full_style_content_sha256": "c468fe7f3042e4b908daf5616d487e3f55a4ffc8ee1318e886f5b50bd54a90e9"
+    },
+    "Country/CowboyBoogie2.T162.prs": {
+      "bytes": 34662,
+      "file_sha256": "00f14bf1dee53b50fb6484e289b482350c4e0fa24c7ab2929286abc06e187958",
+      "full_style_content_sha256": "991c293cbccc63e2274d91200e2487e0960cd7df7b1c301519d28f31917f6b3c"
+    },
+    "Country/CowboyRock.S084.bcs": {
+      "bytes": 33950,
+      "file_sha256": "c8b156c0ebe9aa0a550e35f1b3cd8a6c7bbd2c622a2de7f8a7972176aacc7cac",
+      "full_style_content_sha256": "b594a8cc8de5c5c1d8846ebbe62d07857b3c8ca0d1e53027db11924946a10ed6"
+    },
+    "Country/FingerPickin1.S096.prs": {
+      "bytes": 65976,
+      "file_sha256": "fed6538e292ad3a6b61b4564b5e8277557659ee93b71e34ea8b9da99db000356",
+      "full_style_content_sha256": "3c691ad6a37bb2fce9cee3a2a70568da51d773b449b37ce585fe99889f94f2e6"
+    },
+    "Country/FingerPickin2.S626.prs": {
+      "bytes": 66937,
+      "file_sha256": "ba2676a551ab3f24bc4b47f78968d8563e020fd1fc31bdfae63b0a379cba7738",
+      "full_style_content_sha256": "1daea6d3f9cf00cf25a806c90764a6fdacb3587ac08251435683f6c22cd5aeff"
+    },
+    "Country/FingerPickin3.S727.prs": {
+      "bytes": 47872,
+      "file_sha256": "0b4d170a6f3485f6d02ddf98a1a244de8d1afd932d18fd7cbb62e8d57ed4bf62",
+      "full_style_content_sha256": "cfa837bcea4ab8772db6e248763ce62a36aa54fd7cc604a1751cf0b4ff6724bf"
+    },
+    "Country/Hoedown1.S151.bcs": {
+      "bytes": 40836,
+      "file_sha256": "6b3560c4c5f2bba6a087a588b75d085215a5d5b91034ead3df9173d491ad0801",
+      "full_style_content_sha256": "5280772fa7f83bb4cd27d250f754550799aaee9f1ec2390a51ba5b4c87ac6fbd"
+    },
+    "Country/Hoedown2.S648.prs": {
+      "bytes": 46312,
+      "file_sha256": "6f8eeb7c493d97e51cd98928d4220d5883188658032164b3eeb9e09c7e7df075",
+      "full_style_content_sha256": "f42f3c12ec0522d051f8f6dd5d2eddbcb9fa5575dce6199fa9a0a2de81edeb74"
+    },
+    "Country/Hoedown3.S728.prs": {
+      "bytes": 55779,
+      "file_sha256": "6917bc0566272be245b4bd535f633521219328f74d4a0a30051320b156b42fa9",
+      "full_style_content_sha256": "8a54f3444e2aaceee02e434e086e91d16b6db7575846a8d085d475ff5c50684f"
+    },
+    "Country/LightPop.T015.bcs": {
+      "bytes": 42964,
+      "file_sha256": "db487fd229f7c73ebe576913575da9ecc0d036ab98df7a8c4af2f37ac5280619",
+      "full_style_content_sha256": "bad7c3b1dc2e10bd18749f8b2a00921e23ad580c06c13a581f8e7b9410cd35af"
+    },
+    "Country/ModCntryBld1.S081.sst": {
+      "bytes": 57720,
+      "file_sha256": "6b09f07b12708841a7c53cc07991005124c342bdccd1dd0f6a809ef30e2429c2",
+      "full_style_content_sha256": "9fd11e615faced1e35113df7b4b88ecb1deae463a0b997fd5fe03ab0d989b5c2"
+    },
+    "Country/ModCntryBld2.S650.prs": {
+      "bytes": 51631,
+      "file_sha256": "d9029d5939230e613ab5966614fa67e20f3d6367b6ae24dfbf3f43c7a48e4d89",
+      "full_style_content_sha256": "46c6ff086b5cf84f142cc25d26032af18964710484aeb3efae53a2b5eef0cccf"
+    },
+    "Country/ModCntryPop1.S096.prs": {
+      "bytes": 42329,
+      "file_sha256": "7c4f19414186f4bb36c738e23012780b4cd02a0deebfc376f6ac334d74f66823",
+      "full_style_content_sha256": "289afa6a170523fdc9f697dfac2b530e5ebab1295ab2744abdd3c360d550ac5c"
+    },
+    "Country/ModCntryPop2.S081.prs": {
+      "bytes": 42771,
+      "file_sha256": "a4425dc473c1a623a65403c9ecaa6db6a023f08c031a4b218ca04f76cf13e0f0",
+      "full_style_content_sha256": "eb11db3d729bbc0349eef9501b815c8ae65384301f72675942ae24f53ba7f0a7"
+    },
+    "Country/NewCountry.S564.prs": {
+      "bytes": 59484,
+      "file_sha256": "d6bea94445065b16ae8a4f35261b91b97b6a90527b5167da247a37c04af7db69",
+      "full_style_content_sha256": "36931d772ad0abcf55cd268df97cc481ed37171655654ed866a9dc2dfd5039eb"
+    },
+    "Country/SingerSongWriter1.S817.bcs": {
+      "bytes": 37001,
+      "file_sha256": "5a135663b0b51f58aceda2155b1724ae64aec1d7a9e86cd90af3ae22f62c402e",
+      "full_style_content_sha256": "aed9e483f91690f511a8e10565a6e727df47f84332ea4d63f5338bbf354d871f"
+    },
+    "Country/SingerSongWriter2.S920.prs": {
+      "bytes": 37730,
+      "file_sha256": "99ac6b627b89f410e5bf6f3224abac099d60a2aac6679a2dd87301a3ca1461ac",
+      "full_style_content_sha256": "1d7ff93ab67302e78fdebf9017fa369912c15ea597ed84fd9bd56794db7db0d6"
+    },
+    "Latin/Bachata.S655.prs": {
+      "bytes": 68024,
+      "file_sha256": "72dacc7cff85bae14812d5006789da36b11e17058d31caf33ab5e355ce497daa",
+      "full_style_content_sha256": "f6c04b022134d2fcb799b6413fabae0551e6ba5a38b5f8c6d1f1f204b8b70b7e"
+    },
+    "Latin/Beguine1.S720.bcs": {
+      "bytes": 41466,
+      "file_sha256": "12d6740a12cd190d24ba759c478ad915d66c2da7b887c9a34fdd8d2601006f8f",
+      "full_style_content_sha256": "4327a124ee0c415b197407d03b3b87226f2b60ba48f18c1550642354659576d9"
+    },
+    "Latin/Beguine2.S617.prs": {
+      "bytes": 43797,
+      "file_sha256": "3667410f0fe3e1bec3965b193c7c6d36f7d6d9e362379756cda5c832399e19ea",
+      "full_style_content_sha256": "ef0703a6a28619c72fe44c964d5c0d4e8747e1fe5bbf07dcc1b3284b607060ed"
+    },
+    "Latin/Beguine3.S519.prs": {
+      "bytes": 43201,
+      "file_sha256": "4e43d2c5efb203b6a699c13ec11ce4baaacee6e71d11abdc138c67cd2435cd24",
+      "full_style_content_sha256": "fd8dea769c254cb78dda1fcb749c87e64ddec23144ee23f00f11e30975d61a5f"
+    },
+    "Latin/Beguine4.S641.prs": {
+      "bytes": 54017,
+      "file_sha256": "9cf04ff9bce4697f7f79acb0af0491dd72a3dd80eae25e74c4eecfe381a06901",
+      "full_style_content_sha256": "87287652d406cbe84f4b7c05e100086ad7348e56b222dcbd49ea6ddb31de5c20"
+    },
+    "Latin/Beguine5.T006.prs": {
+      "bytes": 56290,
+      "file_sha256": "a0ca490e46f7ab3d85e045a6e24bac92398bfb6262cb9916dcd953a6af21e2ab",
+      "full_style_content_sha256": "33e3f6386d93d6c289d521fe638c301e450a704441cb4578dfb32cf703e07b07"
+    },
+    "Latin/BigBandMambo1.T109.sst": {
+      "bytes": 69765,
+      "file_sha256": "f162afba28eedbf507a03268c1670ab9ae2e1e04be160ad62ef3384a8f5f0816",
+      "full_style_content_sha256": "b3f040a7d78a7fad35406c55221f5b71a608bdf7ab845061bb07966b86366682"
+    },
+    "Latin/BigBandMambo2.S380.sst": {
+      "bytes": 69830,
+      "file_sha256": "10c4b516524f45309056dc49717207284ac61da9cb3cb04aa205a612dbe3eb20",
+      "full_style_content_sha256": "b6f44302f7b345cfb6236137086f4960ce28ef85c9f4477d312a361e4839402e"
+    },
+    "Latin/BigBandSalsa1.T109.sst": {
+      "bytes": 79268,
+      "file_sha256": "d0115277aa478092cd6911dbde8fb3eafd1f4839f6931502392ec32af1d769d4",
+      "full_style_content_sha256": "da1096ffef453e1a2d8235a2b1f3694de5d16fa483aeb2606702ff93072c7bd3"
+    },
+    "Latin/BigBandSalsa2.S379.sst": {
+      "bytes": 79387,
+      "file_sha256": "2d87aeef48339830f100ef920e01d0b1764c9b7c2c6d9018f06596e344c105ac",
+      "full_style_content_sha256": "d372a699cbebdb87f857cea9c43c8ecac7de1ef887ab54689fdb040589d04e9d"
+    },
+    "Latin/BigBandSamba1.T109.sst": {
+      "bytes": 67162,
+      "file_sha256": "5100a23867690d11ac8ac8a097ff87d40cffc0fd90c232d17b58484834c8c26e",
+      "full_style_content_sha256": "4383eb41f7aab51526d4ea8c1af94349852f1551870a5edf64bf2309a1c6ef09"
+    },
+    "Latin/BigBandSamba2.S215.sst": {
+      "bytes": 67928,
+      "file_sha256": "e81889345f81fec9af8c52ebb56888608887b36d304e1ceaeb3dd10af3c90811",
+      "full_style_content_sha256": "2dfc7c3a17c43a2a188b235bf79bb36b05be82a1bc8ab1b77ebedcefefb55d55"
+    },
+    "Latin/Bolero1.S711.bcs": {
+      "bytes": 44786,
+      "file_sha256": "937d18b2cdeb58cf43141a66857a63f584e5ad11094751c863bb7f102d07d0e2",
+      "full_style_content_sha256": "a6c26fb36bafbd05727c1b7bb3d0c7dec7bfd079fd1052bdd83721b9f7575ff5"
+    },
+    "Latin/Bolero2.S533.prs": {
+      "bytes": 41293,
+      "file_sha256": "b0fe04a5892da45021b0a70578319e5786932ba2ba855ac58f5a7717eddfd166",
+      "full_style_content_sha256": "c9dfc1ade5db46332cdfe9845ece67ce819236ce00963eafd957553a961fb086"
+    },
+    "Latin/Bolero3.S702.prs": {
+      "bytes": 42069,
+      "file_sha256": "b38b2c67d55d411e2c7afb4dc8fd68c8f8ad62e27eb3d0b3245f502741a77bcb",
+      "full_style_content_sha256": "e73830416227b764300ad44943507c9473d73e02c321ccbcc03eb3bdffb0db51"
+    },
+    "Latin/BossaBand.S631.bcs": {
+      "bytes": 37748,
+      "file_sha256": "57e0f2c90440a189b547cbd97f1375e03c6256a5c237affe9d22fc105e6fbbe8",
+      "full_style_content_sha256": "38c7af4624e8027613064978893c45ecb19d6cc30e0cbd13fa104977436323ee"
+    },
+    "Latin/BossaNova1.S629.bcs": {
+      "bytes": 50255,
+      "file_sha256": "a40062d1a91b43d9b81cb813ff51c5baa2c691f0b719725b3f4a140f4d30dd7b",
+      "full_style_content_sha256": "4e5bf7b61ad3090fc618ee66953df1a44a8094cb8f1d684972297aebe3997567"
+    },
+    "Latin/BossaNova2.S851.bcs": {
+      "bytes": 37388,
+      "file_sha256": "a9519d2a41a91a4c7961b51035b18f3af625b85556ca1f0ae4e4c4175179dd86",
+      "full_style_content_sha256": "41936718157e5a11d43b589a95a1b10e8339395c3789f2473098f6c5377f22cb"
+    },
+    "Latin/BossaNova3.S249.prs": {
+      "bytes": 38348,
+      "file_sha256": "80e196a6a7216a7b9a0b8a5afa8959811dea75d00d4684c07467ebe710e3b07a",
+      "full_style_content_sha256": "3a7ba01203c2fc5a068b337a2103dfb661dcd448b1b152cd4173e17fb5223f12"
+    },
+    "Latin/BossaNova4.S655.prs": {
+      "bytes": 56173,
+      "file_sha256": "4e714f8b7cd2b0702fd64157bcef527f283a7041848e260634ee00e5422ab109",
+      "full_style_content_sha256": "2ef18af5498a5cbb75e7c8d2ce3af631fe25ab0615a148d9154429f966ffb35a"
+    },
+    "Latin/BossaNova5.S231.prs": {
+      "bytes": 102403,
+      "file_sha256": "014f9bcc418b57a192f5d6761176a8c7b411a4ab9d2237fa202aef0de2184db7",
+      "full_style_content_sha256": "ce731e1af160a2dcab732315de35390dd56c75445ab04b989d1d0997e471c538"
+    },
+    "Latin/BrazilianSamba1.S850.prs": {
+      "bytes": 55828,
+      "file_sha256": "e429b5c505c85b8675dd063a4b93f82f03e0f79dcc3839d403feb81912e58fa0",
+      "full_style_content_sha256": "713af9d09e94d1c1f12eaf6299f3f38511f838067c0b3b7f4dc2a6ede7bcb17e"
+    },
+    "Latin/BrazilianSamba2.S752.prs": {
+      "bytes": 54621,
+      "file_sha256": "508b2f9a636cbaa95e24f68b49233b0732b318e02b82b9f0369e1feb8897be88",
+      "full_style_content_sha256": "0d2d70b5f24cec48efdd19606fe0e0421008241f9cab29f8f7f3f437a0335678"
+    },
+    "Latin/Calypso.S349.prs": {
+      "bytes": 69300,
+      "file_sha256": "8bef9942af10abe3bc27744e563e72f40500c338909c662f8b2a196026a8531a",
+      "full_style_content_sha256": "6a476e352984b0a5e99aaecab94c894f8730914734958062630df1c1071ade64"
+    },
+    "Latin/ComboRumba.S950.prs": {
+      "bytes": 44702,
+      "file_sha256": "eaf0f2e8e227ff05b3b364ed1353c12882f96f20c74e059a12a5d540a0d29ab1",
+      "full_style_content_sha256": "9eeaf689d273cd98824bd2d0aeec30f2132098b21583daec90cc4a510845f276"
+    },
+    "Latin/ComboSamba1.T107.pcs": {
+      "bytes": 40786,
+      "file_sha256": "6bad37c5afbf4dbe84900e2dd95ebc66594a9770514315476dc28a0fe10a84a3",
+      "full_style_content_sha256": "c04d226b61bcf2a28fc6d69fc01ac89e7d504a374cc952df536b9cd0676f2a05"
+    },
+    "Latin/ComboSamba2.S725.pcs": {
+      "bytes": 42153,
+      "file_sha256": "f3bad56a5b154310046586007ee52a75a2556987687e4c51b95bc188791ac13e",
+      "full_style_content_sha256": "aec58ec2b51bd5483111a8fc63c82d3d04427bc9f887c1aae7625048d9c4457b"
+    },
+    "Latin/CoolBossa.S629.sst": {
+      "bytes": 53227,
+      "file_sha256": "52398fbefb814b280df66a081195ea0368924f65426b279eb53bcdee5bf98bd9",
+      "full_style_content_sha256": "256fbb22f3f7a00b529b61794118d382775ade43093f1e4be36813c78cdd4022"
+    },
+    "Latin/CubanBolero1.S711.prs": {
+      "bytes": 44467,
+      "file_sha256": "318c625bc2d83847b1129765c747a24797dbacd330652fbc2119220d1f4afabc",
+      "full_style_content_sha256": "bdf314fff398bef1e60735c43748cea0c90483d9f34cdc9258f84ef193f5e86e"
+    },
+    "Latin/CubanBolero2.T410.prs": {
+      "bytes": 45693,
+      "file_sha256": "0a47e81895fad853245f2cd08e02ce0e30305354bba8d4ab89a97abb05b2f183",
+      "full_style_content_sha256": "f1f992b30acb6a862307b57e930e76f0cf846635c63847f6314dce78ce014be1"
+    },
+    "Latin/CubanSon.S629.sst": {
+      "bytes": 45594,
+      "file_sha256": "828e18c630cfe22d147fc142e0ef762853ec2baca1609326f251acc44fc8667f",
+      "full_style_content_sha256": "cf1279fdf656a5de056b6b9847f421a09f2b789466f543c1ac533e88fbba3242"
+    },
+    "Latin/Espagnole1.S081.bcs": {
+      "bytes": 52691,
+      "file_sha256": "5592b40fe71a890fcb355233a74c20a6b28957861df5ea1f93cd21c888fce90f",
+      "full_style_content_sha256": "9da2e11f104897bd64fc2ed879496858ad17f6c62d43789f160c400fc9d7fcff"
+    },
+    "Latin/Espagnole2.S654.prs": {
+      "bytes": 56421,
+      "file_sha256": "d5ab25d895496ffac54002b0c7152c0415e71081c6003a1abba4982adc49026a",
+      "full_style_content_sha256": "8a2aee49e9a6f07ba032e51e8bc1c5ed385758c3fbc575511d29aae4270aef49"
+    },
+    "Latin/FastBossa1.S702.bcs": {
+      "bytes": 35843,
+      "file_sha256": "7e5ce6c9614d2bbb8da4e01b3102b3c8b565c49259b50c98d26d768a31582e98",
+      "full_style_content_sha256": "eb827abcc0e78ea0c6140b7ffa4ea0b539cbdcda456fc3ba9b32a7df229aad60"
+    },
+    "Latin/FastBossa2.S629.prs": {
+      "bytes": 46627,
+      "file_sha256": "911f497642422b0c578ffdb4ad06559bc8ea8ca589009c7d51e8df79adddb66e",
+      "full_style_content_sha256": "2a6605c52f0cb42eff3998d9b8ab8d98a7f7b38e0ed6575453d821e8076de166"
+    },
+    "Latin/FastBossa3.S711.prs": {
+      "bytes": 42184,
+      "file_sha256": "77d6f91f5a529bea3af1188b20f4c8552faf9667561f00f3d56871b913fdb673",
+      "full_style_content_sha256": "1b390398a3202f231c922e322b476ec4c65d1acccd1222fc281f14039dcca554"
+    },
+    "Latin/FastBossa4.S631.prs": {
+      "bytes": 45477,
+      "file_sha256": "0e0b0fe43cf7cd67af197164fc25cc481fba7d2858c5aa286f86ca48ccde063a",
+      "full_style_content_sha256": "1738d061aba34475a1d07481b2b94600574030fa5b4b22d83184ebf496bef382"
+    },
+    "Latin/Forro.S729.prs": {
+      "bytes": 61159,
+      "file_sha256": "ca1a001b56851295726b3e3b3e0ddad59c9b1f085cb3d7c426967af57bb47b85",
+      "full_style_content_sha256": "7ec94362a5dd138e3ee2322efe5dd95136c89ba5bccecbfd406fa5326dde5e4a",
+      "golden_baseline_expectation": {
+        "chord": "C_MAJOR",
+        "destinations": {
+          "10": 9,
+          "11": 72,
+          "12": 64,
+          "14": 21,
+          "8": 105,
+          "9": 50
+        },
+        "dispatched_on": 321,
+        "raw_on": 357,
+        "section": "MainD",
+        "status": "BASELINE_OBSERVATION_NOT_MUSICAL_ORACLE"
+      },
+      "golden_main_d_protocol_sha256": "ea82e552a7497b1891590a22b506ace645053b58e83cc0feb11711e8c806fcd3"
+    },
+    "Latin/GuitarBossa1.S631.bcs": {
+      "bytes": 41031,
+      "file_sha256": "ac80592539c73a4afa813b38b393942e586cf8d691ba6cefd5138dbb2ef9af00",
+      "full_style_content_sha256": "19b6413cbf859508c5f3ff1c2e23836e81a648c89502cad6b93faa47080d18e1"
+    },
+    "Latin/GuitarBossa2.S081.bcs": {
+      "bytes": 32463,
+      "file_sha256": "30182d0b23c56e57baedaf9f636b2775dbeb817d4a12d5a986e1393a86369e2b",
+      "full_style_content_sha256": "a19f57b5438169d40d4f8b08955d70eda6069042a581031df90f8ff31455c06c"
+    },
+    "Latin/GuitarBossa3.S727.prs": {
+      "bytes": 34135,
+      "file_sha256": "74d7205e77c589c64da18474f0fbd39531e30fbd64d2dd48bffde2d7aea1f20e",
+      "full_style_content_sha256": "4cfd0b60c54235010abb8b51d4cbe93a7043cdf198d84ae5ff3593dcb48971ea"
+    },
+    "Latin/GuitarBossa4.S727.prs": {
+      "bytes": 28504,
+      "file_sha256": "059754ef390dcec9940a62daac40acec01d0cdcbc8108ca8f98562f748bef61f",
+      "full_style_content_sha256": "81d1090cba6b4dc1daae4fa5c07c9124c24e9ec94646d309baecccd0930effa9"
+    },
+    "Latin/GuitarBossa5.S084.prs": {
+      "bytes": 39840,
+      "file_sha256": "dd8bf486996a250107909efb884d71d997b1fb36c114888eac92af1b4c39ee6e",
+      "full_style_content_sha256": "dcd17e319bbbe206286f4cbaad7f6d84af143fd91559072bf6f8b17e1cb7cac5"
+    },
+    "Latin/GuitarBossa6.S081.prs": {
+      "bytes": 32472,
+      "file_sha256": "30bae4643597880405fd48b9dea37ed7083df2c719fb6bbea350a3f9eabc05fc",
+      "full_style_content_sha256": "d3b82324caca3a0beaa65fe777cb56b9ebb200330537abc758a275ed1bbed04c"
+    },
+    "Latin/GuitarRumba.S081.prs": {
+      "bytes": 53196,
+      "file_sha256": "abbd290fc60ee94891072e528ba0c7c97fd69a3000cbaeaf4a98602093af24ec",
+      "full_style_content_sha256": "4e555c5a873bec679f401a6c3ed568aa0c276b45456e75894acaa5481c91166f"
+    },
+    "Latin/GypsyRumba1.S464.bcs": {
+      "bytes": 54921,
+      "file_sha256": "7d8954ceae99e9a540956521d5a5bac54fdbcd28af0fdce2c400c1bc998f6e77",
+      "full_style_content_sha256": "3319ca8d618babd9b8331d98896c479e51b27158c5bed1835ebfeba6f289c064"
+    },
+    "Latin/GypsyRumba2.S081.prs": {
+      "bytes": 53336,
+      "file_sha256": "f419b1fb3bd39143ac51d331aef43be069f1a482cc1af8cd9c37e0ea4a97630a",
+      "full_style_content_sha256": "49aab9cb90dcc4120120f2fabebcc779fe589fecc6786891f0c0b32824af3508"
+    },
+    "Latin/HappyReggae1.S515.bcs": {
+      "bytes": 45495,
+      "file_sha256": "be1d3cf308dbf5f954ad55c889849564db8c2e0d2a8230df01f08ef0fe9014d4",
+      "full_style_content_sha256": "ed232cc34efb7c7ebaf742e974c8fa46ed3dca735bb2645fc5aa3fce08ae7816"
+    },
+    "Latin/HappyReggae2.S655.prs": {
+      "bytes": 45535,
+      "file_sha256": "9a488a195bb5f24aa6532d5d0da5bf52df46c08e0366dc43803ecbb3fb67cfde",
+      "full_style_content_sha256": "4896fdb95a51dbafa86a135ab7eb731433c22686e7c2a6219478e5b19b7d6e8c"
+    },
+    "Latin/HappyReggae3.S688.prs": {
+      "bytes": 43028,
+      "file_sha256": "def2e66dae127e677546498e334f53462684bc3bb4f3a6adf7f111691d9c24e7",
+      "full_style_content_sha256": "35918422415615bee21b9de4a840605fe4c6e5d9098b8d35dd4d0275423e2a18"
+    },
+    "Latin/JazzSamba.S623.bcs": {
+      "bytes": 44260,
+      "file_sha256": "3d510532e13197167b2332c91d2552d39ce082b75998a1797ff952e8c7c37e8a",
+      "full_style_content_sha256": "5beed7c59bab57bf90d22d41a6383175d316cc23b85295e85ddad6921ec194d3"
+    },
+    "Latin/Joropo.S249.prs": {
+      "bytes": 48247,
+      "file_sha256": "5552c7f6f3f6adfc5688ef3e2ef8e633148c92b981ed5b34beae7195b5d84959",
+      "full_style_content_sha256": "be83a14797ca53b594979a5116831d4651fb51383a55cd185ade7a6437d0e70a"
+    },
+    "Latin/JumboReggae1.S706.bcs": {
+      "bytes": 47771,
+      "file_sha256": "97c10670dc72e7ed06188f6248b4f54e34e07027907da94887b6ae2ea3b97323",
+      "full_style_content_sha256": "7c8f213ea6507ab87ac8aa6654d9cfc5547ff3c8ba05297143713647ba119f47"
+    },
+    "Latin/JumboReggae2.S645.prs": {
+      "bytes": 50785,
+      "file_sha256": "376c9b715407ee1a5e36d4511d5ad12de135ce10d36380f60c838f2aac66e9b0",
+      "full_style_content_sha256": "88af188e800e52d7f0d6a2fafa35945bbe89631ebc842a15ccb74974fa53a814"
+    },
+    "Latin/LatinPop.S635.prs": {
+      "bytes": 61284,
+      "file_sha256": "21066126ae0bdd42d747d3105cda57fa5e3e7ba37234d09d7a4330dfd00f9218",
+      "full_style_content_sha256": "45d0ba55080b503b4c6d5b85608c4eb7f9856a9525d5699d7ea7a9cbe2558f87"
+    },
+    "Latin/Mambo1.S655.bcs": {
+      "bytes": 47615,
+      "file_sha256": "33a5096baafaf442fbd91644ecf850c067895a84d21ad96d3089e29f9c40df22",
+      "full_style_content_sha256": "99593f1d13819cbafff49390eb4e3a44a43331340abbd6220e31bde608fbab4f"
+    },
+    "Latin/Mambo2.S000.bcs": {
+      "bytes": 45613,
+      "file_sha256": "6f68a8ddba77404c404f6824cdddb0a62ff89bd3ba4b2a407fdca7cada68ebe7",
+      "full_style_content_sha256": "9affa852a22a32556fcc073259363244636f1371b28d6aef2538d271a4283813"
+    },
+    "Latin/Mambo3.T443.bcs": {
+      "bytes": 36107,
+      "file_sha256": "4fb00bc786df7c1cdf2a0337e71ce8ea3363ca55da083431ce0ed220a3063218",
+      "full_style_content_sha256": "357646239b4930171714b0b76ddbe2f2d9102b8032c7ced4606f04f313c4f364"
+    },
+    "Latin/Mambo4.S635.prs": {
+      "bytes": 46235,
+      "file_sha256": "a474a79a98c9f894bb4395e68682ad0cc5d69e43f45d4c38830ce314f86bc17a",
+      "full_style_content_sha256": "cabb37a18a822800dfa7a480e1069a14035391de69ad57ea72ee02109704def1"
+    },
+    "Latin/Mambo5.S362.prs": {
+      "bytes": 37158,
+      "file_sha256": "7843dbe0181f1c548c3ead5e131b6564d8433944b7ffe04ebda8c0c951aa6d34",
+      "full_style_content_sha256": "5568184eca94c678b3e0f56d60a494fa9101c1bb2213c95e658dd7ade7f2192b"
+    },
+    "Latin/Mambo6.S722.prs": {
+      "bytes": 46147,
+      "file_sha256": "b9d8185c5f368a19b30ac06846bb6c2877478724db19841f0dd8b130fdae1a7d",
+      "full_style_content_sha256": "cbd8bfb9a5de52320df61771f5e2c25558881464e94962a0009c229dcde50e51"
+    },
+    "Latin/Merengue1.T109.sst": {
+      "bytes": 59358,
+      "file_sha256": "22c700524b2a223c553e4c6acf0839633a40b351a2772665e023f02e516b19ec",
+      "full_style_content_sha256": "917e8bd62c1bea5e9420cbf98316d81d6fa5a9bff4690838e245d572666c876f"
+    },
+    "Latin/Merengue2.S635.sst": {
+      "bytes": 60065,
+      "file_sha256": "d24c89720539184739aecfb4bcd4f3257b625e5d80f36614deeec2ac91d88c28",
+      "full_style_content_sha256": "e66fec56f9a97138e6bb2ab0bb15ce4436d9fc0c0d301aab9e6ff68ddad49d53"
+    },
+    "Latin/Merengue3.S379.prs": {
+      "bytes": 97530,
+      "file_sha256": "c503c20708db0acd79ca31afcaa0e1ff9403ee80e0ae3e581d8db8c5add53be7",
+      "full_style_content_sha256": "35c30b0524cd73ae876c745bda843b3814bf14c40834fbaa8d5d9f940ccac533"
+    },
+    "Latin/Montuno1.T109.sst": {
+      "bytes": 57919,
+      "file_sha256": "81605de80dc64250d3c73ea17b825901f3a9bfa8264b8659b6b9602e9ae0ec4a",
+      "full_style_content_sha256": "885d62c6d04a57eb1e38ddf5ec92c1454af34cbd1a3cfc491a32fee03860eabd"
+    },
+    "Latin/Montuno2.S725.sst": {
+      "bytes": 63010,
+      "file_sha256": "d4fc2a725c058c26b9abcd793eea6ecccfcf0c751aeb4272a6b757922ebbba11",
+      "full_style_content_sha256": "a9b62bfcc0c18167e609ab35bbb08b65face5998ffeb26aed24e80718ba2f194"
+    },
+    "Latin/Parranda.T158.prs": {
+      "bytes": 46633,
+      "file_sha256": "54e90f5e2c31fc45c60df98c6c6406a2e6cbde45cc0959f984b57d33aabdb018",
+      "full_style_content_sha256": "1a104ea06f62ad00bf86096bc62a33243dea41ab9f4b8ec43459885edc4fd4fd"
+    },
+    "Latin/PianoRumba.S928.bcs": {
+      "bytes": 47419,
+      "file_sha256": "59e5beaf4351dd50b37131cf3db7d5dac7564e90f13f75041dcb0f20d2f73ed9",
+      "full_style_content_sha256": "3b2e13041401fe305450eaf6f310175ff1dc7064acdbf2f336c5e5fa175ecd8e"
+    },
+    "Latin/PopBossa1.S631.bcs": {
+      "bytes": 43947,
+      "file_sha256": "91ae4c7da407edbb782578b8d26257134c2f4daa7c283bc630557d08e134cec4",
+      "full_style_content_sha256": "9845b5d311a42559dfe0bc661360b2369173af48690723dba5196d2781e19708"
+    },
+    "Latin/PopBossa2.S654.bcs": {
+      "bytes": 46183,
+      "file_sha256": "8fbbafb726b44cf0a0766b709e60f8cd7f6821f29e419cbd82fa64c3c8d34cda",
+      "full_style_content_sha256": "96e9edb1982b4fb99198eb7fec61f4182e720413351b9f998683d3f3969d0109"
+    },
+    "Latin/PopBossa3.S711.prs": {
+      "bytes": 35834,
+      "file_sha256": "2f3ee94742f380340c8ea7ee32464d4216b89dd7bd84b3aa03ad5d5b61f670de",
+      "full_style_content_sha256": "ddb372b8f2b2af3025ca108104d91a19bdf94ded5f1416cb4231831670c00447"
+    },
+    "Latin/PopBossa4.S629.prs": {
+      "bytes": 37990,
+      "file_sha256": "dc97a58746c601cf56b95eb9aa2dd0e2a9cd8054b5651636223fadaa1ccb52cc",
+      "full_style_content_sha256": "350a6da25f6ccf859259a08bbdeb95559985d4c9890c4dee5566b8afcc72616c"
+    },
+    "Latin/PopBossa5.T446.prs": {
+      "bytes": 63352,
+      "file_sha256": "2918a4f03ae8aaba2e51459e1cdf9e1b23d12a50fa5bb52df06b8cbdbfeb02f1",
+      "full_style_content_sha256": "f0244ffd735eecf3e2978f271ad11dc78ad9308275fbb8b6012e5c92f4d33560"
+    },
+    "Latin/PopChaCha.S628.bcs": {
+      "bytes": 37413,
+      "file_sha256": "2aec355136feaa7719b24fab6082fdd2fba2e2003cfd5c38dfc4a418841d4497",
+      "full_style_content_sha256": "ca7b93a4ba4428eeac48451104c9a4870073051e6e3443a237f1b8f6febc93dd"
+    },
+    "Latin/PopReggae.T149.bcs": {
+      "bytes": 51345,
+      "file_sha256": "1604eebb22cc5ebacf8c800acb88db3c34252326ce9609b2209f81904d0e4ba6",
+      "full_style_content_sha256": "73ff36584abdd3c73892ede0989e9e47533e6b5765de29d1bc7f5faea7ec9b5e"
+    },
+    "Latin/PopRumba1.S631.bcs": {
+      "bytes": 34435,
+      "file_sha256": "1e31f21aef4cfe94031d17a500b0205d5579b4f70c786e2528f207574011b6cf",
+      "full_style_content_sha256": "f8e11a193b3c16dbba016ff73f553a9cf68299822b0bf0905a573558e9eb39b0"
+    },
+    "Latin/PopRumba2.S711.bcs": {
+      "bytes": 41290,
+      "file_sha256": "f171591009fb16866b81a1c985b6191bf3e2e74676cda174db8e290f0860b24e",
+      "full_style_content_sha256": "a0414f451ba2b506010c75764e8a1f82a2e249701a1d0e2df743624b4ddd92d3"
+    },
+    "Latin/PopRumba3.S533.prs": {
+      "bytes": 41802,
+      "file_sha256": "410ea9cff5b471fa36203e390bf0db798136fb1c2668c157f50f7916a6fb3123",
+      "full_style_content_sha256": "1a5d0c37588c15af0d294de4eb5dce775f750670367bf921da1c1c2c4699d4a8"
+    },
+    "Latin/PopSamba1.T008.bcs": {
+      "bytes": 41844,
+      "file_sha256": "b108f8d38e242629fee5d515e1af8e32263ba1990ab9f3e7fd8885e12631c7c3",
+      "full_style_content_sha256": "43b5076a430c05ae54b6505b8a68cd1f42a78bebb12a4c5c47fd35d026f4ad50"
+    },
+    "Latin/PopSamba2.S630.prs": {
+      "bytes": 41395,
+      "file_sha256": "f9f06a4959997f21ee7077599f02c4e2f4af261882cc0e7c04746ad485b801e6",
+      "full_style_content_sha256": "1df4eac07f2b2666b4d147c61e07bed0305a95a912b6d9bde64d6b78f64baa9c"
+    },
+    "Latin/Reggae.S655.bcs": {
+      "bytes": 38735,
+      "file_sha256": "301f2a542fb88ca52a20bdad195f36f31e6332975bb55df93b63fc52585a9db1",
+      "full_style_content_sha256": "9b6f4d98e6b8e7f3842f2820d4b916f341c01eb1219e48c9558dcc8d595dbe01"
+    },
+    "Latin/Reggaeton.T155.prs": {
+      "bytes": 42061,
+      "file_sha256": "74704837859caf2710bc68377926efc679ae18cd8bf9e247413a05815df30810",
+      "full_style_content_sha256": "c3763e87a137f0a34f6e9bce93ee8bc7171ed23f7ef2501d17ceb6f7580276cf"
+    },
+    "Latin/RockChaCha1.S000.bcs": {
+      "bytes": 32172,
+      "file_sha256": "fa9c8663b97cca08ccdbc8176c1d8ffba1e0dfcb7ede95e7988a298e415e9645",
+      "full_style_content_sha256": "d3d8c5cfaf0cb617279c093e3503b8b2d080a4a5a68715747eaaaf5ae65b87dd"
+    },
+    "Latin/RockChaCha2.S660.prs": {
+      "bytes": 41903,
+      "file_sha256": "ae61b0512c00a09b03d8dbc0705a9d8426f6e94d88403c513cdbe23ae5071b0b",
+      "full_style_content_sha256": "2c6cb86c2e37d85d5605ae288327c06095bd12034114b88562ed3e4beee49ccb"
+    },
+    "Latin/RockChaCha3.S365.prs": {
+      "bytes": 49964,
+      "file_sha256": "64cbf4d98782a612c5be0c89e65c639933ea6a8834edafebbaf6c346b662c7fd",
+      "full_style_content_sha256": "4d66ba2ac02fed95e43e52b9cfb4776900fdf42d253bdd9092a4d8bf8d07c5ff"
+    },
+    "Latin/RumbaFlamenca1.S686.bcs": {
+      "bytes": 55560,
+      "file_sha256": "8fad2d46cac2b27e76d2b9dd4cbec8ec8662bd0c3a439e35b217c0c602a3a322",
+      "full_style_content_sha256": "a920036abbb0ed9d43985fbd6e7a1f07c44ccbbf426d2d76a69ac019cbe7e10d"
+    },
+    "Latin/RumbaFlamenca2.S566.prs": {
+      "bytes": 47668,
+      "file_sha256": "c4f31f9003d94619f80affdd5798000a9db41fa583999910686bd91311c8166a",
+      "full_style_content_sha256": "149eebe571ea58b367aef5ec1f0d7834ef93c383f99348868daccd0e3fa6d101"
+    },
+    "Latin/RumbaFlamenca3.S687.prs": {
+      "bytes": 48932,
+      "file_sha256": "beafc4ec77daf027d64f4e54cfd86b6804117719ba1a87fd3cf66198d535f8a3",
+      "full_style_content_sha256": "455afca957b073e636d942ce69fb41aad0df72145d54d0669acd88ddc997e5f6"
+    },
+    "Latin/RumbaIsland1.S711.bcs": {
+      "bytes": 35372,
+      "file_sha256": "92f7e36edb7b77cca075568d482b567b4426f458784be94d41bef5d0e3e5c285",
+      "full_style_content_sha256": "977fad96bbce51e077ee73fa355d0774936c06c4c22f7d298e8d0027c6a44c10"
+    },
+    "Latin/RumbaIsland2.S705.prs": {
+      "bytes": 38710,
+      "file_sha256": "a91c977ac9e2984d0ed080c42701254cf3e5d48c93baa17cba4c159a209d6d76",
+      "full_style_content_sha256": "20af1a041a8780135826e4f6eef463de46f31ed9404f2116261e30868366a90a"
+    },
+    "Latin/RumbaIsland3.S533.prs": {
+      "bytes": 35643,
+      "file_sha256": "86d72ab1d2372598133e6ad43a9b72b1d0c5df715c7f8b148cb17d0653d3ca7d",
+      "full_style_content_sha256": "4b83e6832d5a1a87e4904b08928b71270accad2d4055884a7b3e190ef8afee43"
+    },
+    "Latin/RumbaIsland4.S706.prs": {
+      "bytes": 41900,
+      "file_sha256": "ceaffa7885c2dba1e786d5c88503f6b647b49e319847d6f701af49449f810486",
+      "full_style_content_sha256": "78ffd18699362c22882041beea15bd349cfde7ac4027d7ea0b87f8f17bddc0a7"
+    },
+    "Latin/Salsa1.S628.bcs": {
+      "bytes": 36598,
+      "file_sha256": "8bd583916ad988e1688a1a6240a102a248b284125f95bc89bf27073e0c92a113",
+      "full_style_content_sha256": "ae268f71355265811b9f01f57203059ccc0b0f8a7e5ca642a9de35d60d6d4429"
+    },
+    "Latin/Salsa2.S639.prs": {
+      "bytes": 43362,
+      "file_sha256": "df572adea78d49a610ba00dae059f4fe65da20f575c7704bc01eb1aede18ee10",
+      "full_style_content_sha256": "95f5a70c10694629703fb2eb7cb26a09350a078ea237878e5af3ccf2945b17a5"
+    },
+    "Latin/Salsa3.T158.prs": {
+      "bytes": 40993,
+      "file_sha256": "57afb16801259be6c6ed6dc00437dfe7db78c03c143d717d8c645ed508354213",
+      "full_style_content_sha256": "af0f84e3a01ad33f36e128c2fab8a9fa4353edaa9e007432ffe5d141c4d5044d"
+    },
+    "Latin/Salsa4.S688.prs": {
+      "bytes": 42958,
+      "file_sha256": "0d4af88a90947ce92cfa987e48b4ead91d3842dd497684ae4e53fed0b0cf7328",
+      "full_style_content_sha256": "fb64fef3ca7e947b73776c886489b69d125d7accba61275fc94d62ed9d41fc2f"
+    },
+    "Latin/SambaCity.S565.bcs": {
+      "bytes": 41844,
+      "file_sha256": "91b9d67c7e944142b61a82f7c6abe0b0ccb3ef7abf1d69e6ab6e5cc09bfd4903",
+      "full_style_content_sha256": "5b4f48fa9de4728cd882b8997ba0e381ef9d6d96cc95bf0d7fc28ebc9eaef92c"
+    },
+    "Latin/SambaRio.S631.bcs": {
+      "bytes": 42312,
+      "file_sha256": "1cfe2a27923fb73f6d66a343b67f78921edc9b1f1ee20a7240c1880af5a95cdb",
+      "full_style_content_sha256": "4765c5b74eae9306e522ac1d872358a04e9d4f7e57b888ba068425dc8f30ff17"
+    },
+    "Latin/SheriffReggae1.S851.bcs": {
+      "bytes": 38232,
+      "file_sha256": "ad1e48a26fdb379b72943a0f19e4ada326217fc9d94827159661c6fb47eae67e",
+      "full_style_content_sha256": "baa6b4e08ed05a5db146e195468782d44983568d17e4c8d82a3a8478f36373b2"
+    },
+    "Latin/SheriffReggae2.S704.prs": {
+      "bytes": 37689,
+      "file_sha256": "7ad1a5f4a73c93012aab6852f5a9e291fd7a51fa99e39024fe8de0dfcf462de9",
+      "full_style_content_sha256": "bba5baba23f6be44ae32b192e46e4a22c029b2037ea24801d34208158ec51c6b"
+    },
+    "Latin/SlowBossa1.S686.prs": {
+      "bytes": 39721,
+      "file_sha256": "860fb1a1ec57103c6e54ff89ebedee327f530612ef5d8a747359b7e92a168d43",
+      "full_style_content_sha256": "59cc1a1958dcd961b1f359f85bde9a414a72f255d02f1585d52e315e5c927d03"
+    },
+    "Latin/SlowBossa2.S687.prs": {
+      "bytes": 56365,
+      "file_sha256": "6235a20ea19441572c5416fb4a97b90940cc30dea55ae0531c7a1869844c4adc",
+      "full_style_content_sha256": "d51db4385573b939672562311110a6e497eb3371b991e2041809601e6323ddcb"
+    },
+    "Movie&Show/70'sTVTheme1.S561.prs": {
+      "bytes": 109273,
+      "file_sha256": "159f9c042400f385e2e13387b8e7caa8ef80bb9ffe97cf6462dcc24eb0c74a8e",
+      "full_style_content_sha256": "6c280544c586c14cdcd1626e3073a385d1f030622542f3565dbe605bdd23a9aa"
+    },
+    "Movie&Show/70'sTVTheme2.S826.prs": {
+      "bytes": 110065,
+      "file_sha256": "0b9cd2c506c377de67313f874950d0c77a1d2540b595c623a121c2130e86a546",
+      "full_style_content_sha256": "bd6d4f66f0446b6916eaad280ef374933002209a1fd506a3bb6daf62ec05b031"
+    },
+    "Movie&Show/BaroqueAir1.S145.sst": {
+      "bytes": 59038,
+      "file_sha256": "dd4b60ab8624cc126da5d05a76feb6372198178e3873af5797613f0efcf0783f",
+      "full_style_content_sha256": "7f50f0c1d1ac166a7a7013ed3e0b01bb91f916cf23878954c718d9b97586afc8",
+      "golden_baseline_expectation": {
+        "chord": "C_MAJOR",
+        "destinations": {
+          "10": 64,
+          "11": 72,
+          "12": 48,
+          "15": 8,
+          "8": 36,
+          "9": 8
+        },
+        "dispatched_on": 236,
+        "raw_on": 280,
+        "section": "MainD",
+        "status": "BASELINE_OBSERVATION_NOT_MUSICAL_ORACLE"
+      },
+      "golden_main_d_protocol_sha256": "a8001ff8130cb0ea30a0b926fbd1495896a0409ee671c785899bc60b02ae84c1"
+    },
+    "Movie&Show/BoroqueAir2.S795.sst": {
+      "bytes": 61170,
+      "file_sha256": "1396b984ae54a049be1a34a667c1f5b43f70dfca412d1ee4bcc5027973145a78",
+      "full_style_content_sha256": "176cf150cf6d5737b243ef06071bbb5feddaf0485692ff5b77a7ae7bd313091d"
+    },
+    "Movie&Show/BroadwayBallad1.S859.prs": {
+      "bytes": 63810,
+      "file_sha256": "7674ceeb0576c2a306b1e9446c87199c87e44e8391dcd77e8848bb9378ad7882",
+      "full_style_content_sha256": "51c156c2d10d4b044f8a10a82aa01ff6cef0874de16be0c317b387f9733219a2"
+    },
+    "Movie&Show/BroadwayBallad2.S718.prs": {
+      "bytes": 65115,
+      "file_sha256": "b1e6ffc8052e3e4fceb586ca5f72e9c79109852e467da8c31e7140156ab51d90",
+      "full_style_content_sha256": "a1da19d12a69d839a573fbb02ea05d4aaa66bc19d31c0bc823454a2011002e5f"
+    },
+    "Movie&Show/Christmas3-4.S719.bcs": {
+      "bytes": 33726,
+      "file_sha256": "d2740614a029118b55fea77a41bb96291b46a25445a21a48d82286db36bd808f",
+      "full_style_content_sha256": "e63bf9324a0c4944f7bbdf0509817c004d480d37c8cbc219dc3c673621bf1226"
+    },
+    "Movie&Show/Christmas4-4.S403.bcs": {
+      "bytes": 29119,
+      "file_sha256": "89ea1186233b7681f76faefa3abaaa6904ef00a49fd72d4f03c4a8639aa673e8",
+      "full_style_content_sha256": "205f00fd4aa3582b7224777a6644bd23b9c2c5045a999128fd8b260502eee827"
+    },
+    "Movie&Show/ChristmasSwing1.S707.prs": {
+      "bytes": 36482,
+      "file_sha256": "865fb0ca49ff681b8b2505185818b800eeac3a75baf0e62d6b68a074efd0444c",
+      "full_style_content_sha256": "90d4ae94391e3a125defc6a3db0a213e18779277736e7c3c2aa7dd5feb9b7c03"
+    },
+    "Movie&Show/ChristmasSwing2.S418.prs": {
+      "bytes": 47850,
+      "file_sha256": "883bed671e8e33e6ecd97c633ce75b52bd66c92c7b82ea533415eefbb462aa79",
+      "full_style_content_sha256": "8c7859de2cd52b008af774692b4c1b92281fbe5f8cccf0bfbaa1ac2bdd058fc8"
+    },
+    "Movie&Show/ChristmasSwing3.S718.prs": {
+      "bytes": 59275,
+      "file_sha256": "670a157c612977b5eae95734a7f785cc8748052fb7d083298b242af0692d0500",
+      "full_style_content_sha256": "8399855085c3636bf0ecd455fb4f51586f26b9c7a0d4e6d09aad029a2e1ecc6f"
+    },
+    "Movie&Show/ChristmasWaltz1.S719.prs": {
+      "bytes": 34778,
+      "file_sha256": "a61aaa6b8351768d0ce7f8a6557354a2aff69d631c82001504dd294f79d66bdd",
+      "full_style_content_sha256": "699089fc1efb4b81662c693001534e9353c74d7868dce9df2d1fe6929f10b6e7"
+    },
+    "Movie&Show/ChristmasWaltz2.S707.prs": {
+      "bytes": 37783,
+      "file_sha256": "09853fa16eebb2683c6efe12f9c10d4e6ba439c78de2bd181171447eb4b5eda8",
+      "full_style_content_sha256": "6f406723e24bb9efc106391ec19c3e9d847c2130ee215e2e3ba245ca6eeb7638"
+    },
+    "Movie&Show/ChristmasWaltz3.S854.prs": {
+      "bytes": 43486,
+      "file_sha256": "4179a68803f365c11cb6b1543daf89ffa732b88385d8b179ad373aa32f8ca207",
+      "full_style_content_sha256": "cfac371bbcb05436f32989461b656be22ac5fb70c33672619f4ef9156873a7d9"
+    },
+    "Movie&Show/ClassicMoon6-8.S716.prs": {
+      "bytes": 47925,
+      "file_sha256": "e83788bdcac498f4f5d07ea1af0b9c184a84dc1b1637dadcf1ce3c6213d56be7",
+      "full_style_content_sha256": "d62b0dd67cd1b867f8ed2e3a09966caeac40be6ad773279bbeb9bd3dbf851fa6"
+    },
+    "Movie&Show/ClassicPianoBld1.S725.prs": {
+      "bytes": 38578,
+      "file_sha256": "2bccc9153f963ff80380d1a32b3d12231da45aa3ab4217b9c5e94f6c7a2436eb",
+      "full_style_content_sha256": "9274cf833eb674ee165c785118a74522f20ef5990056097f35a73bcff4080bee"
+    },
+    "Movie&Show/ClassicPianoBld2.S240.prs": {
+      "bytes": 42510,
+      "file_sha256": "078717c72d2bd27d1350a336bcfafb1f393fe68c4f38dd6badbb8ead43f945ca",
+      "full_style_content_sha256": "39d58f5d3b6bf9784dea7bc43d5cbc69af1df23327926136851d0e6a55ae4501"
+    },
+    "Movie&Show/Moonlight6-8.S712.prs": {
+      "bytes": 55750,
+      "file_sha256": "26f69bee1c03e6d8435c6aa12be236e47cc14dc7dbaca9734d333346079a2e61",
+      "full_style_content_sha256": "fef625c9426d9f7502bd5971607ac69b688ea7ec26bc35ca608252eeb84b459b"
+    },
+    "Movie&Show/MovieBallad1.T109.sst": {
+      "bytes": 42373,
+      "file_sha256": "5fcc2150e2d1647652412d0099dea22370f22771ca8c3962d0c771c6b38eea23",
+      "full_style_content_sha256": "a99d95812cb468cdadc63238766f826ce7f2930e11cd91fd5cbc81e1785accce"
+    },
+    "Movie&Show/MovieBallad2.S795.sst": {
+      "bytes": 43518,
+      "file_sha256": "20ca8d72223d718f4de04b5464f1b87ffdf7e6e95539699dfa3bd5126aa64398",
+      "full_style_content_sha256": "e53c93f24a0a48bcbfb3fb39d21c457b4947a3de440add52161d7a81736122f1"
+    },
+    "Movie&Show/MovieBallad3.T163.sst": {
+      "bytes": 46139,
+      "file_sha256": "f0d189ae3cf9f8c582e745c43ab144592987684cf27680ad66eac718ff4c008e",
+      "full_style_content_sha256": "7817163a5fb469bec709ce4d2397421327fb80e2d9c4f473aea93bc19f1c17eb"
+    },
+    "Movie&Show/MoviePanther1.T109.sst": {
+      "bytes": 44292,
+      "file_sha256": "31671d7cf3b63a0ea3bb1417a08c603cfaf24284eafb094be3c2b6034f83b591",
+      "full_style_content_sha256": "5157de1e357e4d9287e8a04f9cc452318db77b12e142f8b25354eacb6d5d4567"
+    },
+    "Movie&Show/MoviePanther2.S732.sst": {
+      "bytes": 45282,
+      "file_sha256": "c4e7b4502b5b64f1bf9a2b3e320eb49f480930ad8daf779c09119d464d84add5",
+      "full_style_content_sha256": "884d69febb1b1a943b17efa3ee2ae12f57ad4d3c156d1ef66a82bd9d5fc05952"
+    },
+    "Movie&Show/MovieSwing1.S950.sst": {
+      "bytes": 64942,
+      "file_sha256": "80a135a36534385c181efe0d9e540d70e220a2f8ec43236887b059aa19683073",
+      "full_style_content_sha256": "2ec1198a186f7a0d3764744f7f01c81586a83cd15c3634660183fe81d9fcdcfb"
+    },
+    "Movie&Show/MovieSwing2.T163.sst": {
+      "bytes": 66120,
+      "file_sha256": "645c94516b226f7a367daef4d825d60a90752e1adeeadd854c71e6d5e89830e7",
+      "full_style_content_sha256": "c11e7fe87dc282ec499d03161e310a1d001aa2f09fc4e8ca02cf773839f1f56c"
+    },
+    "Movie&Show/OrchestralBolero1.T447.prs": {
+      "bytes": 69823,
+      "file_sha256": "a886326db1beb7c7c9876eafa16016a2e78972b999bb9dc53b1d6ed48f976d84",
+      "full_style_content_sha256": "c42d04b9e32a040005abd1302b4f329e8f1a1241b116aacea4b3f82277944ec4"
+    },
+    "Movie&Show/OrchestralBolero2.S945.prs": {
+      "bytes": 74986,
+      "file_sha256": "d2b1524cf1996e1dcc63fcc374bd208ac49735d0e024fba2f90037b804e4f3df",
+      "full_style_content_sha256": "d47d9360720db907bdb33403356dba595c2303931dee29d3f1788c843fd65eb7"
+    },
+    "Movie&Show/OrchestralMarch1.S659.prs": {
+      "bytes": 64504,
+      "file_sha256": "4a37e70522f4779ee601a11f2d35ea9665c48ce55867760d8c56fa84b7563020",
+      "full_style_content_sha256": "fec886bf54b37a8e9a0be4ff5243a69dfa0e94c69e771996844fd7a8ac1d0173"
+    },
+    "Movie&Show/OrchestralMarch2.S378.prs": {
+      "bytes": 65311,
+      "file_sha256": "102be249ac16595ef2b752b6753c70d73604f0f9830dd476a90a4c9866a73f66",
+      "full_style_content_sha256": "bc0a115396d9d6ec1ab1679be292b6a01c5f1121689840ef2f8b81cfc7df37f6"
+    },
+    "Movie&Show/OrchestralPolka1.S240.prs": {
+      "bytes": 42034,
+      "file_sha256": "1359a2fc538944ed3ec84abf85b78a9942bb95f549077b04a8ba9d38cfe2b797",
+      "full_style_content_sha256": "bb6fd577b4cdd89266664a7b23ca82adf666499b46dc8cb7d77b1f0fbf73a682"
+    },
+    "Movie&Show/OrchestralPolka2.T445.prs": {
+      "bytes": 44352,
+      "file_sha256": "e19d7dc7cb96f5b9e64c551b91e3dbc701d95d980b86abc0b7b095248bde6ff3",
+      "full_style_content_sha256": "cfa9ed9fd57cd7acc714c10c0575586143174ad4943532e66e247687f1795940"
+    },
+    "Movie&Show/PopClassics1.S818.prs": {
+      "bytes": 56341,
+      "file_sha256": "7a41339f7a358a9e2b25d360e39217de71890109d1b1db5144afbad0edac6ff9",
+      "full_style_content_sha256": "3afd893ebcb9993c9ff8821e0a8da9ea8c5101ecf3cbf7a92d2cd82f261a6f7b"
+    },
+    "Movie&Show/PopClassics2.S795.prs": {
+      "bytes": 57804,
+      "file_sha256": "b7d55634fa52e6a4ec29cd4b4b194fea733a3ecf0f590a3a56b9483a6061234d",
+      "full_style_content_sha256": "217f3a1fd5e59e2bf52524b13a12eff8d3b19ae1b5c499718af5af1304cace30"
+    },
+    "Movie&Show/Santa'sSwing.S418.prs": {
+      "bytes": 48110,
+      "file_sha256": "10e693e6f87d617bac6ae120b8e8d605276e79640e725e0b2b3d1ba60c156b03",
+      "full_style_content_sha256": "d9bb48076cd1cf98d0eec3eb3c92340fe0a658b410edcb9a4f551b7146969ec6"
+    },
+    "Movie&Show/SaturdayNight1.S712.bcs": {
+      "bytes": 47582,
+      "file_sha256": "2a89f0ff68736033423f0aca6a5148183a706e2a6ccc36c68dcfba17370b4c00",
+      "full_style_content_sha256": "ad25c60a03fb6b9793e6b141bbb5025ef487bfcaa1fe2424f2c7151e8470f61d"
+    },
+    "Movie&Show/SaturdayNight2.S517.prs": {
+      "bytes": 54535,
+      "file_sha256": "94a61c87b554f50b76f698ba35dd4a54197930b7d3c63b7c69f4e7bdbe5e94d0",
+      "full_style_content_sha256": "53ec62483490bc3999960d8797433038fa5980bb51516b68151b2b1fee971087"
+    },
+    "Movie&Show/SaturdayNight3.S597.prs": {
+      "bytes": 80318,
+      "file_sha256": "830f8596173b924df06d16dfed1a8647784b69c4b00785a99dc631b4292222c2",
+      "full_style_content_sha256": "127957166d8ab459c9e98ab1f774c21f9274cfa67f497a9207e703d0ac377468"
+    },
+    "Movie&Show/SaturdayNight4.T406.prs": {
+      "bytes": 82931,
+      "file_sha256": "3bdfbd893fcefb8151152d47038ab9141c6cb5dd68a08c6fce518d3766ec8d91",
+      "full_style_content_sha256": "1c1cf548e3229fa3a04dd4afd80529fd93e3cbd6559a8e131d90307c31ab9ba9"
+    },
+    "Movie&Show/Sci-fiMarch1.S198.sst": {
+      "bytes": 121557,
+      "file_sha256": "276b04d05e47b0201ef2ffb4ed81d57a77e1f6daef98f861667f5a211bacf95e",
+      "full_style_content_sha256": "64f89f50f6c3bd06331b49116f22cd83d9d7e2957bcb236fd27c55dc2cbce8e5"
+    },
+    "Movie&Show/Sci-fiMarch2.T163.sst": {
+      "bytes": 124116,
+      "file_sha256": "30e4e2d88f47fb6b16cc4fc3221765465222b1b7955b67e1e235be781b7952c0",
+      "full_style_content_sha256": "5a5d6b31cb6076a171bcca98a3db5094bf9303df0d5725e0abeb38812785a05d"
+    },
+    "Movie&Show/SecretService1.S664.prs": {
+      "bytes": 48616,
+      "file_sha256": "3922c64c0c819f25550dded064e74154219d718d179a8d19f100b3956eb2744c",
+      "full_style_content_sha256": "822be38d275446a887d33ab7d31d7802976b96cc7eb89ab2fd70f3daf25e80f7"
+    },
+    "Movie&Show/SecretService2.S511.prs": {
+      "bytes": 69267,
+      "file_sha256": "d07502557feacdd27572a67a4ee7e182c7c0e8b07b774b76fac56d58d50e374e",
+      "full_style_content_sha256": "6d8c68a2ca77ee24709dc0f60d50aa3b1ece4d547e64bf96ef0bab19220ee9c2"
+    },
+    "Movie&Show/Showtune1.S899.bcs": {
+      "bytes": 43488,
+      "file_sha256": "77feb7b0e021f69d3a2dd27ed4ac1cf37fc79fe0e5cc03fda231a576828ac298",
+      "full_style_content_sha256": "9a824ee231fe222e7d46f7ca272f6f1b554a187fb9e9dae8aca22a5263cb2122"
+    },
+    "Movie&Show/Showtune2.S856.bcs": {
+      "bytes": 44004,
+      "file_sha256": "8d34e52620c7c59b2976d696ef46b6d9eda3de3cdb30cc193cde6fa60a6630f0",
+      "full_style_content_sha256": "d71d2a040a315b691cc32eee13f67b8fe3549aa526cf74138aeb5583d3e0613c"
+    },
+    "Movie&Show/Showtune3.S581.prs": {
+      "bytes": 50142,
+      "file_sha256": "bf42159d7fc0b5ae52b4752dfb23137f3bc45dccdc63c4294c15956fcf44a23b",
+      "full_style_content_sha256": "1ad7ba355378f7f0f83e7f6e9cdb59412e6c9716b08caa63ae6293ea2dfada49"
+    },
+    "Movie&Show/Showtune4.S567.prs": {
+      "bytes": 50334,
+      "file_sha256": "3524f7bf8df9a54983456de52d75f3b670ddf12459efd1d79fe28ece098aef89",
+      "full_style_content_sha256": "4db3f41e007c434988bf6ab7c5c9fea469b530acb07d8d245e9280822457d109"
+    },
+    "Movie&Show/TapDanceSwing1.S613.prs": {
+      "bytes": 46040,
+      "file_sha256": "7057b8975be9f5bb6e84ebc022c5b04ee4110484246cd45e957663874e2fde83",
+      "full_style_content_sha256": "a67844b178b27515e8faf357072a2ed3c55314e0c7d669b825b066c8fdc16b95"
+    },
+    "Movie&Show/TapDanceSwing2.S614.prs": {
+      "bytes": 45965,
+      "file_sha256": "824ae412a0d3b2fac017126b90f2c98ccc325df3cc526ef7771930a41787bac1",
+      "full_style_content_sha256": "3b4622b047f15c3afb3c20aa3322a0d3a88778a34fef885d51ef723f5f1bfadd"
+    },
+    "Movie&Show/WildWest1.S536.prs": {
+      "bytes": 49905,
+      "file_sha256": "af702c759b7261157a3ede81389931ec33fd0130cf7cfeda393413d9378e7d9e",
+      "full_style_content_sha256": "98e14212eca7bc928d3863bafbdbde928e0c8f28c34e0da6ea6f43e7ed29f9e9"
+    },
+    "Movie&Show/WildWest2.T151.prs": {
+      "bytes": 52108,
+      "file_sha256": "af7eb592602cbeaac22835af2ab67983d163f9da63fd435334e0b431f5eb2ae2",
+      "full_style_content_sha256": "c9160c2b5e7c288fddf3604325a7e1336c9353e9eba1556ce451c0979ba993f6"
+    },
+    "Pop&Rock/16BtRockBallad.S110.bcs": {
+      "bytes": 36021,
+      "file_sha256": "8f70be26a02f9597d903f7d8b87be23ae3fb5d039e6f3e8537be833da0aed555",
+      "full_style_content_sha256": "e8ab456cc46c03ad4caa0dbd48106978ec8316d2ee7412e844bc92318c2d19be"
+    },
+    "Pop&Rock/16BtUptempo1.S607.prs": {
+      "bytes": 42524,
+      "file_sha256": "fb03be5805e98b92a9da6a13f12060e65bbb3d7775f042613506326216a620ec",
+      "full_style_content_sha256": "d45b3a5dd40f68c0c82e0c51604b8ee0e23b37e1d6c1cf48258b0dc41f758757"
+    },
+    "Pop&Rock/16BtUptempo2.S607.prs": {
+      "bytes": 43359,
+      "file_sha256": "ed72a95d880e8be85499c85c26aecb9dd249efba73faf4f6a6adf6f1105c3f59",
+      "full_style_content_sha256": "aaa58b284a8d98822dee25467c1230d66c66cbedf28860389a4bd874991cbe5a"
+    },
+    "Pop&Rock/16BtUptempo3.S607.prs": {
+      "bytes": 43534,
+      "file_sha256": "907ce541094560ba5c75dab252e5597a8191be52bb49a05e87c95a56ac5280ba",
+      "full_style_content_sha256": "bae403c9bb78e0538dcdb05841ef335206b8c1b9377249c1bfcab71c67586804"
+    },
+    "Pop&Rock/6-8Rock.S115.bcs": {
+      "bytes": 38605,
+      "file_sha256": "07682096cf453f6c2446b952184eb8bf592be1e17fbab4e5831457008caf91fe",
+      "full_style_content_sha256": "e5bfc39a4e2ad13c7bc1d0ac66991cf216a33fa09e9306e0552a5ff2eb8a14c7"
+    },
+    "Pop&Rock/60's8Beat1.S087.prs": {
+      "bytes": 31738,
+      "file_sha256": "ae0e845ae82f18a0a914590c0cf1f47c0da4518dec58f16050f9d39f559e311a",
+      "full_style_content_sha256": "f8bfd8d1c80fa14c604bc0a2760cb288dfc50d1797cedb892a597a5ae2fbac6d"
+    },
+    "Pop&Rock/60's8Beat2.S087.prs": {
+      "bytes": 37176,
+      "file_sha256": "1ee7f7439215d7a2d7ebb9122354e5c45c0ad8e7c08aed5bba15707d91abc5b3",
+      "full_style_content_sha256": "00e6df02186630b38bff53b8fbf6456dc4aa808e628c4b7f6f1ad642bb9c0b88"
+    },
+    "Pop&Rock/60'sGuitarPop1.S652.prs": {
+      "bytes": 45485,
+      "file_sha256": "3538261bbf6ea95ea26632d2f24d824890e1b9d7659b6e2ecd6627427593f39c",
+      "full_style_content_sha256": "8e2b735ef3bb8b096159cb757d13e8403d3a46e9e33848aa93c5a8525bc05974"
+    },
+    "Pop&Rock/60'sGuitarPop2.S652.prs": {
+      "bytes": 53378,
+      "file_sha256": "f96c377e5df3a67972ffb17e110f9e2cb74bc9b4190fac270e89240b4091987e",
+      "full_style_content_sha256": "9ae7aec65959c7e6cd128178004341a1f2f6aa9701e1cd458ad7fcdc7ecefe1a"
+    },
+    "Pop&Rock/60'sRock1.T110.bcs": {
+      "bytes": 33359,
+      "file_sha256": "1db798229b2961b12e16088c6f29e48fe8f45a5baedd5f3aee6444cc5af73b2e",
+      "full_style_content_sha256": "9ce87bc37e1a8f4f5e37175aad5539d83868cc81303c683842256df8a40735a4"
+    },
+    "Pop&Rock/60'sRock2.T105.bcs": {
+      "bytes": 39452,
+      "file_sha256": "98846046cac228845a60d0da561331bf3be0e35727daa358f588dcdad1b006b6",
+      "full_style_content_sha256": "0728ee200a242cfe0132bee6bc0387de735f7623cb595983528511ea33dac248"
+    },
+    "Pop&Rock/60'sRock3.S607.bcs": {
+      "bytes": 35770,
+      "file_sha256": "8ec05a0b06c0aac54b6212cb4be424a93dde7f94bf4821c54c27df55e204f2f2",
+      "full_style_content_sha256": "85bd0b73ee0cd2576be5ba4c4de43cd48d37e76d4c6be10acbaf1b19b8a967c1"
+    },
+    "Pop&Rock/60'sRock4.S083.prs": {
+      "bytes": 31056,
+      "file_sha256": "820ea858593e7a8e03713bb6137cf355b7e6848ec0554a651e772775abc7718a",
+      "full_style_content_sha256": "f7adc732f039d2d07fbe09fb051e0c8ee0be90618db603e3b62f202e18c4e9db"
+    },
+    "Pop&Rock/60'sRock5.S601.prs": {
+      "bytes": 40555,
+      "file_sha256": "6816b8bc07528707bcedf898670edf75d0168baa21a3d6bd08ae5a2e6c13f0a7",
+      "full_style_content_sha256": "a6cda68d5cae49a68cf01144e5679475b850e11798bb3b30d1aaafcc56725068"
+    },
+    "Pop&Rock/60'sRock6.S525.prs": {
+      "bytes": 34707,
+      "file_sha256": "d25bc9a4942081120bbfe6cd4b644c71c480b4b2ea6a68b7c6fe5400c10ee28b",
+      "full_style_content_sha256": "9cea70da230a7301883fe7ecf861722dc78195c9d4466779ecdd4b4dfd6bdfa7"
+    },
+    "Pop&Rock/60'sRock7.S083.prs": {
+      "bytes": 32062,
+      "file_sha256": "2e412b8e6421f908deaebfe5d0b213b7ab68d584f59d88d27c763ec988f43c57",
+      "full_style_content_sha256": "a5748e6e87aa3b5654313c026ed6c5967ed9d54c7842f4be7741db878ea56d93"
+    },
+    "Pop&Rock/60'sRock8.S823.prs": {
+      "bytes": 35446,
+      "file_sha256": "f0243cec70b6b5e3b842aa00253c397e5e3f38c9351e2dd0c9d0f0c36a2eb36b",
+      "full_style_content_sha256": "a84efc3e1f1b38982b45daaa8f84a50d5728064351223a5a8ddf2c236805f32c"
+    },
+    "Pop&Rock/60'sRock9.S619.prs": {
+      "bytes": 44874,
+      "file_sha256": "3642aba275d6cd4ac8729421cc24e1ce6b382b205324eb72a2a7393cea8c6c5b",
+      "full_style_content_sha256": "c7730e39708376d1ced143d2aa1c08b34ba582f189c73f50a63c89223cbbb187"
+    },
+    "Pop&Rock/70's8Beat.S782.prs": {
+      "bytes": 61219,
+      "file_sha256": "6f81d7ddfff7a2c17f26e8ad4db8ecc194facda174f855525643c49fb2a26fe5",
+      "full_style_content_sha256": "cb0b56067b86f7bf6d567253a757868147b4204681c109c15f0a8b604b2ed530"
+    },
+    "Pop&Rock/80'sFusion.T161.bcs": {
+      "bytes": 47502,
+      "file_sha256": "97f388c03ad2ea57188022bb1c7c1179e7a82a9c9c9d10a61b6da1b457d579c5",
+      "full_style_content_sha256": "b7103567c1a5348fdd300493d59f77a4c9c8675a91eb7b4fc4550e03e85b5a95"
+    },
+    "Pop&Rock/8Beat01.T110.bcs": {
+      "bytes": 39269,
+      "file_sha256": "ec34ba46db42773961fd2cf52be8241fffc2e565159d13d84e98d4fb145a2dfa",
+      "full_style_content_sha256": "ecac4529745a9db455fbb6af806b3b22705f4ec0b199a00eb7ca1ba074cfbe07"
+    },
+    "Pop&Rock/8Beat02.T105.bcs": {
+      "bytes": 43291,
+      "file_sha256": "55a48ad31c0f07e51d40237f87c5d34f81b2e9d3dcfe551f749bb764b0787495",
+      "full_style_content_sha256": "2c6bef98185ff09e95cdfbb220a684c7a8cba920a63b700e9cbb196dea4d6045"
+    },
+    "Pop&Rock/8Beat03.S014.bcs": {
+      "bytes": 34365,
+      "file_sha256": "2bfad79e343c8ef11b09d98c19ed01fe6a5a14d0c5e6c4dee7a766862faa9ae3",
+      "full_style_content_sha256": "a9a9aa49c623d7435605c315a7c1156eb9d02bb5cb1c6f8b10f3838a67793194"
+    },
+    "Pop&Rock/8Beat04.S607.bcs": {
+      "bytes": 34806,
+      "file_sha256": "5173ade1dc49eab4c721847f05777160dead9d9205b2563829831888f476ed99",
+      "full_style_content_sha256": "f919b39f7a7a99d38e6455c025c58900467ab892f9464091ef147fa7df6f3579"
+    },
+    "Pop&Rock/8Beat05.S001.bcs": {
+      "bytes": 34380,
+      "file_sha256": "8258fadc270f244757432d03e0ea02677ff9951e263e0fb5d4dfa58bca918086",
+      "full_style_content_sha256": "8260c45e331591d0371b4260017b50f49da91c06bd6ad2702a56b9172d741607"
+    },
+    "Pop&Rock/8Beat06.T307.bcs": {
+      "bytes": 31656,
+      "file_sha256": "0c6106da5820dd96c24dde3ae76045801c28931046013174bab7584c51c1faad",
+      "full_style_content_sha256": "bb1e9f5cac801aeb6ac01b9374fa5a7017125402880d7b685067b47978983712"
+    },
+    "Pop&Rock/8Beat07.S652.bcs": {
+      "bytes": 32288,
+      "file_sha256": "4e7e0a8ff7159ebc8061a07b729852360329d47ce3bc03e9872f92a9510aad04",
+      "full_style_content_sha256": "ef75e3ce6ff4de373539a6c7e412bda37c2f3f2521b99de84ce4b9041e73e0e1"
+    },
+    "Pop&Rock/8Beat08.S928.bcs": {
+      "bytes": 29666,
+      "file_sha256": "793d65ea6de5ba1acd1a0d9181394516fce534a1bd6fe50a5bd70f5a397a1d70",
+      "full_style_content_sha256": "a45e2862f1b51d50bc130336f38831fbd3fff430f66a63fb0eac451d386c4d23"
+    },
+    "Pop&Rock/8Beat09.T108.prs": {
+      "bytes": 33623,
+      "file_sha256": "87e09336f8da208ce47e23340557cbc0405ea8662956dd66623e6e3dd4902f02",
+      "full_style_content_sha256": "8ac4c3b78080d6f4aba98915d7194fb4d3a2677d3a6465aff36ea2ebba6468bd"
+    },
+    "Pop&Rock/8Beat10.S807.prs": {
+      "bytes": 32436,
+      "file_sha256": "208f5f3da9dec81bace7d320dfd44d0d76976a395a68c10081462d0380e59dfd",
+      "full_style_content_sha256": "842238ca8da4ad33ee337a2006f8687f22ed15fb42a2b3c90753c7a5fc3f0f48"
+    },
+    "Pop&Rock/8Beat11.T151.prs": {
+      "bytes": 44616,
+      "file_sha256": "86a701b2637c3e6152169c9891b9718382c215fce86e6fab78a0dfdadf2250e2",
+      "full_style_content_sha256": "170add27b59220dde9776c1862c9aa611e38bc174ede15a22c37b513a6fae6c1"
+    },
+    "Pop&Rock/8BeatHeat.S578.bcs": {
+      "bytes": 32932,
+      "file_sha256": "c0fcfec515e45e5346c98cba1f17529ef3aa86714ec557d030422f9f45dcdbd8",
+      "full_style_content_sha256": "7c49c2960c71cc816d1a291bea528217a5d15d1002f51ececb78c8b529848500"
+    },
+    "Pop&Rock/8BeatModern1.S232.prs": {
+      "bytes": 43217,
+      "file_sha256": "2399086cd16102bb8bb57ad564a106f76876e3207d999e9b97f103382ee26f26",
+      "full_style_content_sha256": "94430f163b1c90110a6f3515cdd78f35ecaff2affc76370995f9bb302f19aff5"
+    },
+    "Pop&Rock/8BeatModern2.S077.prs": {
+      "bytes": 44864,
+      "file_sha256": "7c6c1a7ac08940645dc4a44348c4c0217b0ab4c973bb5f184d631a189da63005",
+      "full_style_content_sha256": "488d26bc312b0ea9db435ba7d2b5c81d1b928989a075f0b2412904997056c5c3"
+    },
+    "Pop&Rock/8BeatPop1.T110.bcs": {
+      "bytes": 49873,
+      "file_sha256": "9adef13167927e829625f3b20c6133a66f9b90a401ded7f8826dcb861af7eb9b",
+      "full_style_content_sha256": "84ced161f87671a4512ac7da5f4205e068d6b9b71e794328cf9837ca47d2849e"
+    },
+    "Pop&Rock/8BeatPop2.T105.bcs": {
+      "bytes": 53603,
+      "file_sha256": "6bbd3c744771f8b67881d88fa7b03f42da5cfe820e7bdc4eeeb8e9b4ae2e81c2",
+      "full_style_content_sha256": "8c32d1da37840710063dd159bcd91b9157ea7d424b30059d8ecdad0b57adef47"
+    },
+    "Pop&Rock/8BeatPop3.S085.bcs": {
+      "bytes": 37599,
+      "file_sha256": "6d66c51ba034a180bb00c47414ada26b3512d69def0ecb394f62f466aa5d298b",
+      "full_style_content_sha256": "0bac0bfa0379001d75438be62870937ce05424c603c5f0ee8c9235928306231f"
+    },
+    "Pop&Rock/8BeatRock1.S619.bcs": {
+      "bytes": 40017,
+      "file_sha256": "de2d598dedba6570d7a7ab80124ce2548075d1a4de464718e2c4ed8767eda0a2",
+      "full_style_content_sha256": "cc1386e1da92fdb562da75929b48a281b4169f4b46e6981d2b55c02d1073280e"
+    },
+    "Pop&Rock/8BeatRock2.S085.bcs": {
+      "bytes": 31614,
+      "file_sha256": "6fee8d60fb21baabd745bb496a89036ab55add3b18c1f6472d6f684b75e9c5c3",
+      "full_style_content_sha256": "85c91ff0e20a89fb11ec3c0e6de76cc008b7f60a7544abf03c4407edab8f1053"
+    },
+    "Pop&Rock/8BeatRock3.S115.bcs": {
+      "bytes": 36523,
+      "file_sha256": "bfb324634e84da4f655c6486b79173201f146e3dc3af483033aa5d9d80605519",
+      "full_style_content_sha256": "648c792793aa2b3ef09d8e26a47d6fa63d6fafba4f2ac181ca545d1780503bb7"
+    },
+    "Pop&Rock/8BeatRock4.S042.bcs": {
+      "bytes": 27393,
+      "file_sha256": "465f95fc1e3ada4ad2e885bd66f893491f4b068771abc2937853468a347f1e57",
+      "full_style_content_sha256": "e9dcddc9624fd2f1b513191ae9bf397ef18ca0403003fbd88a8909a61aca8b39"
+    },
+    "Pop&Rock/8BeatRock5.S085.prs": {
+      "bytes": 31346,
+      "file_sha256": "04d66122644623ce11b716d30180d5d7e85646949dc4801ebb47e9d188ecc647",
+      "full_style_content_sha256": "5680339fe8549b7a41f3ccc2e548761bf49d071f1e448db43e34f124777b2d04"
+    },
+    "Pop&Rock/90'sGuitarPop.S557.prs": {
+      "bytes": 60664,
+      "file_sha256": "d8fdf1239b3b53dbc46d885ced7334bfba46b0529b4465e573920395390c4da2",
+      "full_style_content_sha256": "c4451f810d2278d897b59dabf99c5dd4697637091871d62c1e52efb645699a2c"
+    },
+    "Pop&Rock/AcousticRock.S624.prs": {
+      "bytes": 77998,
+      "file_sha256": "2dc803bdc5c2e43ec81636c3b4a332654b5fef192f5056de12c1b591fa011313",
+      "full_style_content_sha256": "a2420ae6fe177c2b955d986f4961bf803fa85e997f7cba6e043cc452e15bf9ba"
+    },
+    "Pop&Rock/Barock.S145.bcs": {
+      "bytes": 30172,
+      "file_sha256": "0ecc53da5f01f94bfdedc1f3077df476e63cff1b8c0167a25015c38001a38b9a",
+      "full_style_content_sha256": "4e127d962f32d7dbdc2e5d691e10d8c8fbf86ed2bd3befdcfd34801c4cc3b5ec"
+    },
+    "Pop&Rock/BritPop1.S559.bcs": {
+      "bytes": 36077,
+      "file_sha256": "ed5765d790203b1724f87c435f2ce26d8fce49097443340cdc143650873678b0",
+      "full_style_content_sha256": "69590e6ce591e249ea65876c91ce0202e461164fad3d6cda2aa77773f1ccee81"
+    },
+    "Pop&Rock/BritPop2.S602.prs": {
+      "bytes": 46795,
+      "file_sha256": "fd920d41152d3ba8bd3b35a80168090c23c8b76a5a708b6fe495b3f8aadf57b6",
+      "full_style_content_sha256": "c6453b5ec9f13c450c23c70ce4415b186f671d4f3cd87d01a76a2ef4680e212a"
+    },
+    "Pop&Rock/BritPop3.S747.prs": {
+      "bytes": 47025,
+      "file_sha256": "510f9a334037a7b3f41d08053198d6dde33f289685de21c8008ac8eaa6ff884d",
+      "full_style_content_sha256": "fa3e3e4031e2f9bf890ea9fcbb1541898053d7c5e9a2f5779023742e9bed3c6c"
+    },
+    "Pop&Rock/BritPopSwing1.S559.prs": {
+      "bytes": 48103,
+      "file_sha256": "c8d8994fa68a619312a72e382e53cccc2589026f3797a812399bc7e1dc28c86e",
+      "full_style_content_sha256": "255ba5b06fcac9b05cb9d287667ab2c7bb2b9f32e623bff3d27b6534ee0bc446"
+    },
+    "Pop&Rock/BritPopSwing2.S559.prs": {
+      "bytes": 48552,
+      "file_sha256": "7ee06c3b27d43475246fc0ece142e096c7dc4ed95a4b42f7779d652e386d59e7",
+      "full_style_content_sha256": "edbde61f79810777b1ff23ed9b7bbc1bf13bd60e0373967fdbab22362202bdf1"
+    },
+    "Pop&Rock/BubblegumPop1.S552.prs": {
+      "bytes": 57560,
+      "file_sha256": "5c1520ecd0f9d07718b16ecd5d697291443e5c151138612dfcfb13fa4460fd3c",
+      "full_style_content_sha256": "cb270a56c5f30dd7a49fbe0d43c00ac527704e97a1911aeefde101cc3a588c75"
+    },
+    "Pop&Rock/BubblegumPop2.S552.prs": {
+      "bytes": 69388,
+      "file_sha256": "5d467e99597d42c74b8edf3a26d8b6124ab2ade60641bc4f569e1efa126822df",
+      "full_style_content_sha256": "a8ac9b86d3899914b98121f3b9d41d45766abb1c9626717a036e214e535c6146"
+    },
+    "Pop&Rock/Cool8Beat1.T109.sst": {
+      "bytes": 43628,
+      "file_sha256": "1535854702a708385bf1ae59d976089021b976e939d1a5bdf063fb60da102040",
+      "full_style_content_sha256": "97f7afe99dc1828a526c2eaf23e3e45e0d8dd95e4b9b631859584015ebc786f5"
+    },
+    "Pop&Rock/Cool8Beat2.S736.prs": {
+      "bytes": 42468,
+      "file_sha256": "2c9c40533dc3c8ace544ca8ebe0590d36a793c9f6b11926888e481ba5a25e6cd",
+      "full_style_content_sha256": "02dd70a8f05e3d8837ed170052be8aa3379dcd4919cd233d0f121abaa24b60ce"
+    },
+    "Pop&Rock/Cool8Beat3.S737.prs": {
+      "bytes": 45259,
+      "file_sha256": "5979512cecc69aab2f273c2b93bea1d07641e7389c535be7658661ecc36c8ea2",
+      "full_style_content_sha256": "aa2fd4ac416adab79e8a17f3420d41ffc2cddbe3332d01a66b89c3c35898c807"
+    },
+    "Pop&Rock/FunkPopRock.S542.prs": {
+      "bytes": 85998,
+      "file_sha256": "9eee8d1d218f38296330fa967e222286dd249f5e55f6460510a23857212dde3e",
+      "full_style_content_sha256": "dc20be82b2cbea5b28815f3eee44059f3a6c9265b201e53a9ba50f793ff09c09"
+    },
+    "Pop&Rock/FunkyFusion1.S014.bcs": {
+      "bytes": 40374,
+      "file_sha256": "021e54e5504e2bb1164bcd371d534345d0eb1a7e6013441c66d1dd2732e96f68",
+      "full_style_content_sha256": "5899dc4f93d15313db7158f0d4b213a09d4130c85388a65ef2ca824d7248caa2"
+    },
+    "Pop&Rock/FunkyFusion2.S741.prs": {
+      "bytes": 58008,
+      "file_sha256": "ed322d411b12dd0acc7a92e778c847e27213c53a216e9e3172a0db1476968f35",
+      "full_style_content_sha256": "a7a2f8a73e7437284cd78a1166babc254a9c55ee2b1cfdbcd0ca55368c21edfd"
+    },
+    "Pop&Rock/FunkyFusion3.S741.prs": {
+      "bytes": 58028,
+      "file_sha256": "ead8818e8f4f7bae778cc99fd611911623825069365ebe2d27031da080c5461c",
+      "full_style_content_sha256": "05179673fdfcd5afddbd1718c3c59b7fc7b57c6173929f1944da206d85976b2e"
+    },
+    "Pop&Rock/FunkyPop.S684.bcs": {
+      "bytes": 44802,
+      "file_sha256": "d8ae0a07c29a20305235982ac087b660b9709fc3c94b37968930e095f8cce697",
+      "full_style_content_sha256": "362fdbc69464c145426d93f026d25e92a7acb8371c6701f4fe09dc2682148ed1"
+    },
+    "Pop&Rock/FusionShuffle1.S717.bcs": {
+      "bytes": 44954,
+      "file_sha256": "ff96a3e7132d819d8dfdfa8cf122d4f2aaa614a08bde5c434c34992dbcbb84de",
+      "full_style_content_sha256": "6d68826eba8982acd6197638b8e77e39d4c3fd16ac342fa9cb25eeb14167679d"
+    },
+    "Pop&Rock/FusionShuffle2.S619.sst": {
+      "bytes": 66008,
+      "file_sha256": "5d76933fb0baa3a4bb966cae4dbe0739fd477ef4d9382717e766041f54c813ad",
+      "full_style_content_sha256": "37ab8fccba8c4ca84591eb2fc9f32b71f6c61dc12b59982899eb4ac1b67bc477"
+    },
+    "Pop&Rock/GuitarPop1.S080.bcs": {
+      "bytes": 47872,
+      "file_sha256": "168c62e8d1144ddeca87a7e515bf6a78fd41177cd8f5a5b5bcd97f6ed8db4d96",
+      "full_style_content_sha256": "6b4fb9edbbd7b44d8c9661fd40e4ebdc1d6e36c301afd14d042176ce4cfdcc7c"
+    },
+    "Pop&Rock/GuitarPop2.S557.prs": {
+      "bytes": 43248,
+      "file_sha256": "03f7ef6257a9a860748b22df40298d315f232b538be9e1e1d22b67dd50cb5f94",
+      "full_style_content_sha256": "8af8443d51b3e8b52cfbf928d9f31b8338a521792864c9d2717b6a0fa54f0c9a"
+    },
+    "Pop&Rock/GuitarPop3.S557.prs": {
+      "bytes": 58456,
+      "file_sha256": "167a9377342daca571b8480a11e08dd53ec04a148ed69a25d818d9574ccc8c79",
+      "full_style_content_sha256": "235eb9c4e4b3dc6a99a1e3a0a355bb913ade0e8ab5616a26510139ad79da3801"
+    },
+    "Pop&Rock/HardRock1.S115.bcs": {
+      "bytes": 32410,
+      "file_sha256": "500d1d1618e959ae2911271fc76634ff5728a4d941db8b1405b89fbbb010210d",
+      "full_style_content_sha256": "57e7f8fd083317798dfcbf674859dc21d5600c0cc86daa4fe67ccb3be7fd1f52"
+    },
+    "Pop&Rock/HardRock2.S578.prs": {
+      "bytes": 32147,
+      "file_sha256": "85fc77357fb248cae1fe117a40ea721024ed2bbc2341d583bb11462435d66552",
+      "full_style_content_sha256": "05775d124b3c117aa47ba5bad73d6f04a5c44fde336355cf85508f31a7247c89"
+    },
+    "Pop&Rock/HardRock3.S110.prs": {
+      "bytes": 30888,
+      "file_sha256": "b23473586f8854c6aa68bff89225f337931c8aec3a2b164746d573907169a347",
+      "full_style_content_sha256": "348996875edd343a0f0f66353302d95eb1c639fa80f00362781f8f520c582c84"
+    },
+    "Pop&Rock/HardRock4.S085.prs": {
+      "bytes": 37125,
+      "file_sha256": "e1e790401bafd0340458c9219586ac623a2f610cd78f59ac4f11f7ee8205a8e3",
+      "full_style_content_sha256": "c1c4e10e170c208f6e5cbc9fcacb87eb920e0aad72bd340f8cebdb8c4e51c17f"
+    },
+    "Pop&Rock/HeartBeat1.S085.bcs": {
+      "bytes": 35195,
+      "file_sha256": "cf58cd5540b3719638a139fb924778b75530b16a8977c464818a67c5d978d3d4",
+      "full_style_content_sha256": "d7e9b11f489ca42b579275a28ae92cf07913a67b24089ee446dcc7cde48bc2f9"
+    },
+    "Pop&Rock/HeartBeat2.S085.prs": {
+      "bytes": 35447,
+      "file_sha256": "e142ea9f3cf4a5af2daffc66d0cd1b768c36992f0c2dd519d58af91a44d9a654",
+      "full_style_content_sha256": "48d46886b9ebe663af0bd0031414e32fd785d4af97506be7773bdd5c5daadbce"
+    },
+    "Pop&Rock/HeartBeat3.S085.prs": {
+      "bytes": 45432,
+      "file_sha256": "dba5eea6348b57786a3497257916173b6b97f5f97fb701210d7a32480f74cbb6",
+      "full_style_content_sha256": "c5ee3fcdb3a388e677753eef3147bc0a0afa80ca86a2d25d9257f1042d3c09ef"
+    },
+    "Pop&Rock/J-PopHit.S851.prs": {
+      "bytes": 58271,
+      "file_sha256": "269ad2c02911d0904d609fcb83306a086cfbfe310048b63345d493ff8caabe43",
+      "full_style_content_sha256": "9e00bb5918377d0524e7736fcef350dc5638311c365fc941ee56b7fea87fab1a"
+    },
+    "Pop&Rock/JazzPop1.S608.prs": {
+      "bytes": 46731,
+      "file_sha256": "33705e30e7c1669758a0e1d3fffc20eb2e8df6b2a61f576c0a240894409ac2ac",
+      "full_style_content_sha256": "2d1bf6cf2421f4414a2968cf321c1ca0064906e2ae3d82c39420638d98698409"
+    },
+    "Pop&Rock/JazzPop2.S563.prs": {
+      "bytes": 59654,
+      "file_sha256": "90fcd69814967ec06a835d7f7e3bfae23b1ab396999dd9e4d448c4fff2b1beae",
+      "full_style_content_sha256": "25721f37ca1dd9c6971175e25d9ee64704efa0129bc02f7c0125a4d99a152fca"
+    },
+    "Pop&Rock/JazzRock1.S547.bcs": {
+      "bytes": 43820,
+      "file_sha256": "db8b2dfefcb46c2580cab90cd1f189e2142de2ea37c2a429af0b3c62f2b1225d",
+      "full_style_content_sha256": "a7b96809cf32d1fde2401e4e9268e2653c822a342b6cc02f4bd1af22dfb23b2c"
+    },
+    "Pop&Rock/JazzRock2.S524.bcs": {
+      "bytes": 48234,
+      "file_sha256": "315f80f1d60eefe9ca9b89b9d95dc2a7492a887a517a5880b6e4704ad7ffa83d",
+      "full_style_content_sha256": "7e3dc44c39d45ad8bdaf93c735346f024c0f9a052de6c9dc8ecd83d7f3414285"
+    },
+    "Pop&Rock/JazzRock3.S563.prs": {
+      "bytes": 45116,
+      "file_sha256": "31f702685521deb0a607f27eafb27ff49166e8309309f2c286ffe090cfcec52b",
+      "full_style_content_sha256": "e4a16a83369a7e888a64441f9434ff8c641d0393d2bac7fbc02daf057f24efa8"
+    },
+    "Pop&Rock/KoolShuffle1.S712.bcs": {
+      "bytes": 35622,
+      "file_sha256": "e56cc6afa53ca758b1792c17a4e65845b55e609b28a7baa6293df1028e5a2a71",
+      "full_style_content_sha256": "1104ce98efbbce05727e42cf5942487c945cb64176ecf83ec733e56af89dadd5"
+    },
+    "Pop&Rock/KoolShuffle2.S340.prs": {
+      "bytes": 42058,
+      "file_sha256": "fce3d589e75cca4ba8a7b39ec7f260a7d498b1808abccf3f1ce352d915c2db8d",
+      "full_style_content_sha256": "f31293107821b95f3e89f911bea271a12b9c2ced781bec597d506cb55f388065"
+    },
+    "Pop&Rock/KoolShuffle3.S340.prs": {
+      "bytes": 43597,
+      "file_sha256": "b8bc6be9e23682ec561bd2b0db0d1f1351759567a7e76c21732ac4d95cd8b5e0",
+      "full_style_content_sha256": "8f5dec2142143a65b705959a0453dc1645d485c8676a4c595b95b13f05d5947b"
+    },
+    "Pop&Rock/KoolShuffle4.S340.prs": {
+      "bytes": 47864,
+      "file_sha256": "f4f00f0d0001e067d65720d85e329186ff5c88d1f67eac85a20566daa1b4d3a7",
+      "full_style_content_sha256": "09194f2872bd964b8e6b95c7f295757c5cefb5cbb6e31bac7fb1e70d6333f80d"
+    },
+    "Pop&Rock/LA-Groove.S130.bcs": {
+      "bytes": 41795,
+      "file_sha256": "07b424c67bade39ce41ebe814f63f4462efd0f6311fe797b6c5a3804843c7a20",
+      "full_style_content_sha256": "98469157baf87eb170beb2f14690ea39d45c03d5619b396eb90b9f5daf00daef"
+    },
+    "Pop&Rock/OffBeat1.T461.bcs": {
+      "bytes": 31585,
+      "file_sha256": "add927cfc8483c33999b600fc083500ac3d71b496e8ee7194fc23dd092a10852",
+      "full_style_content_sha256": "8f203512a870be6ef42089242212cf9dd02cf36b0c8d53d7d6c968ca3131ea40"
+    },
+    "Pop&Rock/OffBeat2.S286.prs": {
+      "bytes": 29813,
+      "file_sha256": "ad3b40958570c6a9faefe43f36e48834e6c70cf5b1a2f69accdb6d2c737c6dc4",
+      "full_style_content_sha256": "a453adddfd103967e0f859b62ed714d8f53db58a68647dbff41efba8e44933b5"
+    },
+    "Pop&Rock/PopRock.S085.bcs": {
+      "bytes": 51399,
+      "file_sha256": "aa09464472cca5895854688868b1add63184cfbffb6209393ec45f48ff00392f",
+      "full_style_content_sha256": "3284870590f896e1e63d2b3de03db352144e9b7d098ac5d156cac88389ae77f2"
+    },
+    "Pop&Rock/PopShuffle1.S259.bcs": {
+      "bytes": 39372,
+      "file_sha256": "e0280fe447f543fefc437ca4cfafe68943205a2593755797ae0aadcdbd6bc2dc",
+      "full_style_content_sha256": "f30cd94b2f52da3d91a6fd3b3d46db3c19e689811faeb56cdce446f156862c07"
+    },
+    "Pop&Rock/PopShuffle2.S438.bcs": {
+      "bytes": 39667,
+      "file_sha256": "17a59750fe03ea979d4e37ea999158962a73fec4d5da119c905983879ad90c38",
+      "full_style_content_sha256": "7798001f3b35bff27a6e5c79e56c96d6a77ac6dacc606251fa2c3dc0eefca291"
+    },
+    "Pop&Rock/PopShuffle3.S552.prs": {
+      "bytes": 48456,
+      "file_sha256": "719c315f85eae3b9bf290ab4f797be4273e883ff928a478b5ce1e7838bc0bec9",
+      "full_style_content_sha256": "05cd8a6039f2de7c3f923b1659e3978fcf058eabc451a1884c3c699f5cd7815f"
+    },
+    "Pop&Rock/PopShuffle4.S577.prs": {
+      "bytes": 38480,
+      "file_sha256": "bff48b91ad53082c6186d844c7bdf5ce24032a854bea25488d6228fd52f09275",
+      "full_style_content_sha256": "7b9ee22f4937f2cc547cdd118983e7408954a66c4cb4dbdbf36381b706cc4c7f"
+    },
+    "Pop&Rock/Rock+HalfTime.S110.prs": {
+      "bytes": 39225,
+      "file_sha256": "c88999dd484e25bdc3f2f8b20bd13b8e74e9b192e3b74e48c86e708717e3f263",
+      "full_style_content_sha256": "74a2967e7d9ad4e19fbcf1f67e8ab535d1b2be3b5c24cd7721b5204dde7a480f"
+    },
+    "Pop&Rock/Rock1.S087.bcs": {
+      "bytes": 36745,
+      "file_sha256": "800f01e11ff4a02a345dd298e160d759bfb4940f03d928ef54ca835822d5382c",
+      "full_style_content_sha256": "0bee3c0aaf9a9034508813863b18ec5eb8b5b2dfc7a898b9a47e03f952ae9644"
+    },
+    "Pop&Rock/Rock2.S578.prs": {
+      "bytes": 37806,
+      "file_sha256": "de3bc41b69dc772c53d32a2636eec3382b36f213c3ab1e7919f4daa7c63ca8c0",
+      "full_style_content_sha256": "cd0bf359a114c2a6da1530b33c11539b85916e574f611bab2eff90794ace2384"
+    },
+    "Pop&Rock/RockBallad.S085.prs": {
+      "bytes": 40540,
+      "file_sha256": "e0d6f346a33eadcfab1e54dac7039cca12786a543ca23bc1dd7ff9e6ed7eabc6",
+      "full_style_content_sha256": "37d74c7a711af2cd25dc8870f0a79267b8dfca72d1ca45b7458525c4d8cb806c"
+    },
+    "Pop&Rock/RockShuffle1.S115.prs": {
+      "bytes": 37018,
+      "file_sha256": "f88c6ed8f9275a1823696f665d74dba6f5f52818c31e08f1d5362652f374e645",
+      "full_style_content_sha256": "8d7481db7cf14e2652ba411e6db20970a8c4d1836a40285ca83275a492f46062"
+    },
+    "Pop&Rock/RockShuffle2.S547.prs": {
+      "bytes": 38314,
+      "file_sha256": "8bb478fe051649dd51cf5ebb7b762d562189f06d70f3d14f56ec2a0e058ad4be",
+      "full_style_content_sha256": "da424df2accd2e58b47e5cc0b27773ac905f0fd93d95a21e3e1fdc941284fb25"
+    },
+    "Pop&Rock/RockShuffle3.S085.prs": {
+      "bytes": 43645,
+      "file_sha256": "0eab5936d52cebbf5d8cce74cb966948af6f15b46f3b969a5d7f289a1194263b",
+      "full_style_content_sha256": "ca4084aae1f3e55050ddcb02d79264ed3683ee227ade61a228fc9579bb5594a1"
+    },
+    "Pop&Rock/RootRock1.S145.bcs": {
+      "bytes": 43181,
+      "file_sha256": "a29736a43ff7c4d8c99c4a4224140cdea2e8e1690f3b724d565975c48f8e949b",
+      "full_style_content_sha256": "ea55fc261405ee369a2edde7954f400e205c2c28bc0dadd8c163bf3199e26185"
+    },
+    "Pop&Rock/RootRock2.S042.bcs": {
+      "bytes": 36323,
+      "file_sha256": "d9b0ed2349f6fa06ddb9e887ab270d0bf2328c0805d5c6d5d3cfa141b18c17c1",
+      "full_style_content_sha256": "029f6269fa9c0f7528fdeea32ef4490d48ed4d6936c476d5a463b290d936f378"
+    },
+    "Pop&Rock/RootRock3.S115.bcs": {
+      "bytes": 32037,
+      "file_sha256": "de32b4e9ae36ab286a198cc3847a9259e1265c30273e523996ab83a5bb23fa5e",
+      "full_style_content_sha256": "eb6ec66f47bc625e0fc20bcdf751ab2fc8a6cd3434166b83d8aa12c3e56bed6a"
+    },
+    "Pop&Rock/RootRock4.S110.prs": {
+      "bytes": 32824,
+      "file_sha256": "fafdd0cc4c9525e7410e4ffbb308511bcf985eb5cd26d0e74e3808fb1277e234",
+      "full_style_content_sha256": "ae84009e55e8b3b4f717515931dce83d3f7daaf8e0db026209a05385c3c579c7"
+    },
+    "Pop&Rock/RootRock5.S110.prs": {
+      "bytes": 35794,
+      "file_sha256": "9ed1a9fc5dd457a72eaacb12ea7a570daffcda0a8ff06aee77869a585811a739",
+      "full_style_content_sha256": "a039578f3de48fe2d2d00bce418c5f8f773799c15978fb5717920d33dd5ee861"
+    },
+    "Pop&Rock/SmoothJazz.S198.bcs": {
+      "bytes": 48046,
+      "file_sha256": "ee478eab49ef850fb33d28f5b3dd36ffe10887ba78940143ce97f29b994ef819",
+      "full_style_content_sha256": "1d3254ffc930f0ce97e1a6dd291ba36c792a56cf1f1cc68273bc0020b267857c"
+    },
+    "Pop&Rock/SoftFusion.S704.bcs": {
+      "bytes": 41343,
+      "file_sha256": "7781617c95b083e7a016624f07d0ad302ac08698e2f0c82c9fbdffde62e67e23",
+      "full_style_content_sha256": "ef5c605559d17fac1d78c6a30a127d59dbe6911e095ab8b9552add4363764331"
+    },
+    "Pop&Rock/SoftRock1.S332.bcs": {
+      "bytes": 36768,
+      "file_sha256": "a76667267a8d17497a7c9e8cf9a72772291f019c8c3e5e7dcfbe4486a4692164",
+      "full_style_content_sha256": "e50877a0be7bb9308405f9a22734029d597457e0729a96e30129f70fc9884fbd"
+    },
+    "Pop&Rock/SoftRock2.S085.prs": {
+      "bytes": 46261,
+      "file_sha256": "10d6c70b76d42bef388144f6d11dedd0132ad9e8a13fa69ab14e23a891132151",
+      "full_style_content_sha256": "5f4ca74741386c96708efc16518f4ae5bdc8aa78941e2665811d4588616ebf98"
+    },
+    "Pop&Rock/SpicyBeat.S851.bcs": {
+      "bytes": 41052,
+      "file_sha256": "b5de3218353ebdfa520fae8658a8b84ee86307c81ec74d56827feff5d7da8751",
+      "full_style_content_sha256": "d0811d884246b0e9a1dd6c938ae13c544197892263197163d61c21bc1e4a27f0"
+    },
+    "Pop&Rock/SwedishPopShfl.S732.prs": {
+      "bytes": 49259,
+      "file_sha256": "ed4e6237bf30277c299f8d5c6026798ef1ecc7253dc182ca8b6442e1d7be22e1",
+      "full_style_content_sha256": "5192e33f49cd460c2d3204d87c9e5e3a244b80de1b6a22faad4be816525d503b"
+    },
+    "Pop&Rock/SynthRock.S527.prs": {
+      "bytes": 46129,
+      "file_sha256": "65c34d00ce07f895bb8ff55cd9333f4ce12bee4dcd209c70fce6baf53537a53b",
+      "full_style_content_sha256": "79060bfcef7bc686fd0b76b26108967e06b56755fc304d0367dfeac2f0c5b3f8"
+    },
+    "Pop&Rock/Unplugged1.S727.prs": {
+      "bytes": 39523,
+      "file_sha256": "6931879110d62b416a706b1adfc9af2eef51d0747b1fb16db1da7cfe12299032",
+      "full_style_content_sha256": "bb9fbcb1de134ab5e797aac3d8ca470e0f9f7c0aa2c09cc2dd3814a81953f882"
+    },
+    "Pop&Rock/Unplugged2.T151.prs": {
+      "bytes": 101757,
+      "file_sha256": "01efbb52da34ba6a7854b3a30dc71bdaa29b9d734533aaf130c4525b261a86a7",
+      "full_style_content_sha256": "2a72f8c96e83d642dd0ca51b6162b5b40c353a6cff1b4503e76c0d8cc4f4c2dd",
+      "golden_baseline_expectation": {
+        "chord": "C_MAJOR",
+        "destinations": {
+          "10": 48,
+          "11": 672,
+          "14": 144,
+          "8": 256,
+          "9": 233
+        },
+        "dispatched_on": 1353,
+        "raw_on": 1737,
+        "section": "MainD",
+        "status": "BASELINE_OBSERVATION_NOT_MUSICAL_ORACLE"
+      },
+      "golden_main_d_protocol_sha256": "75e7ff37e5c9987b9d035f852b0ed46c357682473dca1b3bc2106e939289c75e"
+    },
+    "Pop&Rock/UptownBeat.S150.bcs": {
+      "bytes": 48205,
+      "file_sha256": "5b38e0164650b380f4678929bbe661a8be82958d37b45483e0cff70fb66036aa",
+      "full_style_content_sha256": "2ee5bbcab0e660bd1875a24bbd311a2b31729bb7b7a34af7cc8af3b2de239d1b"
+    },
+    "Pop&Rock/UptownShuffle.S015.bcs": {
+      "bytes": 36378,
+      "file_sha256": "9362015e44ce91a63268e3b49e62c21461ed0fb4ee88994fce58c06e7bb0c283",
+      "full_style_content_sha256": "332b31787061a0374f4ca0b151e37873763bdbb99cc4be9cf10e25830c38412c"
+    },
+    "Pop&Rock/VintageGtrPop.S085.prs": {
+      "bytes": 47559,
+      "file_sha256": "4afa7085c9e9b5ae44dd78b57a5a729839b708fbae48a91334abc8c011c67573",
+      "full_style_content_sha256": "b9d5cfe3037901cacf300eb0ae4a080eece5e533e176c30d832586bbdb14c1b6"
+    },
+    "Pop&Rock/WestEndShuffle .S684.bcs": {
+      "bytes": 37701,
+      "file_sha256": "76d8ee82bda2a4972a31cd8b3502b57a90343a34201b498326287780c6b836be",
+      "full_style_content_sha256": "82b83c34d5a7f91784207540888d65c74ad5216d88e9935f7ad13d19102228f3"
+    }
+  },
+  "terms": {
+    "dispatched_event": "production output call, golden JVM tests only",
+    "eligible_event": "not claimed without Yamaha selection oracle",
+    "native_acceptance": "NOT_MEASURED",
+    "pcm_presence": "NOT_MEASURED",
+    "raw_record": "one Ctab/Cntt in original CSEG",
+    "section_policy_copy": "one raw policy expanded via Sdec"
+  }
+}
