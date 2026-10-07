@@ -13,7 +13,6 @@ import java.io.File
 import java.security.MessageDigest
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
-import sun.misc.Unsafe
 
 /**
  * S1 captures current defects, NOT desired Yamaha semantics. Executes unchanged
@@ -182,12 +181,13 @@ class Sff1ProductionPipelineRegressionTest {
     }
 
     /** Call actual private repository decoding/setup functions without JNI load.
-     * Unsafe allocates only the repository shell; loadStyle/bridge are NOT called.
+     * Mockito creates the repository shell without constructing its JNI bridge.
+     * CALLS_REAL_METHODS and reflection execute the unchanged private decoders;
+     * no repository decoder is stubbed and loadStyle/bridge are NOT called.
      * This avoids adding test seams or touching production constructors/playback.
      */
     private fun nativeFixtures():List<NativeFixture> {
-        val unsafe=Unsafe::class.java.getDeclaredField("theUnsafe").apply { isAccessible=true }.get(null) as Unsafe
-        val repository=unsafe.allocateInstance(StyleRepository::class.java)
+        val repository=mock(StyleRepository::class.java,CALLS_REAL_METHODS)
         val decode=StyleRepository::class.java.getDeclaredMethod("decodePackedEvents",IntArray::class.java).apply { isAccessible=true }
         val policyDecode=StyleRepository::class.java.getDeclaredMethod("parseCasmPolicies",String::class.java).apply { isAccessible=true }
         val setup=StyleRepository::class.java.getDeclaredMethod("extractVoiceSetup",List::class.java).apply { isAccessible=true }
@@ -225,6 +225,7 @@ class Sff1ProductionPipelineRegressionTest {
             }
         } };style()
         assertEquals(GOLDEN.keys,result.map { it.path }.toSet())
+        verifyNoInteractions(repository) // Private decoder calls bypass Mockito; no public/JNI loading path ran.
         return result
     }
     private fun unhex(value:String)=value.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
