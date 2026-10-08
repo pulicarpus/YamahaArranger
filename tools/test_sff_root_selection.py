@@ -4,11 +4,61 @@ import hashlib
 import csv
 import json
 import unittest
+import subprocess
 from pathlib import Path
 
 from audit_sff_root_selection import (ROOT, REFERENCE, SOURCES, SAMPLES,
     documentary_vector, candidate_vector)
-from audit_sff1_corpus import canonical, digest, ConformanceError, production_identity
+from audit_sff1_corpus import canonical, digest, ConformanceError, require
+from sff_casm_source_guard import verify_metadata_sources as verify_s3_sources
+from sff_dialect_source_guard import verify_metadata_sources as verify_s2_sources, strip_metadata
+
+S1_REFERENCE_SHA256='2ab43fe0cac6f0aa27be168c227faf51c1b8401f3678c90444f7e03aac13d5ed'
+S3_PHYSICAL_SOURCE_SHA256='fd3ec12803ecaebb6f220451d5ccc8fe1f96282ee6c64d4c18076e9958a74dff'
+
+
+def normalized_tree_oid(files):
+    """Reconstruct the same Git tree; no historical object/network required."""
+    tree={}
+    for path,(mode,data) in files.items():
+        parts=path.removeprefix('app/src/main/').split('/')
+        node=tree
+        for part in parts[:-1]:node=node.setdefault(part,{})
+        node[parts[-1]]=(mode,data)
+    def oid(kind,data):
+        return hashlib.sha1(kind+b' '+str(len(data)).encode()+b'\0'+data).digest()
+    def walk(node):
+        body=b''
+        for name,value in sorted(node.items(),key=lambda x:(x[0]+('/' if isinstance(x[1],dict) else '')).encode()):
+            if isinstance(value,dict):mode,child='40000',walk(value)
+            else:mode,data=value;child=oid(b'blob',data)
+            body+=mode.encode()+b' '+name.encode()+b'\0'+child
+        return oid(b'tree',body)
+    return walk(tree).hex()
+
+
+def portable_production_identity(read_bytes=None):
+    """Exact S1 content/tree + S2/S3 physical guards in shallow CI checkouts."""
+    reference=ROOT/'tests/fixtures/sff1_reference.json'
+    require(hashlib.sha256(reference.read_bytes()).hexdigest()==S1_REFERENCE_SHA256,'S1 reference identity drift')
+    pinned=json.loads(reference.read_text())['production_source_identity']
+    s3=verify_s3_sources();s2=verify_s2_sources()
+    indexed=subprocess.check_output(['git','ls-files','-s','--','app/src/main'],cwd=ROOT,text=True).splitlines()
+    modes={}
+    for row in indexed:
+        metadata,path=row.split('\t',1);mode,_,stage=metadata.split()
+        require(stage=='0','Unmerged production index');modes[path]=mode
+    require(sorted(modes)==sorted(pinned['tracked_files']),'S1 production source-set drift')
+    require(not subprocess.check_output(['git','ls-files','--others','--exclude-standard','--','app/src/main'],cwd=ROOT,text=True).strip(),'Untracked production source')
+    normalized={};physical={}
+    for path,expected in pinned['tracked_files'].items():
+        raw=(ROOT/path).read_bytes() if read_bytes is None else read_bytes(path)
+        old=strip_metadata(path,raw.decode()).encode() if path in s2 or path in s3 else raw
+        require(hashlib.sha256(old).hexdigest()==expected,'S1 production source changed: '+path)
+        normalized[path]=(modes[path],old);physical[path]=hashlib.sha256(raw).hexdigest()
+    require(normalized_tree_oid(normalized)==pinned['main_tree_git_oid'],'S1 normalized production Git tree drift')
+    require(digest(physical)==S3_PHYSICAL_SOURCE_SHA256,'S3 physical production identity drift')
+    return {'main_tree_git_oid':pinned['main_tree_git_oid'],'tracked_files':physical,'verified_working_tree_sha256':digest(physical)}
 
 
 class RootSelectionEvidenceTests(unittest.TestCase):
@@ -114,7 +164,18 @@ class RootSelectionEvidenceTests(unittest.TestCase):
         self.assertEqual(157,sum(row['never_attached_record_count'] for row in self.reference['word_inventory']))
 
     def test_existing_S1_S2_S3_production_identity_still_passes(self):
-        production_identity()
+        result=portable_production_identity()
+        self.assertEqual(125,len(result['tracked_files']))
+
+    def test_portable_guard_rejects_changed_source_bytes(self):
+        path='app/src/main/cpp/smf_reader.cpp'
+        with self.assertRaises(ConformanceError):
+            portable_production_identity(lambda p:(ROOT/p).read_bytes()+(b'\n' if p==path else b''))
+
+    def test_normalized_tree_reconstruction_detects_mode_and_path_changes(self):
+        original={'app/src/main/a.txt':('100644',b'x')}
+        self.assertNotEqual(normalized_tree_oid(original),normalized_tree_oid({'app/src/main/a.txt':('100755',b'x')}))
+        self.assertNotEqual(normalized_tree_oid(original),normalized_tree_oid({'app/src/main/b.txt':('100644',b'x')}))
 
 
 if __name__=='__main__':
