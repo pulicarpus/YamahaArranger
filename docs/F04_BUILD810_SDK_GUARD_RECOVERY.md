@@ -55,4 +55,12 @@ Run one existing Android workflow after all local gates pass. On FAILURE report 
 
 A genuine depth-1 clone with all six SDK files also passed the SDK suite (10 tests) and the complete candidate S1–S5/F04 host pipeline (90 tests), without historical baseline Git objects.
 
-CI: pending the single recovery push. Local Android APK build is UNRUN because the Android SDK is not installed in this workspace.
+CI: the single recovery run **Build #811 SUCCESS**, tested harness commit `a54a894a61034003facb080876970e67c407046a`. Local Android APK build is UNRUN because the Android SDK is not installed in this workspace.
+
+## Completed CI and APK
+
+[Build #811](https://github.com/pulicarpus/YamahaArranger/actions/runs/37816600268) completed SUCCESS. Build debug APK, both-ABI Stage 3 exclusion and Upload APK artifact are SUCCESS. The existing workflow builds and checks `arm64-v8a` and `armeabi-v7a`; no workflow changes were made.
+
+[APK artifact app-debug](https://github.com/pulicarpus/YamahaArranger/actions/runs/37816600268#artifacts), ID `11568121819`, is listed on the run page at 12.5 MB. GitHub artifact archive digest: `610c5facfc856f35aa6e85e22b9a526f29ef4d59ae78bdebbdf230037e679b8b`. This is the server-reported artifact archive hash, not an independently computed APK hash. The session cannot download the authenticated artifact endpoint (404); availability is verified from the actual artifact table and successful upload step.
+
+Structured step/artifact evidence: `docs/f04_sdk_guard_ci_evidence.json`. Final evidence is a docs-only commit and does not trigger another Android build. The recovered APK still requires user listening/device tests; no claim of improved Yamaha sound or fresh 503/503 conformance is made. STOP after this recovery.

@@ -1,0 +1,372 @@
+{
+  "recovery_baseline": "57a48a5963d3acba463bb215561a7c8192ffaada",
+  "f04_production_commit": "e563d55bcf2112bdaf3928469206a8b783e66c6c",
+  "harness_commit": "a54a894a61034003facb080876970e67c407046a",
+  "build": 811,
+  "run_id": 37816600268,
+  "job_id": 113446712706,
+  "conclusion": "SUCCESS",
+  "source_production_paths_unchanged": 125,
+  "workflow_unchanged": true,
+  "historical_goldens_unchanged": true,
+  "sdk_positive_negative_tests": 10,
+  "shallow_candidate_tests": 90,
+  "differential_baseline_tests": 83,
+  "differential_candidate_tests": 90,
+  "s6_s7_s8_p0_host_tests": 13,
+  "original_810_first_error": "UNKNOWN: direct log 404; API CONNECT rejected 403; conflict independently reproduced locally",
+  "android_abis": [
+    "arm64-v8a",
+    "armeabi-v7a"
+  ],
+  "apk_artifact": {
+    "name": "app-debug",
+    "id": 11568121819,
+    "display_size": "12.5 MB",
+    "sha256_artifact_archive": "610c5facfc856f35aa6e85e22b9a526f29ef4d59ae78bdebbdf230037e679b8b",
+    "available_listing": "https://github.com/pulicarpus/YamahaArranger/actions/runs/37816600268#artifacts",
+    "evidence": "GitHub run HTML artifact table + successful Upload APK artifact step",
+    "downloaded_in_this_session": false,
+    "unauthenticated_direct_download_http": 404
+  },
+  "original_503_corpus_rerun": "BLOCKED",
+  "device_audio": "UNRUN",
+  "steps": [
+    {
+      "name": "Set up job",
+      "number": "1",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:26:44Z",
+      "completed-at": "2026-10-08T17:26:46Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/1"
+    },
+    {
+      "name": "Pull ghcr.io/appleboy/telegram-action:1.1.1",
+      "number": "2",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:26:46Z",
+      "completed-at": "2026-10-08T17:26:47Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/2"
+    },
+    {
+      "name": "Checkout Repository",
+      "number": "3",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:26:47Z",
+      "completed-at": "2026-10-08T17:26:48Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/3"
+    },
+    {
+      "name": "Verify bank-contract APK runtime byte-identical to build 783",
+      "number": "4",
+      "conclusion": "skipped",
+      "started-at": "2026-10-08T17:26:48Z",
+      "completed-at": "2026-10-08T17:26:48Z",
+      "log-url": ""
+    },
+    {
+      "name": "Check out #770 performance baseline (read only)",
+      "number": "5",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:26:48Z",
+      "completed-at": "2026-10-08T17:26:49Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/5"
+    },
+    {
+      "name": "Check out #772 production baseline (read only)",
+      "number": "6",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:26:49Z",
+      "completed-at": "2026-10-08T17:26:49Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/6"
+    },
+    {
+      "name": "Test family-preserving resolver",
+      "number": "7",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:26:49Z",
+      "completed-at": "2026-10-08T17:30:07Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/7"
+    },
+    {
+      "name": "Test compatible percussion with actual BASSMIDI SDK",
+      "number": "8",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:30:07Z",
+      "completed-at": "2026-10-08T17:30:50Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/8"
+    },
+    {
+      "name": "Check out #773 engineering baseline (read only)",
+      "number": "9",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:30:50Z",
+      "completed-at": "2026-10-08T17:30:51Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/9"
+    },
+    {
+      "name": "Verify",
+      "number": "10",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:30:51Z",
+      "completed-at": "2026-10-08T17:31:17Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/10"
+    },
+    {
+      "name": "Check out #776 regression baseline (read only)",
+      "number": "11",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:31:17Z",
+      "completed-at": "2026-10-08T17:31:18Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/11"
+    },
+    {
+      "name": "Verify Stage 3 bypass and reviewed accompaniment patch against build 776",
+      "number": "12",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:31:18Z",
+      "completed-at": "2026-10-08T17:31:46Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/12"
+    },
+    {
+      "name": "Set up JDK 17",
+      "number": "13",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:31:46Z",
+      "completed-at": "2026-10-08T17:31:46Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/13"
+    },
+    {
+      "name": "Check out #774 end-to-end baseline (read only)",
+      "number": "14",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:31:46Z",
+      "completed-at": "2026-10-08T17:31:47Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/14"
+    },
+    {
+      "name": "Verify",
+      "number": "15",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:31:47Z",
+      "completed-at": "2026-10-08T17:32:13Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/15"
+    },
+    {
+      "name": "Check out #786 working presence baseline (read only)",
+      "number": "16",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:32:13Z",
+      "completed-at": "2026-10-08T17:32:14Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/16"
+    },
+    {
+      "name": "Verify role PCM boundaries and",
+      "number": "17",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:32:14Z",
+      "completed-at": "2026-10-08T17:32:42Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/17"
+    },
+    {
+      "name": "Check out #787 ANR/session baseline (read only)",
+      "number": "18",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:32:42Z",
+      "completed-at": "2026-10-08T17:32:43Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/18"
+    },
+    {
+      "name": "Verify snapshot-only patch and byte-identical",
+      "number": "19",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:32:43Z",
+      "completed-at": "2026-10-08T17:35:35Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/19"
+    },
+    {
+      "name": "Accept Android SDK licenses",
+      "number": "20",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:35:35Z",
+      "completed-at": "2026-10-08T17:35:35Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/20"
+    },
+    {
+      "name": "Set up Android NDK r26d",
+      "number": "21",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:35:35Z",
+      "completed-at": "2026-10-08T17:36:01Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/21"
+    },
+    {
+      "name": "Install CMake",
+      "number": "22",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:36:01Z",
+      "completed-at": "2026-10-08T17:36:08Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/22"
+    },
+    {
+      "name": "Download BASS/BASSMIDI Android SDKs",
+      "number": "23",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:36:08Z",
+      "completed-at": "2026-10-08T17:36:08Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/23"
+    },
+    {
+      "name": "Set up Gradle",
+      "number": "24",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:36:08Z",
+      "completed-at": "2026-10-08T17:36:18Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/24"
+    },
+    {
+      "name": "Build debug APK",
+      "number": "25",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:36:18Z",
+      "completed-at": "2026-10-08T17:41:33Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/25"
+    },
+    {
+      "name": "Verify Stage 3 excluded from both APK native ABIs",
+      "number": "26",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:41:33Z",
+      "completed-at": "2026-10-08T17:41:33Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/26"
+    },
+    {
+      "name": "Upload APK artifact",
+      "number": "27",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:41:33Z",
+      "completed-at": "2026-10-08T17:41:34Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/27"
+    },
+    {
+      "name": "Upload full global shadow comparison",
+      "number": "28",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:41:34Z",
+      "completed-at": "2026-10-08T17:41:35Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/28"
+    },
+    {
+      "name": "Upload accompaniment presence proof",
+      "number": "29",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:41:35Z",
+      "completed-at": "2026-10-08T17:41:35Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/29"
+    },
+    {
+      "name": "Upload mix and percussion proof",
+      "number": "30",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:41:35Z",
+      "completed-at": "2026-10-08T17:41:36Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/30"
+    },
+    {
+      "name": "Send APK to Telegram",
+      "number": "31",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:41:36Z",
+      "completed-at": "2026-10-08T17:41:41Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/31"
+    },
+    {
+      "name": "Post Set up Gradle",
+      "number": "53",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:41:41Z",
+      "completed-at": "2026-10-08T17:41:41Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/53"
+    },
+    {
+      "name": "Post Check out #787 ANR/session baseline (read only)",
+      "number": "54",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:41:41Z",
+      "completed-at": "2026-10-08T17:41:41Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/54"
+    },
+    {
+      "name": "Post Check out #786 working presence baseline (read only)",
+      "number": "55",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:41:41Z",
+      "completed-at": "2026-10-08T17:41:42Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/55"
+    },
+    {
+      "name": "Post Check out #774 end-to-end baseline (read only)",
+      "number": "56",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:41:42Z",
+      "completed-at": "2026-10-08T17:41:42Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/56"
+    },
+    {
+      "name": "Post Set up JDK 17",
+      "number": "57",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:41:42Z",
+      "completed-at": "2026-10-08T17:41:42Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/57"
+    },
+    {
+      "name": "Post Check out #776 regression baseline (read only)",
+      "number": "58",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:41:42Z",
+      "completed-at": "2026-10-08T17:41:42Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/58"
+    },
+    {
+      "name": "Post Check out #773 engineering baseline (read only)",
+      "number": "59",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:41:42Z",
+      "completed-at": "2026-10-08T17:41:43Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/59"
+    },
+    {
+      "name": "Post Check out #772 production baseline (read only)",
+      "number": "60",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:41:43Z",
+      "completed-at": "2026-10-08T17:41:43Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/60"
+    },
+    {
+      "name": "Post Check out #770 performance baseline (read only)",
+      "number": "61",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:41:43Z",
+      "completed-at": "2026-10-08T17:41:43Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/61"
+    },
+    {
+      "name": "Post Checkout Repository",
+      "number": "62",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:41:43Z",
+      "completed-at": "2026-10-08T17:41:43Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/62"
+    },
+    {
+      "name": "Complete job",
+      "number": "63",
+      "conclusion": "success",
+      "started-at": "2026-10-08T17:41:43Z",
+      "completed-at": "2026-10-08T17:41:43Z",
+      "log-url": "/pulicarpus/YamahaArranger/commit/a54a894a61034003facb080876970e67c407046a/checks/113446712706/logs/63"
+    }
+  ]
+}
