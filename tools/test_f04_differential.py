@@ -115,7 +115,7 @@ def main():
     reduced_base=(BASE/'ownership-traces.txt').read_text()
     assert reduced_base==(ROOT/'tests/fixtures/f03_dispatch_trace_s5.txt').read_text()
     reduced_expected,reduced_changed=reduced_projection(reduced_base)
-    assert (CANDIDATE/'ownership-traces.txt').read_text()==reduced_expected,'NON-F04 REDUCED OVERLAP DIFFERENTIAL' 
+    assert (CANDIDATE/'ownership-traces.txt').read_text()==reduced_expected,'NON-F04 REDUCED OVERLAP DIFFERENTIAL'
     proof={'baseline_commit':verify_profile()['baseline_commit'],'differential':'PASS','captured_runs':20,
            'changed_runs':4,'audio_on_removed':600,'midi_on_removed':600,'retained_calls':'BYTE_IDENTICAL',
            'historical_goldens':'UNCHANGED','production_files_changed':1,
