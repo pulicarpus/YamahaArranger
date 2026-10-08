@@ -11,7 +11,7 @@ Implementasi F03 belum disetujui atau dilakukan. STOP S8; tidak ada S9.
 
 Branch `fix/mix-percussion-fidelity-784`, baseline lokal/remote terverifikasi
 `291153a58a0873584f2e0adfc7dd220673f1b8af`, parent
-`7fe5b654ab70526c9f1f1a980aaf85e1dc9d834c`. Semua353 berkas baseline tetap
+`7fe5b654ab70526c9f1f1a980aaf85e1dc9d834c`. Semua 353 berkas baseline tetap
 byte-identical. Hanya dokumen, fixture baru dan tes/harness diagnostik berubah;
 produksi, workflow, S5–S7 fixtures, golden, regression guards dan Stage3 exclusion
 utuh. S1–S7 corpus/ownership investigation tidak diulang; controls S6/S7 menjadi
@@ -24,7 +24,7 @@ Bukti mentah, hash SDK/source/ZIP dan reproduksi ada di
 
 Download vendor resmi kini berhasil setelah sebelumnya HTTP403. Linux x86_64:
 BASS `33821187` / `0x02041203`, BASSMIDI `33820672` / `0x02041000`.
-NOTEOFF1 dari **header asli** bernilai65536; wrapper memeriksa flag stream nyata
+NOTEOFF1 dari **header asli** bernilai 65536; wrapper memeriksa flag stream nyata
 lalu meneruskan call ke library asli. Tidak memakai mock constants sebagai
 bukti SDK. Header/library dan ZIP SHA256 disimpan dalam evidence JSON.
 
@@ -38,7 +38,7 @@ source yang dibekukan pada SDK yang dicatat, bukan metrics yang diambil dari
 ## Akar masalah harness Build #803
 
 Build #803, commit `7d87de81dd0938e8d784e80f8d903071729544d5`, gagal step25.
-Pengguna memverifikasi261 JVM tests,1 failed:
+Pengguna memverifikasi 261 JVM tests, 1 failed:
 `StyleMixFidelityS8NativeVoiceTest.isolatedAvailableNativeSdkSignatures`,
 assert exit-code runner di Kotlin line12. Log publik hanya exit1 / HTTP404.
 
@@ -152,7 +152,10 @@ Semua second-OFF/cleanup trial mempunyai final measured energy0. Acceptance
 origin tetapi kedua OFF native tetap channel11,key60. Flag asli NOTEOFF1 memberi
 observasi **older A dilepas, younger B bertahan** pada scope dua notes/font/SDK
 ini, bahkan ketika caller mengatribusikan OFF ke B. Tidak menggeneralisasi Yamaha
-FIFO atau selective native handle. Kontrol no-flag membuktikan flag berpengaruh
+FIFO atau selective native handle. A juga lebih pelan dan B lebih keras dalam
+design velocity-zone ini; reverse ON order / swapped signature assignment perlu
+sebelum mengklaim aturan FIFO universal. No-flag trial hanya mengukur post-OFF;
+belum memisahkan perubahan overlap/retrigger pada ON dari allocation pada OFF. Kontrol no-flag membuktikan flag berpengaruh
 pada kasus yang sama, bukan hanya diterima oleh API.
 
 ## Klasifikasi, Linux/Android dan konsekuensi F03
@@ -201,5 +204,26 @@ identity tetap UNKNOWN. RIFF/terminal bounds PASS. No local regression FAIL.
 Original503 corpus tetap BLOCKED; Android device PCM/PSR-E343 UNRUN.
 
 Build #803 FAIL di satu tes S8,260 tests lainnya PASS menurut pemeriksaan
-pengguna. CI koreksi akan dicatat sesudah diagnostic-only commit/push; APK dan
-Stage3 kedua ABI belum dianggap lulus pada build yang gagal.
+pengguna. Koreksi diagnostic-only commit
+`517b784ded77ec9d997b2a6ec61201250752eaa6` dipush ke branch yang sama.
+[Build #804](https://github.com/pulicarpus/YamahaArranger/actions/runs/37763724067)
+**SUCCESS**: host/native SDK guards, Gradle testDebugUnitTest, assembleDebug,
+serta Stage3 exclusion arm64-v8a dan armeabi-v7a. Android compilation/JVM bukan
+Android device PCM. Detail langkah/status ada di
+[`s8_ci_evidence.json`](s8_ci_evidence.json).
+
+Artefak metadata yang terverifikasi: `mix-percussion-proof` id11544066944,
+110KB, digest
+`1be5f11caa747cc39f5894341a062f7ac90b184322b797a6f37bb52634ad0eb7`;
+`app-debug` id11543757510,12.5MB, digest
+`14de4108be7ec0dd69858e91edae474cd18ca9ca3570e37786a54d6582b04147`.
+Download arsip tetap HTTP404, sehingga isi XML/SDK hash CI belum diaudit;
+measured PCM di laporan berasal dari evidence lokal yang sudah di-commit,
+bukan asumsi dari warna hijau CI. Upload pattern workflow mencakup XML S8
+StyleMixFidelity, tetapi contents tidak diklaim telah dibaca.
+
+Follow-up final hanya dokumentasi CI dan batas generalisasi, parent commit
+517b784; sesuai paths-ignore docs/**, tidak memerlukan build baru. Status akhir:
+regresi tersedia PASS, corpus503 BLOCKED, physical Android/PSR-E343 UNRUN,
+long-release identity dan native handles tetap UNKNOWN. Tidak ada produksi/F03
+implementation; STOP setelah S8.
