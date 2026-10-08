@@ -1,0 +1,135 @@
+{
+  "accessed_utc": "2026-10-08",
+  "source_fetches": [
+    {
+      "id": "midi_messages",
+      "url": "https://midi.org/summary-of-midi-1-0-messages",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>"
+    },
+    {
+      "id": "midi_spec",
+      "url": "https://midi.org/midi-1-0-detailed-specification",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>"
+    },
+    {
+      "id": "bass_note",
+      "url": "https://www.un4seen.com/doc/bassmidi/MIDI_EVENT_NOTE.html",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "id": "bass_flags",
+      "url": "https://www.un4seen.com/doc/bassmidi/BASS_MIDI_StreamCreate.html",
+      "resolved_url": "https://www.un4seen.com/doc/bassmidi/BASS_MIDI_StreamCreate.html",
+      "status": 200,
+      "sha256": "adede40809f266f6c6f0dd397efa3e41242582898f1e8aba4ee1bc182fe6f808",
+      "bytes": 8499
+    },
+    {
+      "id": "bass_event",
+      "url": "https://www.un4seen.com/doc/bassmidi/BASS_MIDI_StreamEvent.html",
+      "resolved_url": "https://www.un4seen.com/doc/bassmidi/BASS_MIDI_StreamEvent.html",
+      "status": 200,
+      "sha256": "dec21eeff47c72c0d3bdf2bf3e42348e8729eb2201a873768d1051eded32f1b6",
+      "bytes": 18870
+    },
+    {
+      "id": "yamaha_style",
+      "url": "https://manual.yamaha.com/mi/kb-ekb/psr-sx920-sx720/en/psrsx920_en_rm_07.html",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>"
+    }
+  ],
+  "vendor_contract": {
+    "url": "https://www.un4seen.com/doc/bassmidi/BASS_MIDI_StreamCreate.html",
+    "status": "PROVEN_DOCUMENTED_API_CONTRACT",
+    "short_quote": "Only release the oldest instance upon a note off event (MIDI_EVENT_NOTE with velocity=0) when there are overlapping instances of the note. Otherwise all instances are released.",
+    "limits": "Not Yamaha pairing; platform runtime implementation and application attribution require separate verification"
+  },
+  "android_static": {
+    "download_metadata": [
+      {
+        "url": "https://www.un4seen.com/files/bass24-android.zip",
+        "sha256": "236c9017728a910dfe74e79d36d98ad6784f3558c21e8812cfcbafe9bd0fef41",
+        "bytes": 1081948,
+        "http": 200
+      },
+      {
+        "url": "https://www.un4seen.com/files/bassmidi24-android.zip",
+        "sha256": "6ca3bd8bd0bd9663ec60995821ef0728b32173628f1ae976ffbe40f7b61f6f12",
+        "bytes": 463609,
+        "http": 200
+      }
+    ],
+    "headers": {
+      "bass": {
+        "sha256": "deb66f150ceada5370a13c9b96879105b9237f1bc5bf5f2f01b77eaecb524b78"
+      },
+      "bassmidi": {
+        "sha256": "6fede34e385adcac14f117566943fbc76c02b87433c6f88b1d97117311475eb9",
+        "NOTEOFF1": "0x10000"
+      }
+    },
+    "libraries": [
+      {
+        "package": "bass",
+        "abi": "arm64-v8a",
+        "sha256": "9a761481e30d44a2a96df1f0986f2aab629be469a6b2fcfdf043923a1f18e365",
+        "bytes": 324744,
+        "elf_class": "ELF64",
+        "machine": "AArch64",
+        "exports": {
+          "BASS_GetVersion": true
+        },
+        "runtime": "UNRUN",
+        "shipped_build_805_binary_equivalence": "UNKNOWN"
+      },
+      {
+        "package": "bass",
+        "abi": "armeabi-v7a",
+        "sha256": "26a8f174fc763f8171b97a052e0994cbf6284f0c276cb853017cc66220167a3f",
+        "bytes": 240108,
+        "elf_class": "ELF32",
+        "machine": "ARM",
+        "exports": {
+          "BASS_GetVersion": true
+        },
+        "runtime": "UNRUN",
+        "shipped_build_805_binary_equivalence": "UNKNOWN"
+      },
+      {
+        "package": "bassmidi",
+        "abi": "arm64-v8a",
+        "sha256": "4212cf33d18d1f645874d8f5b14f9b7bceae67d48acc5b345a03ecd2be309083",
+        "bytes": 152472,
+        "elf_class": "ELF64",
+        "machine": "AArch64",
+        "exports": {
+          "BASS_MIDI_StreamCreate": true,
+          "BASS_MIDI_StreamEvent": true,
+          "BASS_MIDI_GetVersion": true
+        },
+        "runtime": "UNRUN",
+        "shipped_build_805_binary_equivalence": "UNKNOWN"
+      },
+      {
+        "package": "bassmidi",
+        "abi": "armeabi-v7a",
+        "sha256": "31ef5943583f0518a2a67a16c1474b22826bc32f9eb0ee650d16934621e1dd6b",
+        "bytes": 118776,
+        "elf_class": "ELF32",
+        "machine": "ARM",
+        "exports": {
+          "BASS_MIDI_StreamCreate": true,
+          "BASS_MIDI_StreamEvent": true,
+          "BASS_MIDI_GetVersion": true
+        },
+        "runtime": "UNRUN",
+        "shipped_build_805_binary_equivalence": "UNKNOWN"
+      }
+    ],
+    "runtime": "UNRUN"
+  },
+  "midi_normative_overlap_rule": "UNKNOWN",
+  "yamaha_authored_pairing": "UNKNOWN",
+  "musical_implementation_gate": "BLOCKED",
+  "network_draft": "Saved midi.org/manual.yamaha.com additions preserving www.un4seen.com; requires publish; not applied or retried without state change"
+}
