@@ -164,8 +164,7 @@ Final cleanup follows the second OFF and 30 additional 2048-frame windows.
 Rows record actual `noteAOnFrame`, `noteBOnFrame`, `firstOffFrame` and
 `secondOffFrame`; an event not submitted in a reference/overlap control is `-1`.
 A metadata correction replaced nominal shared-slot labels with these actual-event
-fields. The complete probe was rerun; its metric summary was byte-for-byte equal
-as JSON values, and no classifier threshold/assertion changed.
+fields. The complete probe was rerun; its metric summary was unchanged, and no classifier threshold/assertion changed.
 No real-time wallclock/device latency measurement is claimed.
 
 Stereo-to-mono integer-bin sin/cos projection is phase-invariant. References
@@ -339,11 +338,37 @@ Local validation (2026-10-08):
 | Physical Android and PSR-E343 | UNRUN | No new APK/device experiment |
 | Baseline preservation | PASS,371/371 | Every original tracked byte identical, including P0/S1–S8/production/workflow/old fixtures/goldens |
 
-CI: pending diagnostic-only push; no workflow change. The existing normal
-workflow runs the new unit-test wrapper, builds its baseline APK and checks
-Stage 3 exclusion. That normal build does not add an experimental F03 APK.
-Final CI metadata will identify the tested executable commit separately from
-any documentation-only evidence follow-up.
+### Verified CI
+
+| Build | Executable/diagnostic commit | Actual result |
+|---|---|---|
+| [#806](https://github.com/pulicarpus/YamahaArranger/actions/runs/37779858547) | `933a2b64540db5af3b703d93f553b4a818b192c2` | SUCCESS; initial P1 controls |
+| [#807](https://github.com/pulicarpus/YamahaArranger/actions/runs/37780609074) | `ba97641759c8e6d4f4b16103fb4bf1c9b56e8b67` | SUCCESS; corrected actual-event timestamp labels |
+
+Both have 41 SUCCESS steps and one existing conditional SKIPPED step:
+`Verify bank-contract APK runtime byte-identical to build 783`. That skipped
+check is not promoted to PASS. Job #807 `113322460031` passed existing host/native
+baseline guards, Gradle `testDebugUnitTest`, its zero failures/errors/skipped
+JVM-test gate, standard `assembleDebug`, both ABI Stage 3 exclusion and uploads.
+No experimental F03 APK or new workflow was added.
+
+Public #807 metadata confirms `mix-percussion-proof` artifact `11552892116`,
+archive SHA256
+`b4e49b52031bff7f9e4408176ce5c5d9f7ee13f95f9a2b533107237bf53037c1`.
+The unchanged `TEST-*StyleMixFidelity*.xml` upload pattern includes the P1 test
+wrapper's stdout/proof. Artifact payload, exact aggregate CI test count and CI
+SDK/PCM metrics were not independently downloaded/inspected. Measured metrics
+in this report come from P1-N **local** evidence; CI SUCCESS does not substitute
+for native identity audit or device audio. The standard `app-debug` artifact is
+`11552737157`, SHA256
+`cc9d76edb83e10cc241795bdced0020aba28d7fb988502cb8e7b7af353bb24cf`;
+its bytes are not asserted identical to #805.
+
+The final CI record is a documentation-only follow-up commit. All executable,
+test and fixture files remain identical to the #807 tested commit. The unchanged
+workflow ignores docs-only pushes, so that record does not imply another build.
+Final local/remote HEAD and clean working tree are verified after push; all 371
+original baseline hashes remain identical.
 
 The P1 native runner verifies all 371 baseline bytes before and after execution;
 CI invokes it only from the new `app/src/test` wrapper. Missing real SDK is
