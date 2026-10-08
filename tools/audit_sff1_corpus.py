@@ -466,7 +466,9 @@ def production_identity():
                   if name in metadata_sources else historical_bytes(name))
         require(hashlib.sha256(expected).hexdigest()==hashlib.sha256(observed).hexdigest(),f"S1 production source changed beyond pinned metadata: {name}")
     untracked=subprocess.check_output(["git","ls-files","--others","--exclude-standard","--","app/src/main"],cwd=ROOT,text=True)
-    require(not untracked.strip(),"S1 has new untracked production files")
+    from generated_bass_sdk_guard import verify_generated_sdk
+    try: verify_generated_sdk(ROOT,untracked.splitlines())
+    except AssertionError as error: raise ConformanceError(str(error)) from error
     result={"baseline_commit":BASELINE,"main_tree_git_oid":subprocess.check_output(["git","rev-parse",f"{BASELINE}:app/src/main"],cwd=ROOT,text=True).strip(),
             "tracked_files":files,"verified_working_tree_sha256":digest(files)}
     if metadata_sources:

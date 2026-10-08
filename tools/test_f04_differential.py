@@ -99,6 +99,9 @@ def reduced_projection(text):
 
 def main():
     verify_profile();OUT.mkdir(parents=True,exist_ok=True)
+    from generated_bass_sdk_guard import PATHS
+    if any((ROOT/path).exists() for path in PATHS):
+        subprocess.run(['python3','-B',str(ROOT/'tools/test_generated_bass_sdk_guard.py')],cwd=ROOT,check=True)
     common=['--existing-regressions','--s2','--s3','--s4','--s5']
     for profile,extra,output in [('baseline',['--f04-baseline'],BASE),('candidate',['--f04'],CANDIDATE)]:
         log=OUT/(profile+'-pipeline.log')

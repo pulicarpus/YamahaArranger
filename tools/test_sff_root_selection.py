@@ -50,7 +50,10 @@ def portable_production_identity(read_bytes=None):
         metadata,path=row.split('\t',1);mode,_,stage=metadata.split()
         require(stage=='0','Unmerged production index');modes[path]=mode
     require(sorted(modes)==sorted(pinned['tracked_files']),'S1 production source-set drift')
-    require(not subprocess.check_output(['git','ls-files','--others','--exclude-standard','--','app/src/main'],cwd=ROOT,text=True).strip(),'Untracked production source')
+    from generated_bass_sdk_guard import verify_generated_sdk
+    untracked=subprocess.check_output(['git','ls-files','--others','--exclude-standard','--','app/src/main'],cwd=ROOT,text=True).splitlines()
+    try: verify_generated_sdk(ROOT,untracked)
+    except AssertionError as error: raise ConformanceError(str(error)) from error
     normalized={};physical={}
     for path,expected in pinned['tracked_files'].items():
         raw=(ROOT/path).read_bytes() if read_bytes is None else read_bytes(path)

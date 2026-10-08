@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "archives": [
+    {
+      "url": "https://www.un4seen.com/files/bass24-android.zip",
+      "sha256": "236c9017728a910dfe74e79d36d98ad6784f3558c21e8812cfcbafe9bd0fef41",
+      "bytes": 1081948
+    },
+    {
+      "url": "https://www.un4seen.com/files/bassmidi24-android.zip",
+      "sha256": "6ca3bd8bd0bd9663ec60995821ef0728b32173628f1ae976ffbe40f7b61f6f12",
+      "bytes": 463609
+    }
+  ],
+  "files": {
+    "app/src/main/cpp/basssdk/bass.h": {
+      "sha256": "deb66f150ceada5370a13c9b96879105b9237f1bc5bf5f2f01b77eaecb524b78",
+      "bytes": 47164,
+      "archive_member": "c/bass.h",
+      "archive_url": "https://www.un4seen.com/files/bass24-android.zip"
+    },
+    "app/src/main/cpp/basssdk/bassmidi.h": {
+      "sha256": "6fede34e385adcac14f117566943fbc76c02b87433c6f88b1d97117311475eb9",
+      "bytes": 17822,
+      "archive_member": "c/bassmidi.h",
+      "archive_url": "https://www.un4seen.com/files/bassmidi24-android.zip"
+    },
+    "app/src/main/jniLibs/arm64-v8a/libbass.so": {
+      "sha256": "9a761481e30d44a2a96df1f0986f2aab629be469a6b2fcfdf043923a1f18e365",
+      "bytes": 324744,
+      "archive_member": "libs/arm64-v8a/libbass.so",
+      "archive_url": "https://www.un4seen.com/files/bass24-android.zip"
+    },
+    "app/src/main/jniLibs/arm64-v8a/libbassmidi.so": {
+      "sha256": "4212cf33d18d1f645874d8f5b14f9b7bceae67d48acc5b345a03ecd2be309083",
+      "bytes": 152472,
+      "archive_member": "libs/arm64-v8a/libbassmidi.so",
+      "archive_url": "https://www.un4seen.com/files/bassmidi24-android.zip"
+    },
+    "app/src/main/jniLibs/armeabi-v7a/libbass.so": {
+      "sha256": "26a8f174fc763f8171b97a052e0994cbf6284f0c276cb853017cc66220167a3f",
+      "bytes": 240108,
+      "archive_member": "libs/armeabi-v7a/libbass.so",
+      "archive_url": "https://www.un4seen.com/files/bass24-android.zip"
+    },
+    "app/src/main/jniLibs/armeabi-v7a/libbassmidi.so": {
+      "sha256": "31ef5943583f0518a2a67a16c1474b22826bc32f9eb0ee650d16934621e1dd6b",
+      "bytes": 118776,
+      "archive_member": "libs/armeabi-v7a/libbassmidi.so",
+      "archive_url": "https://www.un4seen.com/files/bassmidi24-android.zip"
+    }
+  }
+}
