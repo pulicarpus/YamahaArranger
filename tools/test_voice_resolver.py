@@ -11,6 +11,12 @@ compiler = os.environ.get("CXX") or shutil.which("c++") or shutil.which("g++")
 if not compiler:
     raise SystemExit("C++17 host compiler required for voice resolver regression tests")
 with tempfile.TemporaryDirectory(prefix="yamaha-resolver-") as directory:
+    f03_executable=Path(directory)/"f03_native_lifecycle_test"
+    subprocess.run([compiler,"-std=c++17","-O2","-pthread","-DYAMAHA_COMPATIBLE_PERCUSSION=1",
+                    "-I",str(root/"tests/mocks"),"-I",str(root/"app/src/main/cpp"),"-I",str(root/"tests"),
+                    str(root/"tests/f03_native_lifecycle_test.cpp"),str(root/"app/src/main/cpp/bassmidi_player.cpp"),
+                    "-o",str(f03_executable)],check=True)
+    subprocess.run([str(f03_executable),directory],check=True)
     executable = Path(directory) / "voice_resolver_test"
     subprocess.run([compiler, "-std=c++17", "-Wall", "-Wextra", "-Werror", "-O2",
                     "-I", str(root / "app/src/main/cpp"),
@@ -116,3 +122,4 @@ subprocess.run(["python3",str(root/"tools/sff_casm_source_guard.py")],check=True
 subprocess.run(["python3",str(root/"tools/test_sff_casm_source_guard.py")],check=True)
 subprocess.run(["python3",str(root/"tools/test_sff_casm_native.py")],check=True)
 subprocess.run(["python3",str(root/"tools/test_sff_root_selection.py")],check=True)
+subprocess.run(["python3",str(root/"tools/test_f03_ownership.py")],check=True)

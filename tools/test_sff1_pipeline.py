@@ -28,6 +28,8 @@ def main(argv=None):
     parser.add_argument("--s3-protocols",type=Path,help="full 503 generated semantic matrices for S3 host test")
     parser.add_argument("--s3",action="store_true",help="also run CASM preservation tests")
     parser.add_argument("--s4",action="store_true",help="also run read-only root-selection evidence tests")
+    parser.add_argument("--s5",action="store_true",help="also run read-only ownership investigation")
+    parser.add_argument("--record-s5",action="store_true",help="initial S5 trace observation only; refuses existing S5 digest")
     parser.add_argument("--s2",action="store_true",help="also run dialect metadata tests; S1 captures stay pinned")
     parser.add_argument("--record-digests",action="store_true",help="create initial expected capture digest; never overwrite")
     args=parser.parse_args(argv)
@@ -68,6 +70,16 @@ def main(argv=None):
     if args.s4:
         sources.append(test_root/"SffRootSelectionEvidenceTest.kt")
         tests.append("com.yourapp.yamahaarranger.arranger.SffRootSelectionEvidenceTest")
+    if args.s5:
+        sources.append(test_root/"F03NoteOwnershipInvestigationTest.kt")
+        tests.append("com.yourapp.yamahaarranger.arranger.F03NoteOwnershipInvestigationTest")
+        # Compile real external MIDI serializer and real ACMP controller.
+        # New facades supply platform/log/audio types only, never decisions.
+        replaced={"AudioEngineManager.kt","MidiInputManager.kt","Timber.kt","DebugLog.kt"}
+        sources=[p for p in sources if not(p.parent.name=='sff1_jvm_stubs' and p.name in replaced)]
+        sources+=sorted((ROOT/'tests/sff5_jvm_stubs').glob('*.kt'))
+        sources += [ROOT/'app/src/main/java/com/yourapp/midi/MidiInputManager.kt',ROOT/'app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt',test_root/'F03BoundaryLifecycleInvestigationTest.kt']
+        tests.append("com.yourapp.yamahaarranger.arranger.F03BoundaryLifecycleInvestigationTest")
     if args.existing_regressions:
         sources += [test_root/(name+".kt") for name in EXISTING]
         tests += ["com.yourapp.yamahaarranger.arranger."+name for name in EXISTING]
@@ -85,6 +97,11 @@ def main(argv=None):
     # Start Mockito's pinned agent explicitly: sandboxed hosts may disallow
     # self-attach. This is JVM test tooling, never an app/production agent.
     command=["java","-Xmx1g",f"-javaagent:{deps/'byte-buddy-agent.jar'}",f"-Dsff1.output={capture}","-cp",runtime]
+    if args.s5:
+        command.insert(2,f"-Dsff5.output={output/'ownership-traces.txt'}")
+    if args.record_s5:
+        require(args.s5 and not (ROOT/'app/src/test/resources/sff5/overlap_dispatch.sha256').exists(),"--record-s5 initial only")
+        command.insert(2,"-Dsff5.record=true")
     if args.s3_protocols:
         command.insert(2,f"-Dsff3.protocols={args.s3_protocols.resolve()}")
     if args.record_digests:
