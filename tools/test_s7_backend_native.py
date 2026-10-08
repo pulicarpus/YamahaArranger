@@ -46,5 +46,13 @@ def main():
         raise
     finally:
         (a.output/'proof.json').write_text(json.dumps(result,indent=2)+'\n')
+        # Public, commit-specific native evidence without changing workflow or
+        # requiring log/API credentials. Only the official runner summary file.
+        summary=os.environ.get('GITHUB_STEP_SUMMARY')
+        if os.environ.get('GITHUB_ACTIONS')=='true' and summary:
+            with Path(summary).open('a') as stream:
+                stream.write('\n## S7 F03 isolated backend probe\n\n')
+                stream.write('Real SDK synthetic PCM is separate from device audio and native voice handles.\n\n```json\n')
+                stream.write(json.dumps(result,indent=2)+'\n```\n')
 
 if __name__=='__main__':main()

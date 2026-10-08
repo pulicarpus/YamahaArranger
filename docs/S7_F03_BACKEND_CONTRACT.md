@@ -131,6 +131,9 @@ dilaporkan pada laporan akhir commit-specific, tanpa menebak dari Build800.
 JUnit XML class S7 cocok dengan existing `TEST-*StyleMixFidelity*.xml` artifact
 pattern, sehingga stdout/proof dapat disimpan dalam `mix-percussion-proof`
 tanpa mengubah workflow atau menimpa berkas proof baseline.
+Pada GitHub Actions, probe juga menambahkan JSON hasil ke runner-provided
+`GITHUB_STEP_SUMMARY`, agar metrics commit-specific dapat ditinjau lewat halaman
+run tanpa mengasumsikan akses authenticated log atau artifact download.
 
 ## Expected versus actual dan batas bukti
 
