@@ -93,9 +93,33 @@ ownership nor historical expected files were changed to address those findings.
 
 ## CI and rollback
 
-Implementation commit/build/artifact are reported after pushing the checked
-patch and observing the existing workflow. Pending CI is not SUCCESS. The
-existing APK Stage3 symbol checks for arm64-v8a and armeabi-v7a remain mandatory.
+Implementation: `e563d55bcf2112bdaf3928469206a8b783e66c6c`. Harness-only follow-ups:
+`ed7aeb76abb78e317503f96e69c5193292a35aad` (whitespace) and tested HEAD
+`61b2042a8aacc57bd1a07c548dd79296d202eced` (portable shallow source verification).
+
+[Build #810](https://github.com/pulicarpus/YamahaArranger/actions/runs/37810747435)
+**FAILURE**, job113426638704, step25 **Build debug APK**. Step23 Android SDK
+download succeeded; step26 both-ABI APK Stage3 verification and step27 APK
+artifact upload were skipped. Thus Android/ABI completion is not PASS and there
+is **no APK artifact link** for this build. See [CI/evidence](f04_ci_evidence.json).
+
+The step's own log URL returned HTTP404 in this session. Its exact first error
+and possible additional JVM errors are UNKNOWN, not fabricated. A deterministic
+checkout-shallow reproduction establishes a sufficient harness blocker:
+existing workflow step23 creates six untracked files (two SDK headers and
+libbass/libbassmidi for both ABIs) under app/src/main. The newly CI-invoked host
+pipeline's strict source-set check rejects them with
+`SFF1_PIPELINE FAIL: Untracked production source` before compilation. Reproduction
+exit1 was asserted, all six paths were checked, and no tracked playback file was
+modified. This is a harness/build integration blocker, not a proved F04 audio bug.
+
+No additional code fix was made after CI failure. A follow-up requires a reviewed
+host-source/vendor-artifact separation or equally strict explicit SDK integrity
+profile: retain all125 tracked-source pins, reject unexpected production paths,
+and verify the existing generated SDK artifacts independently. Do not broadly
+ignore app/src/main or remove the source-set assertion. This recommendation is
+not implemented or authorized automatically. Both-ABI APK/Stage3 and device
+testing remain UNRUN/BLOCKED until that gate is repaired and CI succeeds.
 
 Rollback is the reviewed F04 implementation/harness commit range back to the pinned baseline,
 with its approved-profile test/harness changes reverted together. Do not revert
@@ -118,5 +142,6 @@ of stuck notes. Melodic test owners clear and retained OFFs are exact. Native
 voice identity, real controller disconnect behavior, timing, clipping and Yamaha
 sound are not certified by logical traces or green CI.
 
-STOP after the successful existing APK build. Wait for user audio testing;
-no F02/F12/F03 follow-up or additional patch is authorized by this work.
+STOP at the verified CI failure/blocker. No APK is ready for user sound testing.
+Wait for the next explicit instruction before a harness correction/build retry;
+no F02/F12/F03, production audio change or automatic follow-up.

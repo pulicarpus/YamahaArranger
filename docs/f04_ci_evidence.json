@@ -1,0 +1,4722 @@
+{
+  "tested_commit": "61b2042a8aacc57bd1a07c548dd79296d202eced",
+  "ci_run": "37810747435",
+  "ci_job": "113426638704",
+  "ci_step_failure": "Build debug APK",
+  "direct_step_log": {
+    "status": "UNAVAILABLE",
+    "http": 404,
+    "url": "https://github.com/pulicarpus/YamahaArranger/commit/61b2042a8aacc57bd1a07c548dd79296d202eced/checks/113426638704/logs/25",
+    "first_ci_error_text": "UNKNOWN",
+    "other_ci_failures": "UNKNOWN"
+  },
+  "reproduction": "PROVEN",
+  "reproduction_error": "Untracked production source",
+  "generated_sdk_paths": [
+    "app/src/main/cpp/basssdk/bass.h",
+    "app/src/main/cpp/basssdk/bassmidi.h",
+    "app/src/main/jniLibs/arm64-v8a/libbass.so",
+    "app/src/main/jniLibs/arm64-v8a/libbassmidi.so",
+    "app/src/main/jniLibs/armeabi-v7a/libbass.so",
+    "app/src/main/jniLibs/armeabi-v7a/libbassmidi.so"
+  ],
+  "source_modified_by_reproduction": false,
+  "apk": "NOT_BUILT",
+  "code_fix": "NOT_IMPLEMENTED",
+  "ci": {
+    "build": 810,
+    "run": "37810747435",
+    "job": "113426638704",
+    "tested_commit": "61b2042a8aacc57bd1a07c548dd79296d202eced",
+    "run_result": "FAILURE",
+    "url": "https://github.com/pulicarpus/YamahaArranger/actions/runs/37810747435",
+    "steps": [
+      {
+        "name": "Set up job",
+        "number": "1",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:41:24Z",
+        "completed-at": "2026-10-08T16:41:26Z"
+      },
+      {
+        "name": "Pull ghcr.io/appleboy/telegram-action:1.1.1",
+        "number": "2",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:41:26Z",
+        "completed-at": "2026-10-08T16:41:30Z"
+      },
+      {
+        "name": "Checkout Repository",
+        "number": "3",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:41:30Z",
+        "completed-at": "2026-10-08T16:41:31Z"
+      },
+      {
+        "name": "Verify bank-contract APK runtime byte-identical to build 783",
+        "number": "4",
+        "conclusion": "skipped",
+        "started-at": "2026-10-08T16:41:31Z",
+        "completed-at": "2026-10-08T16:41:31Z"
+      },
+      {
+        "name": "Check out #770 performance baseline (read only)",
+        "number": "5",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:41:31Z",
+        "completed-at": "2026-10-08T16:41:32Z"
+      },
+      {
+        "name": "Check out #772 production baseline (read only)",
+        "number": "6",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:41:32Z",
+        "completed-at": "2026-10-08T16:41:33Z"
+      },
+      {
+        "name": "Test family-preserving resolver",
+        "number": "7",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:41:33Z",
+        "completed-at": "2026-10-08T16:44:40Z"
+      },
+      {
+        "name": "Test compatible percussion with actual BASSMIDI SDK",
+        "number": "8",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:44:40Z",
+        "completed-at": "2026-10-08T16:45:21Z"
+      },
+      {
+        "name": "Check out #773 engineering baseline (read only)",
+        "number": "9",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:45:21Z",
+        "completed-at": "2026-10-08T16:45:22Z"
+      },
+      {
+        "name": "Verify",
+        "number": "10",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:45:22Z",
+        "completed-at": "2026-10-08T16:45:48Z"
+      },
+      {
+        "name": "Check out #776 regression baseline (read only)",
+        "number": "11",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:45:48Z",
+        "completed-at": "2026-10-08T16:45:49Z"
+      },
+      {
+        "name": "Verify Stage 3 bypass and reviewed accompaniment patch against build 776",
+        "number": "12",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:45:49Z",
+        "completed-at": "2026-10-08T16:46:15Z"
+      },
+      {
+        "name": "Set up JDK 17",
+        "number": "13",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:46:15Z",
+        "completed-at": "2026-10-08T16:46:15Z"
+      },
+      {
+        "name": "Check out #774 end-to-end baseline (read only)",
+        "number": "14",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:46:15Z",
+        "completed-at": "2026-10-08T16:46:16Z"
+      },
+      {
+        "name": "Verify",
+        "number": "15",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:46:16Z",
+        "completed-at": "2026-10-08T16:46:41Z"
+      },
+      {
+        "name": "Check out #786 working presence baseline (read only)",
+        "number": "16",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:46:41Z",
+        "completed-at": "2026-10-08T16:46:42Z"
+      },
+      {
+        "name": "Verify role PCM boundaries and",
+        "number": "17",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:46:42Z",
+        "completed-at": "2026-10-08T16:47:10Z"
+      },
+      {
+        "name": "Check out #787 ANR/session baseline (read only)",
+        "number": "18",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:47:10Z",
+        "completed-at": "2026-10-08T16:47:11Z"
+      },
+      {
+        "name": "Verify snapshot-only patch and byte-identical",
+        "number": "19",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:47:11Z",
+        "completed-at": "2026-10-08T16:49:52Z"
+      },
+      {
+        "name": "Accept Android SDK licenses",
+        "number": "20",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:49:52Z",
+        "completed-at": "2026-10-08T16:49:52Z"
+      },
+      {
+        "name": "Set up Android NDK r26d",
+        "number": "21",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:49:52Z",
+        "completed-at": "2026-10-08T16:50:17Z"
+      },
+      {
+        "name": "Install CMake",
+        "number": "22",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:50:17Z",
+        "completed-at": "2026-10-08T16:50:25Z"
+      },
+      {
+        "name": "Download BASS/BASSMIDI Android SDKs",
+        "number": "23",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:50:25Z",
+        "completed-at": "2026-10-08T16:50:25Z"
+      },
+      {
+        "name": "Set up Gradle",
+        "number": "24",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:50:25Z",
+        "completed-at": "2026-10-08T16:50:32Z"
+      },
+      {
+        "name": "Build debug APK",
+        "number": "25",
+        "conclusion": "failure",
+        "started-at": "2026-10-08T16:50:32Z",
+        "completed-at": "2026-10-08T16:53:36Z"
+      },
+      {
+        "name": "Verify Stage 3 excluded from both APK native ABIs",
+        "number": "26",
+        "conclusion": "skipped",
+        "started-at": "2026-10-08T16:53:36Z",
+        "completed-at": "2026-10-08T16:53:36Z"
+      },
+      {
+        "name": "Upload APK artifact",
+        "number": "27",
+        "conclusion": "skipped",
+        "started-at": "2026-10-08T16:53:36Z",
+        "completed-at": "2026-10-08T16:53:36Z"
+      },
+      {
+        "name": "Upload full global shadow comparison",
+        "number": "28",
+        "conclusion": "skipped",
+        "started-at": "2026-10-08T16:53:36Z",
+        "completed-at": "2026-10-08T16:53:36Z"
+      },
+      {
+        "name": "Upload accompaniment presence proof",
+        "number": "29",
+        "conclusion": "skipped",
+        "started-at": "2026-10-08T16:53:36Z",
+        "completed-at": "2026-10-08T16:53:36Z"
+      },
+      {
+        "name": "Upload mix and percussion proof",
+        "number": "30",
+        "conclusion": "skipped",
+        "started-at": "2026-10-08T16:53:36Z",
+        "completed-at": "2026-10-08T16:53:36Z"
+      },
+      {
+        "name": "Send APK to Telegram",
+        "number": "31",
+        "conclusion": "skipped",
+        "started-at": "2026-10-08T16:53:36Z",
+        "completed-at": "2026-10-08T16:53:36Z"
+      },
+      {
+        "name": "Post Set up Gradle",
+        "number": "53",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:53:36Z",
+        "completed-at": "2026-10-08T16:53:37Z"
+      },
+      {
+        "name": "Post Check out #787 ANR/session baseline (read only)",
+        "number": "54",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:53:37Z",
+        "completed-at": "2026-10-08T16:53:37Z"
+      },
+      {
+        "name": "Post Check out #786 working presence baseline (read only)",
+        "number": "55",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:53:37Z",
+        "completed-at": "2026-10-08T16:53:37Z"
+      },
+      {
+        "name": "Post Check out #774 end-to-end baseline (read only)",
+        "number": "56",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:53:37Z",
+        "completed-at": "2026-10-08T16:53:37Z"
+      },
+      {
+        "name": "Post Set up JDK 17",
+        "number": "57",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:53:37Z",
+        "completed-at": "2026-10-08T16:53:37Z"
+      },
+      {
+        "name": "Post Check out #776 regression baseline (read only)",
+        "number": "58",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:53:37Z",
+        "completed-at": "2026-10-08T16:53:38Z"
+      },
+      {
+        "name": "Post Check out #773 engineering baseline (read only)",
+        "number": "59",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:53:38Z",
+        "completed-at": "2026-10-08T16:53:38Z"
+      },
+      {
+        "name": "Post Check out #772 production baseline (read only)",
+        "number": "60",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:53:38Z",
+        "completed-at": "2026-10-08T16:53:38Z"
+      },
+      {
+        "name": "Post Check out #770 performance baseline (read only)",
+        "number": "61",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:53:38Z",
+        "completed-at": "2026-10-08T16:53:38Z"
+      },
+      {
+        "name": "Post Checkout Repository",
+        "number": "62",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:53:38Z",
+        "completed-at": "2026-10-08T16:53:39Z"
+      },
+      {
+        "name": "Complete job",
+        "number": "63",
+        "conclusion": "success",
+        "started-at": "2026-10-08T16:53:39Z",
+        "completed-at": "2026-10-08T16:53:39Z"
+      }
+    ]
+  },
+  "differential": {
+    "baseline_commit": "0b8536a018eb2661bd6e06e8864a638b31d57226",
+    "differential": "PASS",
+    "captured_runs": 20,
+    "changed_runs": 4,
+    "audio_on_removed": 600,
+    "midi_on_removed": 600,
+    "retained_calls": "BYTE_IDENTICAL",
+    "historical_goldens": "UNCHANGED",
+    "production_files_changed": 1,
+    "native_pcm": "UNRUN",
+    "android_device": "UNRUN",
+    "yamaha_timbre": "UNKNOWN",
+    "original_503_corpus": "BLOCKED",
+    "s5_reduced_runs": 1046,
+    "s5_changed_runs": [
+      "CASE 386 Pop&Rock/6-8Rock.S115.bcs/FillCC root=0",
+      "CASE 386 Pop&Rock/6-8Rock.S115.bcs/FillCC root=5",
+      "CASE 387 Pop&Rock/6-8Rock.S115.bcs/FillCC root=0",
+      "CASE 387 Pop&Rock/6-8Rock.S115.bcs/FillCC root=5"
+    ],
+    "s5_audio_on_removed": 8,
+    "s5_midi_on_removed": 8,
+    "s5_retained_off_and_owner": "BYTE_IDENTICAL",
+    "results": {
+      "GOLDEN_Ballad_8BeatPiano1.T107.pcs_F_MAJOR": {
+        "audio_on_removed": 0,
+        "midi_on_removed": 0,
+        "removed_events": [],
+        "baseline_trace_sha256": "1e5017307ff1b7e5c304eed2a8e4d6683fb48d110f6f3c81805b3a5726799ae9",
+        "candidate_trace_sha256": "1e5017307ff1b7e5c304eed2a8e4d6683fb48d110f6f3c81805b3a5726799ae9",
+        "retained_trace_exact": true
+      },
+      "GOLDEN_Ballad_PopWaltz2.S662.bcs_F_MAJOR": {
+        "audio_on_removed": 0,
+        "midi_on_removed": 0,
+        "removed_events": [],
+        "baseline_trace_sha256": "bbb40083dbb011fe12d041e1baea9ef397c34ecffab46dbd554af0b981247fff",
+        "candidate_trace_sha256": "bbb40083dbb011fe12d041e1baea9ef397c34ecffab46dbd554af0b981247fff",
+        "retained_trace_exact": true
+      },
+      "F05_no_policy_off": {
+        "audio_on_removed": 0,
+        "midi_on_removed": 0,
+        "removed_events": [],
+        "baseline_trace_sha256": "ac4f102801f79bd9cc36707173b96c8d3f005ac291edbd333260dd51936a64f3",
+        "candidate_trace_sha256": "ac4f102801f79bd9cc36707173b96c8d3f005ac291edbd333260dd51936a64f3",
+        "retained_trace_exact": true
+      },
+      "F03_overlap": {
+        "audio_on_removed": 0,
+        "midi_on_removed": 0,
+        "removed_events": [],
+        "baseline_trace_sha256": "6d1f2ee1a784586941bb58944c8807350f5e29292ecf83c5d245970e99f76e46",
+        "candidate_trace_sha256": "6d1f2ee1a784586941bb58944c8807350f5e29292ecf83c5d245970e99f76e46",
+        "retained_trace_exact": true
+      },
+      "GOLDEN_Ballad_LoveSong3.S687.prs_C_MAJOR": {
+        "audio_on_removed": 0,
+        "midi_on_removed": 0,
+        "removed_events": [],
+        "baseline_trace_sha256": "94a9cb5b2190f1e52f57d39e0387132152cc09a445abd067c5f37bfeb924b831",
+        "candidate_trace_sha256": "94a9cb5b2190f1e52f57d39e0387132152cc09a445abd067c5f37bfeb924b831",
+        "retained_trace_exact": true
+      },
+      "F06_non_note": {
+        "audio_on_removed": 0,
+        "midi_on_removed": 0,
+        "removed_events": [],
+        "baseline_trace_sha256": "c2a0be7d88c579a767a0aa2a22b251369add070b4a3f396d57318a9f3d1fa180",
+        "candidate_trace_sha256": "c2a0be7d88c579a767a0aa2a22b251369add070b4a3f396d57318a9f3d1fa180",
+        "retained_trace_exact": true
+      },
+      "GOLDEN_Latin_Forro.S729.prs_F_MAJOR": {
+        "audio_on_removed": 0,
+        "midi_on_removed": 0,
+        "removed_events": [],
+        "baseline_trace_sha256": "994ed61a3551999c909f47b8d7de929dc16a7f49882ac768c7d042e07609b8dc",
+        "candidate_trace_sha256": "994ed61a3551999c909f47b8d7de929dc16a7f49882ac768c7d042e07609b8dc",
+        "retained_trace_exact": true
+      },
+      "GOLDEN_Pop&Rock_Unplugged2.T151.prs_C_MAJOR": {
+        "audio_on_removed": 256,
+        "midi_on_removed": 256,
+        "removed_events": [
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 70,
+            "tick": 0
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 70,
+            "tick": 0
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 70,
+            "tick": 20
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 80,
+            "tick": 20
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 40
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 40
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 95,
+            "tick": 60
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 95,
+            "tick": 60
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 83,
+            "tick": 1920
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 83,
+            "tick": 1920
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 83,
+            "tick": 1940
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 93,
+            "tick": 1940
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 1960
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 1960
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 105,
+            "tick": 1980
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 105,
+            "tick": 1980
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 60,
+            "tick": 4800
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 75,
+            "tick": 4800
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 4800
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 105,
+            "tick": 4800
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 60,
+            "tick": 4800
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 85,
+            "tick": 4800
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 4800
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 105,
+            "tick": 4800
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 60,
+            "tick": 6720
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 64,
+            "tick": 6720
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 69,
+            "tick": 6720
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 72,
+            "tick": 6720
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 60,
+            "tick": 6720
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 74,
+            "tick": 6720
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 69,
+            "tick": 6720
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 72,
+            "tick": 6720
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 70,
+            "tick": 7680
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 70,
+            "tick": 7680
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 70,
+            "tick": 7700
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 80,
+            "tick": 7700
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 7720
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 7720
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 95,
+            "tick": 7740
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 95,
+            "tick": 7740
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 83,
+            "tick": 9600
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 83,
+            "tick": 9600
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 83,
+            "tick": 9620
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 93,
+            "tick": 9620
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 9640
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 9640
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 105,
+            "tick": 9660
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 105,
+            "tick": 9660
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 60,
+            "tick": 12480
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 75,
+            "tick": 12480
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 12480
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 105,
+            "tick": 12480
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 60,
+            "tick": 12480
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 85,
+            "tick": 12480
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 12480
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 105,
+            "tick": 12480
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 60,
+            "tick": 14400
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 64,
+            "tick": 14400
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 69,
+            "tick": 14400
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 72,
+            "tick": 14400
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 60,
+            "tick": 14400
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 74,
+            "tick": 14400
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 69,
+            "tick": 14400
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 72,
+            "tick": 14400
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 70,
+            "tick": 15360
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 70,
+            "tick": 15360
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 70,
+            "tick": 15380
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 80,
+            "tick": 15380
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 15400
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 15400
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 95,
+            "tick": 15420
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 95,
+            "tick": 15420
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 83,
+            "tick": 17280
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 83,
+            "tick": 17280
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 83,
+            "tick": 17300
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 93,
+            "tick": 17300
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 17320
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 17320
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 105,
+            "tick": 17340
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 105,
+            "tick": 17340
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 60,
+            "tick": 20160
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 75,
+            "tick": 20160
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 20160
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 105,
+            "tick": 20160
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 60,
+            "tick": 20160
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 85,
+            "tick": 20160
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 20160
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 105,
+            "tick": 20160
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 60,
+            "tick": 22080
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 64,
+            "tick": 22080
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 69,
+            "tick": 22080
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 72,
+            "tick": 22080
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 60,
+            "tick": 22080
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 74,
+            "tick": 22080
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 69,
+            "tick": 22080
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 72,
+            "tick": 22080
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 70,
+            "tick": 23040
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 70,
+            "tick": 23040
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 70,
+            "tick": 23060
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 80,
+            "tick": 23060
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 23080
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 23080
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 95,
+            "tick": 23100
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 95,
+            "tick": 23100
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 83,
+            "tick": 24960
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 83,
+            "tick": 24960
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 83,
+            "tick": 24980
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 93,
+            "tick": 24980
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 25000
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 25000
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 105,
+            "tick": 25020
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 105,
+            "tick": 25020
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 60,
+            "tick": 27840
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 75,
+            "tick": 27840
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 27840
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 105,
+            "tick": 27840
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 60,
+            "tick": 27840
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 85,
+            "tick": 27840
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 27840
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 105,
+            "tick": 27840
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 60,
+            "tick": 29760
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 64,
+            "tick": 29760
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 69,
+            "tick": 29760
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 72,
+            "tick": 29760
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 60,
+            "tick": 29760
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 74,
+            "tick": 29760
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 69,
+            "tick": 29760
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 72,
+            "tick": 29760
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 70,
+            "tick": 30720
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 70,
+            "tick": 30720
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 70,
+            "tick": 30740
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 80,
+            "tick": 30740
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 30760
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 30760
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 95,
+            "tick": 30780
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 95,
+            "tick": 30780
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 83,
+            "tick": 32640
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 83,
+            "tick": 32640
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 83,
+            "tick": 32660
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 93,
+            "tick": 32660
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 32680
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 32680
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 105,
+            "tick": 32700
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 105,
+            "tick": 32700
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 60,
+            "tick": 35520
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 75,
+            "tick": 35520
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 35520
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 105,
+            "tick": 35520
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 60,
+            "tick": 35520
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 85,
+            "tick": 35520
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 35520
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 105,
+            "tick": 35520
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 60,
+            "tick": 37440
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 64,
+            "tick": 37440
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 69,
+            "tick": 37440
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 72,
+            "tick": 37440
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 60,
+            "tick": 37440
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 74,
+            "tick": 37440
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 69,
+            "tick": 37440
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 72,
+            "tick": 37440
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 70,
+            "tick": 38400
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 70,
+            "tick": 38400
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 70,
+            "tick": 38420
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 80,
+            "tick": 38420
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 38440
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 38440
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 95,
+            "tick": 38460
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 95,
+            "tick": 38460
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 83,
+            "tick": 40320
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 83,
+            "tick": 40320
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 83,
+            "tick": 40340
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 93,
+            "tick": 40340
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 40360
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 40360
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 105,
+            "tick": 40380
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 105,
+            "tick": 40380
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 60,
+            "tick": 43200
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 75,
+            "tick": 43200
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 43200
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 105,
+            "tick": 43200
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 60,
+            "tick": 43200
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 85,
+            "tick": 43200
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 43200
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 105,
+            "tick": 43200
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 60,
+            "tick": 45120
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 64,
+            "tick": 45120
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 69,
+            "tick": 45120
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 72,
+            "tick": 45120
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 60,
+            "tick": 45120
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 74,
+            "tick": 45120
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 69,
+            "tick": 45120
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 72,
+            "tick": 45120
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 70,
+            "tick": 46080
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 70,
+            "tick": 46080
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 70,
+            "tick": 46100
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 80,
+            "tick": 46100
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 46120
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 46120
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 95,
+            "tick": 46140
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 95,
+            "tick": 46140
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 83,
+            "tick": 48000
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 83,
+            "tick": 48000
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 83,
+            "tick": 48020
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 93,
+            "tick": 48020
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 48040
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 48040
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 105,
+            "tick": 48060
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 105,
+            "tick": 48060
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 60,
+            "tick": 50880
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 75,
+            "tick": 50880
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 50880
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 105,
+            "tick": 50880
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 60,
+            "tick": 50880
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 85,
+            "tick": 50880
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 50880
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 105,
+            "tick": 50880
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 60,
+            "tick": 52800
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 64,
+            "tick": 52800
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 69,
+            "tick": 52800
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 72,
+            "tick": 52800
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 60,
+            "tick": 52800
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 74,
+            "tick": 52800
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 69,
+            "tick": 52800
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 72,
+            "tick": 52800
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 70,
+            "tick": 53760
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 70,
+            "tick": 53760
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 70,
+            "tick": 53780
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 80,
+            "tick": 53780
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 53800
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 53800
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 95,
+            "tick": 53820
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 95,
+            "tick": 53820
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 83,
+            "tick": 55680
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 83,
+            "tick": 55680
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 83,
+            "tick": 55700
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 93,
+            "tick": 55700
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 55720
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 55720
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 105,
+            "tick": 55740
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 105,
+            "tick": 55740
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 60,
+            "tick": 58560
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 75,
+            "tick": 58560
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 58560
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 105,
+            "tick": 58560
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 60,
+            "tick": 58560
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 85,
+            "tick": 58560
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 58560
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 105,
+            "tick": 58560
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 60,
+            "tick": 60480
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 64,
+            "tick": 60480
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 69,
+            "tick": 60480
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 72,
+            "tick": 60480
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 60,
+            "tick": 60480
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 74,
+            "tick": 60480
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 69,
+            "tick": 60480
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 72,
+            "tick": 60480
+          }
+        ],
+        "baseline_trace_sha256": "3e6320b3511428a87e0882a43247aa2b721a79d94b62e92220b1db7e67c91bb9",
+        "candidate_trace_sha256": "2ad24e53f328d5be8ee047e2977d450104e855e3461f5be15742d5d174c3bb8e",
+        "retained_trace_exact": true
+      },
+      "GOLDEN_Ballad_8BeatSoft.S686.bcs_F_MAJOR": {
+        "audio_on_removed": 0,
+        "midi_on_removed": 0,
+        "removed_events": [],
+        "baseline_trace_sha256": "8c6b4fd4e1cd8116a1da57679b2b6977d3ad8ab1d81a5aa5e4487eaa7fa23ceb",
+        "candidate_trace_sha256": "8c6b4fd4e1cd8116a1da57679b2b6977d3ad8ab1d81a5aa5e4487eaa7fa23ceb",
+        "retained_trace_exact": true
+      },
+      "F02_same_tick_program": {
+        "audio_on_removed": 0,
+        "midi_on_removed": 0,
+        "removed_events": [],
+        "baseline_trace_sha256": "a3ff2998c5967c0f99028e0068c9559584b5ad68ef3ce5a14e260a6e5abe1999",
+        "candidate_trace_sha256": "a3ff2998c5967c0f99028e0068c9559584b5ad68ef3ce5a14e260a6e5abe1999",
+        "retained_trace_exact": true
+      },
+      "GOLDEN_Movie&Show_BaroqueAir1.S145.sst_C_MAJOR": {
+        "audio_on_removed": 44,
+        "midi_on_removed": 44,
+        "removed_events": [
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 76,
+            "velocity": 49,
+            "tick": 32
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 74,
+            "velocity": 48,
+            "tick": 1064
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 76,
+            "velocity": 45,
+            "tick": 2000
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 41,
+            "tick": 9552
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 70,
+            "velocity": 37,
+            "tick": 9560
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 35,
+            "tick": 9568
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 74,
+            "velocity": 41,
+            "tick": 10576
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 65,
+            "velocity": 31,
+            "tick": 10592
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 69,
+            "velocity": 24,
+            "tick": 10592
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 25,
+            "tick": 11536
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 35,
+            "tick": 11560
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 70,
+            "velocity": 26,
+            "tick": 11576
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 25,
+            "tick": 13536
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 70,
+            "velocity": 35,
+            "tick": 13536
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 64,
+            "velocity": 24,
+            "tick": 13560
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 64,
+            "velocity": 57,
+            "tick": 24992
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 52,
+            "tick": 26000
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 70,
+            "velocity": 58,
+            "tick": 26952
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 69,
+            "velocity": 62,
+            "tick": 27904
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 70,
+            "velocity": 51,
+            "tick": 28816
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 53,
+            "tick": 29792
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 72,
+            "velocity": 53,
+            "tick": 30784
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 74,
+            "velocity": 52,
+            "tick": 30904
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 72,
+            "velocity": 49,
+            "tick": 31024
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 69,
+            "velocity": 49,
+            "tick": 31752
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 72,
+            "velocity": 49,
+            "tick": 32728
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 42,
+            "tick": 40272
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 70,
+            "velocity": 35,
+            "tick": 40280
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 36,
+            "tick": 40288
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 74,
+            "velocity": 42,
+            "tick": 41296
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 65,
+            "velocity": 31,
+            "tick": 41312
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 69,
+            "velocity": 25,
+            "tick": 41312
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 26,
+            "tick": 42256
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 36,
+            "tick": 42280
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 70,
+            "velocity": 24,
+            "tick": 42296
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 25,
+            "tick": 44256
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 70,
+            "velocity": 37,
+            "tick": 44256
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 64,
+            "velocity": 26,
+            "tick": 44280
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 58,
+            "tick": 55712
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 70,
+            "velocity": 53,
+            "tick": 56720
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 58,
+            "tick": 57672
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 74,
+            "velocity": 63,
+            "tick": 58624
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 53,
+            "tick": 59536
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 70,
+            "velocity": 51,
+            "tick": 60512
+          }
+        ],
+        "baseline_trace_sha256": "c3426a785e319611e1e5fc7050b229223a423d8b59cf9666fcaf370dfd3b6fa4",
+        "candidate_trace_sha256": "8f0911d667c98c49eeed2f47a7ae19716ec0da0904478349d06c7ae8a42fcd29",
+        "retained_trace_exact": true
+      },
+      "GOLDEN_Ballad_PopWaltz2.S662.bcs_C_MAJOR": {
+        "audio_on_removed": 0,
+        "midi_on_removed": 0,
+        "removed_events": [],
+        "baseline_trace_sha256": "eae1428588b4aa5ca85e072b4be8788ce6d3396c138917c8abe6cc4232b19f1a",
+        "candidate_trace_sha256": "eae1428588b4aa5ca85e072b4be8788ce6d3396c138917c8abe6cc4232b19f1a",
+        "retained_trace_exact": true
+      },
+      "GOLDEN_Ballad_LoveSong3.S687.prs_F_MAJOR": {
+        "audio_on_removed": 0,
+        "midi_on_removed": 0,
+        "removed_events": [],
+        "baseline_trace_sha256": "06970117f570674c3eb28e168553052d99d2b754cc7a1ae9bd9d3b37669893d0",
+        "candidate_trace_sha256": "06970117f570674c3eb28e168553052d99d2b754cc7a1ae9bd9d3b37669893d0",
+        "retained_trace_exact": true
+      },
+      "F05_rhythm_off": {
+        "audio_on_removed": 0,
+        "midi_on_removed": 0,
+        "removed_events": [],
+        "baseline_trace_sha256": "f56587f03a997df2151b2ea1432e859a19d1a3da2e0679cc97e4ca0b54ff9461",
+        "candidate_trace_sha256": "f56587f03a997df2151b2ea1432e859a19d1a3da2e0679cc97e4ca0b54ff9461",
+        "retained_trace_exact": true
+      },
+      "GOLDEN_Latin_Forro.S729.prs_C_MAJOR": {
+        "audio_on_removed": 0,
+        "midi_on_removed": 0,
+        "removed_events": [],
+        "baseline_trace_sha256": "e507da42ece1f3801cc106a2829d5f2124efafec2a653b17ba556ed82339f20f",
+        "candidate_trace_sha256": "e507da42ece1f3801cc106a2829d5f2124efafec2a653b17ba556ed82339f20f",
+        "retained_trace_exact": true
+      },
+      "GOLDEN_Movie&Show_BaroqueAir1.S145.sst_F_MAJOR": {
+        "audio_on_removed": 44,
+        "midi_on_removed": 44,
+        "removed_events": [
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 76,
+            "velocity": 49,
+            "tick": 32
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 74,
+            "velocity": 48,
+            "tick": 1064
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 76,
+            "velocity": 45,
+            "tick": 2000
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 41,
+            "tick": 9552
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 70,
+            "velocity": 37,
+            "tick": 9560
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 35,
+            "tick": 9568
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 74,
+            "velocity": 41,
+            "tick": 10576
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 65,
+            "velocity": 31,
+            "tick": 10592
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 69,
+            "velocity": 24,
+            "tick": 10592
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 25,
+            "tick": 11536
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 35,
+            "tick": 11560
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 70,
+            "velocity": 26,
+            "tick": 11576
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 25,
+            "tick": 13536
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 70,
+            "velocity": 35,
+            "tick": 13536
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 64,
+            "velocity": 24,
+            "tick": 13560
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 64,
+            "velocity": 57,
+            "tick": 24992
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 52,
+            "tick": 26000
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 70,
+            "velocity": 58,
+            "tick": 26952
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 69,
+            "velocity": 62,
+            "tick": 27904
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 70,
+            "velocity": 51,
+            "tick": 28816
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 53,
+            "tick": 29792
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 72,
+            "velocity": 53,
+            "tick": 30784
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 74,
+            "velocity": 52,
+            "tick": 30904
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 72,
+            "velocity": 49,
+            "tick": 31024
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 69,
+            "velocity": 49,
+            "tick": 31752
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 72,
+            "velocity": 49,
+            "tick": 32728
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 42,
+            "tick": 40272
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 70,
+            "velocity": 35,
+            "tick": 40280
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 36,
+            "tick": 40288
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 74,
+            "velocity": 42,
+            "tick": 41296
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 65,
+            "velocity": 31,
+            "tick": 41312
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 69,
+            "velocity": 25,
+            "tick": 41312
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 26,
+            "tick": 42256
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 36,
+            "tick": 42280
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 70,
+            "velocity": 24,
+            "tick": 42296
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 25,
+            "tick": 44256
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 70,
+            "velocity": 37,
+            "tick": 44256
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 64,
+            "velocity": 26,
+            "tick": 44280
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 58,
+            "tick": 55712
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 70,
+            "velocity": 53,
+            "tick": 56720
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 58,
+            "tick": 57672
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 74,
+            "velocity": 63,
+            "tick": 58624
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 53,
+            "tick": 59536
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 70,
+            "velocity": 51,
+            "tick": 60512
+          }
+        ],
+        "baseline_trace_sha256": "04aff8993c3a494077d8100072a7e18985dba31211bb329bce9a897fd303c0fb",
+        "candidate_trace_sha256": "0bc13e3832c1f0d1d554e53a0d8abad01378991e91255f65390d984181c1c75d",
+        "retained_trace_exact": true
+      },
+      "GOLDEN_Ballad_8BeatSoft.S686.bcs_C_MAJOR": {
+        "audio_on_removed": 0,
+        "midi_on_removed": 0,
+        "removed_events": [],
+        "baseline_trace_sha256": "1a31a6ef45ecbda237bfa5d67552f4fced1562ad1abc6e503e67f4b656ec038c",
+        "candidate_trace_sha256": "1a31a6ef45ecbda237bfa5d67552f4fced1562ad1abc6e503e67f4b656ec038c",
+        "retained_trace_exact": true
+      },
+      "GOLDEN_Pop&Rock_Unplugged2.T151.prs_F_MAJOR": {
+        "audio_on_removed": 256,
+        "midi_on_removed": 256,
+        "removed_events": [
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 70,
+            "tick": 0
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 70,
+            "tick": 0
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 70,
+            "tick": 20
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 80,
+            "tick": 20
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 40
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 40
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 95,
+            "tick": 60
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 95,
+            "tick": 60
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 83,
+            "tick": 1920
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 83,
+            "tick": 1920
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 83,
+            "tick": 1940
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 93,
+            "tick": 1940
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 1960
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 1960
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 105,
+            "tick": 1980
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 105,
+            "tick": 1980
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 60,
+            "tick": 4800
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 75,
+            "tick": 4800
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 4800
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 105,
+            "tick": 4800
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 60,
+            "tick": 4800
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 85,
+            "tick": 4800
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 4800
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 105,
+            "tick": 4800
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 60,
+            "tick": 6720
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 64,
+            "tick": 6720
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 69,
+            "tick": 6720
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 72,
+            "tick": 6720
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 60,
+            "tick": 6720
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 74,
+            "tick": 6720
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 69,
+            "tick": 6720
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 72,
+            "tick": 6720
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 70,
+            "tick": 7680
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 70,
+            "tick": 7680
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 70,
+            "tick": 7700
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 80,
+            "tick": 7700
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 7720
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 7720
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 95,
+            "tick": 7740
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 95,
+            "tick": 7740
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 83,
+            "tick": 9600
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 83,
+            "tick": 9600
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 83,
+            "tick": 9620
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 93,
+            "tick": 9620
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 9640
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 9640
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 105,
+            "tick": 9660
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 105,
+            "tick": 9660
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 60,
+            "tick": 12480
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 75,
+            "tick": 12480
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 12480
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 105,
+            "tick": 12480
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 60,
+            "tick": 12480
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 85,
+            "tick": 12480
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 12480
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 105,
+            "tick": 12480
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 60,
+            "tick": 14400
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 64,
+            "tick": 14400
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 69,
+            "tick": 14400
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 72,
+            "tick": 14400
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 60,
+            "tick": 14400
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 74,
+            "tick": 14400
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 69,
+            "tick": 14400
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 72,
+            "tick": 14400
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 70,
+            "tick": 15360
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 70,
+            "tick": 15360
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 70,
+            "tick": 15380
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 80,
+            "tick": 15380
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 15400
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 15400
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 95,
+            "tick": 15420
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 95,
+            "tick": 15420
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 83,
+            "tick": 17280
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 83,
+            "tick": 17280
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 83,
+            "tick": 17300
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 93,
+            "tick": 17300
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 17320
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 17320
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 105,
+            "tick": 17340
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 105,
+            "tick": 17340
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 60,
+            "tick": 20160
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 75,
+            "tick": 20160
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 20160
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 105,
+            "tick": 20160
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 60,
+            "tick": 20160
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 85,
+            "tick": 20160
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 20160
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 105,
+            "tick": 20160
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 60,
+            "tick": 22080
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 64,
+            "tick": 22080
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 69,
+            "tick": 22080
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 72,
+            "tick": 22080
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 60,
+            "tick": 22080
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 74,
+            "tick": 22080
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 69,
+            "tick": 22080
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 72,
+            "tick": 22080
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 70,
+            "tick": 23040
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 70,
+            "tick": 23040
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 70,
+            "tick": 23060
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 80,
+            "tick": 23060
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 23080
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 23080
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 95,
+            "tick": 23100
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 95,
+            "tick": 23100
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 83,
+            "tick": 24960
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 83,
+            "tick": 24960
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 83,
+            "tick": 24980
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 93,
+            "tick": 24980
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 25000
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 25000
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 105,
+            "tick": 25020
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 105,
+            "tick": 25020
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 60,
+            "tick": 27840
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 75,
+            "tick": 27840
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 27840
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 105,
+            "tick": 27840
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 60,
+            "tick": 27840
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 85,
+            "tick": 27840
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 27840
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 105,
+            "tick": 27840
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 60,
+            "tick": 29760
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 64,
+            "tick": 29760
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 69,
+            "tick": 29760
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 72,
+            "tick": 29760
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 60,
+            "tick": 29760
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 74,
+            "tick": 29760
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 69,
+            "tick": 29760
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 72,
+            "tick": 29760
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 70,
+            "tick": 30720
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 70,
+            "tick": 30720
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 70,
+            "tick": 30740
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 80,
+            "tick": 30740
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 30760
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 30760
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 95,
+            "tick": 30780
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 95,
+            "tick": 30780
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 83,
+            "tick": 32640
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 83,
+            "tick": 32640
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 83,
+            "tick": 32660
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 93,
+            "tick": 32660
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 32680
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 32680
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 105,
+            "tick": 32700
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 105,
+            "tick": 32700
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 60,
+            "tick": 35520
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 75,
+            "tick": 35520
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 35520
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 105,
+            "tick": 35520
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 60,
+            "tick": 35520
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 85,
+            "tick": 35520
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 35520
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 105,
+            "tick": 35520
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 60,
+            "tick": 37440
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 64,
+            "tick": 37440
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 69,
+            "tick": 37440
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 72,
+            "tick": 37440
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 60,
+            "tick": 37440
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 74,
+            "tick": 37440
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 69,
+            "tick": 37440
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 72,
+            "tick": 37440
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 70,
+            "tick": 38400
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 70,
+            "tick": 38400
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 70,
+            "tick": 38420
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 80,
+            "tick": 38420
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 38440
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 38440
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 95,
+            "tick": 38460
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 95,
+            "tick": 38460
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 83,
+            "tick": 40320
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 83,
+            "tick": 40320
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 83,
+            "tick": 40340
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 93,
+            "tick": 40340
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 40360
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 40360
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 105,
+            "tick": 40380
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 105,
+            "tick": 40380
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 60,
+            "tick": 43200
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 75,
+            "tick": 43200
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 43200
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 105,
+            "tick": 43200
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 60,
+            "tick": 43200
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 85,
+            "tick": 43200
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 43200
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 105,
+            "tick": 43200
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 60,
+            "tick": 45120
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 64,
+            "tick": 45120
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 69,
+            "tick": 45120
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 72,
+            "tick": 45120
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 60,
+            "tick": 45120
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 74,
+            "tick": 45120
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 69,
+            "tick": 45120
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 72,
+            "tick": 45120
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 70,
+            "tick": 46080
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 70,
+            "tick": 46080
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 70,
+            "tick": 46100
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 80,
+            "tick": 46100
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 46120
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 46120
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 95,
+            "tick": 46140
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 95,
+            "tick": 46140
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 83,
+            "tick": 48000
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 83,
+            "tick": 48000
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 83,
+            "tick": 48020
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 93,
+            "tick": 48020
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 48040
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 48040
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 105,
+            "tick": 48060
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 105,
+            "tick": 48060
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 60,
+            "tick": 50880
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 75,
+            "tick": 50880
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 50880
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 105,
+            "tick": 50880
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 60,
+            "tick": 50880
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 85,
+            "tick": 50880
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 50880
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 105,
+            "tick": 50880
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 60,
+            "tick": 52800
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 64,
+            "tick": 52800
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 69,
+            "tick": 52800
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 72,
+            "tick": 52800
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 60,
+            "tick": 52800
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 74,
+            "tick": 52800
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 69,
+            "tick": 52800
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 72,
+            "tick": 52800
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 70,
+            "tick": 53760
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 70,
+            "tick": 53760
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 70,
+            "tick": 53780
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 80,
+            "tick": 53780
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 53800
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 53800
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 95,
+            "tick": 53820
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 95,
+            "tick": 53820
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 83,
+            "tick": 55680
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 83,
+            "tick": 55680
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 83,
+            "tick": 55700
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 93,
+            "tick": 55700
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 55720
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 55720
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 105,
+            "tick": 55740
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 105,
+            "tick": 55740
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 60,
+            "tick": 58560
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 75,
+            "tick": 58560
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 105,
+            "tick": 58560
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 105,
+            "tick": 58560
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 60,
+            "tick": 58560
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 85,
+            "tick": 58560
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 105,
+            "tick": 58560
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 105,
+            "tick": 58560
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 61,
+            "velocity": 60,
+            "tick": 60480
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 67,
+            "velocity": 64,
+            "tick": 60480
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 72,
+            "velocity": 69,
+            "tick": 60480
+          },
+          {
+            "source": 8,
+            "destination": 8,
+            "key": 76,
+            "velocity": 72,
+            "tick": 60480
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 50,
+            "velocity": 60,
+            "tick": 60480
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 56,
+            "velocity": 74,
+            "tick": 60480
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 61,
+            "velocity": 69,
+            "tick": 60480
+          },
+          {
+            "source": 9,
+            "destination": 9,
+            "key": 64,
+            "velocity": 72,
+            "tick": 60480
+          }
+        ],
+        "baseline_trace_sha256": "c3af62a234f5b5e6ac066e2dfd6b47d58ae20cb110714adbfa3fb61ddfe36619",
+        "candidate_trace_sha256": "fb3b32a2a10637dec92f80f8a936be2d6bb28cc2d2720f42f10f3d696acc34ca",
+        "retained_trace_exact": true
+      },
+      "GOLDEN_Ballad_8BeatPiano1.T107.pcs_C_MAJOR": {
+        "audio_on_removed": 0,
+        "midi_on_removed": 0,
+        "removed_events": [],
+        "baseline_trace_sha256": "836e8abea7f66dc9cb62b759e5c0df6bbc719677cea4ff1a9687029b55c2f4ef",
+        "candidate_trace_sha256": "836e8abea7f66dc9cb62b759e5c0df6bbc719677cea4ff1a9687029b55c2f4ef",
+        "retained_trace_exact": true
+      },
+      "F02_same_tick_off": {
+        "audio_on_removed": 0,
+        "midi_on_removed": 0,
+        "removed_events": [],
+        "baseline_trace_sha256": "c1ad180eec0ff15de462f29db32ea39e65d6760ceb7e7ab9739b0eeb8209c4a8",
+        "candidate_trace_sha256": "c1ad180eec0ff15de462f29db32ea39e65d6760ceb7e7ab9739b0eeb8209c4a8",
+        "retained_trace_exact": true
+      }
+    }
+  },
+  "conclusion": "F04 local dispatch gates PASS; current Android CI FAIL; independently reproduced CI harness SDK/source-set blocker; no APK or device success claim; STOP without further code changes"
+}
