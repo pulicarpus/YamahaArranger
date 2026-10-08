@@ -131,7 +131,7 @@ dilaporkan pada laporan akhir commit-specific, tanpa menebak dari Build800.
 JUnit XML class S7 cocok dengan existing `TEST-*StyleMixFidelity*.xml` artifact
 pattern, sehingga stdout/proof dapat disimpan dalam `mix-percussion-proof`
 tanpa mengubah workflow atau menimpa berkas proof baseline.
-Pada GitHub Actions, probe juga menambahkan JSON hasil ke runner-provided
+Jika variabel GitHub Actions tersedia pada worker, probe juga menambahkan JSON hasil ke runner-provided
 `GITHUB_STEP_SUMMARY`, agar metrics commit-specific dapat ditinjau lewat halaman
 run tanpa mengasumsikan akses authenticated log atau artifact download.
 
@@ -260,5 +260,40 @@ CI commit-specific status, actual native metrics jika dapat diakses, dan
 artefact access limitations dicatat pada laporan akhir. Success Build800 tidak
 dipakai sebagai hasil CI S7. Identitas commit dokumen ini dapat dibaca lewat
 `git log -1 --format='%H %P %T' -- docs/S7_F03_BACKEND_CONTRACT.md`.
+
+### Hasil CI S7 yang sudah terverifikasi
+
+| Build | Commit source/tooling | Hasil |
+| --- | --- | --- |
+| [#801](https://github.com/pulicarpus/YamahaArranger/actions/runs/37756955464) | `5d958695ba0e8cc5071d8df5520008ea3eaf5adf` | SUCCESS; initial S7 tests dan native probe orchestration |
+| [#802](https://github.com/pulicarpus/YamahaArranger/actions/runs/37757196098) | `7fe5b654ab70526c9f1f1a980aaf85e1dc9d834c` | SUCCESS; tambahan reporting CI summary |
+
+Pada kedua run, Android unit-test/build step, Stage3 exclusion kedua native
+ABI, artifact upload dan existing Telegram action berstatus SUCCESS. Masing-masing
+41 step conclusions SUCCESS; step4 bank-contract khusus branch lain SKIPPED
+sesuai existing workflow. Ini step bersyarat, bukan S7 test yang dinonaktifkan.
+Exact jumlah unit tests CI tidak diklaim tanpa menginspeksi XML aggregate.
+
+[Artefak #802 mix-percussion-proof](https://github.com/pulicarpus/YamahaArranger/actions/runs/37757196098/artifacts/11540508861)
+108KB, archive SHA256
+`ef9ff56f16514494c7490e761a2ac462b7e6d9eb2222d5c2b1c66482ed797b0b`.
+Metadata ini dibaca dari halaman run. Existing artifact pattern menyertakan
+JUnit XML S7 dan stdout native proof; **isi arsip belum diunduh atau diaudit**.
+Download endpoint mengembalikan HTTP404 pada akses yang tersedia. Public run/job
+page yang terbaca tidak menampilkan native JSON summary; persistence/visibility
+summary output belum dapat dikonfirmasi dari halaman tersebut.
+
+Karena metrics raw dan SDK versions/hashes dalam stdout belum dapat dibaca
+langsung, **runtime voice pairing, FIRST/SECOND_SIGNATURE dan residual PCM
+classification tetap UNKNOWN pada laporan S7 ini**. Passing CI menunjukkan
+gate test/build berhasil, bukan bukti pairing tertentu atau sukses audio perangkat.
+Tidak ada nilai PCM atau version SDK yang diisi berdasarkan perkiraan. Raw proof
+perlu diaudit dari XML artifact, atau probe dijalankan ulang dengan trusted SDK
+yang tersedia, sebelum mempromosikan hasil software PCM ke kesimpulan backend.
+
+Web CI evidence disimpan di [`s7_ci_evidence.json`](s7_ci_evidence.json). Commit
+terakhir yang mencatat hasil ini hanya dokumentasi; tested source/tooling adalah
+commit #802 di atas. Workflow paths-ignore membuat update docs tidak memerlukan
+build baru. Seluruh 346 tracked baseline S6 tetap identik.
 
 **STOP setelah S7. Tidak ada implementasi F03 atau S8 tanpa persetujuan eksplisit.**

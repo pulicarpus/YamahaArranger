@@ -1,0 +1,464 @@
+{
+  "baseline": "0faa84f1302a6059d79b57f3de1401c2f4ee90a7",
+  "ci": [
+    {
+      "build": 801,
+      "run": 37756955464,
+      "commit": "5d958695ba0e8cc5071d8df5520008ea3eaf5adf",
+      "status": "SUCCESS",
+      "url": "https://github.com/pulicarpus/YamahaArranger/actions/runs/37756955464",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "conclusion": "success"
+        },
+        {
+          "number": 2,
+          "name": "Pull ghcr.io/appleboy/telegram-action:1.1.1",
+          "conclusion": "success"
+        },
+        {
+          "number": 3,
+          "name": "Checkout Repository",
+          "conclusion": "success"
+        },
+        {
+          "number": 4,
+          "name": "Verify bank-contract APK runtime byte-identical to build 783",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 5,
+          "name": "Check out #770 performance baseline (read only)",
+          "conclusion": "success"
+        },
+        {
+          "number": 6,
+          "name": "Check out #772 production baseline (read only)",
+          "conclusion": "success"
+        },
+        {
+          "number": 7,
+          "name": "Test family-preserving resolver",
+          "conclusion": "success"
+        },
+        {
+          "number": 8,
+          "name": "Test compatible percussion with actual BASSMIDI SDK",
+          "conclusion": "success"
+        },
+        {
+          "number": 9,
+          "name": "Check out #773 engineering baseline (read only)",
+          "conclusion": "success"
+        },
+        {
+          "number": 10,
+          "name": "Verify",
+          "conclusion": "success"
+        },
+        {
+          "number": 11,
+          "name": "Check out #776 regression baseline (read only)",
+          "conclusion": "success"
+        },
+        {
+          "number": 12,
+          "name": "Verify Stage 3 bypass and reviewed accompaniment patch against build 776",
+          "conclusion": "success"
+        },
+        {
+          "number": 13,
+          "name": "Set up JDK 17",
+          "conclusion": "success"
+        },
+        {
+          "number": 14,
+          "name": "Check out #774 end-to-end baseline (read only)",
+          "conclusion": "success"
+        },
+        {
+          "number": 15,
+          "name": "Verify",
+          "conclusion": "success"
+        },
+        {
+          "number": 16,
+          "name": "Check out #786 working presence baseline (read only)",
+          "conclusion": "success"
+        },
+        {
+          "number": 17,
+          "name": "Verify role PCM boundaries and",
+          "conclusion": "success"
+        },
+        {
+          "number": 18,
+          "name": "Check out #787 ANR/session baseline (read only)",
+          "conclusion": "success"
+        },
+        {
+          "number": 19,
+          "name": "Verify snapshot-only patch and byte-identical",
+          "conclusion": "success"
+        },
+        {
+          "number": 20,
+          "name": "Accept Android SDK licenses",
+          "conclusion": "success"
+        },
+        {
+          "number": 21,
+          "name": "Set up Android NDK r26d",
+          "conclusion": "success"
+        },
+        {
+          "number": 22,
+          "name": "Install CMake",
+          "conclusion": "success"
+        },
+        {
+          "number": 23,
+          "name": "Download BASS/BASSMIDI Android SDKs",
+          "conclusion": "success"
+        },
+        {
+          "number": 24,
+          "name": "Set up Gradle",
+          "conclusion": "success"
+        },
+        {
+          "number": 25,
+          "name": "Build debug APK",
+          "conclusion": "success"
+        },
+        {
+          "number": 26,
+          "name": "Verify Stage 3 excluded from both APK native ABIs",
+          "conclusion": "success"
+        },
+        {
+          "number": 27,
+          "name": "Upload APK artifact",
+          "conclusion": "success"
+        },
+        {
+          "number": 28,
+          "name": "Upload full global shadow comparison",
+          "conclusion": "success"
+        },
+        {
+          "number": 29,
+          "name": "Upload accompaniment presence proof",
+          "conclusion": "success"
+        },
+        {
+          "number": 30,
+          "name": "Upload mix and percussion proof",
+          "conclusion": "success"
+        },
+        {
+          "number": 31,
+          "name": "Send APK to Telegram",
+          "conclusion": "success"
+        },
+        {
+          "number": 53,
+          "name": "Post Set up Gradle",
+          "conclusion": "success"
+        },
+        {
+          "number": 54,
+          "name": "Post Check out #787 ANR/session baseline (read only)",
+          "conclusion": "success"
+        },
+        {
+          "number": 55,
+          "name": "Post Check out #786 working presence baseline (read only)",
+          "conclusion": "success"
+        },
+        {
+          "number": 56,
+          "name": "Post Check out #774 end-to-end baseline (read only)",
+          "conclusion": "success"
+        },
+        {
+          "number": 57,
+          "name": "Post Set up JDK 17",
+          "conclusion": "success"
+        },
+        {
+          "number": 58,
+          "name": "Post Check out #776 regression baseline (read only)",
+          "conclusion": "success"
+        },
+        {
+          "number": 59,
+          "name": "Post Check out #773 engineering baseline (read only)",
+          "conclusion": "success"
+        },
+        {
+          "number": 60,
+          "name": "Post Check out #772 production baseline (read only)",
+          "conclusion": "success"
+        },
+        {
+          "number": 61,
+          "name": "Post Check out #770 performance baseline (read only)",
+          "conclusion": "success"
+        },
+        {
+          "number": 62,
+          "name": "Post Checkout Repository",
+          "conclusion": "success"
+        },
+        {
+          "number": 63,
+          "name": "Complete job",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "build": 802,
+      "run": 37757196098,
+      "commit": "7fe5b654ab70526c9f1f1a980aaf85e1dc9d834c",
+      "status": "SUCCESS",
+      "url": "https://github.com/pulicarpus/YamahaArranger/actions/runs/37757196098",
+      "steps": [
+        {
+          "number": 1,
+          "name": "Set up job",
+          "conclusion": "success"
+        },
+        {
+          "number": 2,
+          "name": "Pull ghcr.io/appleboy/telegram-action:1.1.1",
+          "conclusion": "success"
+        },
+        {
+          "number": 3,
+          "name": "Checkout Repository",
+          "conclusion": "success"
+        },
+        {
+          "number": 4,
+          "name": "Verify bank-contract APK runtime byte-identical to build 783",
+          "conclusion": "skipped"
+        },
+        {
+          "number": 5,
+          "name": "Check out #770 performance baseline (read only)",
+          "conclusion": "success"
+        },
+        {
+          "number": 6,
+          "name": "Check out #772 production baseline (read only)",
+          "conclusion": "success"
+        },
+        {
+          "number": 7,
+          "name": "Test family-preserving resolver",
+          "conclusion": "success"
+        },
+        {
+          "number": 8,
+          "name": "Test compatible percussion with actual BASSMIDI SDK",
+          "conclusion": "success"
+        },
+        {
+          "number": 9,
+          "name": "Check out #773 engineering baseline (read only)",
+          "conclusion": "success"
+        },
+        {
+          "number": 10,
+          "name": "Verify",
+          "conclusion": "success"
+        },
+        {
+          "number": 11,
+          "name": "Check out #776 regression baseline (read only)",
+          "conclusion": "success"
+        },
+        {
+          "number": 12,
+          "name": "Verify Stage 3 bypass and reviewed accompaniment patch against build 776",
+          "conclusion": "success"
+        },
+        {
+          "number": 13,
+          "name": "Set up JDK 17",
+          "conclusion": "success"
+        },
+        {
+          "number": 14,
+          "name": "Check out #774 end-to-end baseline (read only)",
+          "conclusion": "success"
+        },
+        {
+          "number": 15,
+          "name": "Verify",
+          "conclusion": "success"
+        },
+        {
+          "number": 16,
+          "name": "Check out #786 working presence baseline (read only)",
+          "conclusion": "success"
+        },
+        {
+          "number": 17,
+          "name": "Verify role PCM boundaries and",
+          "conclusion": "success"
+        },
+        {
+          "number": 18,
+          "name": "Check out #787 ANR/session baseline (read only)",
+          "conclusion": "success"
+        },
+        {
+          "number": 19,
+          "name": "Verify snapshot-only patch and byte-identical",
+          "conclusion": "success"
+        },
+        {
+          "number": 20,
+          "name": "Accept Android SDK licenses",
+          "conclusion": "success"
+        },
+        {
+          "number": 21,
+          "name": "Set up Android NDK r26d",
+          "conclusion": "success"
+        },
+        {
+          "number": 22,
+          "name": "Install CMake",
+          "conclusion": "success"
+        },
+        {
+          "number": 23,
+          "name": "Download BASS/BASSMIDI Android SDKs",
+          "conclusion": "success"
+        },
+        {
+          "number": 24,
+          "name": "Set up Gradle",
+          "conclusion": "success"
+        },
+        {
+          "number": 25,
+          "name": "Build debug APK",
+          "conclusion": "success"
+        },
+        {
+          "number": 26,
+          "name": "Verify Stage 3 excluded from both APK native ABIs",
+          "conclusion": "success"
+        },
+        {
+          "number": 27,
+          "name": "Upload APK artifact",
+          "conclusion": "success"
+        },
+        {
+          "number": 28,
+          "name": "Upload full global shadow comparison",
+          "conclusion": "success"
+        },
+        {
+          "number": 29,
+          "name": "Upload accompaniment presence proof",
+          "conclusion": "success"
+        },
+        {
+          "number": 30,
+          "name": "Upload mix and percussion proof",
+          "conclusion": "success"
+        },
+        {
+          "number": 31,
+          "name": "Send APK to Telegram",
+          "conclusion": "success"
+        },
+        {
+          "number": 53,
+          "name": "Post Set up Gradle",
+          "conclusion": "success"
+        },
+        {
+          "number": 54,
+          "name": "Post Check out #787 ANR/session baseline (read only)",
+          "conclusion": "success"
+        },
+        {
+          "number": 55,
+          "name": "Post Check out #786 working presence baseline (read only)",
+          "conclusion": "success"
+        },
+        {
+          "number": 56,
+          "name": "Post Check out #774 end-to-end baseline (read only)",
+          "conclusion": "success"
+        },
+        {
+          "number": 57,
+          "name": "Post Set up JDK 17",
+          "conclusion": "success"
+        },
+        {
+          "number": 58,
+          "name": "Post Check out #776 regression baseline (read only)",
+          "conclusion": "success"
+        },
+        {
+          "number": 59,
+          "name": "Post Check out #773 engineering baseline (read only)",
+          "conclusion": "success"
+        },
+        {
+          "number": 60,
+          "name": "Post Check out #772 production baseline (read only)",
+          "conclusion": "success"
+        },
+        {
+          "number": 61,
+          "name": "Post Check out #770 performance baseline (read only)",
+          "conclusion": "success"
+        },
+        {
+          "number": 62,
+          "name": "Post Checkout Repository",
+          "conclusion": "success"
+        },
+        {
+          "number": 63,
+          "name": "Complete job",
+          "conclusion": "success"
+        }
+      ]
+    }
+  ],
+  "local_regression": {
+    "host": "PASS",
+    "baseline_JVM": 83,
+    "S6_S7_JVM": 11,
+    "fail_closed_harness": 7,
+    "S7_API_recorder_checks": 6
+  },
+  "local_real_sdk": "BLOCKED: HTTP403 / unavailable SDK",
+  "full_corpus_rerun": "BLOCKED: original ZIP absent",
+  "native_metrics_audit": "BLOCKED: artifact endpoint HTTP404; native JSON not visible on public run/job pages",
+  "native_pairing": "UNKNOWN",
+  "PSR_E343": "UNRUN / UNKNOWN",
+  "implementation_approved": false,
+  "artifact_802": {
+    "id": 11540508861,
+    "name": "mix-percussion-proof",
+    "archive_sha256": "ef9ff56f16514494c7490e761a2ac462b7e6d9eb2222d5c2b1c66482ed797b0b",
+    "metadata_observed": true,
+    "content_downloaded": false,
+    "native_metrics_observed": false
+  }
+}
