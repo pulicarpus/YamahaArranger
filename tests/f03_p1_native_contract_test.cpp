@@ -72,7 +72,11 @@ int main(int argc,char** argv) {
    double x=m.a/a.a,y=m.b/b.b;bool valid=m.residual<.05;
    const char* id=!valid?"UNKNOWN":x>.5&&y<.01?"A":y>.5&&x<.01?"B":x>.5&&y>.5?"BOTH":x<.01&&y<.01?"SILENT":"UNKNOWN";
    std::cout<<"P1_PCM repeat="<<repeat<<" swapped="<<swap<<" reverse="<<reverse<<" sameSource="<<same<<" offBFirst="<<offB
-            <<" kind="<<kind<<" firstOnFrame=0 secondOnFrame=2048 offFrame=4096 measurementStart=12288 measurementEnd=14336"
+            <<" kind="<<kind<<" noteAOnFrame="<<(std::string(kind)=="referenceB"?-1:(reverse?2048:0))
+            <<" noteBOnFrame="<<(std::string(kind)=="referenceA"?-1:(reverse?0:2048))
+            <<" firstOffFrame="<<((std::string(kind)=="first_off" || std::string(kind)=="same_frame_two_offs")?4096:-1)
+            <<" secondOffFrame="<<(std::string(kind)=="first_off"?14336:std::string(kind)=="same_frame_two_offs"?4096:-1)
+            <<" measurementStart=12288 measurementEnd=14336"
             <<" velocityA="<<(swap?112:48)<<" velocityB="<<(swap?48:112)<<" powerA="<<m.a<<" powerB="<<m.b
             <<" energy="<<m.energy<<" residual="<<m.residual<<" ratioA="<<x<<" ratioB="<<y<<" signature="<<id<<'\n';
    if(std::string(kind)=="first_off"){

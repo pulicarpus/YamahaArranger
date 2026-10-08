@@ -161,6 +161,11 @@ Deterministic 48kHz timeline: first ON frame0, second ON2048, first OFF4096;
 measure frames12288–14335 inclusive. A/B references use identical absolute birth
 slots. Double-OFF applies both OFFs at frame4096 without rendering between them.
 Final cleanup follows the second OFF and 30 additional 2048-frame windows.
+Rows record actual `noteAOnFrame`, `noteBOnFrame`, `firstOffFrame` and
+`secondOffFrame`; an event not submitted in a reference/overlap control is `-1`.
+A metadata correction replaced nominal shared-slot labels with these actual-event
+fields. The complete probe was rerun; its metric summary was byte-for-byte equal
+as JSON values, and no classifier threshold/assertion changed.
 No real-time wallclock/device latency measurement is claimed.
 
 Stereo-to-mono integer-bin sin/cos projection is phase-invariant. References
