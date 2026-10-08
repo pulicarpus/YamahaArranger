@@ -7,8 +7,8 @@ namespace s8_fixture {
 inline std::string write(const std::string& dir,int release) {
  using namespace rich_fixture;
  Bytes ph(76),pb(8),pg,inst(44),ib(12),ig,sh(138),pcm(2*8192*2+92);
- std::memcpy(ph.data(),"S8 signatures",13);word(ph,20,24);word(ph,62,1);std::memcpy(ph.data()+38,"EOP",3);
- gen(pg,41,0);word(pb,4,1);std::memcpy(inst.data(),"Two signatures",14);word(inst,42,2);std::memcpy(inst.data()+22,"EOI",3);
+ std::memcpy(ph.data(),"Acoustic Guitar",15);word(ph,20,24);word(ph,62,1);std::memcpy(ph.data()+38,"EOP",3);
+ gen(pg,41,0);gen(pg,0,0);word(pb,4,1);std::memcpy(inst.data(),"Two signatures",14);word(inst,42,2);std::memcpy(inst.data()+22,"EOI",3);
  for(int i=0;i<2;++i){
   word(ib,4*i,ig.size()/4);gen(ig,43,60|(60<<8));gen(ig,44,i?(64|(127<<8)):(1|(63<<8)));
   gen(ig,34,-12000);gen(ig,36,-12000);gen(ig,37,0);gen(ig,38,release);gen(ig,54,1);gen(ig,58,60);gen(ig,53,i);

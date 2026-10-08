@@ -4,6 +4,7 @@
   "protected_files": 353,
   "protected_tree": "1f81aa37fec7c1f628cbadebdfee9378f9f86256",
   "production_changed": false,
-  "native_pcm_local": "BLOCKED",
-  "s7_metrics_recovered": false
+  "s7_metrics_recovered": false,
+  "initial_native_pcm_local": "BLOCKED",
+  "final_native_pcm_local": "PASS"
 }

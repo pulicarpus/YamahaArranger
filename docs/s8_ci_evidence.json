@@ -1,0 +1,20 @@
+{
+  "baseline": "291153a58a0873584f2e0adfc7dd220673f1b8af",
+  "ci": [
+    {
+      "build": 803,
+      "run": 37760938707,
+      "job": 113256890693,
+      "commit": "7d87de81dd0938e8d784e80f8d903071729544d5",
+      "status": "FAILURE",
+      "failed_step": 25,
+      "user_verified_jvm_counts": {
+        "tests": 261,
+        "failures": 1
+      },
+      "failing_test": "StyleMixFidelityS8NativeVoiceTest.isolatedAvailableNativeSdkSignatures",
+      "local_native_reproduction": "zero reference energy, zero native ON because UNKNOWN fixture preset fails preserved family gate",
+      "raw_ci_native_metrics_recovered": false
+    }
+  ]
+}

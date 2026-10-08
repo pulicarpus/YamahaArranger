@@ -1,0 +1,87 @@
+{
+  "api_recorder": "UNRUN",
+  "real_sdk": "PASS",
+  "device_audio": "UNRUN",
+  "native_voice_handles": "UNKNOWN",
+  "fixture_integrity": "PASS",
+  "sdk_sha256": {
+    "/tmp/bass-linux/c/bass.h": "deb66f150ceada5370a13c9b96879105b9237f1bc5bf5f2f01b77eaecb524b78",
+    "/tmp/bassmidi-linux/c/bassmidi.h": "6fede34e385adcac14f117566943fbc76c02b87433c6f88b1d97117311475eb9",
+    "/tmp/bass-linux/libs/x86_64/libbass.so": "bd0841d0c14f25065a16192be07c20b045e384199a86a00892cc3864474dbc51",
+    "/tmp/bassmidi-linux/libs/x86_64/libbassmidi.so": "6ab325ca32aff9c77643c301d25b6e5ccd89ea9ad17e1bc62eef6c8497fa73e6"
+  },
+  "real_output": "S8_SDK bass=33821187 bassmidi=33820672 NOTEOFF1=65536\nS8_PCM case=referenceA powerA=0.120136747916 powerB=2.32400690292e-10 energy=0.120136748927 residual=6.48198499848e-09 ratioA=1 ratioB=6.52611063732e-11 signature=A\nS8_PCM case=referenceB powerA=1.14178640863e-10 powerB=3.56109026044 energy=3.56109028979 residual=8.2082484145e-09 ratioA=9.50405623957e-10 ratioB=1 signature=B\nS8_PCM case=overlap powerA=0.120144152398 powerB=3.56103271065 energy=3.68117689108 residual=7.61290642371e-09 ratioA=1.00006163378 ratioB=0.999983839278 signature=BOTH\nS8_FINAL energy=0 residual=0\nS8_PCM case=cross_offA_first powerA=1.14178640863e-10 powerB=3.56109026044 energy=3.56109028979 residual=8.2082484145e-09 ratioA=9.50405623957e-10 ratioB=1 signature=B\nS8_FINAL energy=0 residual=0\nS8_PCM case=cross_offB_first powerA=1.14178640863e-10 powerB=3.56109026044 energy=3.56109028979 residual=8.2082484145e-09 ratioA=9.50405623957e-10 ratioB=1 signature=B\nS8_FINAL energy=0 residual=0\nS8_PCM case=same_offA_first powerA=1.14178640863e-10 powerB=3.56109026044 energy=3.56109028979 residual=8.2082484145e-09 ratioA=9.50405623957e-10 ratioB=1 signature=B\nS8_FINAL energy=0 residual=0\nS8_PCM case=same_offB_first powerA=1.14178640863e-10 powerB=3.56109026044 energy=3.56109028979 residual=8.2082484145e-09 ratioA=9.50405623957e-10 ratioB=1 signature=B\nS8_FINAL energy=0 residual=0\nS8_PCM case=no_NOTEOFF1 powerA=0 powerB=0 energy=0 residual=0 ratioA=0 ratioB=0 signature=SILENT\nS8_FINAL energy=0 residual=0\nS8_PCM case=sustain powerA=0.120144152398 powerB=3.56103271065 energy=3.68117689108 residual=7.61290642371e-09 ratioA=1.00006163378 ratioB=0.999983839278 signature=BOTH\nS8_FINAL energy=0 residual=0\nS8_PCM case=injected_rejected_A powerA=0 powerB=0 energy=0 residual=0 ratioA=0 ratioB=0 signature=SILENT\nS8_FINAL energy=0 residual=0\nS8_PCM case=long_release_170ms powerA=0.00155227629264 powerB=3.56108375359 energy=3.56267035136 residual=9.63363797467e-06 ratioA=0.0129209115409 ratioB=0.999998172791 signature=UNKNOWN\nS8_API acceptedOns=19 acceptedOffs=16 injectedRejectedOns=1 voiceHandle=NOT_OBSERVED Android=UNRUN PSRE343=UNRUN\n",
+  "s7_tail_control_output": "S8_S7_TAIL energyA=0.00949045 energyB=0 crossEnergy=0.0257606 sumEnergy=0.0257606 crossErrorTailAPlusB=0 sameErrorTailAPlusB=0\nS7_REAL_BASS checks=24596 version=33821187 midiVersion=33820672 acceptedOns=11 acceptedOffs=5 injectedRejectedOns=1 crossSourceSurvivor=UNKNOWN sameSourceSurvivor=UNKNOWN crossErrorFirst=0.73655 crossErrorSecond=1.1109 sameErrorFirst=0.73655 sameErrorSecond=1.1109 referenceEnergyFirst=0.702091 referenceEnergySecond=0.00854306 rejectedThenOffEnergy=0 stopEnergy=0.00949045 LinuxSDK=true syntheticSF2=true nativeVoiceHandle=NOT_OBSERVED PSRE343=NOT_MEASURED\n",
+  "pcm_metrics": [
+    "S8_SDK bass=33821187 bassmidi=33820672 NOTEOFF1=65536",
+    "S8_PCM case=referenceA powerA=0.120136747916 powerB=2.32400690292e-10 energy=0.120136748927 residual=6.48198499848e-09 ratioA=1 ratioB=6.52611063732e-11 signature=A",
+    "S8_PCM case=referenceB powerA=1.14178640863e-10 powerB=3.56109026044 energy=3.56109028979 residual=8.2082484145e-09 ratioA=9.50405623957e-10 ratioB=1 signature=B",
+    "S8_PCM case=overlap powerA=0.120144152398 powerB=3.56103271065 energy=3.68117689108 residual=7.61290642371e-09 ratioA=1.00006163378 ratioB=0.999983839278 signature=BOTH",
+    "S8_FINAL energy=0 residual=0",
+    "S8_PCM case=cross_offA_first powerA=1.14178640863e-10 powerB=3.56109026044 energy=3.56109028979 residual=8.2082484145e-09 ratioA=9.50405623957e-10 ratioB=1 signature=B",
+    "S8_FINAL energy=0 residual=0",
+    "S8_PCM case=cross_offB_first powerA=1.14178640863e-10 powerB=3.56109026044 energy=3.56109028979 residual=8.2082484145e-09 ratioA=9.50405623957e-10 ratioB=1 signature=B",
+    "S8_FINAL energy=0 residual=0",
+    "S8_PCM case=same_offA_first powerA=1.14178640863e-10 powerB=3.56109026044 energy=3.56109028979 residual=8.2082484145e-09 ratioA=9.50405623957e-10 ratioB=1 signature=B",
+    "S8_FINAL energy=0 residual=0",
+    "S8_PCM case=same_offB_first powerA=1.14178640863e-10 powerB=3.56109026044 energy=3.56109028979 residual=8.2082484145e-09 ratioA=9.50405623957e-10 ratioB=1 signature=B",
+    "S8_FINAL energy=0 residual=0",
+    "S8_PCM case=no_NOTEOFF1 powerA=0 powerB=0 energy=0 residual=0 ratioA=0 ratioB=0 signature=SILENT",
+    "S8_FINAL energy=0 residual=0",
+    "S8_PCM case=sustain powerA=0.120144152398 powerB=3.56103271065 energy=3.68117689108 residual=7.61290642371e-09 ratioA=1.00006163378 ratioB=0.999983839278 signature=BOTH",
+    "S8_FINAL energy=0 residual=0",
+    "S8_PCM case=injected_rejected_A powerA=0 powerB=0 energy=0 residual=0 ratioA=0 ratioB=0 signature=SILENT",
+    "S8_FINAL energy=0 residual=0",
+    "S8_PCM case=long_release_170ms powerA=0.00155227629264 powerB=3.56108375359 energy=3.56267035136 residual=9.63363797467e-06 ratioA=0.0129209115409 ratioB=0.999998172791 signature=UNKNOWN",
+    "S8_API acceptedOns=19 acceptedOffs=16 injectedRejectedOns=1 voiceHandle=NOT_OBSERVED Android=UNRUN PSRE343=UNRUN"
+  ],
+  "classification_note": "Signature evidence only; not a native handle or device test",
+  "provenance": {
+    "baseline": "291153a58a0873584f2e0adfc7dd220673f1b8af",
+    "original_diagnostic_commit": "7d87de81dd0938e8d784e80f8d903071729544d5",
+    "vendor_urls": [
+      "https://www.un4seen.com/files/bass24-linux.zip",
+      "https://www.un4seen.com/files/bassmidi24-linux.zip"
+    ],
+    "original_s7_build802_metrics_recovered": false,
+    "s7_scope": "local rerun frozen S7 source plus isolated S8 release controls; not recovered CI metrics"
+  },
+  "source_sha256": {
+    "tests/s8_native_voice_test.cpp": "db894d7f6728ad35f9f89b5d0233682d987c553d2b319861e3d9cf79197c92f2",
+    "tests/s8_signature_fixture.h": "4198ef20590a7e46cab514e8bdc7327fb21889af00613ac503e04c81fca07084",
+    "tests/s8_s7_release_tail_test.cpp": "d4693134f07dfb9522c8438c1d50d3f69e0b5948377cd3434227b03dc11c7561",
+    "app/src/main/cpp/bassmidi_player.cpp": "b500ba1b279e4c7ebd80f04f6c01bc8537a68335c8c74524a2149f12f298d34e"
+  },
+  "vendor_zip_sha256": {
+    "/tmp/s8-bass.zip": "9bf723dbf750d665c14cfc099f96a056483dc35de6850d2df76af8b640435ca9",
+    "/tmp/s8-bassmidi.zip": "a8dcd8edc886d8b7759fe85a99c77a30ebeeccebe6208cd531b34b9e6c9de872"
+  },
+  "fixture_reproductions": {
+    "original": {
+      "exit_code": 1,
+      "stdout": "S8_SDK bass=33821187 bassmidi=33820672 NOTEOFF1=65536\nS8_REPRO energyA=0 energyB=0 acceptedOns=0\nnonzero reference error=0\n"
+    },
+    "terminal-only": {
+      "exit_code": 1,
+      "stdout": "S8_SDK bass=33821187 bassmidi=33820672 NOTEOFF1=65536\nnonzero reference error=0\n"
+    },
+    "name-only": {
+      "exit_code": 0,
+      "stdout": "S8_SDK bass=33821187 bassmidi=33820672 NOTEOFF1=65536\nS8_REPRO energyA=0.120136748927 energyB=3.56109028979 acceptedOns=4\nS8_PCM case=referenceA powerA=0.120136747916 powerB=2.32400690292e-10 energy=0.120136748927 residual=6.48198499848e-09 ratioA=1 ratioB=6.52611063732e-11 signature=A\nS8_PCM case=referenceB powerA=1.14178640863e-10 powerB=3.56109026044 energy=3.56109028979 residual=8.2082484145e-09 ratioA=9.50405623957e-10 ratioB=1 signature=B\nS8_PCM case=overlap powerA=0.120144152398 powerB=3.56103271065 energy=3.68117689108 residual=7.61290642371e-09 ratioA=1.00006163378 ratioB=0.999983839278 signature=BOTH\nS8_FINAL energy=0 residual=0\nS8_PCM case=cross_offA_first powerA=1.14178640863e-10 powerB=3.56109026044 energy=3.56109028979 residual=8.2082484145e-09 ratioA=9.50405623957e-10 ratioB=1 signature=B\nS8_FINAL energy=0 residual=0\nS8_PCM case=cross_offB_first powerA=1.14178640863e-10 powerB=3.56109026044 energy=3.56109028979 residual=8.2082484145e-09 ratioA=9.50405623957e-10 ratioB=1 signature=B\nS8_FINAL energy=0 residual=0\nS8_PCM case=same_offA_first powerA=1.14178640863e-10 powerB=3.56109026044 energy=3.56109028979 residual=8.2082484145e-09 ratioA=9.50405623957e-10 ratioB=1 signature=B\nS8_FINAL energy=0 residual=0\nS8_PCM case=same_offB_first powerA=1.14178640863e-10 powerB=3.56109026044 energy=3.56109028979 residual=8.2082484145e-09 ratioA=9.50405623957e-10 ratioB=1 signature=B\nS8_FINAL energy=0 residual=0\nS8_PCM case=no_NOTEOFF1 powerA=0 powerB=0 energy=0 residual=0 ratioA=0 ratioB=0 signature=SILENT\nS8_FINAL energy=0 residual=0\nS8_PCM case=sustain powerA=0.120144152398 powerB=3.56103271065 energy=3.68117689108 residual=7.61290642371e-09 ratioA=1.00006163378 ratioB=0.999983839278 signature=BOTH\nS8_FINAL energy=0 residual=0\nS8_PCM case=injected_rejected_A powerA=0 powerB=0 energy=0 residual=0 ratioA=0 ratioB=0 signature=SILENT\nS8_FINAL energy=0 residual=0\nS8_PCM case=long_release_170ms powerA=0.00155227629264 powerB=3.56108375359 energy=3.56267035136 residual=9.63363797467e-06 ratioA=0.0129209115409 ratioB=0.999998172791 signature=UNKNOWN\nS8_API acceptedOns=19 acceptedOffs=16 injectedRejectedOns=1 voiceHandle=NOT_OBSERVED Android=UNRUN PSRE343=UNRUN\n"
+    }
+  },
+  "frozen_s7_rerun": {
+    "api_recorder": "PASS",
+    "real_sdk": "PASS",
+    "device_audio": "UNRUN",
+    "native_voice_handles": "UNKNOWN",
+    "recorder_output": "S7_API_RECORDER checks=6 productionPlayer=true logicalOriginsDifferent=true nativeEventValuesIdentical=true runtimeVoicePairing=UNKNOWN PCM=NOT_MEASURED\n",
+    "sdk_sha256": {
+      "/tmp/bass-linux/c/bass.h": "deb66f150ceada5370a13c9b96879105b9237f1bc5bf5f2f01b77eaecb524b78",
+      "/tmp/bassmidi-linux/c/bassmidi.h": "6fede34e385adcac14f117566943fbc76c02b87433c6f88b1d97117311475eb9",
+      "/tmp/bass-linux/libs/x86_64/libbass.so": "bd0841d0c14f25065a16192be07c20b045e384199a86a00892cc3864474dbc51",
+      "/tmp/bassmidi-linux/libs/x86_64/libbassmidi.so": "6ab325ca32aff9c77643c301d25b6e5ccd89ea9ad17e1bc62eef6c8497fa73e6"
+    },
+    "real_output": "S7_REAL_BASS checks=18448 version=33821187 midiVersion=33820672 acceptedOns=9 acceptedOffs=3 injectedRejectedOns=1 crossSourceSurvivor=UNKNOWN sameSourceSurvivor=UNKNOWN crossErrorFirst=0.73655 crossErrorSecond=1.1109 sameErrorFirst=0.73655 sameErrorSecond=1.1109 referenceEnergyFirst=0.702091 referenceEnergySecond=0.00854306 rejectedThenOffEnergy=0 stopEnergy=0.00949045 LinuxSDK=true syntheticSF2=true nativeVoiceHandle=NOT_OBSERVED PSRE343=NOT_MEASURED\n"
+  }
+}
