@@ -193,9 +193,29 @@ not that P0 supplied a voice handle or proved Yamaha pairing. The manifest check
 all baseline bytes, not just a selected source subset. The P0 runner checks it
 before and after tests; CI repeats that through the new test-only wrapper.
 
-CI: pending push/run; final metadata will be recorded without changing workflow.
-The existing artifact upload includes `TEST-*StyleMixFidelity*.xml`, so the new
-wrapper stdout/proof is eligible for that existing diagnostic artifact.
+CI: **Build #805 SUCCESS**, tested commit
+`311a54054111bda00a9535e05a9faaaff14a418b`.
+[Run 37771555686](https://github.com/pulicarpus/YamahaArranger/actions/runs/37771555686),
+job `113292126677`: 41 steps SUCCESS, one existing conditional step SKIPPED
+(`Verify bank-contract APK runtime byte-identical to build 783`); that skipped
+check is not promoted to PASS. The build step runs `testDebugUnitTest`, asserts
+zero failures/errors/skipped JVM tests, then builds the unchanged standard APK.
+Both native ABI Stage 3 exclusion checks and diagnostic artifact uploads passed.
+No experimental F03 APK or production integration was added.
+
+Public metadata confirms `mix-percussion-proof` artifact `11547449247`, digest
+`sha256:b1ce845d115684711630479e1ea29b7e4f25d177584e0068d5171c8d9735ebe3`.
+The unchanged upload pattern includes `TEST-*StyleMixFidelity*.xml` and therefore
+the P0 wrapper/proof. Artifact payload and exact aggregate CI test count were not
+downloaded/independently inspected; local counts above are directly measured.
+The standard `app-debug` artifact is `11547359403`, digest
+`sha256:0d9e5af05d7d5b6761c75bba4e25d88176a7d480e81a9739748ef7c6228e2a1d`.
+
+This CI evidence is recorded by a follow-up **documentation-only** commit.
+Its executable/test/manifest files are identical to the tested commit; the
+workflow ignores docs-only pushes. Local and final baseline SHA checks remain
+PASS for all 364 original tracked files. Working tree and remote HEAD are
+verified after pushing the evidence update.
 
 ## BLOCKED / UNKNOWN / UNRUN and production risks
 
