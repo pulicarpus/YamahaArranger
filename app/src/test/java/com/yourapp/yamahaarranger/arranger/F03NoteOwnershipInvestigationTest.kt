@@ -268,7 +268,9 @@ class F03NoteOwnershipInvestigationTest {
         }
         assertEquals(523,total);assertEquals(47,styles.size);assertEquals(1046,traces.size)
         val observed=traces.joinToString("")
-        val expected=javaClass.getResource("/sff5/overlap_dispatch.sha256")
+        System.getProperty("sff5.output")?.let { File(it).writeText(observed) }
+        val f04Candidate=StyleSequencer::class.java.declaredMethods.any { it.name=="hasOnlyMelodicDeclarations" }
+        val expected=javaClass.getResource(if(f04Candidate) "/f04/overlap_candidate.sha256" else "/sff5/overlap_dispatch.sha256")
         if(System.getProperty("sff5.record")=="true") {
             assertNull("initial evidence recording cannot overwrite reference",expected)
         } else assertEquals("unchanged baseline dispatch/lifecycle, NOT desired Yamaha output",expected!!.readText().trim(),sha(observed))

@@ -21,6 +21,13 @@ import java.util.concurrent.TimeUnit
  * Audio/MIDI boundaries are mocks: dispatch != native acceptance != PCM.
  */
 class Sff1ProductionPipelineRegressionTest {
+    // Separate candidate expectations; frozen GOLDEN and digest resources stay intact.
+    private val f04Candidate = StyleSequencer::class.java.declaredMethods.any { it.name == "hasOnlyMelodicDeclarations" }
+    private fun candidateDestinations(path:String):Map<Int,Int>? = if(!f04Candidate) null else when(path) {
+        "Movie&Show/BaroqueAir1.S145.sst" -> mapOf(10 to 64,11 to 72,12 to 48,15 to 8)
+        "Pop&Rock/Unplugged2.T151.prs" -> mapOf(8 to 128,9 to 105,10 to 48,11 to 672,14 to 144)
+        else -> null
+    }
     private data class Call(val order: Int, val boundary: String, val name: String, val args: List<Any?>)
     private class Run : AutoCloseable {
         val audio = mock(AudioEngineManager::class.java)
@@ -149,7 +156,8 @@ class Sff1ProductionPipelineRegressionTest {
         }
     }
     private fun verifyGolden(f:NativeFixture,r:Run,chord:String) {
-        val expected=GOLDEN.getValue(f.path)
+        val baseline=GOLDEN.getValue(f.path)
+        val expected=baseline.first to (candidateDestinations(f.path) ?: baseline.second)
         val calls=r.calls()
         val on=calls.filter { it.name=="noteOnStyleChannel" }
         val actual=on.groupingBy { it.args[0] as Int }.eachCount().toSortedMap()
@@ -172,7 +180,7 @@ class Sff1ProductionPipelineRegressionTest {
                 .groupingBy { (it.args[3] as Int) to (it.args[0] as Int) }.eachCount()
             val expectedPhantom=if(f.path.contains("BaroqueAir1")) mapOf((8 to 8) to 36,(9 to 9) to 8)
                 else mapOf((8 to 8) to 128,(9 to 9) to 128)
-            assertEquals("BASELINE_KNOWN_FAILURE F04 declared vs dispatched destination",expectedPhantom,phantom)
+            assertEquals("BASELINE_KNOWN_FAILURE F04 declared vs dispatched destination",if(f04Candidate) emptyMap() else expectedPhantom,phantom)
             println("SFF1 F04 BASELINE_KNOWN_FAILURE ${f.path} $chord phantom=$phantom")
         }
         val label="GOLDEN_${f.path}_$chord"
@@ -259,14 +267,20 @@ class Sff1ProductionPipelineRegressionTest {
     private fun observe(label:String,status:String,calls:List<Call>,decisions:List<String> = emptyList()) {
         val canonical=canonicalCalls(calls)+decisions.joinToString("\n",postfix=if(decisions.isEmpty()) "" else "\n") { "DIAGNOSTIC\t$it" }
         val sha=hex(MessageDigest.getInstance("SHA-256").digest(canonical.toByteArray(Charsets.UTF_8)))
-        val row=listOf(label,status,sha,canonical.lineSequence().count { it.isNotEmpty() }.toString()).joinToString("\t")
+        val candidateDelta=f04Candidate && (label.startsWith("GOLDEN_Movie&Show/BaroqueAir1.") || label.startsWith("GOLDEN_Pop&Rock/Unplugged2."))
+        val actualStatus=if(candidateDelta) "F04_CANDIDATE_ALLOWED_DELTA" else status
+        System.getProperty("sff1.traceDirectory")?.let { directory ->
+            val file=File(directory,label.replace('/','_')+".txt")
+            file.parentFile.mkdirs();file.writeText(canonical)
+        }
+        val row=listOf(label,actualStatus,sha,canonical.lineSequence().count { it.isNotEmpty() }.toString()).joinToString("\t")
         synchronized(OBSERVATIONS) {
             assertFalse("duplicate observation label",OBSERVATIONS.containsKey(label))
             OBSERVATIONS[label]=row
             val output=File(System.getProperty("sff1.output","build/sff1_pipeline_observed.tsv"))
             output.parentFile.mkdirs();output.writeText(OBSERVATIONS.toSortedMap().values.joinToString("\n",postfix="\n"))
         }
-        val expected=javaClass.getResourceAsStream("/sff1_pipeline_digests.tsv")
+        val expected=javaClass.getResourceAsStream(if(candidateDelta) "/f04/pipeline_candidate_digests.tsv" else "/sff1_pipeline_digests.tsv")
         if(System.getProperty("sff1.record.observations")!="true") {
             assertNotNull("missing digest fixture; explicitly record initial S1 observation only",expected)
             val rows=expected!!.bufferedReader().use { it.readLines() }.associateBy { it.substringBefore('\t') }

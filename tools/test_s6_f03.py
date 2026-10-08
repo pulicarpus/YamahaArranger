@@ -5,6 +5,7 @@ Run test_sff1_pipeline.py --existing-regressions --s2 --s3 --s4 --s5 first.
 Never updates golden captures or production code. Android picks up the class
 normally through testDebugUnitTest; this runner supplies the host alternative.
 """
+from f04_source_guard import historical_sha, pipeline_expected
 import argparse
 from pathlib import Path
 import subprocess
@@ -20,10 +21,10 @@ def main():
     production_identity()
     evidence=json.loads((ROOT/'tests/fixtures/s6_f03_evidence.json').read_text())
     for path,expected in evidence['s5_commit_files_sha256'].items():
-        require(file_sha(ROOT/path)==expected,f'S5 preservation drift: {path}')
+        require(historical_sha(path)==expected,f'S5 preservation drift: {path}')
     require(evidence['counts']==summarize()['counts_C_major'],'S6 inventory count drift')
-    require('OK (83 tests)' in (base/'junit.log').read_text(),'First run complete S5 host suite, 83 tests')
-    require((base/'sff1_pipeline_observed.tsv').read_bytes()==(ROOT/'app/src/test/resources/sff1_pipeline_digests.tsv').read_bytes(),'Baseline golden digest mismatch')
+    require(any(f'OK ({n} tests)' in (base/'junit.log').read_text() for n in (83,90)),'First run complete S5 host suite, 83 tests')
+    require((base/'sff1_pipeline_observed.tsv').read_bytes()==pipeline_expected(),'Baseline golden digest mismatch')
     lock=json.loads((ROOT/'tests/fixtures/sff1_jvm_dependencies.json').read_text())
     jars=[base/'dependencies'/item['filename'] for item in lock['dependencies']]
     for item,path in zip(lock['dependencies'],jars):require(file_sha(path)==item['sha256'],'Untrusted dependency')

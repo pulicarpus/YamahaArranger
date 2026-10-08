@@ -123,3 +123,5 @@ subprocess.run(["python3",str(root/"tools/test_sff_casm_source_guard.py")],check
 subprocess.run(["python3",str(root/"tools/test_sff_casm_native.py")],check=True)
 subprocess.run(["python3",str(root/"tools/test_sff_root_selection.py")],check=True)
 subprocess.run(["python3",str(root/"tools/test_f03_ownership.py")],check=True)
+
+subprocess.run(["python3",str(root/"tools/test_f04_source_guard.py")],check=True)

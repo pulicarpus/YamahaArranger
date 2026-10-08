@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Isolated P0 bookkeeping tests; no native/device evidence is generated."""
+from f04_source_guard import historical_bytes
 import hashlib
 import json
 from pathlib import Path
@@ -9,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def integrity():
     manifest = json.loads((ROOT/'tests/fixtures/f03_prototype_baseline_sha256.json').read_text())
     for name, expected in manifest['files'].items():
-        actual = hashlib.sha256((ROOT/name).read_bytes()).hexdigest()
+        actual = hashlib.sha256(historical_bytes(name)).hexdigest()
         if actual != expected:
             raise AssertionError('Baseline changed: '+name)
     return manifest

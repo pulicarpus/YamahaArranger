@@ -797,6 +797,13 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
 
     private fun isRhythmSource(channel:Int):Boolean = channel == 8 || channel == 9
 
+    private fun hasOnlyMelodicDeclarations(part:StylePartModel, sourceChannel:Int):Boolean {
+        val declarations=part.casmPolicies.ifEmpty { listOfNotNull(part.casm) }
+        return declarations.isNotEmpty() && declarations.all {
+            it.sourceChannel == sourceChannel && it.destinationChannel in 10..15
+        }
+    }
+
     // LoveSong Main D contains a Yamaha MegaVoice articulation source named
     // "StrumFX" (src7). A normal GM/SF2 player cannot reproduce its Yamaha
     // articulation mapping; sending those high trigger notes as ordinary
@@ -935,7 +942,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                     diagId, diagChannel, s.event.channel, s.event.note, output, s.event.velocity,
                     diagBank, absoluteTick, policy?.voiceName ?: "UNKNOWN", stage, detail)
                 }
-                if(policy==null&&chord!=null&&s.event.isNoteOn&&!isRhythmSource(s.event.channel)) {
+                if(policy==null&&chord!=null&&s.event.isNoteOn&&
+                    (!isRhythmSource(s.event.channel)||hasOnlyMelodicDeclarations(s.part,s.event.channel))) {
                     val candidates=s.part.casmPolicies.ifEmpty { listOfNotNull(s.part.casm) }
                     if (candidates.isEmpty()) partPresence.missingPolicy(diagChannel)
                     val rules=candidates.map { "${it.sourceNoteLow}-${it.sourceNoteHigh}:mask=${it.chordMuteMask.toString(16)}" }

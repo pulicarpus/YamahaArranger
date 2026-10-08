@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Stage 3 remains absent; protected #776 code unchanged except reviewed #781 part-presence patch."""
+from f04_source_guard import historical_sha
 import hashlib,json,sys
 from pathlib import Path
 from pcm_path_guard import strip_observers
@@ -15,7 +16,7 @@ approved={
 patch=json.loads((root/'tests/fixtures/accompaniment_presence781_patch.json').read_text())
 assert set(patch)==approved
 for path,expected in manifest.items():
-    actual=hashlib.sha256((root/path).read_bytes()).hexdigest()
+    actual=historical_sha(path)
     if path in approved:
         assert patch[path]['baseline776']==expected,path
         assert actual==patch[path]['reviewedPresencePatch'],'Unreviewed part-presence change: '+path

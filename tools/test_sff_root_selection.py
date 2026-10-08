@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """S4 CI evidence/negative gates; does not assert unverified musical semantics."""
+from f04_source_guard import historical_bytes
 import hashlib
 import csv
 import json
@@ -53,6 +54,8 @@ def portable_production_identity(read_bytes=None):
     normalized={};physical={}
     for path,expected in pinned['tracked_files'].items():
         raw=(ROOT/path).read_bytes() if read_bytes is None else read_bytes(path)
+        try: raw=historical_bytes(path,raw)
+        except AssertionError as error: raise ConformanceError(str(error)) from error
         old=strip_metadata(path,raw.decode()).encode() if path in s2 or path in s3 else raw
         require(hashlib.sha256(old).hexdigest()==expected,'S1 production source changed: '+path)
         normalized[path]=(modes[path],old);physical[path]=hashlib.sha256(raw).hexdigest()

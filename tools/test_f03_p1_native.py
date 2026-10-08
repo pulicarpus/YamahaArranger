@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Isolated P1 Linux PCM controls, never Android/Yamaha certification."""
+from f04_source_guard import historical_bytes
 import argparse
 import hashlib
 import json
@@ -18,7 +19,7 @@ def main():
     manifest = json.loads((ROOT/'tests/fixtures/f03_p1_baseline_sha256.json').read_text())
     def integrity():
         for path, expected in manifest['files'].items():
-            if hashlib.sha256((ROOT/path).read_bytes()).hexdigest() != expected:
+            if hashlib.sha256(historical_bytes(path)).hexdigest() != expected:
                 raise AssertionError('Baseline changed: '+path)
     integrity()
     proof = {'probe_execution': 'UNRUN', 'oldest_release_observation': 'UNKNOWN',

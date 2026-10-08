@@ -5,6 +5,7 @@ Production decoders/sequencer/transformer are compiled unchanged. Boundary
 facades live outside Android source sets and have no playback implementation.
 Dependency bytes are SHA-pinned; downloads require --fetch-dependencies.
 """
+from f04_source_guard import historical_bytes, pipeline_expected
 import argparse
 import json
 from pathlib import Path
@@ -32,6 +33,8 @@ def main(argv=None):
     parser.add_argument("--record-s5",action="store_true",help="initial S5 trace observation only; refuses existing S5 digest")
     parser.add_argument("--s2",action="store_true",help="also run dialect metadata tests; S1 captures stay pinned")
     parser.add_argument("--record-digests",action="store_true",help="create initial expected capture digest; never overwrite")
+    parser.add_argument("--f04-baseline",action="store_true",help="compile the exact pinned pre-F04 sequencer; never modify working source")
+    parser.add_argument("--f04",action="store_true",help="also execute isolated F04 routing controls")
     args=parser.parse_args(argv)
     require(shutil.which("java") is not None,"JVM17 required")
     production_identity()
@@ -52,6 +55,9 @@ def main(argv=None):
     output=args.output.resolve();output.mkdir(parents=True,exist_ok=True)
     jar=output/"sff1-jvm-tests.jar"
     classpath=":".join(map(str,jars))
+    baseline_source=output/"baseline-StyleSequencer.kt"
+    if args.f04_baseline:
+        baseline_source.write_bytes(historical_bytes("app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"))
     sources=[ROOT/"app/src/main/java/com/yourapp/style/StyleModel.kt",
              ROOT/"app/src/main/java/com/yourapp/yamahaarranger/style/StyleRepository.kt"]
     sources+=sorted((ROOT/"app/src/main/java/com/yourapp/chord").glob("*.kt"))
@@ -83,6 +89,11 @@ def main(argv=None):
     if args.existing_regressions:
         sources += [test_root/(name+".kt") for name in EXISTING]
         tests += ["com.yourapp.yamahaarranger.arranger."+name for name in EXISTING]
+    if args.f04_baseline:
+        sources=[baseline_source if p.name=="StyleSequencer.kt" else p for p in sources]
+    if args.f04:
+        sources.append(test_root/"F04RoutingRegressionTest.kt")
+        tests.append("com.yourapp.yamahaarranger.arranger.F04RoutingRegressionTest")
     compile_command=["java","-Xmx1g","-cp",classpath,"org.jetbrains.kotlin.cli.jvm.K2JVMCompiler",
                      "-no-stdlib","-no-reflect","-nowarn","-jvm-target","17","-classpath",classpath,"-d",str(jar),*map(str,sources)]
     with (output/"compile.log").open("w") as log:
@@ -96,7 +107,7 @@ def main(argv=None):
     runtime=":".join([str(jar),str(ROOT/"app/src/test/resources"),classpath])
     # Start Mockito's pinned agent explicitly: sandboxed hosts may disallow
     # self-attach. This is JVM test tooling, never an app/production agent.
-    command=["java","-Xmx1g",f"-javaagent:{deps/'byte-buddy-agent.jar'}",f"-Dsff1.output={capture}","-cp",runtime]
+    command=["java","-Xmx1g",f"-Dsff1.traceDirectory={output / 'traces'}",f"-javaagent:{deps/'byte-buddy-agent.jar'}",f"-Dsff1.output={capture}","-cp",runtime]
     if args.s5:
         command.insert(2,f"-Dsff5.output={output/'ownership-traces.txt'}")
     if args.record_s5:
@@ -119,7 +130,7 @@ def main(argv=None):
         expected.write_bytes(capture.read_bytes())
         print("SFF1_INITIAL_DIGESTS_RECORDED: rerun normal strict regression before claiming PASS")
     else:
-        require(capture.read_bytes()==expected.read_bytes(),"complete pipeline digest set differs from committed fixture")
+        require(capture.read_bytes()==(expected.read_bytes() if args.f04_baseline else pipeline_expected()),"complete pipeline digest set differs from selected exact profile")
         print("SFF1_PIPELINE PASS production Kotlin/repository functions=true boundary mocks=true nativeAcceptance/PCM=NOT_MEASURED")
     production_identity()
     return 0

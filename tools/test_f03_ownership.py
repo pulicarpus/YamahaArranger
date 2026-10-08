@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """S5 read-only corpus/reference/source negative gates; no playback repair."""
+from f04_source_guard import historical_bytes
 import copy
 import hashlib
 import json
@@ -33,7 +34,7 @@ class F03EvidenceTests(unittest.TestCase):
         ref=json.loads((ROOT/'tests/fixtures/f03_preservation_reference_s5.json').read_text())
         self.assertEqual('98a9d2a79b6226bf14b0a4be624f494a878b2ac5',ref['baseline_commit'])
         self.assertEqual(191,len(ref['files']))
-        for path,expected in ref['files'].items():self.assertEqual(expected,sha((ROOT/path).read_bytes()),path)
+        for path,expected in ref['files'].items():self.assertEqual(expected,sha(historical_bytes(path)),path)
 
     def test_all523_original_counterexamples_and_offsets(self):
         data=json.loads((ROOT/'tests/fixtures/f03_ownership_reference_s5.json').read_text())

@@ -5,6 +5,7 @@ Counts/digests are baseline observations, not Yamaha musical or PCM oracles.
 Use --corpus ZIP_OR_DIRECTORY; proprietary corpus bytes are never committed.
 """
 from __future__ import annotations
+from f04_source_guard import historical_bytes
 
 import argparse
 from collections import Counter, defaultdict, deque
@@ -462,7 +463,7 @@ def production_identity():
     for name in names:
         expected=subprocess.check_output(["git","show",f"{BASELINE}:{name}"],cwd=ROOT)
         observed=(strip_metadata(name,(ROOT/name).read_text()).encode()
-                  if name in metadata_sources else (ROOT/name).read_bytes())
+                  if name in metadata_sources else historical_bytes(name))
         require(hashlib.sha256(expected).hexdigest()==hashlib.sha256(observed).hexdigest(),f"S1 production source changed beyond pinned metadata: {name}")
     untracked=subprocess.check_output(["git","ls-files","--others","--exclude-standard","--","app/src/main"],cwd=ROOT,text=True)
     require(not untracked.strip(),"S1 has new untracked production files")

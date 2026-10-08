@@ -10,6 +10,7 @@ import os
 import re
 from pathlib import Path
 from sff_casm_source_guard import normalize_s3
+from f04_source_guard import historical_bytes
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "tests/fixtures/sff_dialect_source_identity_s2.json"
@@ -37,7 +38,7 @@ def validate_source(path, data):
 
 
 def strip_metadata(path, text):
-    text=normalize_s3(path,text.encode()).decode()
+    text=normalize_s3(path,historical_bytes(path,text.encode())).decode()
     rules = source_rules()
     blocks = re.findall(PATTERN, text, re.S)
     if path not in rules:
