@@ -1,0 +1,17 @@
+{
+  "baseline": "0faa84f1302a6059d79b57f3de1401c2f4ee90a7",
+  "baseline_files_unchanged": 346,
+  "corpus_503_rerun": "BLOCKED: original sff1.zip absent",
+  "local_api_recorder": "PASS",
+  "local_real_sdk": "BLOCKED: HTTP 403 / no SDK files",
+  "models_are_not_native_evidence": true,
+  "pairing_approved_for_implementation": false,
+  "parent": "b151919bd9192098d9b8cfd8c3f2cc0d5772b02f",
+  "protected_s6_files_sha256": {
+    "app/src/test/java/com/yourapp/yamahaarranger/arranger/S6F03RootCauseTest.kt": "781218a74bcb5dac6f486f6600eaf70dc4b1c6af07eda2f2552bacf01f7dc6d4",
+    "docs/S6_F03_ROOT_CAUSE.md": "5b4882b7a1b0dc4fcfbcfab22989adb1a2fafb9080ad98fe4c6e5757f0ee68b1",
+    "tests/fixtures/s6_f03_evidence.json": "d0431da2f551cfa2a4f96e1b2b1c8bbdbae3328b4074d7bdd541f13a8162d376",
+    "tools/test_s6_f03.py": "8fb75eae731f054aecc23539f309f912bc579dc17d319152d95bc1a91b271df7"
+  },
+  "psr_e343_audio": "UNRUN / UNKNOWN"
+}
