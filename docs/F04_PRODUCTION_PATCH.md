@@ -56,7 +56,9 @@ OFF and owner lines are untouched. The filename is not proof of encoded6/8.
 
 CI discovers `F04DifferentialGateTest` through the existing JVM task. It invokes
 the strict baseline/candidate runner and fails on non-F04 delta. No workflow or
-Gradle modification is needed. `F04RoutingRegressionTest` uses actual sequencer,
+Gradle modification is needed. The host compiler uses the existing portable S4
+source/tree verifier: a genuine shallow checkout without the #792 Git object
+verified all125 production paths and the exact F04 profile. `F04RoutingRegressionTest` uses actual sequencer,
 transformer and MIDI serializer with mocked audio/Android port boundaries.
 
 ## Verified results before push
@@ -95,7 +97,7 @@ Implementation commit/build/artifact are reported after pushing the checked
 patch and observing the existing workflow. Pending CI is not SUCCESS. The
 existing APK Stage3 symbol checks for arm64-v8a and armeabi-v7a remain mandatory.
 
-Rollback is the exact scoped implementation commit back to the pinned baseline,
+Rollback is the reviewed F04 implementation/harness commit range back to the pinned baseline,
 with its approved-profile test/harness changes reverted together. Do not revert
 the historical presence/mixer/percussion corrections or enable Stage3. Stop if
 any non-F04 differential/guard/CI failure occurs; do not patch F02/F03/F12 or

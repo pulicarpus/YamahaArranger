@@ -13,7 +13,8 @@ import shutil
 import subprocess
 import sys
 
-from audit_sff1_corpus import ROOT, ConformanceError, file_sha, production_identity, require
+from audit_sff1_corpus import ROOT, ConformanceError, file_sha, require
+from test_sff_root_selection import portable_production_identity as production_identity
 
 S1_CLASS="com.yourapp.yamahaarranger.arranger.Sff1ProductionPipelineRegressionTest"
 EXISTING=["CasmNoteTransformerTest","StylePartPresenceRegressionTest","StyleExpressionRegressionTest",
