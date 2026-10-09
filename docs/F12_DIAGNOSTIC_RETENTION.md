@@ -30,3 +30,9 @@ Full resolver/native/source regression runner PASS; S6 4 PASS, S7 11 PASS on cle
 ## Redmi Pad test / STOP
 
 Use the same style/SF2/tempo/input as #811/#813. Settle Main B with C. CAPTURE CHORD, change **C to F once**, wait briefly for the audible gap, then END CAPTURE → STOP → SAVE CHORD (SMALL). Send that single TXT and describe whether drum also stopped. Keep the capture short and perform no later chord changes; focus pools preserve the first action. If capture itself worsens timing, report it. STOP after APK succeeds; await device evidence before any musical optimization.
+
+## Completed CI and artifact
+
+Build **#814 SUCCESS**, source `a107bc493f8b98ef5b272fd1d6e830073b96c9c1`. Run [38004480563](https://github.com/pulicarpus/YamahaArranger/actions/runs/38004480563), job 114069995626. Historical #787 gate, Android unit-test/build step, Stage 3 exclusion for arm64-v8a and armeabi-v7a, and APK upload all report SUCCESS. Overall run/job completed with no failed steps.
+
+Download **app-debug** from the [verified artifact listing](https://github.com/pulicarpus/YamahaArranger/actions/runs/38004480563#artifacts): ID 11651151640, 12.5 MB. Server-reported archive SHA256 `41a0628e80b941ad5870ee8da824ba06338b7a4c2eed9de928917daf4df9298b`. This is uploaded archive metadata, not an independently downloaded APK hash; downloading requires GitHub access. No waveform or latency improvement on Redmi Pad is claimed. Final documentation commit follows this APK source; no further Android build is needed for documentation only.
