@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import hashlib,json,subprocess,tempfile
+import hashlib,json,subprocess,tempfile,sys
 from pathlib import Path
 from f12_source_guard import ROOT,MANIFEST,baseline_bytes
 p=json.loads(MANIFEST.read_text())
@@ -18,3 +18,15 @@ with tempfile.TemporaryDirectory() as tmp:
  subprocess.run(['g++','-std=c++17','-O2','-pthread','-I',str(ROOT/'app/src/main/cpp'),str(ROOT/'tests/f12_timing_test.cpp'),'-o',str(binary)],check=True)
  subprocess.run([str(binary)],check=True)
 print('F12_SOURCE_GUARD PASS exact #811 recovery; all historical baseline tracked files protected; every overlay mutation rejected')
+
+legacy=Path(sys.argv[1]) if len(sys.argv)>1 else ROOT/'.baseline787'
+if legacy.is_dir():
+    for f,identity in p['historical_inputs'].items():
+        raw=(legacy/f).read_bytes();assert hashlib.sha256(raw).hexdigest()==identity['sha256']
+        assert baseline_bytes(f,raw)==raw
+        assert hashlib.sha256(baseline_bytes(f,raw)).hexdigest()!=p['baseline_files'][f], 'Historical file must not pass as current #811'
+        try:baseline_bytes(f,raw+b'unapproved')
+        except AssertionError:pass
+        else:raise AssertionError('Mutated historical input accepted')
+    print('F12_HISTORICAL_INPUTS PASS exact #787 inputs, mutations rejected, cannot masquerade as #811')
+else:print('F12_HISTORICAL_INPUTS UNRUN: baseline787 directory not supplied')

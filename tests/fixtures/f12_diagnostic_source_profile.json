@@ -665,5 +665,15 @@
         }
       ]
     }
+  },
+  "historical_inputs": {
+    "app/src/main/cpp/bassmidi_player.cpp": {
+      "commit": "79af5ef7016c658553cc36b933722d5821e8e7d1",
+      "sha256": "ab2a8ec88364f160aa39d11a7000f320d6a580506efa637718d77f4b165b6afc"
+    },
+    "app/src/main/cpp/audio_engine.cpp": {
+      "commit": "79af5ef7016c658553cc36b933722d5821e8e7d1",
+      "sha256": "27ac8e7c9e97b1cc0c8a16dd03b2840541ecef41d4f58514ec81a932b9500b0f"
+    }
   }
 }
