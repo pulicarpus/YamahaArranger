@@ -28,6 +28,24 @@ class F12LatencyDiagnosticTest {
         t.arm();t.record(2,old,0,100000);assertFalse(t.report().contains("F12_STYLE_ROW"))
         now+=61_000_000_000;t.record(2,now,0,100000);assertFalse(t.report().contains("F12_STYLE_ROW"))
     }
+    @Test fun priorityAndFirstChordSlowRowsSurviveFloodWithBoundedCorrelationExport() {
+        var now=1_000_000L;val t=F12Timing { now };t.arm();t.chord(42);val mark=t.begin();now+=640_000;t.finish(5,mark,marker=true)
+        t.record(0,now,24339,100)
+        repeat(5000){now+=1000;t.record(2,now,0,61686)}
+        t.stop();val style=t.report()
+        assertTrue(style.contains("pool=priority"));assertTrue(style.contains("kind=5"));assertTrue(style.contains("waitUs=24339"))
+        assertTrue(style.contains("slowDrop=4996"));assertTrue(style.contains("overwritten=4937"))
+        val native="F12_NATIVE active=0 priorityDrop=0\nF12_NATIVE_ROW pool=priority order=1 kind=7 atUs=1400 waitUs=0 holdUs=0 chordId=42\nF12_NATIVE_ROW pool=focus order=1 kind=5 atUs=1500 waitUs=4600 holdUs=100 chordId=42"
+        val export=ChordReportBounds.capture("test",style,native+"\n"+"old legacy row\n".repeat(10000))
+        assertTrue(export.contains("CORRELATION_READY"));assertTrue(export.contains("offsetLowerUs=-242 offsetUpperUs=402 uncertaintyUs=644"))
+        assertTrue(export.contains("pool=priority"));assertTrue(export.toByteArray().size<=49152)
+        assertTrue(ChordReportBounds.capture("test",style,"missing native").contains("CORRELATION_INCOMPLETE"))
+        assertTrue(ChordReportBounds.capture("test",style,native.replace("priorityDrop=0","priorityDrop=1")).contains("CORRELATION_INCOMPLETE"))
+        val wrapped=style.replace("kind=5 atUs=1000 waitUs=0 holdUs=640", "kind=5 atUs=4294967200 waitUs=0 holdUs=20")
+        val wrapExport=ChordReportBounds.capture("test",wrapped,native.replace("atUs=1400","atUs=10"))
+        assertTrue(wrapExport.contains("offsetLowerUs=84 offsetUpperUs=108 uncertaintyUs=24"))
+        t.arm();repeat(100){t.record(5,t.begin(),0,1,true)};t.stop();assertTrue(t.report().contains("priorityDrop=36"))
+    }
     private fun trace(armed:Boolean):List<String> {
         val audio=mock(AudioEngineManager::class.java);val midi=mock(MidiInputManager::class.java)
         val scope=CoroutineScope(SupervisorJob());val seq=StyleSequencer(audio,midi,scope)

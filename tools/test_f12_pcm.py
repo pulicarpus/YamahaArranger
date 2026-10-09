@@ -27,5 +27,16 @@ with tempfile.TemporaryDirectory() as tmp:
  baselineBinary=t/'baseline-probe';baselineCmd=[str(baselineSource) if x==str(source) else str(baseline/'bassmidi_player.cpp') if x==str(ROOT/'app/src/main/cpp/bassmidi_player.cpp') else str(baseline) if x==str(ROOT/'app/src/main/cpp') else str(baselineBinary) if x==str(binary) else x for x in cmd]
  subprocess.run(baselineCmd,check=True);folder=t/'baseline';folder.mkdir();subprocess.run([str(baselineBinary),str(folder)],check=True)
  proof['baseline811']={n:hashlib.sha256((folder/n).read_bytes()).hexdigest() for n in ['pcm.bin','midi.bin']}
- assert proof['baseline811']==proof['off']==proof['on'],proof
- print('F12_LINUX_REAL_PCM PASS #811/OFF/ON PCM and MIDI BYTE_IDENTICAL',proof)
+ # Diagnostic #813 source, independently reconstructed, preserves its own observer.
+ old=t/'baseline813';old.mkdir()
+ for path in json.loads(MANIFEST.read_text())['baseline_files']:
+  if path.startswith('app/src/main/cpp/'):
+   dst=old/Path(path).relative_to('app/src/main/cpp');dst.parent.mkdir(parents=True,exist_ok=True)
+   dst.write_bytes(subprocess.check_output(['git','show','406608c83c790e9ed81ae5a0120cdaa3cb2080a9:'+path],cwd=ROOT))
+ oldBinary=t/'probe813';oldCmd=[str(old/'bassmidi_player.cpp') if x==str(ROOT/'app/src/main/cpp/bassmidi_player.cpp') else str(old) if x==str(ROOT/'app/src/main/cpp') else str(oldBinary) if x==str(binary) else x for x in cmd]
+ subprocess.run(oldCmd,check=True)
+ for mode in ['off','on']:
+  folder=t/('baseline813_'+mode);folder.mkdir();subprocess.run([str(oldBinary),str(folder)]+(['arm'] if mode=='on' else []),check=True)
+  proof['baseline813_'+mode]={n:hashlib.sha256((folder/n).read_bytes()).hexdigest() for n in ['pcm.bin','midi.bin']}
+ assert all(value==proof['baseline811'] for value in proof.values()),proof
+ print('F12_LINUX_REAL_PCM PASS #811/#813_OFF/#813_ON/candidate_OFF/candidate_ON PCM and MIDI BYTE_IDENTICAL',proof)

@@ -206,20 +206,25 @@ struct Timing {
     static_assert(std::atomic<uint32_t>::is_always_lock_free,"F12 requires lock-free 32-bit atomics");
     std::atomic<uint32_t> enabled{0},writers{0},used{0},dropped{0},chord{0},previousCallback{0},previousBudget{0},overwritten{0};
     std::atomic<uint32_t> counts[Count]{},maxWait[Count]{},maxHold[Count]{},rows[Capacity*Width]{};
+    std::atomic<uint32_t> priorityUsed{0},priorityDrop{0},slowDrop{0},focusAt{0},slowUsed[Count]{},priority[32*Width]{},slow[Count*4*Width]{};
     uint64_t started=0,deadline=0; // only read while enabled; reset after writers drain
     static uint64_t now(){return std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();}
     static uint32_t us(uint64_t t){return uint32_t(t/1000);}
     uint64_t begin() const {return enabled.load(std::memory_order_seq_cst)?now():0;}
     static void maximum(std::atomic<uint32_t>& a,uint32_t v){auto old=a.load(std::memory_order_relaxed);while(old<v&&!a.compare_exchange_weak(old,v,std::memory_order_relaxed)){} }
     void stop(){enabled.store(0,std::memory_order_seq_cst);while(writers.load(std::memory_order_seq_cst))std::this_thread::yield();}
-    void arm(){stop();used=0;dropped=0;chord=0;previousCallback=0;previousBudget=0;overwritten=0;for(unsigned k=0;k<Count;++k){counts[k]=0;maxWait[k]=0;maxHold[k]=0;}for(auto& r:rows)r=0;started=now();deadline=started+60000000000ULL;enabled.store(1,std::memory_order_seq_cst);}
+    void arm(){stop();used=0;dropped=0;chord=0;previousCallback=0;previousBudget=0;overwritten=0;priorityUsed=0;priorityDrop=0;slowDrop=0;focusAt=0;for(auto& r:priority)r=0;for(auto& r:slow)r=0;for(auto& n:slowUsed)n=0;for(unsigned k=0;k<Count;++k){counts[k]=0;maxWait[k]=0;maxHold[k]=0;}for(auto& r:rows)r=0;started=now();deadline=started+60000000000ULL;enabled.store(1,std::memory_order_seq_cst);}
     void record(Kind k,uint64_t at,uint32_t wait,uint32_t hold,bool marker=false){
         if(!at||!enabled.load(std::memory_order_seq_cst))return;
         writers.fetch_add(1,std::memory_order_seq_cst);
         if(!enabled.load(std::memory_order_seq_cst)){writers.fetch_sub(1,std::memory_order_seq_cst);return;}
         if(at>=started && at<=deadline){
             counts[k].fetch_add(1,std::memory_order_relaxed);maximum(maxWait[k],wait);maximum(maxHold[k],hold);
-            if(marker||(k!=CallbackGap&&(wait>=2000||hold>=2000))){unsigned n=used.fetch_add(1,std::memory_order_relaxed);auto* r=rows+(n%Capacity)*Width;auto state=r[0].load(std::memory_order_relaxed);if(state!=UINT32_MAX && r[0].compare_exchange_strong(state,UINT32_MAX,std::memory_order_acq_rel)){if(n>=Capacity)overwritten.fetch_add(1,std::memory_order_relaxed);r[1]=uint32_t(k);r[2]=us(at);r[3]=wait;r[4]=hold;r[5]=chord.load(std::memory_order_relaxed);r[0].store(n+1,std::memory_order_release);}else dropped.fetch_add(1,std::memory_order_relaxed);}
+            if(k==Chord){uint32_t zero=0;focusAt.compare_exchange_strong(zero,us(at));}
+            if(marker||(k!=CallbackGap&&(wait>=2000||hold>=2000))){
+                if(k==Chord){auto n=priorityUsed.fetch_add(1);if(n<32)write(priority+n*Width,n+1,k,at,wait,hold);else ++priorityDrop;}
+                else {auto focus=focusAt.load();if(focus && uint32_t(us(at)-focus)<=1000000){auto n=slowUsed[k].fetch_add(1);if(n<4)write(slow+(k*4+n)*Width,n+1,k,at,wait,hold);else ++slowDrop;}
+                unsigned n=used.fetch_add(1,std::memory_order_relaxed);auto* r=rows+(n%Capacity)*Width;auto state=r[0].load(std::memory_order_relaxed);if(state!=UINT32_MAX && r[0].compare_exchange_strong(state,UINT32_MAX,std::memory_order_acq_rel)){if(n>=Capacity)overwritten.fetch_add(1,std::memory_order_relaxed);r[1]=uint32_t(k);r[2]=us(at);r[3]=wait;r[4]=hold;r[5]=chord.load(std::memory_order_relaxed);r[0].store(n+1,std::memory_order_release);}else dropped.fetch_add(1,std::memory_order_relaxed);}}
         }
         writers.fetch_sub(1,std::memory_order_seq_cst);
     }
@@ -232,8 +237,15 @@ struct Timing {
         writers.fetch_sub(1,std::memory_order_seq_cst);
         if(old)record(CallbackGap,at,budget,uint32_t(t-old),uint32_t(t-old)>budget+2000);
     }
-    std::string report() const {std::ostringstream s;s<<"F12_NATIVE clock=steady_monotonic_us_mod32 cap=64 slowThresholdUs=2000 callbackGapRows=previousFrameBudgetPlus2000Us overwritten="<<overwritten.load()<<" dropped="<<dropped.load()<<" active="<<enabled.load()<<"\n";for(unsigned k=0;k<Count;++k)s<<"F12_NATIVE_SUM kind="<<k<<" count="<<counts[k].load()<<" maxWaitUs="<<maxWait[k].load()<<" maxHoldUs="<<maxHold[k].load()<<"\n";for(unsigned n=0;n<Capacity;++n){auto* r=rows+n*Width;if(r[0].load(std::memory_order_acquire)!=0 && r[0].load()!=UINT32_MAX)s<<"F12_NATIVE_ROW order="<<r[0].load()<<" kind="<<r[1].load()<<" atUs="<<r[2].load()<<" waitUs="<<r[3].load()<<" holdUs="<<r[4].load()<<" chordId="<<r[5].load()<<"\n";}return s.str();}
+    void write(std::atomic<uint32_t>* r,unsigned n,Kind k,uint64_t at,uint32_t wait,uint32_t hold){r[1]=uint32_t(k);r[2]=us(at);r[3]=wait;r[4]=hold;r[5]=chord.load();r[0].store(n,std::memory_order_release);}
+    std::string report() const {
+        std::ostringstream s;s<<"F12_NATIVE clock=steady_monotonic_us_mod32 cap=64 slowThresholdUs=2000 callbackGapRows=previousFrameBudgetPlus2000Us overwritten="<<overwritten.load()<<" dropped="<<dropped.load()<<" active="<<enabled.load()<<" priorityCap=32 priorityDrop="<<priorityDrop.load()<<" slowCap=36 slowDrop="<<slowDrop.load()<<" priorityOverwrite=0 slowOverwrite=0 focus=firstChord_plus1s rowPayloadBytes=3168\n";
+        for(unsigned k=0;k<Count;++k)s<<"F12_NATIVE_SUM kind="<<k<<" count="<<counts[k].load()<<" maxWaitUs="<<maxWait[k].load()<<" maxHoldUs="<<maxHold[k].load()<<"\n";
+        auto emit=[&](const std::atomic<uint32_t>* a,unsigned capacity,const char* pool){for(unsigned n=0;n<capacity;++n){auto* r=a+n*Width;if(r[0].load(std::memory_order_acquire)!=0 && r[0].load()!=UINT32_MAX)s<<"F12_NATIVE_ROW pool="<<pool<<" order="<<r[0].load()<<" kind="<<r[1].load()<<" atUs="<<r[2].load()<<" waitUs="<<r[3].load()<<" holdUs="<<r[4].load()<<" chordId="<<r[5].load()<<"\n";}};
+        emit(priority,32,"priority");emit(slow,Count*4,"focus");emit(rows,Capacity,"recent");return s.str();
+    }
 };
+static_assert(sizeof(Timing)<=4096,"F12 native recorder memory bound");
 inline Timing timing;
 class SynthLock {
     uint64_t requested_;std::lock_guard<std::mutex> lock_;uint64_t acquired_;Kind kind_;

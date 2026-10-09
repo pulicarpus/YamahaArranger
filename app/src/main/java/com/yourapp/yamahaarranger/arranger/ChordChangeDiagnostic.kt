@@ -85,7 +85,36 @@ internal class ChordChangeDiagnostic(private val clock: () -> Long = System::nan
 /** A hard UTF-8 byte bound, retaining whole records and reporting omissions. */
 internal object ChordReportBounds {
     const val FILE_BYTES = 48 * 1024
-    fun lines(header: String, rows: List<String>, limit: Int = FILE_BYTES): String {
+    fun capture(header:String,style:String,native:String,limit:Int=FILE_BYTES):String {
+        val all=(style+"\n"+native).lineSequence().toList()
+        fun fields(line:String)=Regex("(\\w+)=(-?\\d+)").findAll(line).associate { it.groupValues[1] to it.groupValues[2].toLong() }
+        val brackets=all.filter { it.startsWith("F12_STYLE_ROW") && fields(it)["kind"]==5L }
+        val markers=all.filter { it.startsWith("F12_NATIVE_ROW") && fields(it)["kind"]==7L }
+        val pairs=brackets.mapNotNull { b -> val k=fields(b);markers.firstOrNull { fields(it)["chordId"]==k["chordId"] }?.let { n ->
+            val f=fields(n);val raw=(f.getValue("atUs")-k.getValue("atUs")) and 0xffffffffL
+            val upper=if(raw>=0x80000000L)raw-0x100000000L else raw
+            "F12_CLOCK_PAIR chordId=${k["chordId"]} offsetLowerUs=${upper-k.getValue("holdUs")-2} offsetUpperUs=${upper+2} uncertaintyUs=${k.getValue("holdUs")+4} convention=native_minus_STYLE modulo32=1 driftUnverified=1"
+        } }
+        val ended=all.any { it.startsWith("F12_STYLE ") && it.contains("active=false") } && all.any { it.startsWith("F12_NATIVE ") && it.contains("active=0") }
+        val priorityLost=all.filter { it.startsWith("F12_STYLE ") || it.startsWith("F12_NATIVE ") }.any { (fields(it)["priorityDrop"]?:1L)>0 }
+        val focused=all.any { it.startsWith("F12_STYLE_ROW pool=focus") } && all.any { it.startsWith("F12_NATIVE_ROW pool=focus") }
+        val unique=brackets.map { fields(it)["chordId"] }.distinct().size==brackets.size && markers.map { fields(it)["chordId"] }.distinct().size==markers.size
+        val ready=pairs.isNotEmpty() && pairs.size==brackets.size && pairs.size==markers.size && unique && ended && !priorityLost && focused
+        val reason=if(ready)"matched_bracket_native_marker_focus_rows;coverage_not_complete_audio_cause_unknown" else "matchedPairs=${pairs.size},ended=$ended,priorityLost=$priorityLost,uniqueIds=$unique,focusBoth=$focused"
+        val status="F12_CORRELATION ${if(ready) "CORRELATION_READY" else "CORRELATION_INCOMPLETE"} reason=$reason"
+        val ordered=all.filter { it.startsWith("F12_") }.sortedBy { when {
+            it.contains("pool=priority") -> 0
+            !it.contains("_ROW") -> 1
+            it.contains("pool=focus") -> 2
+            else -> 3
+        } }+all.filterNot { it.startsWith("F12_") }
+        val result=boundedLines(header,listOf(status)+pairs+ordered,limit)
+        return if(ready && ordered.filter { it.startsWith("F12_") }.any { !result.contains(it+"\n") })
+            result.replace(status,"F12_CORRELATION CORRELATION_INCOMPLETE reason=timing_export_truncated") else result
+    }
+    fun lines(header:String,rows:List<String>,limit:Int=FILE_BYTES):String =
+        if(rows.any { it.startsWith("F12_") })capture(header,rows.joinToString("\n"),"",limit) else boundedLines(header,rows,limit)
+    private fun boundedLines(header: String, rows: List<String>, limit: Int): String {
         require(limit >= 256)
         val out = StringBuilder()
         var bytes = 0
@@ -116,6 +145,13 @@ internal class F12Timing(private val clock: () -> Long = System::nanoTime) {
     private val dropped = java.util.concurrent.atomic.AtomicInteger(0)
     private val overwritten = java.util.concurrent.atomic.AtomicInteger(0)
     private val rows = java.util.concurrent.atomic.AtomicIntegerArray(64 * 8)
+    private val priority = java.util.concurrent.atomic.AtomicIntegerArray(64 * 8)
+    private val slow = java.util.concurrent.atomic.AtomicIntegerArray(32 * 8)
+    private val priorityUsed = java.util.concurrent.atomic.AtomicInteger(0)
+    private val priorityDrop = java.util.concurrent.atomic.AtomicInteger(0)
+    private val slowUsed = java.util.concurrent.atomic.AtomicIntegerArray(8)
+    private val slowDrop = java.util.concurrent.atomic.AtomicInteger(0)
+    @Volatile private var focusAt = 0L
     private val count = java.util.concurrent.atomic.AtomicIntegerArray(8)
     private val maxWait = java.util.concurrent.atomic.AtomicIntegerArray(8)
     private val maxHold = java.util.concurrent.atomic.AtomicIntegerArray(8)
@@ -125,7 +161,10 @@ internal class F12Timing(private val clock: () -> Long = System::nanoTime) {
     @Volatile private var section = 0
     fun begin(): Long = if (enabled.get()) clock() else 0L
     fun stop() { enabled.set(false); while (writers.get() != 0) Thread.yield() }
-    fun arm() { stop(); used.set(0); dropped.set(0); overwritten.set(0); chord=0; section=0
+    fun arm() { stop(); used.set(0); dropped.set(0); overwritten.set(0); chord=0; section=0; focusAt=0; priorityUsed.set(0); priorityDrop.set(0); slowDrop.set(0)
+        for(i in 0 until priority.length())priority.set(i,0)
+        for(i in 0 until slow.length())slow.set(i,0)
+        for(i in 0..7)slowUsed.set(i,0)
         for (i in 0 until rows.length()) rows.set(i,0)
         for (i in 0..7) { count.set(i,0); maxWait.set(i,0); maxHold.set(i,0) }
         started=clock(); deadline=started+60_000_000_000L; enabled.set(true)
@@ -137,8 +176,18 @@ internal class F12Timing(private val clock: () -> Long = System::nanoTime) {
         if(at==0L || !enabled.get()) return
         writers.incrementAndGet()
         try { if(!enabled.get() || at<started || at>deadline)return
+            if(kind==7 && focusAt==0L)focusAt=at
             count.incrementAndGet(kind); maximum(maxWait,kind,wait); maximum(maxHold,kind,hold)
             if(marker || wait>=2000 || hold>=10000) {
+                if(kind in 3..5 || kind==7) {
+                    val n=priorityUsed.getAndIncrement()
+                    if(n<64)writeRow(priority,n*8,n+1,kind,at,wait,hold,tick) else priorityDrop.incrementAndGet()
+                    return
+                }
+                if(focusAt!=0L && at>=focusAt && at-focusAt<=1_000_000_000L) {
+                    val n=slowUsed.getAndIncrement(kind)
+                    if(n<4)writeRow(slow,(kind*4+n)*8,n+1,kind,at,wait,hold,tick) else slowDrop.incrementAndGet()
+                }
                 val n=used.getAndIncrement()
                 val p=(n%64)*8;val old=rows.get(p)
                 if(old==-1 || !rows.compareAndSet(p,old,-1)){dropped.incrementAndGet();return}
@@ -149,12 +198,18 @@ internal class F12Timing(private val clock: () -> Long = System::nanoTime) {
     fun finish(kind:Int,request:Long,acquired:Long=request,marker:Boolean=false,tick:Int=-1) {
         if(request!=0L)record(kind,request,((acquired-request)/1000).coerceIn(0,Int.MAX_VALUE.toLong()).toInt(),((clock()-acquired)/1000).coerceIn(0,Int.MAX_VALUE.toLong()).toInt(),marker)
     }
-    fun chord(id:Long){chord=id.toInt();record(3,begin(),0,0,true)}
+    fun chord(id:Long){chord=id.toInt();if(focusAt==0L)focusAt=begin();record(3,begin(),0,0,true)}
     fun section(name:String){section=name.hashCode();record(4,begin(),0,0,true)}
+    private fun writeRow(a:java.util.concurrent.atomic.AtomicIntegerArray,p:Int,n:Int,k:Int,at:Long,w:Int,h:Int,tick:Int) {
+        a.set(p+1,k);a.set(p+2,(at/1000).toInt());a.set(p+3,w);a.set(p+4,h);a.set(p+5,chord);a.set(p+6,section);a.set(p+7,tick);a.set(p,n)
+    }
     fun report():String=buildString {
-        appendLine("F12_STYLE clock=System.nanoTime_us_mod32 cap=64 dropped=${dropped.get()} overwritten=${overwritten.get()} active=${enabled.get()}")
+        appendLine("F12_STYLE clock=System.nanoTime_us_mod32 cap=64 dropped=${dropped.get()} overwritten=${overwritten.get()} active=${enabled.get()} priorityCap=64 priorityDrop=${priorityDrop.get()} slowCap=32 slowDrop=${slowDrop.get()} priorityOverwrite=0 slowOverwrite=0 focus=firstChord_plus1s rowPayloadBytes=5120")
         for(k in 0..7)appendLine("F12_STYLE_SUM kind=$k count=${count.get(k)} maxWaitUs=${maxWait.get(k)} maxHoldUs=${maxHold.get(k)}")
-        for(n in 0..63){val p=n*8;if(rows.get(p)>0)appendLine("F12_STYLE_ROW order=${rows.get(p)} kind=${rows.get(p+1)} atUs=${rows.get(p+2).toLong() and 0xffffffffL} waitUs=${rows.get(p+3)} holdUs=${rows.get(p+4)} chordId=${rows.get(p+5)} sectionHash=${rows.get(p+6)} tick=${rows.get(p+7)}")}
+        fun emit(a:java.util.concurrent.atomic.AtomicIntegerArray,tag:String) {
+            for(n in 0 until a.length()/8){val p=n*8;if(a.get(p)>0)appendLine("F12_STYLE_ROW pool=$tag order=${a.get(p)} kind=${a.get(p+1)} atUs=${a.get(p+2).toLong() and 0xffffffffL} waitUs=${a.get(p+3)} holdUs=${a.get(p+4)} chordId=${a.get(p+5)} sectionHash=${a.get(p+6)} tick=${a.get(p+7)}")}
+        }
+        emit(priority,"priority");emit(slow,"focus");emit(rows,"recent")
     }
 }
 // F12_TIMING_END

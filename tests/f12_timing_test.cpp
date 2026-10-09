@@ -9,7 +9,13 @@ int main(){
  t.callback(at,448,48000);t.callback(at+9333000,448,48000);assert(t.counts[f12::CallbackGap]==1);assert(t.maxHold[f12::CallbackGap]==9333);
  t.callback(at+109333000,448,48000);assert(t.maxHold[f12::CallbackGap]==100000);
  for(int i=0;i<200;++i)t.record(f12::Chord,at+i*1000,0,0,true);
- assert(t.used>=200);assert(t.overwritten>=136);assert(t.report().size()<12000);
+ assert(t.priorityUsed==200);assert(t.priorityDrop==168);assert(t.report().size()<20000);
+ t.stop();t.arm();at=t.begin();t.chord=42;t.record(f12::Chord,at,0,0,true);
+ t.record(f12::Render,at+1000,77000,100);
+ for(int i=0;i<5000;++i)t.record(f12::Render,at+2000+i*1000,3000,3000);
+ auto report=t.report();assert(report.find("pool=priority order=1 kind=7")!=std::string::npos);
+ assert(report.find("pool=focus order=1 kind=5")!=std::string::npos);assert(report.find("waitUs=77000")!=std::string::npos);
+ assert(t.slowDrop==4997);assert(t.overwritten==4937);assert(t.priorityDrop==0);
  t.stop();auto n=t.used.load();t.record(f12::Render,at,1,2,true);assert(t.used==n);assert(!t.begin());
  t.arm();assert(t.used==0);t.record(f12::Render,at,1,2,true);assert(t.used==0); // stale token from previous arm
  std::mutex mutex;mutex.lock();std::atomic<bool> entering{false},acquired{false};
