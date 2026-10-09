@@ -1,0 +1,62 @@
+package com.yourapp.yamahaarranger.arranger
+
+import com.yourapp.midi.MidiInputManager
+import com.yourapp.yamahaarranger.audio.AudioEngineManager
+import com.yourapp.yamahaarranger.chord.*
+import com.yourapp.yamahaarranger.style.*
+import kotlinx.coroutines.*
+import org.junit.Assert.*
+import org.junit.Test
+import org.mockito.Mockito.*
+import java.io.File
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+
+class F12LatencyDiagnosticTest {
+    @Test fun disabledTimingAndExactWaitHold() {
+        var now=1_000_000L;val t=F12Timing { now }
+        assertEquals(0L,t.begin());t.record(0,now,77000,5);assertFalse(t.report().contains("F12_STYLE_ROW"))
+        t.arm();val request=t.begin();now+=77_000_000;t.finish(0,request,now)
+        assertTrue(t.report().contains("maxWaitUs=77000 maxHoldUs=0"))
+        t.stop();val before=t.report();now+=1_000_000;t.record(0,now,1000,1000,true);assertEquals(before,t.report())
+    }
+    @Test fun boundedRecentRowsExpiryAndStaleTokens() {
+        var now=4_294_967_000_000L;val t=F12Timing { now };t.arm();val old=t.begin()
+        repeat(200){now+=1_000_000;t.record(2,now,0,100000)}
+        assertEquals(64,t.report().lineSequence().count { it.startsWith("F12_STYLE_ROW") })
+        assertTrue(t.report().contains("overwritten=136"));assertTrue(t.report().contains("atUs=199704"));assertTrue(t.report().toByteArray().size<12000)
+        t.arm();t.record(2,old,0,100000);assertFalse(t.report().contains("F12_STYLE_ROW"))
+        now+=61_000_000_000;t.record(2,now,0,100000);assertFalse(t.report().contains("F12_STYLE_ROW"))
+    }
+    private fun trace(armed:Boolean):List<String> {
+        val audio=mock(AudioEngineManager::class.java);val midi=mock(MidiInputManager::class.java)
+        val scope=CoroutineScope(SupervisorJob());val seq=StyleSequencer(audio,midi,scope)
+        try {
+            if(armed)seq.armChordDiagnostic()
+            seq.currentChord=DetectedChord(0,0,ChordQuality.MAJOR)
+            val melodic=CasmPolicyModel(4,11,"Piano",0,0,0,0,11,0,127,3,false,-1)
+            val drum=CasmPolicyModel(9,9,"Drum",0,0,0,0,11,0,127,1,false,-1)
+            val section=StyleSectionModel("MainA",4,listOf(
+                StylePartModel("melody",listOf(StyleNoteEvent(0,true,60,96,4)),melodic,listOf(melodic)),
+                StylePartModel("rhythm",listOf(StyleNoteEvent(0,true,36,96,9)),drum,listOf(drum))))
+            val done=CountDownLatch(1);seq.playSeamless(section,1_000_000_000,1){done.countDown()}
+            assertTrue(done.await(20,TimeUnit.SECONDS));seq.currentChord=DetectedChord(5,5,ChordQuality.MAJOR)
+            if(armed){seq.stopChordDiagnostic();assertTrue(seq.compactChordDiagnosticReport().contains("F12_STYLE_SUM kind=0 count="))}
+            val events=mockingDetails(audio).invocations.mapNotNull {
+                when(it.method.name){
+                    "noteOnStyleChannel","noteOnChannel" -> "ON "+it.arguments.take(3).joinToString()
+                    "noteOffStyleChannel","noteOffChannel" -> "OFF "+it.arguments.take(2).joinToString()
+                    "setChannelProgram","setChannelMixer" -> it.method.name+" "+it.arguments.joinToString()
+                    else -> null
+                }
+            }+mockingDetails(midi).invocations.filter { it.method.name in listOf("sendNoteOn","sendNoteOff","sendProgramChange") }.map { it.method.name+" "+it.arguments.joinToString() }
+            assertTrue(events.any { it.startsWith("OFF") });return events
+        } finally {seq.stop();scope.cancel()}
+    }
+    @Test fun actualSequencerCaptureOffOnPreservesNotesControllersAndMidi() { assertEquals(trace(false),trace(true)) }
+    @Test fun nativeTimingAndStrictSourceOverlay() {
+        val root=generateSequence(File(System.getProperty("user.dir"))) { it.parentFile }.first { File(it,"tools/test_f12_timing.py").isFile }
+        val p=ProcessBuilder("python3","-B",File(root,"tools/test_f12_timing.py").path).directory(root).redirectErrorStream(true).start()
+        val text=p.inputStream.bufferedReader().readText();assertTrue(text,p.waitFor(60,TimeUnit.SECONDS));assertEquals(text,0,p.exitValue())
+    }
+}

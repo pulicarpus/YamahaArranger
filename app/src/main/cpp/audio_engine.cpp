@@ -179,6 +179,7 @@ void AudioEngine::unloadSoundFont() {
 oboe::DataCallbackResult AudioEngine::onAudioReady(
     oboe::AudioStream* stream, void* audioData, int32_t numFrames) {
     (void)stream;
+    f12::Callback f12Callback(numFrames,outputSampleRate_);
 // PCM_PATH_OBSERVER_BEGIN
 #if YAMAHA_ROLE_PCM_METERS
     pcmOutput_.callback(numFrames);

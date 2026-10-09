@@ -1147,7 +1147,7 @@ void BassMidiPlayer::logAudioPath(int channel, int key, int velocity, bool sent,
 }
 
 void BassMidiPlayer::noteOn(int channel, int key, float velocity, const AudioPathOrigin& origin) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    f12::SynthLock lock(mutex_,f12::NoteOn);
     if (!ensureEngine()) {
         logAudioPath(std::clamp(channel, 0, 15), std::clamp(key, 0, 127),
                      std::clamp(static_cast<int>(std::lround(velocity * 127.0f)), 1, 127),
@@ -1190,7 +1190,7 @@ void BassMidiPlayer::noteOn(int channel, int key, float velocity, const AudioPat
 }
 
 void BassMidiPlayer::noteOff(int channel, int key, const AudioPathOrigin& origin) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    f12::SynthLock lock(mutex_,f12::NoteOff);
     if (!stream_) return;
 
     channel = std::max(0, std::min(15, channel));
@@ -1212,7 +1212,7 @@ void BassMidiPlayer::noteOff(int channel, int key, const AudioPathOrigin& origin
 }
 
 void BassMidiPlayer::allNotesOff() {
-    std::lock_guard<std::mutex> lock(mutex_);
+    f12::SynthLock lock(mutex_,f12::Other);
     if (!stream_) return;
     for(auto& lane:percussionLanes_) {
         if(lane.stream) for(int key=0;key<128;++key) BASS_MIDI_StreamEvent(lane.stream,key,MIDI_EVENT_SOUNDOFF,0);
@@ -1225,7 +1225,7 @@ void BassMidiPlayer::allNotesOff() {
 }
 
 void BassMidiPlayer::setChannelPreset(int channel, int bank, int program, const std::string& voiceName) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    f12::SynthLock lock(mutex_,f12::Preset);
     if (!ensureEngine()) return;
 
     channel = std::max(0, std::min(15, channel));
@@ -1361,7 +1361,7 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program, const 
 void BassMidiPlayer::setChannelMixer(int channel, int volume, int pan,
                                      int expression, int reverbSend,
                                      int chorusSend) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    f12::SynthLock lock(mutex_,f12::Mixer);
     if (!ensureEngine()) return;
 
     channel = std::max(0, std::min(15, channel));
@@ -1373,7 +1373,7 @@ void BassMidiPlayer::setChannelMixer(int channel, int volume, int pan,
 }
 
 void BassMidiPlayer::setChannelExpression(int channel, int expression) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    f12::SynthLock lock(mutex_,f12::Other);
     if (!ensureEngine()) return;
     send(channel, MIDI_EVENT_EXPRESSION, std::clamp(expression, 0, 127));
 }
@@ -1386,7 +1386,7 @@ void BassMidiPlayer::setKeyboardSustain(bool enabled) {
 }
 
 void BassMidiPlayer::setKeyboardReleaseTime(int releaseTime) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    f12::SynthLock lock(mutex_,f12::Other);
     if (!stream_) return;
 
     const int value = std::max(0, std::min(127, releaseTime));
@@ -1404,7 +1404,7 @@ void BassMidiPlayer::setKeyboardReleaseTime(int releaseTime) {
 
 
 void BassMidiPlayer::setMasterGain(float gain) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    f12::SynthLock lock(mutex_,f12::Other);
     if (!stream_) return;
     BASS_ChannelSetAttribute(stream_, BASS_ATTRIB_MIDI_VOL,
                              std::max(0.0f, std::min(1.0f, gain)));
@@ -1919,7 +1919,7 @@ std::string BassMidiPlayer::presetList() const {
 }
 
 void BassMidiPlayer::render(float* out, int numFrames) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    f12::SynthLock lock(mutex_,f12::Render);
 // PCM_PATH_OBSERVER_BEGIN
 #if YAMAHA_ROLE_PCM_METERS
     ++pcmDecode_.calls;
@@ -1999,17 +1999,18 @@ void BassMidiPlayer::render(float* out, int numFrames) {
 void BassMidiPlayer::armChordDiagnostic() {
     std::lock_guard<std::mutex> lock(mutex_);
     chordCapture_.arm();
+    f12::timing.arm();
     // The focused capture keeps ch11 baseline and short chord windows.
     captureChordState("BASELINE",11,-1,0,-1,0);
 }
 void BassMidiPlayer::stopChordDiagnostic() {
-    std::lock_guard<std::mutex> lock(mutex_); chordCapture_.stop();
+    std::lock_guard<std::mutex> lock(mutex_); chordCapture_.stop(); f12::timing.stop();
 }
 void BassMidiPlayer::captureChordState(const char* stage,int channel,int key,int velocity,int sent,int error,
                                      const AudioPathOrigin& origin,DWORD event,DWORD param) {
     if(!chordCapture_.armed) return;
     const auto now=chord_diagnostic::monoNs();
-    if(!chordCapture_.active(now)) { chordCapture_.stop(); return; }
+    if(!chordCapture_.active(now)) { chordCapture_.stop(); f12::timing.stop(); return; }
     if(channel<0 || channel>15) return;
     if(!chordCapture_.interested(channel,origin,event!=0,now)) return;
     if(chordCapture_.rows.size()==chord_diagnostic::Capture::cap) { ++chordCapture_.dropped; return; }
@@ -2097,15 +2098,17 @@ std::string BassMidiPlayer::chordDiagnosticReport() const {
 }
 
 void BassMidiPlayer::markChordDiagnostic(int64_t id) {
-    std::lock_guard<std::mutex> lock(mutex_);
+    f12::SynthLock lock(mutex_,f12::Other);
     if(!chordCapture_.active() || !id) return;
     chordCapture_.mark(id);
+    f12::timing.chord.store(uint32_t(id),std::memory_order_relaxed);
+    f12::timing.record(f12::Chord,f12::timing.begin(),0,0,true);
     captureChordState("BASELINE",11,-1,0,-1,0);
 }
 std::string BassMidiPlayer::compactChordDiagnosticReport() const {
     chord_diagnostic::Capture snapshot;
     { std::lock_guard<std::mutex> lock(mutex_); snapshot=chordCapture_; }
-    return chord_diagnostic::compactReport(snapshot);
+    return f12::timing.report()+chord_diagnostic::compactReport(snapshot);
 }
 
 void BassMidiPlayer::retirePercussionStreams() {

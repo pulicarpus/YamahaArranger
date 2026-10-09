@@ -1,0 +1,40 @@
+{
+  "files": {
+    "YamahaArranger_ChordCapture_20261009_203942.txt": {
+      "sha256": "adfd0aa3c217de373073ce0040426b856428a9efc63140f96a0af44e89000f45",
+      "bytes": 47097,
+      "lagUs": [
+        5450,
+        21364,
+        10574,
+        16345,
+        22468,
+        25652,
+        13107,
+        77618,
+        84878,
+        92581,
+        99816
+      ]
+    },
+    "YamahaArranger_PartPresence_20261009_203945.txt": {
+      "sha256": "1271b93689ef515f19d3a610e0b3d3c523aca375e5b8e0eb7091dc4b1deb49cf",
+      "bytes": 44455,
+      "lagUs": []
+    }
+  },
+  "scheduled_rows": [
+    "CONTEXT order='23' wallMs='1791553151330' id='686' chordId='0' contextId='689' section='FillAA' part='LoveSong3.S687.STY' partIndex='3' src='3' original='65' dst='11' output='64' velocity='56' tick='81597' lagUs='5450' sourceBank='113' sourceHeaderPC='0' voice='piano 00' stage='FORWARD' oldPeers='0' targetPeers='1' owners='3:63:677'",
+    "CONTEXT order='55' wallMs='1791553151762' id='0' chordId='689' contextId='689' section='FillAA' part='LoveSong3.S687.STY' partIndex='6' src='6' original='60' dst='11' output='-1' velocity='0' tick='82529' lagUs='21364' sourceBank='113' sourceHeaderPC='0' voice='null' stage='OFF_NO_ACTIVE_LEDGER'",
+    "CONTEXT order='56' wallMs='1791553151764' id='700' chordId='689' contextId='689' section='FillAA' part='LoveSong3.S687.STY' partIndex='3' src='3' original='63' dst='11' output='65' velocity='74' tick='82557' lagUs='10574' sourceBank='113' sourceHeaderPC='0' voice='piano 00' stage='FORWARD' oldPeers='0' targetPeers='0' owners=''",
+    "CONTEXT order='57' wallMs='1791553151770' id='701' chordId='689' contextId='689' section='FillAA' part='LoveSong3.S687.STY' partIndex='3' src='3' original='65' dst='11' output='65' velocity='65' tick='82557' lagUs='16345' sourceBank='113' sourceHeaderPC='0' voice='piano 00' stage='FORWARD' oldPeers='0' targetPeers='1' owners='3:63:700'",
+    "CONTEXT order='58' wallMs='1791553151776' id='702' chordId='689' contextId='689' section='FillAA' part='LoveSong3.S687.STY' partIndex='3' src='3' original='70' dst='11' output='69' velocity='71' tick='82557' lagUs='22468' sourceBank='113' sourceHeaderPC='0' voice='piano 00' stage='FORWARD' oldPeers='0' targetPeers='0' owners=''",
+    "CONTEXT order='59' wallMs='1791553151779' id='703' chordId='689' contextId='689' section='FillAA' part='LoveSong3.S687.STY' partIndex='6' src='6' original='72' dst='11' output='-1' velocity='70' tick='82557' lagUs='25652' sourceBank='113' sourceHeaderPC='0' voice='null' stage='DROP_NO_POLICY_WITH_CHORD'",
+    "CONTEXT order='63' wallMs='1791553152611' id='0' chordId='689' contextId='720' section='FillAA' part='LoveSong3.S687.STY' partIndex='6' src='6' original='72' dst='11' output='-1' velocity='0' tick='84449' lagUs='13107' sourceBank='113' sourceHeaderPC='0' voice='null' stage='OFF_NO_ACTIVE_LEDGER'",
+    "CONTEXT order='64' wallMs='1791553152688' id='714' chordId='689' contextId='720' section='MainA' part='LoveSong3.S687.STY' partIndex='3' src='3' original='58' dst='11' output='57' velocity='53' tick='84477' lagUs='77618' sourceBank='113' sourceHeaderPC='0' voice='piano 00' stage='FORWARD' oldPeers='0' targetPeers='0' owners=''",
+    "CONTEXT order='65' wallMs='1791553152695' id='715' chordId='689' contextId='720' section='MainA' part='LoveSong3.S687.STY' partIndex='3' src='3' original='63' dst='11' output='65' velocity='65' tick='84477' lagUs='84878' sourceBank='113' sourceHeaderPC='0' voice='piano 00' stage='FORWARD' oldPeers='0' targetPeers='0' owners=''",
+    "CONTEXT order='66' wallMs='1791553152703' id='716' chordId='689' contextId='720' section='MainA' part='LoveSong3.S687.STY' partIndex='3' src='3' original='65' dst='11' output='65' velocity='66' tick='84477' lagUs='92581' sourceBank='113' sourceHeaderPC='0' voice='piano 00' stage='FORWARD' oldPeers='0' targetPeers='1' owners='3:63:715'",
+    "CONTEXT order='67' wallMs='1791553152710' id='717' chordId='689' contextId='720' section='MainA' part='LoveSong3.S687.STY' partIndex='6' src='6' original='60' dst='11' output='-1' velocity='60' tick='84477' lagUs='99816' sourceBank='113' sourceHeaderPC='0' voice='null' stage='DROP_NO_POLICY_WITH_CHORD'"
+  ],
+  "interpretation": "Eleven exported scheduled rows, not all device events. Four delays >=77000us. Cumulative native callback/decode success does not certify continuity. Omitted export rows prevent complete reconstruction."
+}

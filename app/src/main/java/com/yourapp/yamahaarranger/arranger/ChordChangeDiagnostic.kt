@@ -106,3 +106,55 @@ internal object ChordReportBounds {
         return out.toString()
     }
 }
+
+// F12_TIMING_BEGIN
+/** Bounded observer. Integer microseconds wrap modulo 2^32; compare unsigned deltas. */
+internal class F12Timing(private val clock: () -> Long = System::nanoTime) {
+    private val enabled = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val writers = java.util.concurrent.atomic.AtomicInteger(0)
+    private val used = java.util.concurrent.atomic.AtomicInteger(0)
+    private val dropped = java.util.concurrent.atomic.AtomicInteger(0)
+    private val overwritten = java.util.concurrent.atomic.AtomicInteger(0)
+    private val rows = java.util.concurrent.atomic.AtomicIntegerArray(64 * 8)
+    private val count = java.util.concurrent.atomic.AtomicIntegerArray(8)
+    private val maxWait = java.util.concurrent.atomic.AtomicIntegerArray(8)
+    private val maxHold = java.util.concurrent.atomic.AtomicIntegerArray(8)
+    @Volatile private var started = 0L
+    @Volatile private var deadline = 0L
+    @Volatile private var chord = 0
+    @Volatile private var section = 0
+    fun begin(): Long = if (enabled.get()) clock() else 0L
+    fun stop() { enabled.set(false); while (writers.get() != 0) Thread.yield() }
+    fun arm() { stop(); used.set(0); dropped.set(0); overwritten.set(0); chord=0; section=0
+        for (i in 0 until rows.length()) rows.set(i,0)
+        for (i in 0..7) { count.set(i,0); maxWait.set(i,0); maxHold.set(i,0) }
+        started=clock(); deadline=started+60_000_000_000L; enabled.set(true)
+    }
+    private fun maximum(array: java.util.concurrent.atomic.AtomicIntegerArray,k:Int,v:Int) {
+        var old=array.get(k); while(old<v && !array.compareAndSet(k,old,v)) old=array.get(k)
+    }
+    fun record(kind:Int,at:Long,wait:Int,hold:Int,marker:Boolean=false,tick:Int=-1) {
+        if(at==0L || !enabled.get()) return
+        writers.incrementAndGet()
+        try { if(!enabled.get() || at<started || at>deadline)return
+            count.incrementAndGet(kind); maximum(maxWait,kind,wait); maximum(maxHold,kind,hold)
+            if(marker || wait>=2000 || hold>=10000) {
+                val n=used.getAndIncrement()
+                val p=(n%64)*8;val old=rows.get(p)
+                if(old==-1 || !rows.compareAndSet(p,old,-1)){dropped.incrementAndGet();return}
+                if(n>=64)overwritten.incrementAndGet(); rows.set(p+1,kind);rows.set(p+2,(at/1000).toInt());rows.set(p+3,wait);rows.set(p+4,hold);rows.set(p+5,chord);rows.set(p+6,section);rows.set(p+7,tick);rows.set(p,n+1)
+            }
+        } finally { writers.decrementAndGet() }
+    }
+    fun finish(kind:Int,request:Long,acquired:Long=request,marker:Boolean=false,tick:Int=-1) {
+        if(request!=0L)record(kind,request,((acquired-request)/1000).coerceIn(0,Int.MAX_VALUE.toLong()).toInt(),((clock()-acquired)/1000).coerceIn(0,Int.MAX_VALUE.toLong()).toInt(),marker)
+    }
+    fun chord(id:Long){chord=id.toInt();record(3,begin(),0,0,true)}
+    fun section(name:String){section=name.hashCode();record(4,begin(),0,0,true)}
+    fun report():String=buildString {
+        appendLine("F12_STYLE clock=System.nanoTime_us_mod32 cap=64 dropped=${dropped.get()} overwritten=${overwritten.get()} active=${enabled.get()}")
+        for(k in 0..7)appendLine("F12_STYLE_SUM kind=$k count=${count.get(k)} maxWaitUs=${maxWait.get(k)} maxHoldUs=${maxHold.get(k)}")
+        for(n in 0..63){val p=n*8;if(rows.get(p)>0)appendLine("F12_STYLE_ROW order=${rows.get(p)} kind=${rows.get(p+1)} atUs=${rows.get(p+2).toLong() and 0xffffffffL} waitUs=${rows.get(p+3)} holdUs=${rows.get(p+4)} chordId=${rows.get(p+5)} sectionHash=${rows.get(p+6)} tick=${rows.get(p+7)}")}
+    }
+}
+// F12_TIMING_END

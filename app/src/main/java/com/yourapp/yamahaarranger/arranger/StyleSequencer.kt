@@ -22,6 +22,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     var tempoBpm:Int=120
     var currentChord:DetectedChord?=null
         set(value){
+            f12Timing.record(7,f12Timing.begin(),0,0,true,tick=value?.rootNote?:-1)
             val old=field
             field=value
             when {
@@ -83,17 +84,27 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     private val partPresence = StylePartPresence()
     fun partPresenceReport(style:com.yourapp.yamahaarranger.style.ParsedStyle):String = partPresence.report(style)
     private val chordTrace = ChordChangeDiagnostic()
-    fun armChordDiagnostic() { audioEngine.armChordDiagnostic(); chordTrace.arm() }
-    fun stopChordDiagnostic() { chordTrace.stop(); audioEngine.stopChordDiagnostic() }
+    fun armChordDiagnostic() { audioEngine.armChordDiagnostic(); chordTrace.arm(); f12Timing.arm() }
+    fun stopChordDiagnostic() { f12Timing.stop(); chordTrace.stop(); audioEngine.stopChordDiagnostic() }
     fun chordDiagnosticReport(): String = chordTrace.report()
-    fun compactChordDiagnosticReport(): String = chordTrace.compactReport()
+    fun compactChordDiagnosticReport(): String = f12Timing.report()+chordTrace.compactReport()
 
     // One monitor for owner identity + complete NOTE_OFF/NOTE_ON lifecycle.
     // Tick waiting and the whole chord-change loop remain outside this lock.
     private val noteLifecycleLock=Any()
+    // F12_TIMING_BEGIN
+    private val f12Timing=F12Timing()
+    private inline fun <T> lifecycle(block:()->T):T {
+        val requested=f12Timing.begin()
+        return synchronized(noteLifecycleLock) {
+            val acquired=if(requested!=0L) System.nanoTime() else 0L
+            try { block() } finally { f12Timing.finish(0,requested,acquired) }
+        }
+    }
+    // F12_TIMING_END
     private val activeTransposedNotes=mutableMapOf<String,ActiveTransposedNote>()
-    private fun activeNoteSnapshot()=synchronized(noteLifecycleLock) { activeTransposedNotes.values.toList() }
-    private fun activeNoteCount()=synchronized(noteLifecycleLock) { activeTransposedNotes.size }
+    private fun activeNoteSnapshot()=lifecycle { activeTransposedNotes.values.toList() }
+    private fun activeNoteCount()=lifecycle { activeTransposedNotes.size }
 
     // Long-running diagnostic recorder for String/CASM lifecycle.
     private val traceSequence = AtomicLong(0L)
@@ -404,7 +415,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         masterTimelineTick=0L
         barClockStartedAtNanos=0L
         if(stringTraceEnabled && synchronized(stringTraceLock){stringTrace.isNotEmpty()}) dumpStringTrace()
-        synchronized(noteLifecycleLock) {
+        lifecycle {
             audioEngine.allNotesOff()
             midiInputManager.allNotesOff()
             activeTransposedNotes.clear()
@@ -430,7 +441,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
 
     private fun handleNoChord(){
         val captureId=chordTrace.begin("previous", "NONE", activeNoteCount())
-        if(captureId!=0L) audioEngine.markChordDiagnostic(captureId)
+        if(captureId!=0L) { f12Timing.chord(captureId); val markAt=f12Timing.begin(); audioEngine.markChordDiagnostic(captureId); f12Timing.finish(5,markAt,marker=true) }
         stringTrace("NO_CHORD active="+activeNoteCount())
         val snapshot=activeNoteSnapshot()
         snapshot.forEach{releaseActive(it)}
@@ -439,7 +450,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
 
     private fun handleChordChange(newChord:DetectedChord,oldChord:DetectedChord?){
         val captureId=chordTrace.begin("${oldChord?.rootNote}/${oldChord?.quality}", "${newChord.rootNote}/${newChord.quality}",activeNoteCount())
-        if(captureId!=0L) audioEngine.markChordDiagnostic(captureId)
+        if(captureId!=0L) { f12Timing.chord(captureId); val markAt=f12Timing.begin(); audioEngine.markChordDiagnostic(captureId); f12Timing.finish(5,markAt,marker=true) }
         stringTrace("CHORD_CHANGE new="+newChord.rootNote+"/"+newChord.quality+" active="+activeNoteCount())
         if(activeNoteCount()==0){
             stringTrace("CHORD_CHANGE no-active-notes")
@@ -449,12 +460,12 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         snapshot.forEach { retargetActive(it,newChord) }
     }
 
-    private fun retargetActive(active:ActiveTransposedNote,newChord:DetectedChord):Unit=synchronized(noteLifecycleLock) {
+    private fun retargetActive(active:ActiveTransposedNote,newChord:DetectedChord):Unit=lifecycle {
         val eventId=if(chordTrace.active()) StyleAudioPathDiagnostic.nextId() else 0L
         val sourceKey="${active.sourceChannel}:${active.sourceNote}"
         if(activeTransposedNotes[sourceKey] !== active) {
             chordEvent(active,eventId,"STALE_OWNER_SKIP",-1)
-            return@synchronized
+            return@lifecycle
         }
         chordEvent(active,eventId,"ACTIVE",active.outputNote)
         stringTrace("ACTIVE src"+active.sourceChannel+":"+active.sourceNote+" dst="+active.destinationChannel+" note="+active.outputNote+" NTR="+(active.policy.ntr and 0x7f)+" NTT="+(active.policy.ntt and 0x7f)+" RTR="+(active.policy.rtr and 0x7f))
@@ -466,7 +477,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             com.yourapp.yamahaarranger.ui.DebugLog.add(
                 "🔇 CASM CHORD MUTE src${active.sourceChannel}:${active.sourceNote} chord=${newChord.rootNote}/${newChord.quality}"
             )
-            return@synchronized
+            return@lifecycle
         }
         chordTrace.record { "RETARGET_SELECT id=$eventId chordId=${chordTrace.chordId()} src=${active.sourceChannel} original=${active.sourceNote} oldDst=${active.destinationChannel} newDst=${selectedPolicy.destinationChannel} oldVoice='${active.policy.voiceName}' voice='${selectedPolicy.voiceName}' NTR=${selectedPolicy.ntr and 0x7f} NTT=${selectedPolicy.ntt and 0x7f} RTR=${selectedPolicy.rtr and 0x7f} locked=${selectedPolicy.destinationChannel in lockedChannels} muted=${channelOverrides[selectedPolicy.destinationChannel]?.muted} reserved=${selectedPolicy.destinationChannel in 0..3} decision=existing_policy_selected" }
         if(selectedPolicy.destinationChannel!=active.destinationChannel){
@@ -534,11 +545,11 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         return (oldOctave*12+chord.rootNote.coerceIn(0,11)).coerceIn(0,127)
     }
 
-    private fun releaseActive(active:ActiveTransposedNote,eventId:Long=active.onId):Unit=synchronized(noteLifecycleLock) {
+    private fun releaseActive(active:ActiveTransposedNote,eventId:Long=active.onId):Unit=lifecycle {
         val key="${active.sourceChannel}:${active.sourceNote}"
         if(activeTransposedNotes[key] !== active) {
             chordEvent(active,eventId,"STALE_OWNER_SKIP",-1)
-            return@synchronized
+            return@lifecycle
         }
         chordOff(active,eventId,1,"RELEASE_OFF")
         midiInputManager.sendNoteOff(active.destinationChannel,active.outputNote)
@@ -546,8 +557,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         Unit
     }
 
-    private fun endScheduledNote(sourceChannel:Int,sourceNote:Int):Boolean=synchronized(noteLifecycleLock) {
-        val active=activeTransposedNotes.remove("$sourceChannel:$sourceNote") ?: return@synchronized false
+    private fun endScheduledNote(sourceChannel:Int,sourceNote:Int):Boolean=lifecycle {
+        val active=activeTransposedNotes.remove("$sourceChannel:$sourceNote") ?: return@lifecycle false
         if(active.destinationChannel==13)com.yourapp.yamahaarranger.ui.DebugLog.add("🎻 STRING NOTEOFF src"+active.sourceChannel+":"+active.sourceNote+" dst13 note="+active.outputNote)
         chordOff(active,active.onId,0,"SCHEDULED_OFF")
         midiInputManager.sendNoteOff(active.destinationChannel,active.outputNote)
@@ -555,6 +566,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     }
 
     private fun applyVoicesFromCasm(section:StyleSectionModel) {
+        val f12Requested=f12Timing.begin()
+        f12Timing.section(section.name)
         val startedAtNanos = System.nanoTime()
         com.yourapp.yamahaarranger.ui.DebugLog.add("⏱ CASM VOICE APPLY START section=${section.name}")
         val explicitByDestination = linkedMapOf<Int, StylePartModel>()
@@ -627,6 +640,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             val source = if (override?.program != null) "STYLE OVERRIDE" else if (explicit != null) "actual MIDI setup" else "fallback name"
             com.yourapp.yamahaarranger.ui.DebugLog.add("🎼 dst$destination: ${c.voiceName} → PC=$prog MIDIbank=$midiMsb:$midiLsb SFbank=$audioBank mix=$volume/$pan/$expression/$reverb/$chorus ($source)")
         }
+        f12Timing.finish(1,f12Requested)
         val durationUs = (System.nanoTime() - startedAtNanos) / 1_000L
         com.yourapp.yamahaarranger.ui.DebugLog.add("⏱ CASM VOICE APPLY END section=${section.name} duration_us=$durationUs")
     }
@@ -879,6 +893,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                 if(targetNanos-System.nanoTime()>0L) Thread.yield()
             }
 
+            if(f12Timing.begin()!=0L) { val now=System.nanoTime(); f12Timing.record(2,now,0,((now-targetNanos)/1000).coerceIn(0,Int.MAX_VALUE.toLong()).toInt(),tick=absoluteTick.toInt()) }
             val chord=currentChord
             val isNote = isNoteEvent(s.event)
             val policy = if (isNote) {
@@ -932,7 +947,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                 continue
             }
 
-            synchronized(noteLifecycleLock) {
+            lifecycle {
+                if(f12Timing.begin()!=0L) { val now=System.nanoTime(); f12Timing.record(6,now,0,((now-targetNanos)/1000).coerceIn(0,Int.MAX_VALUE.toLong()).toInt(),tick=absoluteTick.toInt()) }
                 val diagChannel = policy?.destinationChannel ?: s.part.casmPolicies.ifEmpty { listOfNotNull(s.part.casm) }.map { it.destinationChannel }.distinct().singleOrNull() ?: s.event.channel
                 val diagId = if (s.event.isNoteOn) audioPath.observe(diagChannel) else 0L
                 val diagBank = dynamicBankBySource[s.event.channel] ?: (s.part.bankMsb * 128 + s.part.bankLsb)
@@ -948,19 +964,19 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                     if (candidates.isEmpty()) partPresence.missingPolicy(diagChannel)
                     val rules=candidates.map { "${it.sourceNoteLow}-${it.sourceNoteHigh}:mask=${it.chordMuteMask.toString(16)}" }
                     diagnostic("DROP_NO_POLICY_WITH_CHORD", detail="candidateDst=${candidates.map { it.destinationChannel }.distinct()} chord=${chord.rootNote}/${chord.quality} yamahaType=${yamahaChordType(chord)} rules=$rules evidence=policy_rejection_not_missing_part")
-                    return@synchronized
+                    return@lifecycle
                 }
                 if(s.event.isNoteOn&&isUnsupportedArticulation(policy)){
                     diagnostic("DROP_UNSUPPORTED_ARTICULATION")
                     com.yourapp.yamahaarranger.ui.DebugLog.add("🔇 SUPPRESS " + (policy?.voiceName ?: "unknown") + " src" + s.event.channel + ":" + s.event.note + " (MegaVoice articulation unsupported by SF2)")
-                    return@synchronized
+                    return@lifecycle
                 }
 
                 if(!s.event.isNoteOn){
                     if(!endScheduledNote(s.event.channel,s.event.note)) {
                         diagnostic("OFF_NO_ACTIVE_LEDGER", detail = "NOTE_OFF_FORWARDED=0 oneShotDrumMayBeNormal=1")
                     }
-                    return@synchronized
+                    return@lifecycle
                 }
 
                 val sourceChannel=s.event.channel
@@ -968,11 +984,11 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                 if(destinationChannel in 0..3){
                     diagnostic("DROP_RESERVED_KEYBOARD")
                     com.yourapp.yamahaarranger.ui.DebugLog.add("  · style event src"+sourceChannel+":"+s.event.note+": SKIP dst"+destinationChannel+" (reserved for keyboard voices)")
-                    return@synchronized
+                    return@lifecycle
                 }
-                if(destinationChannel in lockedChannels) { diagnostic("DROP_LOCKED"); return@synchronized }
+                if(destinationChannel in lockedChannels) { diagnostic("DROP_LOCKED"); return@lifecycle }
                 val channelOverride=channelOverrides[destinationChannel]
-                if(channelOverride?.muted==true) { diagnostic("DROP_MUTED"); return@synchronized }
+                if(channelOverride?.muted==true) { diagnostic("DROP_MUTED"); return@lifecycle }
 
                 val key=sourceChannel.toString()+":"+s.event.note
                 val previousActive=activeTransposedNotes[key]
@@ -988,7 +1004,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                 val transformed=if(policy!=null&&!isDrumPart){
                     chord?.let{CasmNoteTransformer.transform(s.event.note,it,policy)}?:s.event.note.coerceIn(0,127)
                 }else s.event.note.coerceIn(0,127)
-                if (transformed == null) { diagnostic("DROP_TRANSFORM_NULL"); return@synchronized }
+                if (transformed == null) { diagnostic("DROP_TRANSFORM_NULL"); return@lifecycle }
                 val note=(transformed+(channelOverride?.transpose?:0)).coerceIn(0,127)
                 val velocity=s.event.velocity.coerceIn(1,127)
 

@@ -16,6 +16,8 @@ def historical_bytes(path, data=None):
     path = str(path)
     if path.startswith(str(ROOT)+'/'): path = path[len(str(ROOT))+1:]
     if data is None: data = (ROOT/path).read_bytes()
+    from f12_source_guard import baseline_bytes
+    data = baseline_bytes(path,data)
     rule = profile()['changes'].get(path)
     if rule is None: return data
     if sha(data) == rule['baseline_sha256']: return data
@@ -36,7 +38,7 @@ def verify_profile():
     assert production==[SOURCE], 'F04 must change exactly one production source'
     for path,expected in p['baseline_files'].items():
         assert sha(historical_bytes(path))==expected, 'Non-F04 baseline drift: '+path
-    assert sha((ROOT/SOURCE).read_bytes())==p['changes'][SOURCE]['candidate_sha256'], 'Expected candidate profile'
+    assert sha(__import__('f12_source_guard').baseline_bytes(SOURCE,(ROOT/SOURCE).read_bytes()))==p['changes'][SOURCE]['candidate_sha256'], 'Expected candidate profile'
     return p
 
 def pipeline_expected():
