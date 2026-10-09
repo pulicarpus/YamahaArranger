@@ -64,3 +64,11 @@ Native timing rows label the latest chord marker when published; it can advance 
 Android CI #812 (`f798f9d`, run 37943698412) failed at step 19, the historical #787 snapshot/audio comparison, before APK compilation. The public job exposes that step failure; its original log returns HTTP 404, so the exact CI error text remains unavailable. The exact workflow command reproduced a guard failure locally: the F12 normalization layer rejected the legitimate older #787 bassmidi_player.cpp input. The historical comparison also consumes audio_engine.cpp from that baseline.
 
 Harness recovery recognizes only those two exact path/SHA identities from `79af5ef7016c658553cc36b933722d5821e8e7d1`. They pass through unchanged to the original historical assertions; they cannot pass as current #811 source. Positive and mutated-input negative controls PASS. Original #787 source guard, real Linux synth PCM/MIDI comparison and actual callback PCM/MIDI comparison now PASS locally; F12 Kotlin tests remain 4 PASS. No production, workflow or original fixture changed in this recovery. A replacement Android CI run is required. Local Android SDK is unavailable; no local APK claim.
+
+## Completed Android CI
+
+Build #813: SUCCESS, source `406608c83c790e9ed81ae5a0120cdaa3cb2080a9` (diagnostic implementation `f798f9dc584fe2fcaa3e6a53f34d24f9d8f925a9`). Run [37945518436](https://github.com/pulicarpus/YamahaArranger/actions/runs/37945518436), job 113870630518. Historical #787 gate, Build debug APK, both-ABI Stage 3 exclusion and APK upload all report SUCCESS. APK includes arm64-v8a and armeabi-v7a. Workflow and historical fixtures remain unchanged.
+
+Download `app-debug` from the [verified artifact listing](https://github.com/pulicarpus/YamahaArranger/actions/runs/37945518436#artifacts). Artifact ID 11624257789, displayed size 12.5 MB, server-reported archive SHA256 `1aa5d189b4fab826b1d2df915e810bfe35d4b5e87738f07f2b11949c109974b9`. This is the uploaded archive metadata, not an independently downloaded APK hash; download requires GitHub access. The listing and successful upload were verified directly.
+
+CI success does not prove Redmi Pad continuity or audio improvement. Original 503-style corpus rerun remains BLOCKED. STOP: await the small device capture before any audio or musical patch.
