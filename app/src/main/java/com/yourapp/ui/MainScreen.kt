@@ -173,7 +173,7 @@ fun MainScreen(
             Spacer(Modifier.height(5.dp))
             SectionRow(listOf("Ending 1", "Ending 2", "Ending 3"), uiState.activeSection, viewModel::onSectionSelected)
             Spacer(Modifier.height(7.dp))
-            TransportRow(uiState.isPlaying, viewModel::onSyncStart, viewModel::onStartStop, viewModel::onTapTempo)
+            TransportRow(uiState.isPlaying, uiState.startReady, uiState.readinessReason, viewModel::onSyncStart, viewModel::onStartStop, viewModel::onTapTempo)
         }
         Spacer(Modifier.height(8.dp))
 
@@ -659,17 +659,17 @@ private fun SectionRow(sections: List<String>, activeSection: String, onSelect: 
 }
 
 @Composable
-private fun TransportRow(isPlaying: Boolean, onSyncStart: () -> Unit, onStartStop: () -> Unit, onTapTempo: () -> Unit) {
+private fun TransportRow(isPlaying: Boolean, ready: Boolean, reason: String, onSyncStart: () -> Unit, onStartStop: () -> Unit, onTapTempo: () -> Unit) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
         PanelButton("SYNC START", onSyncStart, Modifier.weight(1f))
-        PanelButton(if (isPlaying) "■ STOP" else "▶ START", onStartStop, Modifier.weight(1f), AccentOrange)
+        PanelButton(if (isPlaying) "■ STOP" else if (ready) "▶ START" else reason, onStartStop, Modifier.weight(1f), AccentOrange, enabled = isPlaying || ready)
         PanelButton("TAP TEMPO", onTapTempo, Modifier.weight(1f))
     }
 }
 
 @Composable
-private fun PanelButton(text: String, onClick: () -> Unit, modifier: Modifier, color: Color = PanelMid) {
-    Button(onClick = onClick, modifier = modifier.height(38.dp), contentPadding = PaddingValues(0.dp), shape = RoundedCornerShape(3.dp), colors = ButtonDefaults.buttonColors(containerColor = color, contentColor = Color.White)) {
+private fun PanelButton(text: String, onClick: () -> Unit, modifier: Modifier, color: Color = PanelMid, enabled: Boolean = true) {
+    Button(enabled = enabled, onClick = onClick, modifier = modifier.height(38.dp), contentPadding = PaddingValues(0.dp), shape = RoundedCornerShape(3.dp), colors = ButtonDefaults.buttonColors(containerColor = color, contentColor = Color.White)) {
         Text(text, fontSize = 8.sp, fontWeight = FontWeight.Bold)
     }
 }

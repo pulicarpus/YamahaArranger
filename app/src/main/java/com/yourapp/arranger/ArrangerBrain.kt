@@ -355,16 +355,21 @@ class ArrangerBrain @Inject constructor(
             sequencer.stop()
             _state.update { it.copy(isPlaying = false) }
         } else {
-            pendingTransitionJob?.cancel()
-            pendingChordJob?.cancel()
-            pendingChord = null
-            activeSection = _state.value.currentSection
-            currentPlayingSection = activeSection
-            pendingMainTarget = null
-            playSection(activeSection)
-            _state.update { it.copy(isPlaying = true) }
+            audioEngine.readiness.admit(activeSectionName(), style) {
+                if (_state.value.isPlaying) return@admit
+                pendingTransitionJob?.cancel()
+                pendingChordJob?.cancel()
+                pendingChord = null
+                activeSection = _state.value.currentSection
+                currentPlayingSection = activeSection
+                pendingMainTarget = null
+                playSection(activeSection)
+                _state.update { it.copy(isPlaying = true) }
+            }
         }
     }
+
+    private fun activeSectionName(): String = _state.value.currentSection.styleName
 
     fun selectMainVariation(target: ArrangerSection) {
         ensureSequencer()

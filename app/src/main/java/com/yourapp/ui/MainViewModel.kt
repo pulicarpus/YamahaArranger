@@ -28,6 +28,9 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.ConcurrentLinkedQueue
 import javax.inject.Inject
+import com.yourapp.yamahaarranger.lifecycle.ReadyToPlayGate
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.withLock
 
 object DebugLog {
     private val _lines = ConcurrentLinkedQueue<String>()
@@ -168,7 +171,9 @@ data class MainUiState(
     val styleFiles: List<Pair<Uri, String>> = emptyList(),
     val sf2Presets: List<AudioEngineManager.SfPreset> = emptyList(),
     val sf2Reports: List<SoundFontInspector.Report> = emptyList(),
-    val sf2ScanInProgress: Boolean = false
+    val sf2ScanInProgress: Boolean = false,
+    val startReady: Boolean = false,
+    val readinessReason: String = "Preparing resources..."
 )
 
 @HiltViewModel
@@ -227,7 +232,7 @@ class MainViewModel @Inject constructor(
         }
     ) { voiceData, sfData -> voiceData to sfData }
 
-    val uiState: StateFlow<MainUiState> = combine(
+    private val baseUiState: StateFlow<MainUiState> = combine(
         arrangerBrain.state,
         combine(_styleName, _midiStatus) { s, m -> s to m },
         combine(_transpose, combine(_sustainEnabled, _releaseTime) { sustain, release -> sustain to release }, _soundFontName) { t, sustainRelease, sf -> Triple(t, sustainRelease, sf) },
@@ -285,6 +290,34 @@ class MainViewModel @Inject constructor(
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, MainUiState())
 
+    val uiState = combine(baseUiState, audioEngine.readiness.state) { ui, ready ->
+        val section = SECTION_BUTTON_MAP[ui.activeSection]?.styleName.orEmpty()
+        ui.copy(startReady = ready.permits(section), readinessReason =
+            if (ready.phase == ReadyToPlayGate.Phase.READY && !ready.permits(section))
+                "Selected section unavailable" else ready.reason)
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, MainUiState())
+
+    private fun launchFontRequest(block: suspend (ReadyToPlayGate.Request) -> Unit) {
+        val request = audioEngine.readiness.beginFonts()
+        viewModelScope.launch {
+            var ok = false
+            try {
+                audioEngine.readiness.fontRequests.withLock {
+                    if (!audioEngine.readiness.current(request)) return@withLock
+                    fontRequestSucceeded = false
+                    block(request)
+                    ok = audioEngine.readiness.current(request) && fontRequestSucceeded
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                DebugLog.add("❌ SF2 load failed: ${error.javaClass.simpleName}")
+            } finally { audioEngine.readiness.finishFonts(request, ok) }
+        }
+    }
+    // Serialized by the shared fontRequests mutex, including cache writes.
+    private var fontRequestSucceeded = false
+
     init {
         arrangerBrain.attachScope(viewModelScope)
         DebugLog.add("🎵 ViewModel init")
@@ -296,13 +329,14 @@ class MainViewModel @Inject constructor(
         // multiple SoundFonts, but SF2 loading is a non-realtime operation.
         // We therefore discover/copy/load first, enumerate presets, then start
         // the audio callback exactly once.
-        viewModelScope.launch {
+        launchFontRequest { request ->
+            fontRequestSucceeded = false
             try {
                 withContext(Dispatchers.IO) {
                     contentResolver.ensureSoundFontFolder()
                     _availableSoundFonts.value = contentResolver.listSoundFonts()
                 }
-                autoLoadSoundFont()
+                autoLoadSoundFont(request)
                 // Do NOT enumerate all SF2 presets during startup. A large
                 // Yamaha SF2 can make native preset iteration expensive and
                 // may kill the process during a cold app restart. Keep startup
@@ -310,11 +344,12 @@ class MainViewModel @Inject constructor(
                 // the user explicitly opens/refreshes the preset UI.
                 _sf2Presets.value = emptyList()
                 DebugLog.add("📋 Startup preset scan deferred")
-            } catch (t: Throwable) {
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (t: Exception) {
                 DebugLog.add("❌ Startup SF2 init failed: ${t.javaClass.simpleName}: ${t.message}")
             } finally {
-                audioEngine.start()
-                DebugLog.add("✅ AudioEngine started after SF2 init")
+                withContext(Dispatchers.Default) { audioEngine.start() }
             }
         }
 
@@ -739,23 +774,34 @@ class MainViewModel @Inject constructor(
     }
 
     fun onStyleFilePicked(uri: Uri) {
+        val request = audioEngine.readiness.beginStyle()
         viewModelScope.launch {
-            val bytes = withContext(Dispatchers.IO) { contentResolver.readBytes(uri) }
-            if (bytes == null) { DebugLog.add("❌ Cannot read style"); return@launch }
-            // Prefer the actual URI/path filename. Some Android providers expose
-            // a generic name such as "style.sty", which loses the real style name.
-            val uriFileName = uri.path?.let { path ->
-                path.substringAfterLast('/').takeIf { it.isNotBlank() }
-            }
-            val fileName = uriFileName ?: contentResolver.fileName(uri) ?: "style.sty"
-            val parsed = withContext(Dispatchers.Default) { styleRepository.loadStyle(fileName, bytes) }
-            if (parsed == null) { DebugLog.add("❌ Parse fail: $fileName"); return@launch }
-            drumAuditStyle = parsed
-            arrangerBrain.loadStyle(parsed)
-            _voiceAssignments.value = voiceSlotsFromStyle(parsed)
-            _styleName.value = fileName
-            DebugLog.add("🎼 Mixer channels from style: ${_voiceAssignments.value.map { "${it.channel}:${it.sf2Name}@${it.bank}/${it.program}" }.joinToString()}")
-            DebugLog.add("✅ Loaded: $fileName")
+            var committed = false
+            try {
+                val bytes = withContext(Dispatchers.IO) { contentResolver.readBytes(uri) }
+                if (bytes == null) { DebugLog.add("❌ Cannot read style"); return@launch }
+                // Prefer the actual URI/path filename. Some Android providers expose
+                // a generic name such as "style.sty", which loses the real style name.
+                val uriFileName = uri.path?.let { path ->
+                    path.substringAfterLast('/').takeIf { it.isNotBlank() }
+                }
+                val fileName = uriFileName ?: contentResolver.fileName(uri) ?: "style.sty"
+                val parsed = withContext(Dispatchers.Default) { styleRepository.loadStyle(fileName, bytes) }
+                if (parsed == null) { DebugLog.add("❌ Parse fail: $fileName"); return@launch }
+                audioEngine.readiness.operations.withLock {
+                    if (!audioEngine.readiness.current(request)) return@withLock
+                    drumAuditStyle = parsed
+                    arrangerBrain.loadStyle(parsed)
+                    _voiceAssignments.value = voiceSlotsFromStyle(parsed)
+                    _styleName.value = fileName
+                    DebugLog.add("🎼 Mixer channels from style: ${_voiceAssignments.value.map { "${it.channel}:${it.sf2Name}@${it.bank}/${it.program}" }.joinToString()}")
+                    DebugLog.add("✅ Loaded: $fileName")
+                    audioEngine.readiness.finishStyle(request, parsed.sections.keys, parsed)
+                    committed = true
+                }
+            } catch (cancelled: CancellationException) { throw cancelled
+            } catch (error: Exception) { DebugLog.add("❌ Style load failed: ${error.javaClass.simpleName}")
+            } finally { if (!committed) audioEngine.readiness.finishStyle(request, null) }
         }
     }
 
@@ -823,7 +869,7 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    private suspend fun autoLoadSoundFont() {
+    private suspend fun autoLoadSoundFont(request: ReadyToPlayGate.Request) {
         val files = withContext(Dispatchers.IO) { contentResolver.listSoundFonts() }
         if (files.isEmpty()) {
             DebugLog.add("📂 SF2 folder ready: /storage/emulated/0/YamahaArranger/SF2")
@@ -847,16 +893,16 @@ class MainViewModel @Inject constructor(
             }
             if (additional != null) DebugLog.add("🧩 Yamaha alternate SF2: ${additional.second}")
             val melodyCache = withContext(Dispatchers.IO) {
-                contentResolver.copySoundFontToCache(melody.first, melody.second)
+                contentResolver.copySoundFontToCache(melody.first, melody.second, "ready-${request.generation}")
             }
             val fallbackCache = if (fallback != null) withContext(Dispatchers.IO) {
-                contentResolver.copySoundFontToCache(fallback.first, fallback.second)
+                contentResolver.copySoundFontToCache(fallback.first, fallback.second, "ready-${request.generation}")
             } else null
             val additionalCache = if (additional != null) withContext(Dispatchers.IO) {
-                contentResolver.copySoundFontToCache(additional.first, additional.second)
+                contentResolver.copySoundFontToCache(additional.first, additional.second, "ready-${request.generation}")
             } else null
             val drumCache = withContext(Dispatchers.IO) {
-                contentResolver.copySoundFontToCache(drum.first, drum.second)
+                contentResolver.copySoundFontToCache(drum.first, drum.second, "ready-${request.generation}")
             }
             if (melodyCache != null && drumCache != null) {
                 val ok = withContext(Dispatchers.Default) {
@@ -864,9 +910,10 @@ class MainViewModel @Inject constructor(
                         melodyCache.absolutePath,
                         fallbackCache?.absolutePath,
                         drumCache.absolutePath,
-                        additionalCache?.absolutePath
+                        additionalCache?.absolutePath, request = request
                     )
                 }
+                fontRequestSucceeded = ok
                 if (ok) {
                     _soundFontName.value = buildString {
                         append(melody.second)
@@ -884,32 +931,34 @@ class MainViewModel @Inject constructor(
             // same font available to both melodic and Yamaha rhythm channels.
             val single = files.first()
             DebugLog.add("🔄 Auto-loading SINGLE SF2: " + single.second)
-            loadSoundFontUri(single.first, single.second, role = null, replaceAll = false)
+            loadSoundFontUri(single.first, single.second, role = null, replaceAll = false, request = request)
         } else if (melody != null) {
             DebugLog.add("🔄 Auto-loading MELODY SF2: " + melody.second)
-            loadSoundFontUri(melody.first, melody.second, role = "MELODY", replaceAll = false)
+            loadSoundFontUri(melody.first, melody.second, role = "MELODY", replaceAll = false, request = request)
         } else if (drum != null) {
             DebugLog.add("🥁 Auto-loading DRUM SF2: " + drum.second)
-            loadSoundFontUri(drum.first, drum.second, role = "DRUM", replaceAll = false)
+            loadSoundFontUri(drum.first, drum.second, role = "DRUM", replaceAll = false, request = request)
         }
     }
 
-    private suspend fun loadSoundFontUri(uri: Uri, displayName: String, role: String? = null, replaceAll: Boolean = false) {
+    private suspend fun loadSoundFontUri(uri: Uri, displayName: String, role: String? = null, replaceAll: Boolean = false, request: ReadyToPlayGate.Request) {
         val cached = withContext(Dispatchers.IO) {
-            contentResolver.copySoundFontToCache(uri, displayName)
+            contentResolver.copySoundFontToCache(uri, displayName, "ready-${request.generation}")
         }
         if (cached == null) {
             DebugLog.add("❌ SF2 cache failed: $displayName")
             return
         }
         val ok = withContext(Dispatchers.Default) {
+            if (!audioEngine.readiness.current(request)) return@withContext false
             if (replaceAll) audioEngine.unloadSoundFont()
             when (role) {
-                "DRUM" -> audioEngine.loadDrumSoundFont(cached.absolutePath)
-                "MELODY" -> audioEngine.loadMelodySoundFont(cached.absolutePath)
-                else -> audioEngine.loadSingleSoundFont(cached.absolutePath)
+                "DRUM" -> audioEngine.loadDrumSoundFont(cached.absolutePath, request)
+                "MELODY" -> audioEngine.loadMelodySoundFont(cached.absolutePath, request)
+                else -> audioEngine.loadSingleSoundFont(cached.absolutePath, request)
             }
         }
+        fontRequestSucceeded = ok
         _soundFontName.value = if (ok) displayName else "Load failed"
         // Do not enumerate every preset immediately after loading a large SF2.
         // Native preset iteration can be expensive and, on some Android builds,
@@ -976,7 +1025,8 @@ class MainViewModel @Inject constructor(
     }
 
     fun selectSoundFont(uri: Uri, name: String) {
-        viewModelScope.launch {
+        launchFontRequest { request ->
+            fontRequestSucceeded = false
             DebugLog.add("🔄 Selecting SF2: $name")
 
             // The SF2 Manager lists individual files, but when the managed
@@ -999,16 +1049,16 @@ class MainViewModel @Inject constructor(
                         !it.second.lowercase().contains("drum")
                 }
                 val fallbackCache = if (fallback != null) withContext(Dispatchers.IO) {
-                    contentResolver.copySoundFontToCache(fallback.first, fallback.second)
+                    contentResolver.copySoundFontToCache(fallback.first, fallback.second, "ready-${request.generation}")
                 } else null
                 val additionalCache = if (additional != null) withContext(Dispatchers.IO) {
-                    contentResolver.copySoundFontToCache(additional.first, additional.second)
+                    contentResolver.copySoundFontToCache(additional.first, additional.second, "ready-${request.generation}")
                 } else null
                 val melodyCache = withContext(Dispatchers.IO) {
-                    contentResolver.copySoundFontToCache(melody.first, melody.second)
+                    contentResolver.copySoundFontToCache(melody.first, melody.second, "ready-${request.generation}")
                 }
                 val drumCache = withContext(Dispatchers.IO) {
-                    contentResolver.copySoundFontToCache(drum.first, drum.second)
+                    contentResolver.copySoundFontToCache(drum.first, drum.second, "ready-${request.generation}")
                 }
 
                 if (melodyCache != null && drumCache != null) {
@@ -1017,30 +1067,32 @@ class MainViewModel @Inject constructor(
                             melodyCache.absolutePath,
                             fallbackCache?.absolutePath,
                             drumCache.absolutePath,
-                            additionalCache?.absolutePath
+                            additionalCache?.absolutePath, request = request
                         )
                     }
+                    fontRequestSucceeded = ok
                     _soundFontName.value = if (ok) name else "Load failed"
                     DebugLog.add(
                         if (ok) "✅ MELODY + DRUM SF2 reloaded; selected=$name"
                         else "❌ MELODY + DRUM SF2 reload failed"
                     )
-                    return@launch
+                    return@launchFontRequest
                 }
 
                 DebugLog.add("❌ MELODY + DRUM SF2 cache failed")
                 _soundFontName.value = "Load failed"
-                return@launch
+                return@launchFontRequest
             }
 
             // Only one managed SF2 exists: use it for both melodic and
             // Yamaha rhythm channels.
-            loadSoundFontUri(uri, name, role = null, replaceAll = true)
+            loadSoundFontUri(uri, name, role = null, replaceAll = true, request = request)
         }
     }
 
     fun onSoundFontFilePicked(uri: Uri) {
-        viewModelScope.launch {
+        launchFontRequest { request ->
+            fontRequestSucceeded = false
             DebugLog.add("📂 SF2 picker…")
             val sourceName = contentResolver.fileName(uri) ?: "font.sf2"
             val safeName = sourceName.substringAfterLast('/').ifBlank { "font.sf2" }
@@ -1063,7 +1115,7 @@ class MainViewModel @Inject constructor(
             }
             if (storedUri == null) {
                 DebugLog.add("❌ Could not store SF2 in /storage/emulated/0/YamahaArranger/SF2")
-                return@launch
+                return@launchFontRequest
             }
             DebugLog.add(if (alreadyStored) {
                 "📂 Using existing SF2: /storage/emulated/0/YamahaArranger/SF2/$safeName"
@@ -1071,7 +1123,7 @@ class MainViewModel @Inject constructor(
                 "📂 SF2 stored: /storage/emulated/0/YamahaArranger/SF2/$safeName"
             })
             DebugLog.add("🔄 Loading SF2 directly…")
-            loadSoundFontUri(storedUri, safeName)
+            loadSoundFontUri(storedUri, safeName, request = request)
         }
     }
 

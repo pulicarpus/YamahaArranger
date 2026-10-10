@@ -1,0 +1,162 @@
+name: Ready to play candidate
+on:
+  push:
+    branches: [feat/ready-to-play-gate]
+  pull_request:
+    branches: [fix/mix-percussion-fidelity-784]
+permissions:
+  contents: read
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+      BASS_ANDROID_URL: https://www.un4seen.com/files/bass24-android.zip
+      BASSMIDI_URL: https://www.un4seen.com/files/bassmidi24-android.zip
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          path: candidate
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 47972ab22d56f6b82ff413d400cdcaafd126a3a6
+          path: baseline
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r26d
+          link-to-sdk: true
+      - name: Install CMake and Linux reference SDK
+        run: |
+          set -euo pipefail
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "cmake;3.22.1"
+          mkdir -p /tmp/bass-linux /tmp/bassmidi-linux
+          curl -fL https://www.un4seen.com/files/bass24-linux.zip -o /tmp/bass-linux.zip
+          curl -fL https://www.un4seen.com/files/bassmidi24-linux.zip -o /tmp/bassmidi-linux.zip
+          unzip -q /tmp/bass-linux.zip -d /tmp/bass-linux
+          unzip -q /tmp/bassmidi-linux.zip -d /tmp/bassmidi-linux
+      - name: Download and validate official Android SDKs
+        working-directory: candidate
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/bass /tmp/bassmidi
+          mkdir -p /tmp/bass /tmp/bassmidi
+          curl -fL "$BASS_ANDROID_URL" -o /tmp/bass-android.zip
+          curl -fL "$BASSMIDI_URL" -o /tmp/bassmidi.zip
+          unzip -q /tmp/bass-android.zip -d /tmp/bass
+          unzip -q /tmp/bassmidi.zip -d /tmp/bassmidi
+          mkdir -p app/src/main/cpp/basssdk
+          BASS_H="$(find /tmp/bass -type f -iname 'bass.h' -print -quit)"
+          BASSMIDI_H="$(find /tmp/bassmidi -type f -iname 'bassmidi.h' -print -quit)"
+          if [ -z "$BASSMIDI_H" ] && [ -f /tmp/bassmidi/c/bassmidi.h ]; then BASSMIDI_H="/tmp/bassmidi/c/bassmidi.h"; fi
+          if [ -z "$BASSMIDI_H" ] && [ -f /tmp/bassmidi/C/BASSMIDI.H ]; then BASSMIDI_H="/tmp/bassmidi/C/BASSMIDI.H"; fi
+          test -n "$BASS_H"
+          test -n "$BASSMIDI_H"
+          cp "$BASS_H" app/src/main/cpp/basssdk/bass.h
+          cp "$BASSMIDI_H" app/src/main/cpp/basssdk/bassmidi.h
+          for abi in arm64-v8a armeabi-v7a; do
+            mkdir -p "app/src/main/jniLibs/$abi"
+            BASS_SO="$(find /tmp/bass -type f -path "*/$abi/libbass.so" -print -quit)"
+            BASSMIDI_SO="$(find /tmp/bassmidi -type f -path "*/$abi/libbassmidi.so" -print -quit)"
+            test -n "$BASS_SO"
+            test -n "$BASSMIDI_SO"
+            cp "$BASS_SO" "app/src/main/jniLibs/$abi/libbass.so"
+            cp "$BASSMIDI_SO" "app/src/main/jniLibs/$abi/libbassmidi.so"
+          done
+          python3 - <<'PYSDK'
+          from pathlib import Path
+          import sys, shutil
+          sys.path.insert(0,'tools')
+          from generated_bass_sdk_guard import PATHS, verify_generated_sdk
+          verify_generated_sdk(Path.cwd(),PATHS)
+          for path in PATHS:
+              target=Path('../baseline')/path
+              target.parent.mkdir(parents=True,exist_ok=True)
+              shutil.copyfile(path,target)
+          PYSDK
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.7
+      - name: Audit actual candidate build input
+        working-directory: candidate
+        run: |
+          mkdir -p ../evidence
+          git diff 47972ab22d56f6b82ff413d400cdcaafd126a3a6 HEAD > ../evidence/candidate.diff
+          python3 tools/check_readiness_build_input.py --commit "$CANDIDATE_SHA" --record ../evidence/input-before.json
+      - name: Original historical baseline guards and full JVM regression
+        working-directory: baseline
+        run: |
+          set -euo pipefail
+          python3 tools/test_f04_source_guard.py > ../evidence/baseline-f04.log 2>&1
+          python3 tools/test_f12_timing.py > ../evidence/baseline-f12.log 2>&1
+          python3 tools/test_f04_differential.py > ../evidence/baseline-differential.log 2>&1
+          gradle testDebugUnitTest --stacktrace > ../evidence/baseline-gradle.log 2>&1
+      - name: Record candidate historical drift without claiming PASS
+        working-directory: candidate
+        run: |
+          python3 - <<'PY'
+          import subprocess
+          from pathlib import Path
+          for name in ['test_f04_source_guard.py','test_f12_timing.py']:
+              r=subprocess.run(['python3','tools/'+name],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True)
+              Path('../evidence/candidate-'+name+'.log').write_text(r.stdout)
+              assert r.returncode != 0, 'Expected new source identity drift'
+              print(name, 'EXPECTED HISTORICAL HASH DRIFT — NOT PASS')
+          PY
+      - name: Readiness and musical source differential
+        working-directory: candidate
+        run: |
+          set -euo pipefail
+          mkdir -p build/sff1-jvm
+          cp -r ../baseline/build/sff1-jvm/dependencies build/sff1-jvm/
+          cp ../baseline/build/sff1-jvm/sff1-jvm-tests.jar build/sff1-jvm/
+          python3 tools/test_readiness_build_input.py > ../evidence/build-input-tests.log 2>&1
+          python3 tools/test_ready_to_play_host.py > ../evidence/readiness.log 2>&1
+          python3 tools/test_ready_to_play_engine_host.py > ../evidence/readiness-engine.log 2>&1
+          python3 tools/test_readiness_differential.py --baseline ../baseline > ../evidence/readiness-differential.log 2>&1
+          python3 tools/test_f12_pcm.py > ../evidence/linux-pcm.log 2>&1
+      - name: Candidate JVM regressions and both ABI APK
+        working-directory: candidate
+        run: |
+          set -euo pipefail
+          gradle -I tools/readiness-candidate-tests.gradle testDebugUnitTest --stacktrace > ../evidence/candidate-gradle.log 2>&1
+          gradle assembleDebug --stacktrace > ../evidence/candidate-apk.log 2>&1
+          python3 - <<'PY'
+          import zipfile
+          z=zipfile.ZipFile('app/build/outputs/apk/debug/app-debug.apk')
+          for abi in ['arm64-v8a','armeabi-v7a']:
+              data=z.read('lib/'+abi+'/libyamaha_arranger_native.so')
+              for symbol in [b'nativePrepareExperimentalDrum',b'nativeExperimentalDrumOn',b'nativeExperimentalDrumOff',b'nativeEnableExperimentalDrum',b'nativeClearExperimentalDrum']:
+                  assert symbol not in data,(abi,symbol)
+              assert 'lib/'+abi+'/libbass.so' in z.namelist()
+              assert 'lib/'+abi+'/libbassmidi.so' in z.namelist()
+              print('APK_ABI_STAGE3_EXCLUDED',abi)
+          PY
+      - name: Verify build input after Gradle
+        if: always()
+        working-directory: candidate
+        run: python3 tools/check_readiness_build_input.py --commit "$CANDIDATE_SHA" --record ../evidence/input-after.json --compare ../evidence/input-before.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: readiness-evidence
+          path: |
+            evidence/
+            candidate/app/build/test-results/
+            baseline/app/build/test-results/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ready-to-play-debug
+          path: candidate/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

@@ -322,8 +322,9 @@ class ContentResolverProvider @Inject constructor(
     fun sf2MetadataSources(): com.yourapp.audio.Sf2SemanticInventory.Discovery =
         com.yourapp.audio.Sf2SemanticInventory.discover(sf2RootDir)
 
-    fun copySoundFontToCache(uri: Uri, displayName: String): File? {
-        val dir = File(context.cacheDir, "sf2").apply { mkdirs() }
+    fun copySoundFontToCache(uri: Uri, displayName: String, requestDirectory: String? = null): File? {
+        val root = File(context.cacheDir, "sf2")
+        val dir = (if (requestDirectory == null) root else File(root, requestDirectory)).apply { mkdirs() }
         val dest = File(dir, displayName)
         return try {
             openInputStream(uri)?.use { input ->
