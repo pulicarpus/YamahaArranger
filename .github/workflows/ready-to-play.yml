@@ -2,6 +2,7 @@ name: Ready to play candidate
 on:
   push:
     branches: [feat/ready-to-play-gate]
+    paths-ignore: ["docs/**"]
   pull_request:
     branches: [fix/mix-percussion-fidelity-784]
 permissions:

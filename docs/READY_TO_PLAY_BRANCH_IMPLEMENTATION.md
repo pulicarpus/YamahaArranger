@@ -42,7 +42,10 @@ historical guard, fixture, golden, or original workflow changes.
 * Readiness model: **24 PASS**.
 * Actual AudioEngineManager and ArrangerBrain with mocked native/platform
   boundaries: **17 PASS** (10 new engine tests, 3 new admission/continuation
-  tests, 4 existing session regression tests). Original session assertions
+  tests, 4 existing session regression tests). Engine tests live in
+  tests/readiness_jvm: their generated native facade is host-only. The actual
+  NativeAudioBridge loads Android JNI during class initialization and cannot
+  be treated as an ordinary Mockito boundary on a desktop JVM. Original session assertions
   remain unchanged; one test supplies the newly required readiness setup.
 * New build-input audit: **9 PASS**, using the six genuine vendor SDK files;
   wrong SHA, changed tracked files, unknown/ignored source, bad SDK and
@@ -103,3 +106,15 @@ chord gaps remain. This feature does not claim to fix those audio symptoms.
 Rollback: do not merge the feature, or revert its feature commits; baseline
 47972ab and its APK #814 remain untouched. No Stage 3/P2 or musical patch follows
 without separate authorization.
+
+## Harness/toolchain correction before final APK
+
+Initial commit: 77e6857c02ce1a576c747aa82ec99a16b83f0e30. Local Java 21
+preflight compiled Kotlin but Gradle Java compilation failed because the
+preinstalled toolchain lacked jlink. A verified official Temurin 17 archive
+provides the full toolchain; executor CA trust is retained. No build-source
+workaround or assertion weakening is used. A direct load of the compiled actual
+NativeAudioBridge proved UnsatisfiedLinkError on the desktop JVM. The new engine
+test is relocated byte-identically to the isolated host harness (all 10 engine
+assertions still execute), while model/Brain tests remain ordinary Android JVM
+tests. This correction changes no production source.
