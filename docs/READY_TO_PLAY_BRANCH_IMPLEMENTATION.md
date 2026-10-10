@@ -54,6 +54,8 @@ historical guard, fixture, golden, or original workflow changes.
 * Original F04 source guard on detached baseline: **5 PASS**; full F04
   differential: **83 pre-F04 / 90 F04 tests PASS**, with only the established
   F04 delta. Original F12 source/timing guard: **PASS**; F12 JVM: **5 PASS**.
+  Separate local #787 historical-input comparison: **PASS**; CI leaves that
+  optional comparison UNRUN because no #787 checkout is supplied there.
 * Baseline P0: **24 PASS**; P1/S7/S8 existing Linux native probes execute
   successfully. Their UNKNOWN/BLOCKED/device limitations remain unchanged.
 * Candidate F04/F12 historical source guards: **EXPECTED HISTORICAL HASH
@@ -85,9 +87,40 @@ files are rejected. Diff, XML and logs are archived; APK Stage 3 symbols are
 checked for both ABIs. These observations do not make the filesystem immutable
 or protect against privileged transient writes between observations.
 
-Build/CI results will be appended after execution. API access currently returns
-Forbidden; GitHub web access works. No run, APK link or SUCCESS is inferred from
-workflow creation.
+Final APK source commit: **c13fa3e1aec416b8378010e13b1c86914c246e4a**.
+Documentation-only follow-up commits do not change that production input.
+
+* Local JDK17 baseline Gradle: **276 tests PASS**, 0 failures/errors/skipped.
+* Local candidate Gradle: **299 tests PASS**, 0 failures/errors/skipped;
+  **assembleDebug SUCCESS**. The count is 276 baseline methods minus 4
+  historical identity methods plus 27 new model/Brain methods. Ten isolated
+  engine tests execute in the additional host harness.
+* Actual candidate input record before/after Gradle: **IDENTICAL**, all 417
+  tracked files and 6 pinned SDK files; exact SHA c13fa3e above.
+* Local APK: 18,930,421 bytes, SHA256
+  `e293c825c330e0f06cb51b1198a3f2039c56dad2e7d9ae49ede21a6c55c349e3`.
+  Both arm64-v8a/armeabi-v7a contain BASS/BASSMIDI; Stage 3 symbols excluded;
+  historical drum semantic registry bundled.
+* **[Ready to play candidate #2 — SUCCESS](https://github.com/pulicarpus/YamahaArranger/actions/runs/38094967492)**.
+  GitHub job 114338891734 independently reports success for original baseline
+  regression, candidate readiness/differential, JVM/ABI APK build, post-build
+  integrity and both uploads. Overall run page reports completed successfully.
+* Verified run-page APK artifact: **ready-to-play-debug**, ID **11685063836**,
+  12.6 MB compressed; uploaded artifact digest (ZIP, not APK digest):
+  `11d54c5a5419e91f1ce31545ef2d38760240a31085c4843f41ea212dfc40deec`.
+  Evidence artifact: **readiness-evidence**, ID **11685238386**, 193 KB, digest
+  `344fbce5f3e2aac9a4010e7dbc82c802e8f04dfa3e8aeb0620fd613ac194d768`.
+  Download via the authenticated GitHub run page; this cloud's anonymous direct
+  artifact request returned 404. Remote artifact bytes were not downloaded here.
+* First feature CI #1 (38094772864) failed at candidate JVM/ABI build; baseline,
+  host differential and post-build input checks passed. Detailed web step log
+  request returns 404. The actual host JNI initialization problem was reproduced
+  locally; its harness relocation changed no production bytes.
+* API/GraphQL access returns Forbidden. Branch push succeeded; PR creation was
+  attempted but BLOCKED by that API restriction. No merge or baseline push.
+
+This is a separate feature workflow run number, not a claim of historical
+Build #815. Local APK hash is not claimed to match remote APK bytes.
 
 ## Remaining risks and device check
 
