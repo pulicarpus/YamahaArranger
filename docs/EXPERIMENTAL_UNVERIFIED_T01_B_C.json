@@ -1,0 +1,37 @@
+{
+  "label": "EXPERIMENTAL-UNVERIFIED",
+  "source_sha": "e75cee02887dfee3f0b3f8c924ffa40fcfc899a1",
+  "source_sha256": {
+    "app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt": "2cc9ea2b48e007089615f9bf0d71b81d4ebc9ebf6ecdcb2390bd3c06aff032ec",
+    "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt": "6231ba78b041a0d9549a22c551731cb5f2f622d3db75bbd575c112fcd94847da"
+  },
+  "protected_paths": 415,
+  "sdk6": "PASS",
+  "abi_stage3": "PASS",
+  "apk_sha256": "13d2fc9928c2dedbadd26cfb1d5d212f97b08998bb5eaf00b9cfa26167558007",
+  "apk_bytes": 18930421,
+  "host_reexecuted": {
+    "T01": "192/192 + 2 controls PASS",
+    "B": "144/144 PASS",
+    "C": "234/234 PASS"
+  },
+  "host_log_sha256": {
+    "t01": "e83209c447c25e5a4be79d3cf3cbffbf0c1c82bd724783b93c6593c0362b6fd1",
+    "b": "937fccf3d46ce6919eb517fee137114c6aeb203442324a80f14c571ccc8163cc",
+    "c": "833e537ba88595fcbd51afb46049f46d043b565d909c801919b5645db1ff2bba"
+  },
+  "historical_READY_candidate_gate": "REJECTED by design; not modified or claimed PASS",
+  "known_failures": [
+    "Main/Fill admission: strict diagnostic 12/24 FAIL",
+    "Intro/Ending from STOP",
+    "Fill-to-Fill Yamaha rule UNKNOWN",
+    "S01 STOP/cancellation lifecycle"
+  ],
+  "unverified": [
+    "Android audio/PCM",
+    "PSR-E343",
+    "503-style corpus unavailable"
+  ],
+  "authorization": "Owner explicitly authorized DEBUG EXPERIMENTAL build; no READY/release certification.",
+  "CI_build": "Pinned source SHA, original assembleDebug and both ABI filters; no test assertions deleted or reclassified."
+}
