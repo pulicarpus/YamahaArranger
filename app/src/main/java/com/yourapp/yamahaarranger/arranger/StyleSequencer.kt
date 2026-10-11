@@ -11,6 +11,10 @@ import com.yourapp.yamahaarranger.style.StyleChannelOverride
 import com.yourapp.yamahaarranger.style.StylePartModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -19,7 +23,58 @@ import java.util.concurrent.atomic.AtomicLong
 
 class StyleSequencer(private val audioEngine: AudioEngineManager, private val midiInputManager: MidiInputManager, private val scope: CoroutineScope) {
     private var playbackJob:Job?=null
-    var tempoBpm:Int=120
+    // Musical position is integrated at each tempo change, never re-scaled from
+    // the playback anchor. This monitor protects clock arithmetic only: no
+    // native/MIDI calls, callbacks, delay or lifecycle monitor acquisition.
+    private val musicalClockLock = Any()
+    private data class TempoSegment(val nanos: Long, val quarters: Double, val bpm: Int)
+    private class TempoClock(val anchor: Long, bpm: Int) {
+        val segments = arrayListOf(TempoSegment(anchor, 0.0, bpm))
+    }
+    private var tempoClock: TempoClock? = null
+    private var tempoRevision = 0L
+    @Volatile var tempoBpm:Int=120
+        set(value) {
+            synchronized(musicalClockLock) {
+                val now = System.nanoTime()
+                val clock = ensureTempoClock()
+                val bpm = value.coerceIn(20, 280)
+                if (masterClockStartedAtNanos != 0L && clock.segments.last().bpm != bpm) {
+                    val previous = clock.segments.last()
+                    val quarters = previous.quarters +
+                        (now - previous.nanos).coerceAtLeast(0L) * previous.bpm / 60_000_000_000.0
+                    clock.segments.add(TempoSegment(now, quarters, bpm))
+                    tempoRevision++
+                }
+                field = value
+            }
+            // A suspended worker recalculates its event and transition deadline.
+            wakeMusicalClock()
+        }
+
+    private fun ensureTempoClock(): TempoClock {
+        val anchor = masterClockStartedAtNanos
+        val existing = tempoClock
+        if (existing != null && existing.anchor == anchor) return existing
+        return TempoClock(anchor, tempoBpm.coerceIn(20, 280)).also { tempoClock = it }
+    }
+
+    private fun tickDeadlineNanos(tick: Long, ppq: Int,
+        clock: TempoClock = synchronized(musicalClockLock) { ensureTempoClock() }): Long = synchronized(musicalClockLock) {
+        val resolution = ppq.coerceAtLeast(1)
+        val quarters = tick.toDouble() / resolution
+        // Retain the original mapping for already admitted/past ticks as well
+        // as the latest segment for future ticks (including pending NextBar).
+        var lo = 0
+        var hi = clock.segments.lastIndex
+        while (lo < hi) {
+            val mid = (lo + hi + 1) / 2
+            if (clock.segments[mid].quarters <= quarters) lo = mid else hi = mid - 1
+        }
+        val segment = clock.segments[lo]
+        segment.nanos + ((tick - segment.quarters * resolution) *
+            (60_000_000_000.0 / (segment.bpm.toDouble() * resolution))).toLong()
+    }
     var currentChord:DetectedChord?=null
         set(value){
             f12Timing.record(7,f12Timing.begin(),0,0,true,tick=value?.rootNote?:-1)
@@ -199,12 +254,23 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         val onStart: (() -> Unit)? = null
     )
 
-    private data class PendingTransition(
+    private data class PendingTransition @JvmOverloads constructor(
         val sections: List<PendingSection>,
-        val startTick: Long
+        val startTick: Long,
+        val nextBarBoundary: Boolean = false
     )
 
     private val pendingSectionQueue = java.util.ArrayDeque<PendingSection>()
+    // Broadcast: playback and a Brain quantization wait must both wake.
+    private val musicalClockRevision = MutableStateFlow(0L)
+    private fun wakeMusicalClock() {
+        // A Main.immediate/Unconfined continuation may resume inline. Emit
+        // after releasing the clock monitor, never under that monitor.
+        musicalClockRevision.update { it + 1L }
+    }
+    private suspend fun waitForClockChange(revision: Long, waitMs: Long) {
+        withTimeoutOrNull(waitMs) { musicalClockRevision.first { it != revision } }
+    }
     @Volatile private var pendingTransition: PendingTransition? = null
     @Volatile private var masterClockStartedAtNanos: Long = 0L
     @Volatile private var masterTimelineTick: Long = 0L
@@ -262,13 +328,57 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         )
     }
 
-    private fun currentMasterTick(ppq: Int): Long {
-        val anchor = masterClockStartedAtNanos
-        if (anchor == 0L || ppq <= 0) return masterTimelineTick
-        val nanosPerTick =
-            60_000_000_000.0 /
-                (tempoBpm.coerceIn(20, 280).toDouble() * ppq.toDouble())
-        return ((System.nanoTime() - anchor) / nanosPerTick).toLong().coerceAtLeast(masterTimelineTick)
+    // Narrow NextBar request: outside the unresolved first-beat window.
+    // Existing Immediate/AutoFill and first-beat request paths remain unchanged.
+    fun queueNextBarMain(section: StyleSectionModel, ppq: Int, numerator: Int,
+        denominator: Int, onStarted: (() -> Unit)? = null): Boolean {
+        if (playbackJob?.isActive != true || ppq <= 0) return false
+        val beatTicks = ppq.toLong() * 4L / denominator.coerceAtLeast(1)
+        val barTicks = beatTicks * numerator.coerceAtLeast(1)
+        if (beatTicks <= 0L || barTicks <= 0L) return false
+        val tick = currentMasterTick(ppq)
+        if (tick % barTicks < beatTicks) return false
+        pendingSectionQueue.clear()
+        pendingTransition = PendingTransition(
+            listOf(PendingSection(section, ppq, -1, null, onStarted)),
+            (tick / barTicks + 1L) * barTicks, nextBarBoundary = true)
+        wakeMusicalClock()
+        return true
+    }
+
+    private suspend fun waitForNextBarOrEvent(absoluteTick: Long, ppq: Int, clock: TempoClock): Long? {
+        while (true) {
+            val revision: Long
+            val boundaryTick: Long?
+            val targetNanos: Long
+            val boundaryNanos: Long?
+            val now: Long
+            synchronized(musicalClockLock) {
+                revision = musicalClockRevision.value
+                boundaryTick = pendingTransition?.takeIf { it.nextBarBoundary }?.startTick
+                targetNanos = tickDeadlineNanos(absoluteTick, ppq, clock)
+                boundaryNanos = boundaryTick?.let { tickDeadlineNanos(it, ppq, clock) }
+                now = System.nanoTime()
+            }
+            if (boundaryNanos != null && now >= boundaryNanos) return boundaryTick
+            if (now >= targetNanos) return null
+            val wakeAt = if (boundaryNanos == null) targetNanos else minOf(targetNanos, boundaryNanos)
+            val waitMs = (wakeAt - now) / 1_000_000L
+            if (waitMs > 0L) waitForClockChange(revision, waitMs) else {
+                // Preserve baseline's sub-millisecond event dispatch tolerance.
+                // Future bar boundaries still require a suspended wait.
+                if (boundaryNanos != null && boundaryNanos < targetNanos) delay(1L)
+                else return null
+            }
+        }
+    }
+
+    private fun currentMasterTick(ppq: Int): Long = synchronized(musicalClockLock) {
+        if (masterClockStartedAtNanos == 0L || ppq <= 0) return@synchronized masterTimelineTick
+        val segment = ensureTempoClock().segments.last()
+        val quarters = segment.quarters +
+            (System.nanoTime() - segment.nanos).coerceAtLeast(0L) * segment.bpm / 60_000_000_000.0
+        (quarters * ppq).toLong().coerceAtLeast(masterTimelineTick)
     }
 
     /** Queue sections after the currently playing section finishes naturally. */
@@ -314,7 +424,11 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         if (!seamless) clearStringTrace()
         pendingSectionQueue.clear()
         pendingTransition = null
-        masterClockStartedAtNanos = System.nanoTime()
+        synchronized(musicalClockLock) {
+            masterClockStartedAtNanos = System.nanoTime()
+            tempoClock = null
+            ensureTempoClock()
+        }
         masterTimelineTick = 0L
         barClockStartedAtNanos = masterClockStartedAtNanos
         stringTrace("TRACE_SESSION section=" + section.name + " ppq=" + ppq + " loopLimit=" + loopLimit + " seamless=" + seamless)
@@ -425,18 +539,42 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
 
     fun queueNextSection(section:StyleSectionModel,ppq:Int)=playSeamless(section,ppq)
 
+    // Capture a musical target at request time, not a wall-time delay. The
+    // existing <=25ms admission window is preserved for the Brain caller.
+    fun nextBarTargetTick(ppq: Int, numerator: Int = 4, denominator: Int = 4): Long? {
+        if (masterClockStartedAtNanos == 0L || ppq <= 0) return null
+        val beatTicks = ppq.toLong() * 4L / denominator.coerceAtLeast(1)
+        val barTicks = beatTicks * numerator.coerceAtLeast(1)
+        if (barTicks <= 0L) return null
+        val tick = currentMasterTick(ppq)
+        val barTick = tick / barTicks * barTicks
+        val sinceBarNanos = System.nanoTime() - tickDeadlineNanos(barTick, ppq)
+        val nextBarTick = if (sinceBarNanos in 0L..999_999L) barTick else barTick + barTicks
+        val wait = (tickDeadlineNanos(nextBarTick, ppq) - System.nanoTime()) / 1_000_000L
+        return if (wait <= 25L) null else nextBarTick
+    }
+
     fun millisToNextBar(ppq: Int, numerator: Int = 4, denominator: Int = 4): Long {
-        val anchor = masterClockStartedAtNanos
-        if (anchor == 0L || ppq <= 0) return 0L
-        val bpm = tempoBpm.coerceIn(20, 280)
-        val barMs = (
-            numerator.coerceAtLeast(1) * 4.0 / denominator.coerceAtLeast(1) *
-                60_000.0 / bpm
-        ).toLong().coerceAtLeast(1L)
-        val elapsedMs = (System.nanoTime() - anchor) / 1_000_000L
-        val remainder = elapsedMs % barMs
-        val wait = if (remainder == 0L) 0L else barMs - remainder
-        return if (wait <= 25L) 0L else wait
+        val tick = nextBarTargetTick(ppq, numerator, denominator) ?: return 0L
+        return ((tickDeadlineNanos(tick, ppq) - System.nanoTime()) / 1_000_000L).coerceAtLeast(0L)
+    }
+
+    fun clockTempoRevision(): Long = synchronized(musicalClockLock) { tempoRevision }
+
+    suspend fun awaitMusicalTick(tick: Long, ppq: Int, requestTempoRevision: Long) {
+        val clock = synchronized(musicalClockLock) { ensureTempoClock() }
+        while (true) {
+            val revision = musicalClockRevision.value
+            val remaining = tickDeadlineNanos(tick, ppq, clock) - System.nanoTime()
+            if (remaining <= 0L) return
+            // Preserve baseline sub-ms command admission for unchanged tempo.
+            // After a real tempo change, reach the recalculated musical target
+            // before posting the command. Same-BPM writes are only wake-ups.
+            val waitMs = if (clockTempoRevision() == requestTempoRevision)
+                remaining / 1_000_000L else (remaining - 1L) / 1_000_000L + 1L
+            if (waitMs <= 0L) return
+            waitForClockChange(revision, waitMs)
+        }
     }
 
     private fun handleNoChord(){
@@ -854,9 +992,9 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             .sortedWith(compareBy<Scheduled>{it.tick}.thenBy{it.event.isNoteOn.not()})
         if(merged.isEmpty()) return PlayOnceResult(startAbsoluteTick + sectionLength, false)
 
-        val timelineStartNanos=masterClockStartedAtNanos
-        val nanosPerTick=60_000_000_000.0/(tempoBpm.coerceIn(20,280).toDouble()*ppq.coerceAtLeast(1).toDouble())
-
+        // Retain this iteration's time domain if STOP/START replaces the
+        // current anchor. This is clock ownership, not stale-session rejection.
+        val clock = synchronized(musicalClockLock) { ensureTempoClock() }
         var interruptedByTransition = false
         var lastProcessedTick = startAbsoluteTick
 
@@ -879,19 +1017,21 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         for(s in merged){
             val absoluteTick=startAbsoluteTick+s.tick.toLong()
             val transition = pendingTransition
-            if (transition != null && transition.startTick > 0L && absoluteTick >= transition.startTick) {
+            if (transition != null && absoluteTick >= transition.startTick &&
+                (!transition.nextBarBoundary || System.nanoTime() >=
+                    tickDeadlineNanos(transition.startTick, ppq, clock))) {
                 interruptedByTransition = true
                 lastProcessedTick = transition.startTick
                 break
             }
             lastProcessedTick = absoluteTick
-            val targetNanos=timelineStartNanos+(absoluteTick*nanosPerTick).toLong()
-            val waitNanos=targetNanos-System.nanoTime()
-            if(waitNanos>0L){
-                val waitMs=waitNanos/1_000_000L
-                if(waitMs>0L) delay(waitMs)
-                if(targetNanos-System.nanoTime()>0L) Thread.yield()
+            val boundary = waitForNextBarOrEvent(absoluteTick, ppq, clock)
+            if (boundary != null) {
+                interruptedByTransition = true
+                lastProcessedTick = boundary
+                break
             }
+            val targetNanos = tickDeadlineNanos(absoluteTick, ppq, clock)
 
             if(f12Timing.begin()!=0L) { val now=System.nanoTime(); f12Timing.record(2,now,0,((now-targetNanos)/1000).coerceIn(0,Int.MAX_VALUE.toLong()).toInt(),tick=absoluteTick.toInt()) }
             val chord=currentChord

@@ -455,7 +455,23 @@ class ArrangerBrain @Inject constructor(
     ) {
         pendingTransitionJob?.cancel()
         val style = loadedStyle ?: return
-        val waitMs = if (quantizeToNextBar) {
+        val barTicks = style.ppq.toLong() * 4L * style.meter.numerator /
+            style.meter.denominator.coerceAtLeast(1)
+        val sounding = style.sections[currentPlayingSection.styleName]
+        if (quantizeToNextBar && !_state.value.autoFill && thenPlay == null && !thenStop &&
+            section in mainVariations && currentPlayingSection in mainVariations &&
+            sounding != null && sounding.lengthTicks.toLong() > barTicks &&
+            sequencer.queueNextBarMain(style.sections[section.styleName] ?: return,
+                style.ppq, style.meter.numerator, style.meter.denominator) {
+                currentPlayingSection = section
+                activeSection = section
+                pendingMainTarget = null
+            }) return
+        val tempoRevision = sequencer.clockTempoRevision()
+        val targetTick = if (quantizeToNextBar) {
+            sequencer.nextBarTargetTick(style.ppq, style.meter.numerator, style.meter.denominator)
+        } else null
+        val waitMs = if (targetTick != null) {
             sequencer.millisToNextBar(style.ppq, style.meter.numerator, style.meter.denominator)
         } else 0L
         DebugLog.add(
@@ -466,7 +482,7 @@ class ArrangerBrain @Inject constructor(
         )
         val scope = externalScope ?: CoroutineScope(Dispatchers.Main + SupervisorJob())
         pendingTransitionJob = scope.launch {
-            if (waitMs > 0) delay(waitMs)
+            if (targetTick != null) sequencer.awaitMusicalTick(targetTick, style.ppq, tempoRevision)
             if (!_state.value.isPlaying) return@launch
             pendingTransitionJob = null
 
