@@ -252,6 +252,10 @@ void AudioEngine::sfNoteOffChannel(int channel, int midiNote) {
     soundFont_.noteOff(channel, midiNote);
 }
 
+bool AudioEngine::sfSetKeyboardPreset(int channel, uint64_t fontId, int bank, int program) {
+    return soundFont_.setKeyboardPreset(channel, fontId, bank, program);
+}
+
 void AudioEngine::sfSetChannelPreset(int channel, int bank, int program) {
     soundFont_.setChannelPreset(channel, bank, program);
 }
@@ -293,8 +297,8 @@ void AudioEngine::sfSetKeyboardSustain(bool enabled) {
     soundFont_.setKeyboardSustain(enabled);
 }
 
-void AudioEngine::sfSetKeyboardReleaseTime(int releaseTime) {
-    soundFont_.setKeyboardReleaseTime(releaseTime);
+bool AudioEngine::sfSetKeyboardReleaseTime(int releaseTime) {
+    return soundFont_.setKeyboardReleaseTime(releaseTime);
 }
 
 void AudioEngine::sfSetMasterGain(float gain) {

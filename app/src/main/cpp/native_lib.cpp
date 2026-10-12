@@ -82,7 +82,13 @@ extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAu
 
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetChannelExpression(JNIEnv*,jobject,jint channel,jint expression){if(g_engine)g_engine->sfSetChannelExpression(channel,expression);}
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetKeyboardSustain(JNIEnv*,jobject,jboolean enabled){if(g_engine)g_engine->sfSetKeyboardSustain(enabled==JNI_TRUE);}
-extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetKeyboardReleaseTime(JNIEnv*,jobject,jint releaseTime){if(g_engine)g_engine->sfSetKeyboardReleaseTime(static_cast<int>(releaseTime));}
+extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetKeyboardReleaseTime(JNIEnv*,jobject,jint releaseTime){
+    if(!g_engine) g_engine=std::make_unique<AudioEngine>();
+    return g_engine->sfSetKeyboardReleaseTime(releaseTime) ? JNI_TRUE : JNI_FALSE;
+}
+extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetKeyboardPreset(JNIEnv*,jobject,jint channel,jlong fontId,jint bank,jint program){
+    return g_engine && fontId > 0 && g_engine->sfSetKeyboardPreset(channel,static_cast<uint64_t>(fontId),bank,program) ? JNI_TRUE : JNI_FALSE;
+}
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetMasterGain(JNIEnv*,jobject,jfloat gain){if(g_engine)g_engine->sfSetMasterGain(gain);}
 extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeGetSoundFontPresets(JNIEnv* env,jobject){
     if(!g_engine) return env->NewStringUTF("");

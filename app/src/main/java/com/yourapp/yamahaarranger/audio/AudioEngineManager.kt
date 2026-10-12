@@ -18,6 +18,7 @@ class AudioEngineManager @Inject constructor(
     private val sampleProvider: SampleProvider
 ) {
     @Volatile private var started = false
+    @Volatile private var keyboardReleaseTime = 64
     val readiness = ReadyToPlayGate()
     private val lifecycleScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var soundFontLoaded = false
@@ -35,6 +36,7 @@ class AudioEngineManager @Inject constructor(
                 bridge.nativeInitLogger()
                 DebugLog.add("📋 Native logger initialized")
                 started = bridge.nativeStart()
+                if (started) bridge.nativeSetKeyboardReleaseTime(keyboardReleaseTime)
                 DebugLog.traceAudio("START result=$started sf2Loaded=$soundFontLoaded")
                 DebugLog.add(if (started) "✅ AudioEngine OK" else "❌ AudioEngine FAILED")
             }
@@ -114,6 +116,7 @@ class AudioEngineManager @Inject constructor(
             if (resume && readiness.wantsOutput(outputEpoch)) {
                 bridge.nativeInitLogger()
                 started = bridge.nativeStart()
+                if (started) bridge.nativeSetKeyboardReleaseTime(keyboardReleaseTime)
                 readiness.outputResult(outputEpoch, started)
                 DebugLog.traceAudio("RESUME after SF2 operation started=$started")
             }
@@ -303,11 +306,12 @@ class AudioEngineManager @Inject constructor(
         bridge.nativeSetKeyboardSustain(enabled)
     }
 
-    fun setKeyboardReleaseTime(releaseTime: Int) {
-        val value = releaseTime.coerceIn(0, 127)
-        DebugLog.add("🎹 RELEASE TIME = $value (CC72) R1/R2/R3")
-        bridge.nativeSetKeyboardReleaseTime(value)
-    }
+    fun setKeyboardReleaseTime(releaseTime: Int): Boolean = runBlocking { readiness.operations.withLock {
+        keyboardReleaseTime = releaseTime.coerceIn(0, 127)
+        val ok = bridge.nativeSetKeyboardReleaseTime(keyboardReleaseTime)
+        DebugLog.add("🎹 RELEASE TIME=$keyboardReleaseTime R1/R2/R3 acceptedAndReadback=$ok")
+        ok
+    } }
 
     fun setMasterVolume(volume: Int) {
         val v = volume.coerceIn(0, 127)
@@ -316,54 +320,26 @@ class AudioEngineManager @Inject constructor(
     }
 
 
-    data class SfPreset(val role: String, val bank: Int, val program: Int, val name: String)
+    data class SfPreset(
+        val role: String, val bank: Int, val program: Int, val name: String,
+        val soundFontId: Long = 0, val soundFontName: String = ""
+    ) {
+        val identity: String get() = "$soundFontId:$bank:$program"
+        val isDrum: Boolean get() = bank == 127 || bank == 128
+    }
 
     fun loadedSoundFontPresets(): List<SfPreset> = runBlocking { readiness.operations.withLock {
-        val raw = runBlocking {
-            soundFontOperationMutex.withLock {
-                withAudioStreamPausedUnsafe { bridge.nativeGetSoundFontPresets() }
-            }
-        }
+        // Enumeration is a cached snapshot, built at SF2 load with BASSMIDI's
+        // actual inventory. It performs no SF2/sample I/O and need not pause output.
+        SoundFontPresetCatalog.parse(bridge.nativeGetSoundFontPresets())
+    } }
 
-        // Current native contract uses ASCII control separators:
-        // RECORD=0x1E, FIELD=0x1F. Keep newline/semicolon/pipe parsing for
-        // older APKs so a mixed native/Java deployment cannot lose presets.
-        raw
-            .split('\u001e')
-            .asSequence()
-            .flatMap { record ->
-                if (record.contains('\u001f')) sequenceOf(record)
-                else record.lineSequence().flatMap { line ->
-                    if (line.contains('|')) sequenceOf(line)
-                    else line.split(';').asSequence()
-                }
-            }
-            .mapNotNull { entry ->
-                val p = if (entry.contains('\u001f')) {
-                    entry.split('\u001f', limit = 4)
-                } else {
-                    entry.split('|', limit = 4)
-                }
-
-                if (p.size == 4) {
-                    val role = p[0].trim()
-                    val bank = p[1].trim().toIntOrNull()
-                    val program = p[2].trim().toIntOrNull()
-                    if (bank != null && program != null && role.isNotEmpty()) {
-                        SfPreset(role, bank, program, p[3].trim())
-                    } else null
-                } else {
-                    val legacy = entry.split(':', limit = 3)
-                    if (legacy.size == 3) {
-                        val bank = legacy[0].trim().toIntOrNull()
-                        val program = legacy[1].trim().toIntOrNull()
-                        if (bank != null && program != null) {
-                            SfPreset("MELODY", bank, program, legacy[2].trim())
-                        } else null
-                    } else null
-                }
-            }
-            .toList()
+    fun selectKeyboardPreset(channel: Int, preset: SfPreset): Boolean = runBlocking { readiness.operations.withLock {
+        if (channel !in 0..3 || preset.soundFontId <= 0) return@withLock false
+        val ok = bridge.nativeSetKeyboardPreset(channel, preset.soundFontId, preset.bank, preset.program)
+        DebugLog.add("🎹 VOICE ch=$channel sf2=${preset.soundFontName} id=${preset.soundFontId} " +
+            "bank=${preset.bank} pc=${preset.program} verified=$ok")
+        ok
     } }
 
     // Named overload carries the Yamaha/CASM voice identity into BASSMIDI resolution.

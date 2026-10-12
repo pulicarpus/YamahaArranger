@@ -16,6 +16,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -29,6 +30,7 @@ import java.util.Locale
 import java.util.concurrent.ConcurrentLinkedQueue
 import javax.inject.Inject
 import com.yourapp.yamahaarranger.lifecycle.ReadyToPlayGate
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.withLock
 
@@ -184,9 +186,13 @@ data class KeyboardVoiceSlot(
     val program: Int,
     val bank: Int = 0,
     val enabled: Boolean = false,
-    val name: String? = null
+    val name: String? = null,
+    val soundFontId: Long = 0,
+    val soundFontName: String = "",
+    val available: Boolean = true
 ) {
     fun displayName(): String {
+        if (!available) return "Unavailable: ${name.orEmpty()}"
         name?.trim()?.takeIf { it.isNotEmpty() }?.let { return it }
         return GM_VOICES.firstOrNull { it.second == program }?.first ?: "prog$program"
     }
@@ -195,7 +201,8 @@ data class KeyboardVoiceSlot(
 fun defaultKeyboardVoices(): List<KeyboardVoiceSlot> = listOf(
     KeyboardVoiceSlot(0, "RIGHT 1", 0, 0, enabled = true, name = "Piano"),
     KeyboardVoiceSlot(1, "RIGHT 2", 0, 0, enabled = false, name = "Piano"),
-    KeyboardVoiceSlot(2, "RIGHT 3", 0, 0, enabled = false, name = "Piano")
+    KeyboardVoiceSlot(2, "RIGHT 3", 0, 0, enabled = false, name = "Piano"),
+    KeyboardVoiceSlot(3, "LEFT", 0, 0, enabled = true, name = "Piano")
 )
 
 data class MainUiState(
@@ -326,7 +333,12 @@ class MainViewModel @Inject constructor(
             activeRegSlot = regSlot,
             voiceName = rightVoices.getOrNull(0)?.displayName() ?: "OFF",
             right2Name = if (rightVoices.getOrNull(1)?.enabled == true) rightVoices.getOrNull(1)?.displayName() ?: "OFF" else "OFF",
-            rightVoices = rightVoices,
+            rightVoices = rightVoices.map { slot ->
+                slot.copy(enabled = if (slot.layer == 3) arranger.leftVoiceEnabled else slot.enabled,
+                    available = slot.soundFontId == 0L || sfPresets.any {
+                        it.soundFontId == slot.soundFontId && it.bank == slot.bank && it.program == slot.program
+                    })
+            },
             voiceAssignments = voices,
             availableSoundFonts = sfFiles
         )
@@ -340,6 +352,7 @@ class MainViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.Eagerly, MainUiState())
 
     private fun launchFontRequest(block: suspend (ReadyToPlayGate.Request) -> Unit) {
+        _sf2Presets.value = emptyList()
         val request = audioEngine.readiness.beginFonts()
         viewModelScope.launch {
             var ok = false
@@ -354,7 +367,14 @@ class MainViewModel @Inject constructor(
                 throw cancelled
             } catch (error: Exception) {
                 DebugLog.add("❌ SF2 load failed: ${error.javaClass.simpleName}")
-            } finally { audioEngine.readiness.finishFonts(request, ok) }
+            } finally {
+                try {
+                    if (audioEngine.readiness.current(request)) {
+                        val presets = withContext(NonCancellable + Dispatchers.Default) { audioEngine.loadedSoundFontPresets() }
+                        if (audioEngine.readiness.current(request)) _sf2Presets.value = presets
+                    }
+                } finally { audioEngine.readiness.finishFonts(request, ok) }
+            }
         }
     }
     // Serialized by the shared fontRequests mutex, including cache writes.
@@ -362,6 +382,11 @@ class MainViewModel @Inject constructor(
 
     init {
         arrangerBrain.attachScope(viewModelScope)
+        // Serial/conflated delivery keeps the last knob value authoritative,
+        // without blocking the UI on a concurrent large SF2 load.
+        viewModelScope.launch(Dispatchers.Default) {
+            _releaseTime.collect { arrangerBrain.setKeyboardReleaseTime(it) }
+        }
         DebugLog.add("🎵 ViewModel init")
         DebugLog.add("📂 SF2 folder: /storage/emulated/0/YamahaArranger/SF2")
 
@@ -379,13 +404,7 @@ class MainViewModel @Inject constructor(
                     _availableSoundFonts.value = contentResolver.listSoundFonts()
                 }
                 autoLoadSoundFont(request)
-                // Do NOT enumerate all SF2 presets during startup. A large
-                // Yamaha SF2 can make native preset iteration expensive and
-                // may kill the process during a cold app restart. Keep startup
-                // focused on loading the synth; enumerate presets lazily when
-                // the user explicitly opens/refreshes the preset UI.
-                _sf2Presets.value = emptyList()
-                DebugLog.add("📋 Startup preset scan deferred")
+                DebugLog.add("📋 Cached SF2 inventory will be published after loading")
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (t: Exception) {
@@ -451,12 +470,10 @@ class MainViewModel @Inject constructor(
     fun onReleaseDown() {
         val value = (_releaseTime.value - 1).coerceIn(0, 127)
         _releaseTime.value = value
-        arrangerBrain.setKeyboardReleaseTime(value)
     }
     fun onReleaseUp() {
         val value = (_releaseTime.value + 1).coerceIn(0, 127)
         _releaseTime.value = value
-        arrangerBrain.setKeyboardReleaseTime(value)
     }
     fun toggleSustain() {
         val enabled = !_sustainEnabled.value
@@ -472,23 +489,31 @@ class MainViewModel @Inject constructor(
     fun onRight2VolumeChange(value: Int) { _right2Volume.value = value.coerceIn(0, 127); audioEngine.setChannelExpression(1, _right2Volume.value) }
     fun onRight3VolumeChange(value: Int) { _right3Volume.value = value.coerceIn(0, 127); audioEngine.setChannelExpression(2, _right3Volume.value) }
 
-    /** Assign one of the three Yamaha-style upper keyboard parts. */
-    fun setRightVoice(layer: Int, program: Int, bank: Int) {
-        if (layer !in 0..2) return
-        val p = program.coerceIn(0, 127)
-        val b = bank.coerceIn(0, 16383)
-        val presetName = _sf2Presets.value.firstOrNull { it.bank == b && it.program == p }?.name
-        _rightVoices.value = _rightVoices.value.map { slot ->
-            if (slot.layer == layer) slot.copy(program = p, bank = b, name = presetName ?: GM_VOICES.firstOrNull { it.second == p }?.first)
-            else slot
+    /** Assign RIGHT1/2/3 or LEFT by an exact loaded SF2 identity. */
+    fun setRightVoice(layer: Int, preset: AudioEngineManager.SfPreset, onResult: (Boolean) -> Unit = {}) {
+        if (layer !in 0..3) return
+        viewModelScope.launch(Dispatchers.Default) {
+            val ok = audioEngine.selectKeyboardPreset(layer, preset)
+            if (ok) {
+                _rightVoices.value = _rightVoices.value.map { slot ->
+                    if (slot.layer == layer) slot.copy(program = preset.program, bank = preset.bank,
+                        name = preset.name, soundFontId = preset.soundFontId,
+                        soundFontName = preset.soundFontName, available = true) else slot
+                }
+                // An external MIDI device cannot receive an SF2 identity. Only
+                // mirror standard MIDI-sized values; never clamp a native preset.
+                if (preset.program in 0..127 && preset.bank in 0..16383)
+                    midiInputManager.sendProgramChange(layer, preset.program, preset.bank)
+            } else {
+                DebugLog.add("❌ VOICE selection unavailable/failed: ${preset.soundFontName} ${preset.bank}:${preset.program}")
+            }
+            withContext(Dispatchers.Main) { onResult(ok) }
         }
-        audioEngine.setChannelProgram(layer, p, b, presetName)
-        // Keep the external E343 patch in sync with the RIGHT 1/2/3 selection.
-        midiInputManager.sendProgramChange(layer, p, b)
-        DebugLog.add("🎹 " + _rightVoices.value.first { it.layer == layer }.label + " → prog" + p + " bank" + b)
     }
 
+
     fun toggleRightVoice(layer: Int) {
+        if (layer == 3) { arrangerBrain.toggleLeftVoice(); return }
         if (layer !in 0..2) return
         _rightVoices.value = _rightVoices.value.map { slot ->
             if (slot.layer == layer) slot.copy(enabled = !slot.enabled) else slot

@@ -33,6 +33,7 @@ inline bool failAuxMapping=false, failPreload=false, failAuxExpression=false;
 inline bool failMapping=false, dropMappingsOnFailure=false, failNote=false, mismatchPreset=false;
 inline int forcedLivePc=-1;
 inline bool changePresetOnNote=false, failProgram=false, changeDiagnosticPresetOnNote=false;
+inline bool failRelease=false;
 inline std::vector<std::tuple<HSTREAM,DWORD,DWORD,DWORD>> history;
 inline std::map<std::pair<int,DWORD>,DWORD> events;
 inline std::map<std::tuple<HSOUNDFONT,int,int>,std::string> presets;
@@ -40,6 +41,7 @@ inline std::map<std::tuple<HSOUNDFONT,int,int>,std::string> presets;
 inline HSTREAM BASS_MIDI_StreamCreate(int, DWORD flags, int) { mock_bass::streamFlags=flags; return mock_bass::nextStream++; }
 inline bool BASS_MIDI_StreamEvent(HSTREAM stream, DWORD chan, DWORD event, DWORD value) {
     mock_bass::history.emplace_back(stream,chan,event,value);
+    if (event==MIDI_EVENT_RELEASE && mock_bass::failRelease) return false;
     if(stream!=1 && event==MIDI_EVENT_EXPRESSION && mock_bass::failAuxExpression)return false;
     if (event==MIDI_EVENT_PROGRAM && mock_bass::failProgram) return false;
     if (event==MIDI_EVENT_NOTE && mock_bass::failNote) return false;
@@ -83,8 +85,18 @@ inline HSOUNDFONT BASS_MIDI_FontInit(const char* path, DWORD) {
 }
 inline bool BASS_MIDI_FontFree(HSOUNDFONT h) { mock_bass::fonts.erase(h); return true; }
 inline bool BASS_MIDI_FontSetVolume(HSOUNDFONT, float) { return true; }
-inline bool BASS_MIDI_FontGetInfo(HSOUNDFONT, BASS_MIDI_FONTINFO*) { return true; }
-inline bool BASS_MIDI_FontGetPresets(HSOUNDFONT, DWORD*) { return false; }
+inline bool BASS_MIDI_FontGetInfo(HSOUNDFONT h, BASS_MIDI_FONTINFO* info) {
+    if (!mock_bass::fonts.count(h)) return false;
+    info->presets = 0;
+    for (const auto& entry : mock_bass::presets) if (std::get<0>(entry.first)==h) ++info->presets;
+    return true;
+}
+inline bool BASS_MIDI_FontGetPresets(HSOUNDFONT h, DWORD* presets) {
+    if (!mock_bass::fonts.count(h)) return false;
+    for (const auto& entry : mock_bass::presets) if (std::get<0>(entry.first)==h)
+        *presets++ = DWORD((std::get<1>(entry.first)<<16)|std::get<2>(entry.first));
+    return true;
+}
 inline const char* BASS_MIDI_FontGetPreset(HSOUNDFONT h, int pc, int bank) {
     const auto it=mock_bass::presets.find({h,bank,pc});
     return it==mock_bass::presets.end()?nullptr:it->second.c_str();
@@ -92,10 +104,10 @@ inline const char* BASS_MIDI_FontGetPreset(HSOUNDFONT h, int pc, int bank) {
 inline DWORD BASS_MIDI_StreamGetEvent(HSTREAM stream, DWORD ch, DWORD event) {
     if(stream!=1) {
         const auto it=mock_bass::otherEvents.find({stream,ch,event});
-        return it!=mock_bass::otherEvents.end()?it->second:((event==MIDI_EVENT_VOLUME||event==MIDI_EVENT_EXPRESSION)?127:0);
+        return it!=mock_bass::otherEvents.end()?it->second:((event==MIDI_EVENT_VOLUME||event==MIDI_EVENT_EXPRESSION)?127:(event==MIDI_EVENT_RELEASE?64:0));
     }
     const auto it=mock_bass::events.find({ch,event});
-    return it!=mock_bass::events.end()?it->second:((event==MIDI_EVENT_VOLUME||event==MIDI_EVENT_EXPRESSION)?127:0);
+    return it!=mock_bass::events.end()?it->second:((event==MIDI_EVENT_VOLUME||event==MIDI_EVENT_EXPRESSION)?127:(event==MIDI_EVENT_RELEASE?64:0));
 }
 inline bool BASS_MIDI_StreamGetPreset(HSTREAM stream, DWORD ch, BASS_MIDI_FONT* live) {
     if(stream!=1 && mock_bass::deferAuxReadbackUntilNote && !mock_bass::otherEvents.count({stream,int(ch),MIDI_EVENT_NOTE}))return false;

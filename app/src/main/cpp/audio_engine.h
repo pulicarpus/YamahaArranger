@@ -35,12 +35,13 @@ public:
     void sfMarkChordDiagnostic(int64_t id);
     std::string sfCompactChordDiagnosticReport() const;
     std::string sfChordDiagnosticReport() const;
+    bool sfSetKeyboardPreset(int channel,uint64_t fontId,int bank,int program);
     void sfSetChannelPreset(int channel,int bank,int program);
     void sfSetChannelPresetWithName(int channel,int bank,int program,const std::string& voiceName);
     void sfSetChannelMixer(int channel,int volume,int pan,int expression,int reverbSend,int chorusSend);
     void sfSetChannelExpression(int channel,int expression);
     void sfSetKeyboardSustain(bool enabled);
-    void sfSetKeyboardReleaseTime(int releaseTime);
+    bool sfSetKeyboardReleaseTime(int releaseTime);
     void sfSetMasterGain(float gain);
     std::string sfPresetList() const;
     std::string sfShadowDrumSnapshot() const { return soundFont_.shadowDrumSnapshot(); }

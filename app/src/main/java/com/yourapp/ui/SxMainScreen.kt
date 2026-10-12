@@ -1,5 +1,6 @@
 package com.yourapp.yamahaarranger.ui
 
+import com.yourapp.yamahaarranger.audio.SoundFontPresetCatalog
 import com.yourapp.yamahaarranger.audio.AudioEngineManager
 
 import android.widget.Toast
@@ -54,6 +55,7 @@ fun SxMainScreen(
     onOpenInspector: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
+    var voiceSelectionError by remember { mutableStateOf<String?>(null) }
     val stylePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(viewModel::onStyleFilePicked) }
     val soundFontPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(viewModel::onSoundFontFilePicked) }
     val context = LocalContext.current
@@ -162,10 +164,11 @@ fun SxMainScreen(
                         voicePresets = state.sf2Presets,
                         voiceCategory = selectedVoiceCategory,
                         selectedVoiceLayer = selectedVoiceLayer,
-                        onVoiceSelect = { program, bank ->
-                            viewModel.setRightVoice(selectedVoiceLayer, program, bank)
-                            lcdPage = "HOME"
-                            selectedVoiceCategory = null
+                        onVoiceSelect = { preset ->
+                            viewModel.setRightVoice(selectedVoiceLayer, preset) { ok ->
+                                if (ok) { lcdPage = "HOME"; selectedVoiceCategory = null }
+                                else voiceSelectionError = "${preset.soundFontName} • ${preset.bank}/${preset.program} could not be selected. Refresh the SF2 list and try again."
+                            }
                         },
                         onVoiceCategory = { category ->
                             selectedVoiceCategory = category
@@ -229,6 +232,11 @@ fun SxMainScreen(
         }
     }
 
+    voiceSelectionError?.let { message ->
+        AlertDialog(onDismissRequest = { voiceSelectionError = null },
+            title = { Text("Voice unavailable") }, text = { Text(message) },
+            confirmButton = { TextButton(onClick = { voiceSelectionError = null }) { Text("CLOSE") } })
+    }
     rightVoicePickerLayer?.let { layer ->
         val slot = state.rightVoices.getOrNull(layer)
         if (slot != null) {
@@ -240,10 +248,11 @@ fun SxMainScreen(
                     rightVoicePickerLayer = null
                     selectedVoiceCategory = null
                 },
-                onSelect = { program, bank ->
-                    viewModel.setRightVoice(layer, program, bank)
-                    rightVoicePickerLayer = null
-                    selectedVoiceCategory = null
+                onSelect = { preset ->
+                    viewModel.setRightVoice(layer, preset) { ok ->
+                        if (ok) { rightVoicePickerLayer = null; selectedVoiceCategory = null }
+                        else voiceSelectionError = "${preset.soundFontName} • ${preset.bank}/${preset.program} could not be selected. Refresh the SF2 list and try again."
+                    }
                 },
                 onToggle = { viewModel.toggleRightVoice(layer) }
             )
@@ -715,7 +724,7 @@ private fun SxCenterDisplay(
     voicePresets: List<AudioEngineManager.SfPreset>,
     voiceCategory: String?,
     selectedVoiceLayer: Int,
-    onVoiceSelect: (Int, Int) -> Unit,
+    onVoiceSelect: (AudioEngineManager.SfPreset) -> Unit,
     onVoiceCategory: (String) -> Unit,
     onBackHome: () -> Unit,
     modifier: Modifier
@@ -762,7 +771,7 @@ private fun SxCenterDisplay(
                     rv.getOrNull(0)?.let { v -> SxVoiceCard("RIGHT 1", v.displayName(), v.enabled, Modifier.weight(1f).clickable { onPickRightVoice(0) }) }
                     rv.getOrNull(1)?.let { v -> SxVoiceCard("RIGHT 2", v.displayName(), v.enabled, Modifier.weight(1f).clickable { onPickRightVoice(1) }) }
                     rv.getOrNull(2)?.let { v -> SxVoiceCard("RIGHT 3", v.displayName(), v.enabled, Modifier.weight(1f).clickable { onPickRightVoice(2) }) }
-                    SxVoiceCard("LEFT", "OFF", false, Modifier.weight(1f))
+                    rv.getOrNull(3)?.let { v -> SxVoiceCard("LEFT", v.displayName(), state.leftVoiceEnabled, Modifier.weight(1f).clickable { onPickRightVoice(3) }) }
                 }
                 Row(
                     Modifier.fillMaxWidth().height(if (compact) 48.dp else 56.dp),
@@ -938,14 +947,15 @@ private fun SxVoiceLcdPage(
     selectedLayer: Int,
     compact: Boolean,
     onCategory: (String) -> Unit,
-    onSelect: (Int, Int) -> Unit,
+    onSelect: (AudioEngineManager.SfPreset) -> Unit,
     onBack: () -> Unit
 ) {
-    val filtered = presets
-        .filter { it.role == "MELODY" && it.bank != 128 }
-        .filter { voiceCategoryMatches(it.program, category) }
-
-    var page by remember(category, selectedLayer) { mutableStateOf(0) }
+    var search by remember { mutableStateOf("") }
+    var fontId by remember { mutableStateOf<Long?>(null) }
+    var allCategories by remember(category) { mutableStateOf(category == null || category == "USER") }
+    val filtered = SoundFontPresetCatalog.filter(presets, search, fontId)
+        .filter { allCategories || if (category == "PERCUSSION") it.isDrum else voiceCategoryMatches(it.program, category) }
+    var page by remember(category, selectedLayer, search, fontId, allCategories, presets) { mutableStateOf(0) }
     val pageSize = 8
     val pageCount = maxOf(1, (filtered.size + pageSize - 1) / pageSize)
     val safePage = page.coerceIn(0, pageCount - 1)
@@ -955,7 +965,7 @@ private fun SxVoiceLcdPage(
         Row(Modifier.fillMaxWidth().height(if (compact) 27.dp else 32.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("VOICE", color = SxBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.width(7.dp))
-            Text("RIGHT " + (selectedLayer + 1), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text(if (selectedLayer == 3) "LEFT" else "RIGHT " + (selectedLayer + 1), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.weight(1f))
             Text("${filtered.size} VOICES", color = SxDim, fontSize = 7.sp)
             TextButton(onClick = onBack, contentPadding = PaddingValues(horizontal = 4.dp)) {
@@ -963,6 +973,12 @@ private fun SxVoiceLcdPage(
             }
         }
 
+        SxPresetFilters(presets, search, { search = it }, fontId, { fontId = it }, compact)
+        if (category != null && category != "USER") {
+            TextButton(onClick = { allCategories = !allCategories }, contentPadding = PaddingValues(0.dp)) {
+                Text(if (allCategories) "ALL PRESETS" else category, color = SxDim, fontSize = 8.sp)
+            }
+        }
         if (state.soundFontName == "None") {
             Surface(
                 color = Color(0xFF151A20), shape = RoundedCornerShape(4.dp),
@@ -978,7 +994,7 @@ private fun SxVoiceLcdPage(
                 modifier = Modifier.fillMaxWidth().weight(1f)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text("LOADING SF2 VOICES…", color = SxDim, fontSize = 12.sp)
+                    Text("No available SF2 presets", color = SxDim, fontSize = 12.sp)
                 }
             }
         } else {
@@ -999,12 +1015,13 @@ private fun SxVoiceLcdPage(
                             ) {
                                 rowItems.forEach { item ->
                                     val selected = item.program == (state.rightVoices.getOrNull(selectedLayer)?.program ?: -1) &&
-                                        item.bank == (state.rightVoices.getOrNull(selectedLayer)?.bank ?: -1)
+                                        item.bank == (state.rightVoices.getOrNull(selectedLayer)?.bank ?: -1) &&
+                                        item.soundFontId == state.rightVoices.getOrNull(selectedLayer)?.soundFontId
                                     Surface(
                                         color = if (selected) SxBlue else Color(0xFF20262D),
                                         shape = RoundedCornerShape(3.dp),
                                         modifier = Modifier.weight(1f).fillMaxHeight()
-                                            .clickable { onSelect(item.program, item.bank) }
+                                            .clickable { onSelect(item) }
                                             .border(
                                                 1.dp,
                                                 if (selected) Color(0xFF58A9FF) else Color(0xFF38434E),
@@ -1024,7 +1041,7 @@ private fun SxVoiceLcdPage(
                                                 overflow = TextOverflow.Ellipsis
                                             )
                                             Text(
-                                                "BANK " + item.bank + " • PC " + (item.program + 1),
+                                                item.soundFontName + " • " + item.bank + ":" + item.program,
                                                 color = if (selected) Color(0xFFC9E5FF) else SxDim,
                                                 fontSize = 6.sp, maxLines = 1
                                             )
@@ -1040,28 +1057,11 @@ private fun SxVoiceLcdPage(
         }
 
         Spacer(Modifier.height(4.dp))
-        Row(
-            Modifier.fillMaxWidth().height(if (compact) 34.dp else 39.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            (0..5).forEach { index ->
-                val enabled = index < pageCount
-                Surface(
-                    color = if (safePage == index) SxBlue else if (enabled) Color(0xFF303840) else Color(0xFF171B20),
-                    shape = RoundedCornerShape(2.dp),
-                    modifier = Modifier.weight(1f).fillMaxHeight()
-                        .clickable(enabled = enabled) { page = index }
-                        .border(
-                            1.dp,
-                            if (safePage == index) Color(0xFF58A9FF) else Color(0xFF444D56),
-                            RoundedCornerShape(2.dp)
-                        )
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text("P${index + 1}", color = if (enabled) Color.White else SxDim, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
+        Row(Modifier.fillMaxWidth().height(if (compact) 34.dp else 39.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+            TextButton(enabled = safePage > 0, onClick = { page = safePage - 1 }) { Text("◀") }
+            Text("${safePage + 1} / $pageCount", color = SxDim, fontSize = 10.sp)
+            TextButton(enabled = safePage + 1 < pageCount, onClick = { page = safePage + 1 }) { Text("▶") }
         }
 
     }
@@ -1265,25 +1265,47 @@ private fun voiceCategoryMatches(program: Int, category: String?): Boolean {
 }
 
 @Composable
+private fun SxPresetFilters(
+    presets: List<AudioEngineManager.SfPreset>, search: String, onSearch: (String) -> Unit,
+    fontId: Long?, onFont: (Long?) -> Unit, compact: Boolean = false
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val sources = presets.distinctBy { it.soundFontId }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        OutlinedTextField(value = search, onValueChange = onSearch,
+            modifier = Modifier.weight(1f), singleLine = true,
+            textStyle = androidx.compose.ui.text.TextStyle(fontSize = if (compact) 10.sp else 12.sp),
+            placeholder = { Text("Search preset…", fontSize = 10.sp) })
+        Box(Modifier.widthIn(max = 150.dp)) {
+            TextButton(onClick = { expanded = true }) {
+                Text(sources.firstOrNull { it.soundFontId == fontId }?.soundFontName ?: "ALL SF2",
+                    fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                DropdownMenuItem(text = { Text("ALL SF2") }, onClick = { onFont(null); expanded = false })
+                sources.forEach { source ->
+                    DropdownMenuItem(text = { Text("${source.soundFontName} • ${source.role} #${source.soundFontId}") },
+                        onClick = { onFont(source.soundFontId); expanded = false })
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun SxKeyboardVoiceDialog(
     slot: KeyboardVoiceSlot,
     presets: List<AudioEngineManager.SfPreset>,
     category: String? = null,
     onDismiss: () -> Unit,
-    onSelect: (Int, Int) -> Unit,
+    onSelect: (AudioEngineManager.SfPreset) -> Unit,
     onToggle: () -> Unit
 ) {
     var search by remember { mutableStateOf("") }
-    val filteredSf = presets
-        .filter { it.role == "MELODY" && it.bank != 128 }
-        .filter { voiceCategoryMatches(it.program, category) }
-        .filter { search.isBlank() || it.name.contains(search, ignoreCase = true) }
-    val filteredGm = remember(search, category) {
-        val voices = if (search.isBlank()) GM_VOICES
-        else GM_VOICES.filter { it.first.contains(search, ignoreCase = true) }
-        voices.filter { voiceCategoryMatches(it.second, category) }
-    }
-
+    var fontId by remember { mutableStateOf<Long?>(null) }
+    var allCategories by remember(category) { mutableStateOf(category == null || category == "USER") }
+    val filtered = SoundFontPresetCatalog.filter(presets, search, fontId)
+        .filter { allCategories || if (category == "PERCUSSION") it.isDrum else voiceCategoryMatches(it.program, category) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -1292,46 +1314,27 @@ private fun SxKeyboardVoiceDialog(
                     Text(slot.label, fontWeight = FontWeight.Bold)
                     Text(slot.displayName(), color = SxDim, fontSize = 11.sp)
                 }
-                TextButton(onClick = onToggle) {
-                    Text(if (slot.enabled) "ON" else "OFF", color = if (slot.enabled) SxGreen else SxDim, fontWeight = FontWeight.Bold)
-                }
+                TextButton(onClick = onToggle) { Text(if (slot.enabled) "ON" else "OFF") }
             }
         },
         text = {
             Column(Modifier.fillMaxWidth().heightIn(max = 480.dp)) {
-                OutlinedTextField(
-                    value = search,
-                    onValueChange = { search = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Search voice…") },
-                    singleLine = true
-                )
-                Spacer(Modifier.height(6.dp))
-                if (filteredSf.isNotEmpty()) {
-                    Text("LOADED SF2", color = SxOrangeBright, fontSize = 8.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(3.dp))
-                    LazyColumn(Modifier.fillMaxWidth().heightIn(max = 210.dp)) {
-                        items(filteredSf) { item ->
-                            Row(
-                                Modifier.fillMaxWidth().clickable { onSelect(item.program, item.bank) }.padding(7.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(item.bank.toString() + ":" + (item.program + 1), color = SxDim, fontSize = 9.sp, modifier = Modifier.width(64.dp))
-                                Text(item.name, color = Color.White, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            }
-                        }
+                SxPresetFilters(presets, search, { search = it }, fontId, { fontId = it })
+                if (category != null && category != "USER") {
+                    TextButton(onClick = { allCategories = !allCategories }) {
+                        Text(if (allCategories) "ALL PRESETS" else category)
                     }
-                    Spacer(Modifier.height(5.dp))
-                    Text("GENERAL MIDI", color = SxDim, fontSize = 8.sp, fontWeight = FontWeight.Bold)
                 }
-                LazyColumn(Modifier.fillMaxWidth().heightIn(max = 300.dp)) {
-                    items(filteredGm) { item ->
-                        Row(
-                            Modifier.fillMaxWidth().clickable { onSelect(item.second, 0) }.padding(7.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(item.second.toString(), color = SxDim, fontSize = 10.sp, modifier = Modifier.width(38.dp))
-                            Text(item.first, color = Color.White, fontSize = 12.sp, fontWeight = if (item.second == slot.program && slot.bank == 0) FontWeight.Bold else FontWeight.Normal)
+                Text("${filtered.size} PRESETS • bank / program (0-based)", color = SxDim, fontSize = 9.sp)
+                if (filtered.isEmpty()) Text("No available preset", color = SxOrangeBright, fontSize = 11.sp)
+                LazyColumn(Modifier.fillMaxWidth().heightIn(max = 330.dp)) {
+                    items(filtered, key = { it.identity }) { item ->
+                        Column(Modifier.fillMaxWidth().clickable { onSelect(item) }.padding(7.dp)) {
+                            Text(item.name, color = Color.White, fontSize = 12.sp,
+                                fontWeight = if (item.soundFontId == slot.soundFontId && item.bank == slot.bank && item.program == slot.program)
+                                    FontWeight.Bold else FontWeight.Normal)
+                            Text("${item.soundFontName} • ${item.role} #${item.soundFontId} • ${item.bank}/${item.program}",
+                                color = SxDim, fontSize = 9.sp)
                         }
                     }
                 }

@@ -1,0 +1,113 @@
+name: Voice & Release experimental APK
+on:
+  push:
+    branches: [experiment/universal-sf2-release]
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  build:
+    if: github.ref == 'refs/heads/experiment/universal-sf2-release'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Verify frozen style and JVM/native recorder contracts
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          python3 tools/test_voice_release.py --jvm --fetch-dependencies 2>&1 | tee evidence/contracts.log
+      - name: Install real Linux BASSMIDI and measure source selection/release PCM
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/bass-linux /tmp/bassmidi-linux
+          curl -fL --retry 3 https://www.un4seen.com/files/bass24-linux.zip -o /tmp/bass-linux.zip
+          curl -fL --retry 3 https://www.un4seen.com/files/bassmidi24-linux.zip -o /tmp/bassmidi-linux.zip
+          unzip -q /tmp/bass-linux.zip -d /tmp/bass-linux
+          unzip -q /tmp/bassmidi-linux.zip -d /tmp/bassmidi-linux
+          sha256sum /tmp/bass-linux/c/bass.h /tmp/bassmidi-linux/c/bassmidi.h /tmp/bass-linux/libs/x86_64/libbass.so /tmp/bassmidi-linux/libs/x86_64/libbassmidi.so > evidence/linux-sdk.sha256
+          python3 tools/test_voice_release.py --real 2>&1 | tee evidence/linux-pcm.log
+      - uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r26d
+          link-to-sdk: true
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+      - name: Install CMake and checkpoint Android BASS SDK inputs
+        run: |
+          set -euo pipefail
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install 'cmake;3.22.1'
+          mkdir -p /tmp/bass-android /tmp/bassmidi-android app/src/main/cpp/basssdk
+          curl -fL --retry 3 https://www.un4seen.com/files/bass24-android.zip -o /tmp/bass-android.zip
+          curl -fL --retry 3 https://www.un4seen.com/files/bassmidi24-android.zip -o /tmp/bassmidi-android.zip
+          unzip -q /tmp/bass-android.zip -d /tmp/bass-android
+          unzip -q /tmp/bassmidi-android.zip -d /tmp/bassmidi-android
+          cp "$(find /tmp/bass-android -type f -iname bass.h -print -quit)" app/src/main/cpp/basssdk/bass.h
+          cp "$(find /tmp/bassmidi-android -type f -iname bassmidi.h -print -quit)" app/src/main/cpp/basssdk/bassmidi.h
+          for abi in arm64-v8a armeabi-v7a; do
+            cp "$(find /tmp/bass-android -type f -path "*/$abi/libbass.so" -print -quit)" "app/src/main/jniLibs/$abi/libbass.so"
+            cp "$(find /tmp/bassmidi-android -type f -path "*/$abi/libbassmidi.so" -print -quit)" "app/src/main/jniLibs/$abi/libbassmidi.so"
+          done
+          python3 - <<'PY'
+          import sys
+          from pathlib import Path
+          sys.path.insert(0,'tools')
+          from generated_bass_sdk_guard import PATHS,verify_generated_sdk
+          verify_generated_sdk(Path('.').resolve(),PATHS)
+          print('Checkpoint Android SDK identities PASS')
+          PY
+      - name: Build both Android ABIs
+        run: |
+          set -euo pipefail
+          gradle --no-daemon --max-workers=2 assembleDebug --stacktrace 2>&1 | tee evidence/android-build.log
+          git diff --exit-code HEAD
+      - name: Verify APK and record experiment provenance
+        run: |
+          set -euo pipefail
+          cp app/build/outputs/apk/debug/app-debug.apk evidence/YamahaArranger-VoiceRelease-experimental.apk
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose evidence/YamahaArranger-VoiceRelease-experimental.apk > evidence/apk-signature.txt
+          python3 - <<'PY'
+          import hashlib,json,os,zipfile
+          from pathlib import Path
+          apk=Path('evidence/YamahaArranger-VoiceRelease-experimental.apk')
+          with zipfile.ZipFile(apk) as z:
+              for abi in ['arm64-v8a','armeabi-v7a']:
+                  for lib in ['bass','bassmidi','yamaha_arranger_native']:
+                      assert 'lib/'+abi+'/lib'+lib+'.so' in z.namelist()
+                  native=z.read('lib/'+abi+'/libyamaha_arranger_native.so')
+                  assert b'NativeAudioBridge_nativeSetKeyboardPreset' in native
+          Path('evidence/provenance.json').write_text(json.dumps({
+              'source_sha':os.environ['GITHUB_SHA'],
+              'style_checkpoint':'c75122daf5d1077db55d50d1c261144fde59af4a',
+              'branch':os.environ['GITHUB_REF_NAME'],'run_id':os.environ['GITHUB_RUN_ID'],
+              'apk_sha256':hashlib.sha256(apk.read_bytes()).hexdigest(),
+              'ready_certified':False,'android_audio_verified':False,
+              'pcm_evidence':'real Linux BASSMIDI with controlled synthetic SF2; separate from Android device audio'
+          },indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: VoiceRelease-experiment-evidence-${{ github.sha }}
+          path: |
+            evidence/*.log
+            evidence/*.json
+            evidence/*.txt
+            evidence/*.sha256
+          if-no-files-found: warn
+      - uses: actions/upload-artifact@v4
+        with:
+          name: YamahaArranger-VoiceRelease-experimental-${{ github.sha }}
+          path: evidence/YamahaArranger-VoiceRelease-experimental.apk
+          if-no-files-found: error

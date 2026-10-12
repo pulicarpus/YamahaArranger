@@ -129,6 +129,8 @@ bool BassMidiPlayer::ensureEngine() {
         BASS_MIDI_StreamEvent(stream_, 8, MIDI_EVENT_DRUMS, 1);
         BASS_MIDI_StreamEvent(stream_, 9, MIDI_EVENT_DRUMS, 1);
 
+        applyKeyboardRelease(); // Restore the retained UI value on every new decoder.
+
         LOGI("BASSMIDI stream ready: PPQN=1920 SRC=%d voices=%d",
              interpolation_, voices_);
     }
@@ -154,6 +156,23 @@ bool BassMidiPlayer::applyFonts() {
     // Yamaha bank space while the actual SF2 bank remains the MSB-sized
     // 0..127 bank.
     std::vector<BASS_MIDI_FONTEX2> cfg;
+    // Exact keyboard mappings have one-channel scope. No style destination,
+    // family resolver or generic source priority is changed by this browser.
+    for (int ch = 0; ch < 4; ++ch) {
+        const auto* preset = keyboardPreset(keyboardPresets_[ch]);
+        if (!preset) continue;
+        BASS_MIDI_FONTEX2 map{};
+        map.font = preset->font;
+        map.spreset = preset->program;
+        map.sbank = preset->nativeBank;
+        map.dpreset = 0;
+        map.dbank = (preset->bank == 127 || preset->bank == 128) ? 128 : 0;
+        map.dbanklsb = 0;
+        map.minchan = ch;
+        map.numchan = 1;
+        cfg.push_back(map);
+    }
+
     // Voyager treats both SF2 banks 127 and 128 as drum banks. Keep those
     // source banks explicit instead of restricting the drum mapping to 128.
     cfg.reserve((drumFont_ ? 2 : 0) + (!drumFont_ && melodyFont_ ? 2 : 0) +
@@ -186,7 +205,7 @@ bool BassMidiPlayer::applyFonts() {
 
         for (int ch = 0; ch < 16; ++ch) {
             const ChannelState& state = channels_[ch];
-            if (!state.initialized || state.drum ||
+            if ((ch < 4 && keyboardPresets_[ch].fontId) || !state.initialized || state.drum ||
                 state.melodySourceBank < 0 || state.melodySourceProgram < 0) {
                 continue;
             }
@@ -251,6 +270,7 @@ bool BassMidiPlayer::applyFonts() {
         // occupies one legal BASSMIDI source bank. Map each virtual source
         // bank back to its Yamaha MSB/LSB destination.
         for (const auto& m : normalizedBanks_) {
+            if (m.midiMsb > 127) continue; // Exact browser mapping still exposes this raw SF2 bank.
             BASS_MIDI_FONTEX2 melody{};
             melody.font = melodyFont_;
             melody.spreset = -1;
@@ -273,6 +293,7 @@ bool BassMidiPlayer::applyFonts() {
 
     for (const auto& secondary : secondaryMelodies_) {
         for (const auto& m : secondary.banks) {
+            if (m.midiMsb > 127) continue;
             BASS_MIDI_FONTEX2 fallback{};
             fallback.font = secondary.font;
             fallback.spreset = -1;
@@ -368,6 +389,7 @@ bool BassMidiPlayer::loadRole(const std::string& path, bool drum) {
         target = 0;
     }
 
+    refreshBrowserPresets();
     std::string fontPath = path;
     if (!drum) {
         melodyBassPath_ = path + ".bassmidi-normalized.sf2";
@@ -380,6 +402,7 @@ bool BassMidiPlayer::loadRole(const std::string& path, bool drum) {
     }
 
     target = BASS_MIDI_FontInit(fontPath.c_str(), 0);
+    (drum ? drumFontId_ : melodyFontId_) = target ? nextFontId_++ : 0;
     if (!target) {
         LOGE("FontInit failed role=%s error=%d",
              drum ? "DRUM" : "MELODY", BASS_ErrorGetCode());
@@ -407,10 +430,12 @@ bool BassMidiPlayer::loadRole(const std::string& path, bool drum) {
         rebuildDrumPresetCache(drumPath_, drumDrumPresetCache_);
     }
 
+    refreshBrowserPresets();
     if (!applyFonts()) {
         invalidateMelodicChannels();
         BASS_MIDI_FontFree(target);
         target = 0;
+        refreshBrowserPresets();
         return false;
     }
 
@@ -427,6 +452,8 @@ bool BassMidiPlayer::loadRole(const std::string& path, bool drum) {
         }
     }
 
+    restoreKeyboardPresets();
+    applyKeyboardRelease();
     rebuildPercussionCatalog();
     for(int ch=10;ch<16;++ch) updateRolePcmMeter(ch);
     LOGI("BASSMIDI %s SF2 loaded: %s",
@@ -473,14 +500,18 @@ bool BassMidiPlayer::loadMelodyFallback(const std::string& path) {
         return false;
     }
     BASS_MIDI_FontSetVolume(secondary.font, soundFontVolume_);
+    secondary.fontId = nextFontId_++;
     const auto previousChannels = channels_;
     secondaryMelodies_.push_back(std::move(secondary));
+    refreshBrowserPresets();
     refreshMelodicChannels();
     if (!applyFonts()) {
         BASS_MIDI_FontFree(secondaryMelodies_.back().font);
         secondaryMelodies_.pop_back();
+        refreshBrowserPresets();
         channels_ = previousChannels;
         if (!applyFonts()) invalidateMelodicChannels(); // Fail closed if restoring mappings fails.
+        else { restoreKeyboardPresets(); applyKeyboardRelease(); }
         return false;
     }
     for (int ch = 0; ch < 16; ++ch) {
@@ -491,6 +522,8 @@ bool BassMidiPlayer::loadMelodyFallback(const std::string& path) {
         send(ch, MIDI_EVENT_PROGRAM, static_cast<DWORD>(state.program));
         preloadCurrentPreset(ch);
     }
+    restoreKeyboardPresets();
+    applyKeyboardRelease();
     retirePercussionStreams();
     rebuildPercussionCatalog();
     for(int ch=10;ch<16;++ch) updateRolePcmMeter(ch);
@@ -536,6 +569,8 @@ void BassMidiPlayer::unload() {
         stream_ = 0;
     }
 
+    browserPresets_.clear();
+    for (auto& selection : keyboardPresets_) selection.verified = false;
     publishedFontMaps_.clear();
     for (auto& ch : channels_) ch = ChannelState{};
     audioDiagnostics_ = {};
@@ -1167,9 +1202,13 @@ void BassMidiPlayer::noteOn(int channel, int key, float velocity, const AudioPat
 
     captureChordState("NOTE_PRE",channel,key,vel,-1,0,origin);
 
+    if (channel < 4 && keyboardPresets_[channel].fontId &&
+        !keyboardPresets_[channel].verified) return; // Removed/failed exact selection stays silent.
+
     // A failed family gate must not fall through to BASSMIDI's generic font
     // mappings/default Piano. Dedicated Rhythm channels keep their old path.
-    if (channel != 8 && channel != 9 && channels_[channel].initialized &&
+    if (!(channel < 4 && keyboardPresets_[channel].fontId) &&
+        channel != 8 && channel != 9 && channels_[channel].initialized &&
         channels_[channel].melodySourceProgram < 0) {
         logAudioPath(channel, key, vel, false, 0, origin, "family_or_mapping_reject", 0);
         return;
@@ -1229,6 +1268,7 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program, const 
     if (!ensureEngine()) return;
 
     channel = std::max(0, std::min(15, channel));
+    if (channel < 4) keyboardPresets_[channel] = {};
     const int requestedBank = bank;
     program = std::max(0, std::min(65535, program));
     if (channel >= 4) {
@@ -1355,6 +1395,7 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program, const 
     // does not reintroduce the old synchronous render-thread stall.
     preloadCurrentPreset(channel);
     if(wantDrum) preparePercussionLane(channel, audioDiagnostics_[channel].requestedPc);
+    if (channel < 3) applyKeyboardRelease();
     updateRolePcmMeter(channel); // read-only PCM observation; MIDI selection unchanged
 }
 
@@ -1385,21 +1426,26 @@ void BassMidiPlayer::setKeyboardSustain(bool enabled) {
          enabled ? "ON" : "OFF");
 }
 
-void BassMidiPlayer::setKeyboardReleaseTime(int releaseTime) {
-    f12::SynthLock lock(mutex_,f12::Other);
-    if (!stream_) return;
-
-    const int value = std::max(0, std::min(127, releaseTime));
-    // Yamaha E-series Release Time is a continuous 0..127 parameter with
-    // 64 as the normal/default center. CC72 is explicitly Release Time,
-    // not the CC64 sustain pedal. Apply it only to RIGHT 1/2/3.
-    for (int channel = 0; channel <= 2; ++channel) {
-        BASS_MIDI_StreamEvent(
-            stream_, static_cast<DWORD>(channel), MIDI_EVENT_RELEASE,
-            static_cast<DWORD>(value));
+bool BassMidiPlayer::applyKeyboardRelease() {
+    if (!stream_) return false;
+    bool ok = true;
+    for (int channel = 0; channel < 3; ++channel) {
+        const bool sent = BASS_MIDI_StreamEvent(stream_, channel, MIDI_EVENT_RELEASE, keyboardReleaseTime_);
+        const auto actual = BASS_MIDI_StreamGetEvent(stream_, channel, MIDI_EVENT_RELEASE);
+        ok = sent && actual == static_cast<DWORD>(keyboardReleaseTime_) && ok;
     }
+    return ok;
+}
 
-    LOGI("BASSMIDI RELEASE TIME=%d channels=0..2; LEFT/ACMP untouched", value);
+bool BassMidiPlayer::setKeyboardReleaseTime(int releaseTime) {
+    f12::SynthLock lock(mutex_,f12::Other);
+    keyboardReleaseTime_ = std::clamp(releaseTime, 0, 127);
+    // BASSMIDI CC72/NRPN 166h: 0=-64, 64=normal, 127=+63.
+    // Retain the setting even while unloaded; ensureEngine restores it.
+    const bool ok = !stream_ || applyKeyboardRelease();
+    LOGI("BASSMIDI RELEASE value=%d acceptedAndReadback=%d deferred=%d channels=0..2",
+         keyboardReleaseTime_, ok ? 1 : 0, stream_ ? 0 : 1);
+    return ok;
 }
 
 
@@ -1751,170 +1797,119 @@ std::string BassMidiPlayer::drumCompatibilityReport(const std::vector<drum_compa
     return drum_compat::report(snapshot,source,demand,lives);
 }
 
-std::string BassMidiPlayer::presetList() const {
-    std::lock_guard<std::mutex> lock(mutex_);
+const BassMidiPlayer::BrowserPreset* BassMidiPlayer::keyboardPreset(const KeyboardPreset& selection) const {
+    for (const auto& p : browserPresets_)
+        if (p.fontId == selection.fontId && p.bank == selection.bank && p.program == selection.program) return &p;
+    return nullptr;
+}
 
-    struct Preset {
-        std::string role;
-        int bank = 0;
-        int program = 0;
-        std::string name;
-    };
-    std::vector<Preset> found;
-
-    auto scanSf2 = [&](const std::string& path, const char* role) {
-        if (path.empty()) return;
-
-        std::ifstream file(path, std::ios::binary);
-        if (!file) {
-            LOGI("SF2 %s preset scan: cannot open %s", role, path.c_str());
+void BassMidiPlayer::refreshBrowserPresets() {
+    browserPresets_.clear();
+    auto collect = [&](HSOUNDFONT font, uint64_t id, const std::string& path,
+                       const std::string& role, const std::vector<NormalizedBankMap>* banks) {
+        if (!font || !id || path.empty()) return;
+        BASS_MIDI_FONTINFO info{};
+        if (!BASS_MIDI_FontGetInfo(font, &info) || !info.presets) return;
+        std::vector<DWORD> presets(info.presets);
+        if (!BASS_MIDI_FontGetPresets(font, presets.data())) {
+            LOGE("VOICE INVENTORY unavailable fontId=%llu role=%s error=%d",
+                 static_cast<unsigned long long>(id), role.c_str(), BASS_ErrorGetCode());
             return;
         }
-
-        std::vector<unsigned char> data(
-            (std::istreambuf_iterator<char>(file)),
-            std::istreambuf_iterator<char>());
-
-        const char phdr[] = {'p','h','d','r'};
-        for (size_t i = 0; i + 8 <= data.size(); ++i) {
-            if (std::memcmp(data.data() + i, phdr, 4) != 0) continue;
-
-            const uint32_t size =
-                static_cast<uint32_t>(data[i + 4]) |
-                (static_cast<uint32_t>(data[i + 5]) << 8) |
-                (static_cast<uint32_t>(data[i + 6]) << 16) |
-                (static_cast<uint32_t>(data[i + 7]) << 24);
-
-            if (size < 38 || size % 38 != 0 || i + 8 + size > data.size())
-                continue;
-
-            const size_t count = size / 38;
-            size_t added = 0;
-            for (size_t n = 0; n + 1 < count; ++n) {
-                const unsigned char* rec = data.data() + i + 8 + n * 38;
-                size_t nameLen = 0;
-                while (nameLen < 20 && rec[nameLen] != 0) ++nameLen;
-
-                std::string name(reinterpret_cast<const char*>(rec), nameLen);
-                const int program = static_cast<int>(rec[20]) |
-                    (static_cast<int>(rec[21]) << 8);
-                const int bank = static_cast<int>(rec[22]) |
-                    (static_cast<int>(rec[23]) << 8);
-
-                // The separators are part of the native/Kotlin contract.
-                // Sanitize control characters so a broken SF2 name can never
-                // corrupt the record framing.
-                for (char& ch : name) {
-                    if (ch == '\r' || ch == '\n' || ch == '\x1e' || ch == '\x1f')
-                        ch = ' ';
-                }
-                if (name.empty()) {
-                    name = "Preset " + std::to_string(bank) + ":" +
-                           std::to_string(program);
-                }
-
-                found.push_back({role, bank, program, name});
-                ++added;
+        auto safeField = [](std::string value) {
+            for (auto& c : value) if (c == '\x1e' || c == '\x1f') c = ' ';
+            return value;
+        };
+        const auto file = safeField(path.substr(path.find_last_of("/\\") + 1));
+        std::set<std::pair<int,int>> seen;
+        for (const DWORD preset : presets) {
+            const int nativeBank = HIWORD(preset), program = LOWORD(preset);
+            const char* name = BASS_MIDI_FontGetPreset(font, program, nativeBank);
+            if (!name || !seen.emplace(nativeBank, program).second) continue;
+            int rawBank = nativeBank;
+            if (banks && nativeBank != 127 && nativeBank != 128) {
+                const auto it = std::find_if(banks->begin(), banks->end(),
+                    [&](const NormalizedBankMap& b) { return b.virtualBank == nativeBank; });
+                if (it == banks->end()) continue; // Unknown normalization cannot be selected safely.
+                rawBank = it->rawBank;
             }
-
-            if (added > 0) {
-                LOGI("SF2 %s phdr scan found %u entries from %s",
-                     role, static_cast<unsigned>(added), path.c_str());
-                return;
-            }
+            browserPresets_.push_back({id,font,role,file,safeField(name),rawBank,nativeBank,program});
         }
-
-        LOGI("SF2 %s phdr scan found no selectable presets from %s",
-             role, path.c_str());
+        LOGI("VOICE INVENTORY fontId=%llu role=%s sf2='%s' available=%u",
+             static_cast<unsigned long long>(id), role.c_str(), file.c_str(), static_cast<unsigned>(seen.size()));
     };
-
-    // Enumerate both loaded fonts. Melody and drum SF2s are separate assets,
-    // so the Voice Browser can show the real drum kits on CH9 instead of the
-    // GM fallback list.
-    scanSf2(melodyPath_, "MELODY");
+    collect(melodyFont_, melodyFontId_, melodyPath_, "MELODY", &normalizedBanks_);
     for (size_t i = 0; i < secondaryMelodies_.size(); ++i) {
-        const std::string role = "MELODY_SECONDARY_" + std::to_string(i + 1);
-        scanSf2(secondaryMelodies_[i].path, role.c_str());
+        const auto& s = secondaryMelodies_[i];
+        collect(s.font, s.fontId, s.path, "MELODY_SECONDARY_" + std::to_string(i+1), &s.banks);
     }
-    scanSf2(drumPath_, "DRUM");
+    collect(drumFont_, drumFontId_, drumPath_, "DRUM", nullptr);
+    for (auto& s : keyboardPresets_) s.verified = false;
+}
 
-    if (!found.empty()) {
-        std::sort(found.begin(), found.end(),
-                  [](const Preset& a, const Preset& b) {
-                      if (a.role != b.role) return a.role < b.role;
-                      if (a.bank != b.bank) return a.bank < b.bank;
-                      if (a.program != b.program) return a.program < b.program;
-                      return a.name < b.name;
-                  });
+bool BassMidiPlayer::restoreKeyboardPresets() {
+    bool allOk = true;
+    for (int ch = 0; ch < 4; ++ch) {
+        auto& selection = keyboardPresets_[ch];
+        if (!selection.fontId) continue;
+        selection.verified = false;
+        const auto* p = keyboardPreset(selection);
+        if (!p) { allOk = false; continue; }
+        bool ok = send(ch, MIDI_EVENT_DRUMS, (p->bank == 127 || p->bank == 128) ? 1 : 0);
+        ok = send(ch, MIDI_EVENT_BANK, 0) && ok;
+        ok = send(ch, MIDI_EVENT_BANK_LSB, 0) && ok;
+        ok = send(ch, MIDI_EVENT_PROGRAM, 0) && ok;
+        BASS_MIDI_FONT actual{};
+        const bool readback = BASS_MIDI_StreamGetPreset(stream_, ch, &actual);
+        selection.verified = ok && readback && actual.font == p->font &&
+            actual.bank == p->nativeBank && actual.preset == p->program;
+        if (selection.verified)
+            BASS_MIDI_FontLoadEx(p->font, p->program, p->nativeBank, 0, BASS_MIDI_FONTLOAD_NOWAIT);
+        LOGI("VOICE SELECT ch=%d fontId=%llu sf2='%s' bank=%d nativeBank=%d pc=%d verified=%d",
+             ch, static_cast<unsigned long long>(p->fontId), p->file.c_str(), p->bank,
+             p->nativeBank, p->program, selection.verified ? 1 : 0);
+        allOk = selection.verified && allOk;
+    }
+    return allOk;
+}
 
-        std::unordered_set<std::string> seen;
-        std::ostringstream out;
-
-        // Use ASCII record/field separators rather than newline/pipe framing.
-        // This survives JNI/UI transport even if a native layer normalizes
-        // line endings, and names are sanitized above.
-        constexpr char FIELD = '\x1f';
-        constexpr char RECORD = '\x1e';
-
-        for (const auto& p : found) {
-            const std::string key = p.role + ":" + std::to_string(p.bank) +
-                                    ":" + std::to_string(p.program);
-            if (!seen.insert(key).second) continue;
-
-            out << p.role << FIELD << p.bank << FIELD << p.program
-                << FIELD << p.name << RECORD;
+bool BassMidiPlayer::setKeyboardPreset(int channel, uint64_t fontId, int bank, int program) {
+    f12::SynthLock lock(mutex_,f12::Preset);
+    if (channel < 0 || channel > 3 || !fontId || !ensureEngine()) return false;
+    const KeyboardPreset requested{fontId,bank,program,false};
+    if (!keyboardPreset(requested)) return false; // Never enter the style/family fallback resolver.
+    const auto previous = keyboardPresets_[channel];
+    // Retire only this keyboard part's previous sound before changing its source.
+    send(channel, MIDI_EVENT_SOUNDOFF, 0);
+    keyboardPresets_[channel] = requested;
+    if (!applyFonts()) {
+        if (publishedFontTableIntact()) keyboardPresets_[channel] = previous;
+        else {
+            for (auto& s : keyboardPresets_) s.verified = false;
+            invalidateMelodicChannels();
         }
-
-        LOGI("SF2 preset scan total=%u melodyPath=%s drumPath=%s",
-             static_cast<unsigned>(seen.size()),
-             melodyPath_.c_str(), drumPath_.c_str());
-        return out.str();
+        return false;
     }
-
-    // Last-resort BASSMIDI enumeration. This path is melody-only because
-    // direct SF2 header scanning is the reliable path for the Yamaha fonts
-    // used by the arranger.
-    if (!melodyFont_) return {};
-
-    BASS_MIDI_FONTINFO info{};
-    const bool infoOk = BASS_MIDI_FontGetInfo(melodyFont_, &info);
-    LOGI("BASSMIDI preset scan: infoOk=%d presets=%u name=%s",
-         infoOk ? 1 : 0,
-         infoOk ? static_cast<unsigned>(info.presets) : 0u,
-         (infoOk && info.name) ? info.name : "");
-
-    std::vector<DWORD> presets;
-    if (infoOk && info.presets > 0) {
-        presets.resize(info.presets);
-        if (!BASS_MIDI_FontGetPresets(melodyFont_, presets.data())) {
-            LOGE("BASS_MIDI_FontGetPresets failed error=%d", BASS_ErrorGetCode());
-            presets.clear();
+    restoreKeyboardPresets();
+    const bool releaseOk = channel >= 3 || applyKeyboardRelease();
+    if (!keyboardPresets_[channel].verified || !releaseOk) {
+        keyboardPresets_[channel] = previous;
+        if (applyFonts()) restoreKeyboardPresets();
+        else {
+            for (auto& s : keyboardPresets_) s.verified = false;
+            if (!publishedFontTableIntact()) invalidateMelodicChannels();
         }
+        return false;
     }
+    return keyboardPresets_[channel].verified;
+}
 
-    if (presets.empty()) {
-        presets.reserve(256);
-        for (int bank = 0; bank <= 128; ++bank) {
-            for (int program = 0; program < 128; ++program) {
-                const char* name = BASS_MIDI_FontGetPreset(
-                    melodyFont_, program, bank);
-                if (name) {
-                    presets.push_back(
-                        static_cast<DWORD>((bank << 16) | (program & 0xffff)));
-                }
-            }
-        }
-    }
-
+std::string BassMidiPlayer::presetList() const {
+    std::lock_guard<std::mutex> lock(mutex_);
     std::ostringstream out;
-    for (DWORD p : presets) {
-        const int program = static_cast<int>(LOWORD(p));
-        const int bank = static_cast<int>(HIWORD(p));
-        const char* name = BASS_MIDI_FontGetPreset(melodyFont_, program, bank);
-        if (!name) name = "";
-        out << "MELODY\x1f" << bank << '\x1f' << program
-            << '\x1f' << name << '\x1e';
-    }
+    for (const auto& p : browserPresets_)
+        out << p.role << '\x1f' << p.fontId << '\x1f' << p.file << '\x1f'
+            << p.bank << '\x1f' << p.program << '\x1f' << p.name << '\x1e';
     return out.str();
 }
 

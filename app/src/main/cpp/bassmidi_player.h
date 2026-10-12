@@ -51,10 +51,11 @@ public:
     std::string chordDiagnosticReport() const;
     void allNotesOff();
     void setChannelPreset(int channel, int bank, int program, const std::string& voiceName = {});
+    bool setKeyboardPreset(int channel, uint64_t fontId, int bank, int program);
     void setChannelMixer(int channel, int volume, int pan, int expression, int reverbSend, int chorusSend);
     void setChannelExpression(int channel, int expression);
     void setKeyboardSustain(bool enabled);
-    void setKeyboardReleaseTime(int releaseTime);
+    bool setKeyboardReleaseTime(int releaseTime);
     void setMasterGain(float gain);
     std::string presetList() const;
     std::string shadowDrumSnapshot() const;
@@ -63,6 +64,26 @@ public:
     std::string drumKitCoverage(const std::vector<drum_audit::Hit>& hits) const;
     std::string drumCompatibilityReport(const std::vector<drum_compat::Demand>& demand, const std::vector<std::pair<int,int>>& comparisonKits = {}) const;
 private:
+    struct BrowserPreset {
+        uint64_t fontId;
+        HSOUNDFONT font;
+        std::string role, file, name;
+        int bank, nativeBank, program;
+    };
+    struct KeyboardPreset {
+        uint64_t fontId = 0;
+        int bank = 0, program = 0;
+        bool verified = false;
+    };
+    std::vector<BrowserPreset> browserPresets_;
+    std::array<KeyboardPreset, 4> keyboardPresets_{};
+    uint64_t nextFontId_ = 1, melodyFontId_ = 0, drumFontId_ = 0;
+    int keyboardReleaseTime_ = 64;
+    bool applyKeyboardRelease();
+    void refreshBrowserPresets();
+    const BrowserPreset* keyboardPreset(const KeyboardPreset& selection) const;
+    bool restoreKeyboardPresets();
+    friend class VoiceReleaseTestAccess;
     struct ChannelState {
         int bankMsb = 0;
         int bankLsb = 0;
@@ -92,6 +113,7 @@ private:
     };
     struct SecondaryMelody {
         HSOUNDFONT font = 0;
+        uint64_t fontId = 0;
         std::string path;
         std::string bassPath;
         std::vector<MelodicPresetEntry> presets;
