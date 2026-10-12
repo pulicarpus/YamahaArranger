@@ -1,0 +1,426 @@
+{
+  "checkpoint": "c75122daf5d1077db55d50d1c261144fde59af4a",
+  "planning_parent": "942ab1ffb9fe27767ace34ed60678fa0807699ee",
+  "files": [
+    {
+      "path": ".github/workflows/build.yml",
+      "git_blob_sha1": "c20b3759e3b8466d55d11c44146414ce85991d4a",
+      "sha256": "51c9e36483cb4db186689f741a66081fff2b6e9536ce094097290692a052eb69"
+    },
+    {
+      "path": ".github/workflows/ready-to-play.yml",
+      "git_blob_sha1": "9c66a7cfd048c339e8659e3a73516ea54ebc6039",
+      "sha256": "d1143b682b3a0dea9f4de7d2fb7981247c16cd91b2df146e988867c222b9a32a"
+    },
+    {
+      "path": "app/src/main/cpp/audio_engine.cpp",
+      "git_blob_sha1": "2237cfbf3cc02284a49f63fa98dac04bacb392f1",
+      "sha256": "606dc125d6d78b16b6616f3e01afd32c7ab64a25a24527bef5614bacdb6ecec6"
+    },
+    {
+      "path": "app/src/main/cpp/audio_engine.h",
+      "git_blob_sha1": "72f15af3bc49cc21c92adf3704b2646ce0246398",
+      "sha256": "96dc706d62db43696e901119757ee5d6d7ebe6cbde8e98e2c056f312f1fd2e5f"
+    },
+    {
+      "path": "app/src/main/cpp/audio_path_diagnostic.h",
+      "git_blob_sha1": "f2404bea6fa96ee976139a22176b084340074fb5",
+      "sha256": "2c527c0b4b5faa38356befcedcf5994d7a52b7b3b2768ab7e66ed3f636a26a85"
+    },
+    {
+      "path": "app/src/main/cpp/bassmidi_player.cpp",
+      "git_blob_sha1": "200889efcd2ee6d7a61704cf19526cd3c4b22d03",
+      "sha256": "0d5f8728e7b9b5c2de78dbd949c2bfe1d6f05e07e2671fb54431bffe4a78304e"
+    },
+    {
+      "path": "app/src/main/cpp/bassmidi_player.h",
+      "git_blob_sha1": "14c558525287c22f20252591f768c03436d46576",
+      "sha256": "acbe85d6f83fba70af15d083c8ddcae18094f6fab442b762073d1bf45e1f5b35"
+    },
+    {
+      "path": "app/src/main/cpp/chord_change_diagnostic.h",
+      "git_blob_sha1": "fb5c0e75c22bb539db272b2145865b4760309364",
+      "sha256": "40eea6a45b0060294162037b13078a37635226bb99db4cb5c314b6b81e518742"
+    },
+    {
+      "path": "app/src/main/cpp/drum_compatibility_comparison.h",
+      "git_blob_sha1": "f4cd5226df02e4a8adecf789ddf2cec4447c0649",
+      "sha256": "c865bc9207035ed774b81ea6b568dcfeb3bf56d8a1ae84bd807f397046afc988"
+    },
+    {
+      "path": "app/src/main/cpp/drum_compatibility_report.h",
+      "git_blob_sha1": "6029129089db87d8f22fd52348c45ee573dedb04",
+      "sha256": "7215f5adf57ee8bf6a6e955d3b53a2267489d464160b4e0c28f742a06eeb1a23"
+    },
+    {
+      "path": "app/src/main/cpp/drum_kit_audit.h",
+      "git_blob_sha1": "3260da1f0aa9d73c13fee21aebd91bfd8223dc7a",
+      "sha256": "a9ebcf159e228f4f8b4bc945a9a5ec9fed2308effb4667a4485bf2c6bec4b8e4"
+    },
+    {
+      "path": "app/src/main/cpp/managed_sf2_audition.cpp",
+      "git_blob_sha1": "b1526cee384ab05922ddb82368562368d7416290",
+      "sha256": "0d033dc3d040d6741edb30108736057c413ee75995fb86ac399bf9f828ed7842"
+    },
+    {
+      "path": "app/src/main/cpp/managed_sf2_audition.h",
+      "git_blob_sha1": "d5880a1c1b71e771e390697c5818155e62e64734",
+      "sha256": "46fbe20118093b0530065df58b0e3d06d6ef97843a18d0320f3443eb3d14dce5"
+    },
+    {
+      "path": "app/src/main/cpp/measured_balance_profiles.h",
+      "git_blob_sha1": "0a3245c1f197ed599d8c86a3dde4c56a6e0b7467",
+      "sha256": "2cc120411dcd8decb6841cc354824b3b89d1096e95ea19e45280e894bfa3cf03"
+    },
+    {
+      "path": "app/src/main/cpp/native_lib.cpp",
+      "git_blob_sha1": "3c119efd9417559c240da3d60d25450ecbf02789",
+      "sha256": "350d6f5c097a21a877b0815630686268fa4b535cea88063a5998f0800c1e5b3e"
+    },
+    {
+      "path": "app/src/main/cpp/pcm_headroom.h",
+      "git_blob_sha1": "c396b0674f522d53472e6ea55a97de6612b71c64",
+      "sha256": "134c90eb15ef69153f61fd664d999c87aa5fc7dea9fa8f403f6588ffe0034d74"
+    },
+    {
+      "path": "app/src/main/cpp/pcm_path_evidence.h",
+      "git_blob_sha1": "d0e29b0d5662816fa13f8f1643549991eee6afa3",
+      "sha256": "afaf4aa1507638b24f8631b7a62ea994421cc2d9a24f6243be195dee8ee8b0a2"
+    },
+    {
+      "path": "app/src/main/cpp/percussion_audition_evidence.h",
+      "git_blob_sha1": "74b4f386a21a0c0310bfed1e8943fbc0b9adbdf7",
+      "sha256": "376ad5a7b0c2685b2a4b85da1e0a3cb1a976ebbf1ae2e9e8508bd254fe8ba46e"
+    },
+    {
+      "path": "app/src/main/cpp/percussion_fidelity_policy.h",
+      "git_blob_sha1": "e5d51a396b5ac9cecab905b12f4a48bb30846362",
+      "sha256": "cfebb74c76a9057f37045905d3a2165a4e4c9e96aa0bcdfc9f4f14c26b016d69"
+    },
+    {
+      "path": "app/src/main/cpp/role_pcm_meter.h",
+      "git_blob_sha1": "38d3992e5324cfba0e0b5f694233102e87f9b7ae",
+      "sha256": "98391cae5a11f21c0dc93758f457e78135d0fc8ba7bade8e16440d0f1a0be52e"
+    },
+    {
+      "path": "app/src/main/cpp/sf2_fingerprint.h",
+      "git_blob_sha1": "60320d866da18b5d727b090b49c61faacc5d5d4e",
+      "sha256": "119af469bf2fb4f6c29da33c4408af49b2f4cd84d562768a66c201b413a285fe"
+    },
+    {
+      "path": "app/src/main/cpp/sf2_zone_diagnostic.h",
+      "git_blob_sha1": "88421e45845c7285e1159aa2d7c17da20b8dacba",
+      "sha256": "51f6f0528c38ba57a1c84930dd6ff67b51235d1800c87c43e3f2dc3d424b2d7a"
+    },
+    {
+      "path": "app/src/main/cpp/smf_reader.cpp",
+      "git_blob_sha1": "986b173fdb185c9e035a76bd91b826250d92e50d",
+      "sha256": "64102da2c3c9ed6d2b8807e0d33eb4b72065ede02907beb74af901f9e416a26d"
+    },
+    {
+      "path": "app/src/main/cpp/smf_reader.h",
+      "git_blob_sha1": "4efbfe060ce7e7280fa9bc8f96902b5dbece4c07",
+      "sha256": "de4058abcf5c22c9f8b594d5fa9586c7807fd2e4bbcc2bd5f686f47db8e74267"
+    },
+    {
+      "path": "app/src/main/cpp/soundfont_player.cpp",
+      "git_blob_sha1": "262754cac6486ef4ed509a42d79569bdb109e932",
+      "sha256": "342cb87225bfd18298bdabe20ae81b33a6de26b1aff261ca17425113b72d83f1"
+    },
+    {
+      "path": "app/src/main/cpp/soundfont_player.h",
+      "git_blob_sha1": "cdf594a5fc8d5e0966056eac03521adc403cf1f0",
+      "sha256": "08208f3b9072326c70d902e1167490cd15a7e1d7edc0ddcd6813c0b57bd6413c"
+    },
+    {
+      "path": "app/src/main/cpp/style_parser.cpp",
+      "git_blob_sha1": "89cab4aa8be65dd083fd0b4a8ae1f863a12302aa",
+      "sha256": "bf95fbd19a841129dd0c5e5573e037f29541f4b021d8446fa71d8c621d826d20"
+    },
+    {
+      "path": "app/src/main/cpp/style_parser.h",
+      "git_blob_sha1": "2f5d1862fbe6b18cb1a0181766cfa56ff3e20862",
+      "sha256": "dfbd8ad856e6eb49f227e474da833248a44515bd0d73a50945fa9b2ba81a557d"
+    },
+    {
+      "path": "app/src/main/cpp/style_tempo_jni.cpp",
+      "git_blob_sha1": "17bbc0b755bc84559ac1e00df2d4f6c54e859612",
+      "sha256": "112dcc423c297fbdf5e33e95c37fcb05a7def01388dfcc5586bb08bd5ff5bb94"
+    },
+    {
+      "path": "app/src/main/cpp/voice.cpp",
+      "git_blob_sha1": "392495ab0476df9deea9022c81969d0e3edf5b93",
+      "sha256": "fafe3aa7f1e69eaaba34b1dd09c7772e39f3fe4aaf0e1071c3254a03da8fa413"
+    },
+    {
+      "path": "app/src/main/cpp/voice.h",
+      "git_blob_sha1": "9b386e99ed9f6ad6bbcf186675d3c1a035f373c8",
+      "sha256": "6cc84ef898cb8b2c0300b972f0d1bdca8ef108723ff4127b050aea84748f1904"
+    },
+    {
+      "path": "app/src/main/cpp/voice_resolver.h",
+      "git_blob_sha1": "1ed9a82b08193949f8dc1cf52eb53b90d329c54b",
+      "sha256": "8fab33a64f530ccf77cd94de238ea6471571661eb8a761f6c6e54c5f299e29e0"
+    },
+    {
+      "path": "app/src/main/cpp/yamaha_drum_semantics.h",
+      "git_blob_sha1": "d0fb0919ba2556976326f35f055566809e264acd",
+      "sha256": "82066af22a51040ea5499b91b308161f3c8b5da38516bda87f6899675a623739"
+    },
+    {
+      "path": "app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt",
+      "git_blob_sha1": "2120a81c587fac00208d0caf3ff3064911a8fb84",
+      "sha256": "eec8ff3eae2c1ff6b84afd06938759a3737f23fba41a9075509c0c6a9314cac4"
+    },
+    {
+      "path": "app/src/main/java/com/yourapp/midi/MidiInputManager.kt",
+      "git_blob_sha1": "4f416cb9dcba9b8e269a9e9ebfad0c8aef4ab4a4",
+      "sha256": "2a88d27fb1ba7988eb75b36d22d109bdb6b71f45a05315a62b1d9e56fa25c9d2"
+    },
+    {
+      "path": "app/src/main/java/com/yourapp/style/NativeStyleBridge.kt",
+      "git_blob_sha1": "6a28b18c7c655c0b6404031a4db4aef84cec0347",
+      "sha256": "49990624f074b056525940a39cfc30a3d84de3e168e33ab091ff925a39b54ea7"
+    },
+    {
+      "path": "app/src/main/java/com/yourapp/style/StyleModel.kt",
+      "git_blob_sha1": "e8abe08896f3453358b3b0c89b50774677fdf173",
+      "sha256": "dbffebdc953b6d45bd5f9ddbfa3cfeed12b538e95a1fbf817e0eef55535a71e6"
+    },
+    {
+      "path": "app/src/main/java/com/yourapp/ui/MainViewModel.kt",
+      "git_blob_sha1": "91e06f609588f0c0b8e44c2b66ffc8221a5f130d",
+      "sha256": "a870e677b9f1d2be444d2f0507dbc51f794ef5ea0ddd14a8ae2a499cdbbe38e2"
+    },
+    {
+      "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt",
+      "git_blob_sha1": "4b4bc2b3ab374f83a0ce1236e44c2ee9df0ea460",
+      "sha256": "c768285a3b4a303c270f1d1c68e04d559bb2951d28a249d3c19455715a97cf89"
+    },
+    {
+      "path": "app/src/main/java/com/yourapp/yamahaarranger/audio/AudioEngineManager.kt",
+      "git_blob_sha1": "a7662336363792cc04e9a56156035c47081fb83e",
+      "sha256": "002df357020a5a993de9f87cf5e04cf292a27bea75fe5bdeca60fc8e8e2036e5"
+    },
+    {
+      "path": "app/src/main/java/com/yourapp/yamahaarranger/audio/NativeAudioBridge.kt",
+      "git_blob_sha1": "31eab70c87cf27a529c26807de454701f626d14b",
+      "sha256": "83be9ea0b73766b387ad307491e98172a35c7deda693c503a9b582471f3417a3"
+    },
+    {
+      "path": "tests/accompaniment_presence_test.cpp",
+      "git_blob_sha1": "59347b36a92fff3040891043f8f0a1492edf159e",
+      "sha256": "a3923ce4c1446e0faab17aa25d28a0644b19aa55af3aa2047a0e6259981c0ad1"
+    },
+    {
+      "path": "tests/audio_path_diagnostic_test.cpp",
+      "git_blob_sha1": "811a3132cfea827a8843fe8c41a07659cc86cc96",
+      "sha256": "9830e63ae56524147daccc8eb31ed2f44084252de2c173a3e98b96ac04827783"
+    },
+    {
+      "path": "tests/bank_translation_readback_test.cpp",
+      "git_blob_sha1": "1ce71e2f8d24a0c0ab410de62d5a8e145d0fc42b",
+      "sha256": "1cd1db6b7462834886d3814b5edef4ba95f4e5a7439ac313490eff170420f7b2"
+    },
+    {
+      "path": "tests/diagnostic_snapshot_liveness_test.cpp",
+      "git_blob_sha1": "a3632fe9e65ae89213a5425aa7719de8b1fca41a",
+      "sha256": "a6f8137208c5fd5093719b1850136821f46beb659ecc6928856d6ec9e022d065"
+    },
+    {
+      "path": "tests/drum_compatibility_comparison_test.cpp",
+      "git_blob_sha1": "e5ab56eb47a25c18d9eeab02f93f24363fb9d134",
+      "sha256": "5a91d086e8bbf0917a70e4aa3621a429ac0090c391ef3aebba036dc3d0805e6a"
+    },
+    {
+      "path": "tests/drum_compatibility_report_test.cpp",
+      "git_blob_sha1": "b2370b8d524ac62824a9d469b621721f092e8908",
+      "sha256": "c55b09d4e35cf9a08207ed00da45bd4dc5cafd0481e711ccebf2a28d0c371902"
+    },
+    {
+      "path": "tests/drum_kit_audit_test.cpp",
+      "git_blob_sha1": "2945b5e361bbb5706ea5edd36d4379d8ce7a437b",
+      "sha256": "29c21ae419279fca31bcac1d1eb72e3ad88779f4421ea6a2f1b890f18a1dc820"
+    },
+    {
+      "path": "tests/drum_shadow_readonly_test.cpp",
+      "git_blob_sha1": "9bfae55ab2e793cbdfa0ef79abd87997c3a7cc5f",
+      "sha256": "9d342df275488e840cf03deb4a9c7bb464927e53ba27ef7f32e740a739e00aed"
+    },
+    {
+      "path": "tests/f03_native_lifecycle_test.cpp",
+      "git_blob_sha1": "ea01bb2440e2e3b459139dc3a774a90496362a95",
+      "sha256": "5517fcdf171477859984728ea9bd5d82cde2246deb48eb075a00f84b13b7cd48"
+    },
+    {
+      "path": "tests/f03_p1_native_contract_test.cpp",
+      "git_blob_sha1": "e46c8ae517ec090cc5041a2f994dd163efd68673",
+      "sha256": "cc4331fe7b4509ea3d90f2188d4f328ea36a9e68f956f076c854359e1a6b497c"
+    },
+    {
+      "path": "tests/f12_timing_test.cpp",
+      "git_blob_sha1": "2596327faf1432c04e36a9e6f9b3c223729bc756",
+      "sha256": "db11a221eac337ba471d17f6d609355afd154345e90e5064e15383e840f976da"
+    },
+    {
+      "path": "tests/fixtures/percussion_inventory_fingerprints.json",
+      "git_blob_sha1": "83d4a7233e36c9ea8b50f0dea46bbe9b75b216ea",
+      "sha256": "de66c99bfe30116d4cb6c728721e162152c0053da7dfc1bc9df5a3d42d9f73c7"
+    },
+    {
+      "path": "tests/managed_sf2_audition_test.cpp",
+      "git_blob_sha1": "c96ebfab02a33d42ba8de2f932d55cc15305ae23",
+      "sha256": "bfadc56a6d210eb20ca177431ef125003dbff96ee0af484390a2108445f15cef"
+    },
+    {
+      "path": "tests/measured_balance_real_bass_test.cpp",
+      "git_blob_sha1": "36fbd4358f142aa8e5fed88b9ab2c9a29ece04c9",
+      "sha256": "4a563c2ebe4eddcb7272990e2e344082f364856f4d450c68f4b0b3306ae9afa9"
+    },
+    {
+      "path": "tests/mix_response_fixture.h",
+      "git_blob_sha1": "c288e1611720f12dbd52b1b50e0572519ba8ffc4",
+      "sha256": "fb25dc47c34dc70a7d90879e2dbde49f5bc2c3a8a9fac7978b53ec2d27748a0f"
+    },
+    {
+      "path": "tests/mix_response_real_bass_test.cpp",
+      "git_blob_sha1": "d234c5357db165a6786061621ff1dfb619df58a8",
+      "sha256": "1661e927efb4389fd88cfcd1b81f237ac906e65c322ccdceea4523fb306674d8"
+    },
+    {
+      "path": "tests/mocks/android/log.h",
+      "git_blob_sha1": "b4aee265941a869ac437a1094eb7b061910362ac",
+      "sha256": "9f8300cac37cbe7ca38dd666e55d46299c02910c08f6d504361d500288b6d58c"
+    },
+    {
+      "path": "tests/mocks/bass.h",
+      "git_blob_sha1": "3dae673d4b1d170e947431d52517b9356624ff14",
+      "sha256": "799e2855bba4386d3f81fb24dbbb52f41fb1bd6dd927dfa1d6d3f4c860040d4a"
+    },
+    {
+      "path": "tests/mocks/bassmidi.h",
+      "git_blob_sha1": "7dcc8dd232d681f85c0fc35e50b56fa2c90ea965",
+      "sha256": "1c8f88d99586d5062541f775b4bd1e2839a8c9640adcd83c0622b0b12a166ef5"
+    },
+    {
+      "path": "tests/mocks/jni.h",
+      "git_blob_sha1": "d1d592583735fd8ac87fe47984700d4c67135bb6",
+      "sha256": "8e1dde7cd76068f43217d8021470a74c47c243d97448c5872575e97a7069d16a"
+    },
+    {
+      "path": "tests/mocks/oboe/Oboe.h",
+      "git_blob_sha1": "a5a746d1e3b1d1d90c9ffebdf789786b1fcfd6a5",
+      "sha256": "f360a8afca8d519af083aa8bbf0e46297a3f375a6030071d98c0364a9ac77e52"
+    },
+    {
+      "path": "tests/native_resolver_test.cpp",
+      "git_blob_sha1": "5b0778520f38b72cf57c36daae8c2bcdea048122",
+      "sha256": "9db31ab84a918bae6c5830d461530b0d3bd35c882acc47b05310c8f3790f2fa0"
+    },
+    {
+      "path": "tests/pcm_headroom_test.cpp",
+      "git_blob_sha1": "64e3e96503560c0399b9264aee234f9442e0fe83",
+      "sha256": "0a9649cf610255a66a3f5936ae45200e413d1e100a54997c81cc37e404f1a907"
+    },
+    {
+      "path": "tests/pcm_path_real_bass_test.cpp",
+      "git_blob_sha1": "6c8ed306882cc5eb95dfec9d49fbba384ee99105",
+      "sha256": "a760e9815b4b13d57273900d42295ec8a43d257ba34f972ac0ce8d73315d9667"
+    },
+    {
+      "path": "tests/percussion_fidelity_fixture.h",
+      "git_blob_sha1": "91401dee4211618a45b52ced7f97c0408e812fc3",
+      "sha256": "bd1af67b46184d934e247c599ac919bfa5c7077896239ed0cb28de5a3e7897f3"
+    },
+    {
+      "path": "tests/percussion_fidelity_test.cpp",
+      "git_blob_sha1": "569a7da397e3c789dbb3964e7008efdb13f40ab5",
+      "sha256": "21d9bca141f045f2b07e2374c338fb236dc8ef1472d61bf1f8aff4984ba24594"
+    },
+    {
+      "path": "tests/percussion_inventory_probe.cpp",
+      "git_blob_sha1": "9417bdb2d4372ec20aa8547a680ade4fa405c498",
+      "sha256": "fb757a0d7e845cc6ad4c562e5a95cd8813463d19657b83b4b44268ca3fb1d619"
+    },
+    {
+      "path": "tests/percussion_real_bass_test.cpp",
+      "git_blob_sha1": "cc9b5a7345e453f6bc39271edf164ce2343fe012",
+      "sha256": "06da513d69a8109b2730aac745efe32a2db3dcfc9e640cb49b2ea5f2dbb792cd"
+    },
+    {
+      "path": "tests/role_pcm_native_test.cpp",
+      "git_blob_sha1": "7eba887ba44c794527c47c2e4cca087b16bdb9f1",
+      "sha256": "a7f7c3262d7db4bc295c9e9d60ab3782aef01b5cf7fea980d9bddeeb6b2e97dc"
+    },
+    {
+      "path": "tests/role_pcm_real_bass_test.cpp",
+      "git_blob_sha1": "202560c52b641eccce52489b392b391a22cddfbe",
+      "sha256": "1fbfbdffe15f6db77f66f3ca5eee9f4e143d11816fb2c48245df991c564e32bb"
+    },
+    {
+      "path": "tests/s7_backend_contract_test.cpp",
+      "git_blob_sha1": "96d2c6641408db4beaa06052e3b074782575f150",
+      "sha256": "fed62fcb76173fde549fbda512255e141afca299e0b97bac6fd5ec20f3d3d474"
+    },
+    {
+      "path": "tests/s8_native_voice_test.cpp",
+      "git_blob_sha1": "4353087402a6096f06bd498b6666b2965894ec59",
+      "sha256": "db894d7f6728ad35f9f89b5d0233682d987c553d2b319861e3d9cf79197c92f2"
+    },
+    {
+      "path": "tests/s8_s7_release_tail_test.cpp",
+      "git_blob_sha1": "2c5411863e18502a11052fd662764137e58cc246",
+      "sha256": "d4693134f07dfb9522c8438c1d50d3f69e0b5948377cd3434227b03dc11c7561"
+    },
+    {
+      "path": "tests/s8_signature_fixture.h",
+      "git_blob_sha1": "3e2d691932084408d0573678fa81dbf35a147ea5",
+      "sha256": "4198ef20590a7e46cab514e8bdc7327fb21889af00613ac503e04c81fca07084"
+    },
+    {
+      "path": "tests/sf2_rich_fixture.h",
+      "git_blob_sha1": "b6d05b2d46794a7a3dba7dfdb84f889155275898",
+      "sha256": "7d5eea5f00e14a4eb1f49be61953312cbce4172f26ac53f92d837131b1873652"
+    },
+    {
+      "path": "tests/sf2_zone_diagnostic_test.cpp",
+      "git_blob_sha1": "dd124f9d7145a8498988fa4a065f3fcac85da161",
+      "sha256": "94fb56b5408326b3dcc93ec5cea567405aa4f032c6b9d08e0b9d48645235abb5"
+    },
+    {
+      "path": "tests/sff1_parser_conformance_test.cpp",
+      "git_blob_sha1": "9b5ab85133d84cc87c57a6fabd6ca2718d20ed58",
+      "sha256": "d9e0fb678837f02e6cc5e0219a14b4e26e142d3723fe1091a83d6d2c23e3938b"
+    },
+    {
+      "path": "tests/sff_casm_semantic_test.cpp",
+      "git_blob_sha1": "bda79aa4e14d86b640678d310d92845448cf6668",
+      "sha256": "bd17f30fc7e7cd01fe93d8d2a7e999c4860666707ade6ca55df544598a50acb5"
+    },
+    {
+      "path": "tests/sff_dialect_boundary_test.cpp",
+      "git_blob_sha1": "b0005a69c64ded92291715e52d13365268e1d087",
+      "sha256": "43c49fd568eb7faef7003ae06f348555ef0f3bf3699a2c949b56fe2f2660a1b0"
+    },
+    {
+      "path": "tests/voice_resolver_test.cpp",
+      "git_blob_sha1": "106bb52d9ca627bd5148e396d1188f6bf4ec6488",
+      "sha256": "be257cb3a829035b28b24b17d34b49d4dd4a516080098742a80c5d3b4238d98d"
+    },
+    {
+      "path": "tools/test_measured_balance.py",
+      "git_blob_sha1": "5eb008ff93198098929c39cf8663e82423eecd81",
+      "sha256": "9ddc3997d9a413c17f0578dbb6c5cd5f3b0daf8dc1ffff8ce64637151de41db0"
+    },
+    {
+      "path": "tools/test_percussion_real_bass.py",
+      "git_blob_sha1": "e05888de14e2ffd9cc69238f4d2a04e61d51e4cc",
+      "sha256": "3566434c4737758174e3063800c1faa877e7486f28ba4072ee87e83d8d93efca"
+    },
+    {
+      "path": "tools/test_voice_resolver.py",
+      "git_blob_sha1": "b5efb31cd8f463cd4a2b4698e47d3c241dc3640e",
+      "sha256": "2a4f00d46c3db4ac74eecdc6a10058b32d538e9ae04da3e77bed4c8378cced90"
+    }
+  ]
+}

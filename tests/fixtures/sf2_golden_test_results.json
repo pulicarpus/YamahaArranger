@@ -1,0 +1,24 @@
+{
+  "reference_commit": "c75122daf5d1077db55d50d1c261144fde59af4a",
+  "planning_parent": "942ab1ffb9fe27767ace34ed60678fa0807699ee",
+  "date_jakarta": "2026-10-12",
+  "python": "3.12.14",
+  "compiler": "c++ (Debian 14.2.0-19) 14.2.0",
+  "diagnostic_tests": 12,
+  "host_targets": 11,
+  "host_checks": 761,
+  "snapshot_files_verified": 84,
+  "runtime_capture_rows": 0,
+  "pcm": "UNVERIFIED",
+  "master_export": "NO-GO",
+  "logs": [
+    {
+      "path": "tests/fixtures/sf2_golden_diagnostic_test_output.txt",
+      "sha256": "b865b7f7cb2aaafb7b0464e11d6933a999f1dc63683155a58b1e97296cf41359"
+    },
+    {
+      "path": "tests/fixtures/sf2_golden_checkpoint_test_output.txt",
+      "sha256": "ca8e85d31736fc11f7b0534eac3156a28865fdac09e5f170f6481b3086829e5f"
+    }
+  ]
+}

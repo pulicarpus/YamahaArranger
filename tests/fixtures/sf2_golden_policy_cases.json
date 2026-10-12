@@ -1,0 +1,142 @@
+{
+  "status": "SYNTHETIC_POLICY_ONLY",
+  "candidates": [
+    [
+      "0",
+      "MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2",
+      0,
+      0,
+      "Grand Piano",
+      1
+    ],
+    [
+      "0",
+      "MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2",
+      8,
+      1,
+      "Steel Guitar",
+      1
+    ],
+    [
+      "1",
+      "ColomboGMGS2_BM.sf2",
+      0,
+      0,
+      "Grand Piano",
+      1
+    ],
+    [
+      "1",
+      "ColomboGMGS2_BM.sf2",
+      0,
+      25,
+      "Steel Guitar",
+      1
+    ],
+    [
+      "2",
+      "yamaha tyros 4_just_t4_fixed.sf2",
+      0,
+      49,
+      "Slow Strings",
+      1
+    ],
+    [
+      "2",
+      "yamaha tyros 4_just_t4_fixed.sf2",
+      126,
+      1,
+      "Drum Kit",
+      1
+    ],
+    [
+      "2",
+      "yamaha tyros 4_just_t4_fixed.sf2",
+      127,
+      0,
+      "Standard Kit",
+      0
+    ],
+    [
+      "2",
+      "yamaha tyros 4_just_t4_fixed.sf2",
+      128,
+      0,
+      "Standard Kit",
+      0
+    ],
+    [
+      "1",
+      "ColomboGMGS2_BM.sf2",
+      104,
+      1,
+      "Piano",
+      1
+    ]
+  ],
+  "requests": [
+    {
+      "id": "piano_collision",
+      "bank": 0,
+      "pc": 0,
+      "name": "Grand Piano",
+      "selected": 0
+    },
+    {
+      "id": "lsb_variation",
+      "bank": 1025,
+      "pc": 1,
+      "name": "Steel Guitar",
+      "selected": 1
+    },
+    {
+      "id": "name_decode",
+      "bank": 1025,
+      "pc": 1,
+      "name": "",
+      "selected": 1
+    },
+    {
+      "id": "msb104_numeric_not_identity",
+      "bank": 13312,
+      "pc": 1,
+      "name": "Steel Guitar",
+      "selected": 1
+    },
+    {
+      "id": "msb104_unknown",
+      "bank": 13312,
+      "pc": 1,
+      "name": "",
+      "selected": null
+    },
+    {
+      "id": "original126_percussion_reject",
+      "bank": 126,
+      "pc": 1,
+      "name": "Drum Kit",
+      "selected": null
+    },
+    {
+      "id": "request_msb126_reject",
+      "bank": 16128,
+      "pc": 0,
+      "name": "Grand Piano",
+      "selected": null
+    },
+    {
+      "id": "request_msb127_reject",
+      "bank": 16256,
+      "pc": 0,
+      "name": "Grand Piano",
+      "selected": null
+    },
+    {
+      "id": "pad_no_wrong_family_fallback",
+      "bank": 0,
+      "pc": 89,
+      "name": "Warm Pad",
+      "selected": null
+    }
+  ]
+}

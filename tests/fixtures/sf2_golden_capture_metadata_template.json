@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "status": "UNVERIFIED",
+  "mode": "four_original",
+  "reference_commit": "c75122daf5d1077db55d50d1c261144fde59af4a",
+  "android_build_identity": "UNKNOWN",
+  "bassmidi_build_identity": "UNKNOWN",
+  "raw_trace_sha256": "UNKNOWN",
+  "source_sha256": [
+    "9e4686e4aa7173ffd1baf7ec6f80fcb3fe90880e824cf8c4e1defb5d153d47eb",
+    "a72158c09677c585eec348762a33da49509bf338c5b36d0e787af58cca0b9f8a",
+    "e8c7356159c200d945f13e113595ff06e7955779b0e9361709d9c7cdba164a82",
+    "de5b1404630840a2a897e77c6083e2231c5d1523e6571a8afd972a4f684d36ce"
+  ],
+  "raw_trace_path": "UNKNOWN",
+  "master_file_sha256": "UNKNOWN"
+}

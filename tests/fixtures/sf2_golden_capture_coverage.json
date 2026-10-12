@@ -1,0 +1,795 @@
+{
+  "status": "UNVERIFIED_CAPTURE_NOT_EXECUTED",
+  "checkpoint": "c75122daf5d1077db55d50d1c261144fde59af4a",
+  "style_sha256": "UNKNOWN",
+  "meter_fixtures": {
+    "2/4": {
+      "style_file": "UNKNOWN",
+      "style_sha256": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    "3/4": {
+      "style_file": "UNKNOWN",
+      "style_sha256": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    "4/4": {
+      "style_file": "UNKNOWN",
+      "style_sha256": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    "6/8": {
+      "style_file": "UNKNOWN",
+      "style_sha256": "UNKNOWN",
+      "status": "UNVERIFIED"
+    }
+  },
+  "rows": [
+    {
+      "fixture_id": "capture/LoveSong/Main_A/Rhythm1",
+      "section": "Main A",
+      "part": "Rhythm1",
+      "midi_channel_1based": 9,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Main_A/Rhythm2",
+      "section": "Main A",
+      "part": "Rhythm2",
+      "midi_channel_1based": 10,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Main_A/Bass",
+      "section": "Main A",
+      "part": "Bass",
+      "midi_channel_1based": 11,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Main_A/Chord1",
+      "section": "Main A",
+      "part": "Chord1",
+      "midi_channel_1based": 12,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Main_A/Chord2",
+      "section": "Main A",
+      "part": "Chord2",
+      "midi_channel_1based": 13,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Main_A/Pad",
+      "section": "Main A",
+      "part": "Pad",
+      "midi_channel_1based": 14,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Main_A/Phrase1",
+      "section": "Main A",
+      "part": "Phrase1",
+      "midi_channel_1based": 15,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Main_A/Phrase2",
+      "section": "Main A",
+      "part": "Phrase2",
+      "midi_channel_1based": 16,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Main_B/Rhythm1",
+      "section": "Main B",
+      "part": "Rhythm1",
+      "midi_channel_1based": 9,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Main_B/Rhythm2",
+      "section": "Main B",
+      "part": "Rhythm2",
+      "midi_channel_1based": 10,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Main_B/Bass",
+      "section": "Main B",
+      "part": "Bass",
+      "midi_channel_1based": 11,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Main_B/Chord1",
+      "section": "Main B",
+      "part": "Chord1",
+      "midi_channel_1based": 12,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Main_B/Chord2",
+      "section": "Main B",
+      "part": "Chord2",
+      "midi_channel_1based": 13,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Main_B/Pad",
+      "section": "Main B",
+      "part": "Pad",
+      "midi_channel_1based": 14,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Main_B/Phrase1",
+      "section": "Main B",
+      "part": "Phrase1",
+      "midi_channel_1based": 15,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Main_B/Phrase2",
+      "section": "Main B",
+      "part": "Phrase2",
+      "midi_channel_1based": 16,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Main_C/Rhythm1",
+      "section": "Main C",
+      "part": "Rhythm1",
+      "midi_channel_1based": 9,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Main_C/Rhythm2",
+      "section": "Main C",
+      "part": "Rhythm2",
+      "midi_channel_1based": 10,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Main_C/Bass",
+      "section": "Main C",
+      "part": "Bass",
+      "midi_channel_1based": 11,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Main_C/Chord1",
+      "section": "Main C",
+      "part": "Chord1",
+      "midi_channel_1based": 12,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Main_C/Chord2",
+      "section": "Main C",
+      "part": "Chord2",
+      "midi_channel_1based": 13,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Main_C/Pad",
+      "section": "Main C",
+      "part": "Pad",
+      "midi_channel_1based": 14,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Main_C/Phrase1",
+      "section": "Main C",
+      "part": "Phrase1",
+      "midi_channel_1based": 15,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Main_C/Phrase2",
+      "section": "Main C",
+      "part": "Phrase2",
+      "midi_channel_1based": 16,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Main_D/Rhythm1",
+      "section": "Main D",
+      "part": "Rhythm1",
+      "midi_channel_1based": 9,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Main_D/Rhythm2",
+      "section": "Main D",
+      "part": "Rhythm2",
+      "midi_channel_1based": 10,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Main_D/Bass",
+      "section": "Main D",
+      "part": "Bass",
+      "midi_channel_1based": 11,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Main_D/Chord1",
+      "section": "Main D",
+      "part": "Chord1",
+      "midi_channel_1based": 12,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Main_D/Chord2",
+      "section": "Main D",
+      "part": "Chord2",
+      "midi_channel_1based": 13,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Main_D/Pad",
+      "section": "Main D",
+      "part": "Pad",
+      "midi_channel_1based": 14,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Main_D/Phrase1",
+      "section": "Main D",
+      "part": "Phrase1",
+      "midi_channel_1based": 15,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Main_D/Phrase2",
+      "section": "Main D",
+      "part": "Phrase2",
+      "midi_channel_1based": 16,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Fill_A/Rhythm1",
+      "section": "Fill A",
+      "part": "Rhythm1",
+      "midi_channel_1based": 9,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Fill_A/Rhythm2",
+      "section": "Fill A",
+      "part": "Rhythm2",
+      "midi_channel_1based": 10,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Fill_A/Bass",
+      "section": "Fill A",
+      "part": "Bass",
+      "midi_channel_1based": 11,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Fill_A/Chord1",
+      "section": "Fill A",
+      "part": "Chord1",
+      "midi_channel_1based": 12,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Fill_A/Chord2",
+      "section": "Fill A",
+      "part": "Chord2",
+      "midi_channel_1based": 13,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Fill_A/Pad",
+      "section": "Fill A",
+      "part": "Pad",
+      "midi_channel_1based": 14,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Fill_A/Phrase1",
+      "section": "Fill A",
+      "part": "Phrase1",
+      "midi_channel_1based": 15,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Fill_A/Phrase2",
+      "section": "Fill A",
+      "part": "Phrase2",
+      "midi_channel_1based": 16,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Fill_B/Rhythm1",
+      "section": "Fill B",
+      "part": "Rhythm1",
+      "midi_channel_1based": 9,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Fill_B/Rhythm2",
+      "section": "Fill B",
+      "part": "Rhythm2",
+      "midi_channel_1based": 10,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Fill_B/Bass",
+      "section": "Fill B",
+      "part": "Bass",
+      "midi_channel_1based": 11,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Fill_B/Chord1",
+      "section": "Fill B",
+      "part": "Chord1",
+      "midi_channel_1based": 12,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Fill_B/Chord2",
+      "section": "Fill B",
+      "part": "Chord2",
+      "midi_channel_1based": 13,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Fill_B/Pad",
+      "section": "Fill B",
+      "part": "Pad",
+      "midi_channel_1based": 14,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Fill_B/Phrase1",
+      "section": "Fill B",
+      "part": "Phrase1",
+      "midi_channel_1based": 15,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Fill_B/Phrase2",
+      "section": "Fill B",
+      "part": "Phrase2",
+      "midi_channel_1based": 16,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Fill_C/Rhythm1",
+      "section": "Fill C",
+      "part": "Rhythm1",
+      "midi_channel_1based": 9,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Fill_C/Rhythm2",
+      "section": "Fill C",
+      "part": "Rhythm2",
+      "midi_channel_1based": 10,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Fill_C/Bass",
+      "section": "Fill C",
+      "part": "Bass",
+      "midi_channel_1based": 11,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Fill_C/Chord1",
+      "section": "Fill C",
+      "part": "Chord1",
+      "midi_channel_1based": 12,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Fill_C/Chord2",
+      "section": "Fill C",
+      "part": "Chord2",
+      "midi_channel_1based": 13,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Fill_C/Pad",
+      "section": "Fill C",
+      "part": "Pad",
+      "midi_channel_1based": 14,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Fill_C/Phrase1",
+      "section": "Fill C",
+      "part": "Phrase1",
+      "midi_channel_1based": 15,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Fill_C/Phrase2",
+      "section": "Fill C",
+      "part": "Phrase2",
+      "midi_channel_1based": 16,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Fill_D/Rhythm1",
+      "section": "Fill D",
+      "part": "Rhythm1",
+      "midi_channel_1based": 9,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Fill_D/Rhythm2",
+      "section": "Fill D",
+      "part": "Rhythm2",
+      "midi_channel_1based": 10,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Fill_D/Bass",
+      "section": "Fill D",
+      "part": "Bass",
+      "midi_channel_1based": 11,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Fill_D/Chord1",
+      "section": "Fill D",
+      "part": "Chord1",
+      "midi_channel_1based": 12,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Fill_D/Chord2",
+      "section": "Fill D",
+      "part": "Chord2",
+      "midi_channel_1based": 13,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Fill_D/Pad",
+      "section": "Fill D",
+      "part": "Pad",
+      "midi_channel_1based": 14,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Fill_D/Phrase1",
+      "section": "Fill D",
+      "part": "Phrase1",
+      "midi_channel_1based": 15,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Fill_D/Phrase2",
+      "section": "Fill D",
+      "part": "Phrase2",
+      "midi_channel_1based": 16,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Intro/Rhythm1",
+      "section": "Intro",
+      "part": "Rhythm1",
+      "midi_channel_1based": 9,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Intro/Rhythm2",
+      "section": "Intro",
+      "part": "Rhythm2",
+      "midi_channel_1based": 10,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Intro/Bass",
+      "section": "Intro",
+      "part": "Bass",
+      "midi_channel_1based": 11,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Intro/Chord1",
+      "section": "Intro",
+      "part": "Chord1",
+      "midi_channel_1based": 12,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Intro/Chord2",
+      "section": "Intro",
+      "part": "Chord2",
+      "midi_channel_1based": 13,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Intro/Pad",
+      "section": "Intro",
+      "part": "Pad",
+      "midi_channel_1based": 14,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Intro/Phrase1",
+      "section": "Intro",
+      "part": "Phrase1",
+      "midi_channel_1based": 15,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Intro/Phrase2",
+      "section": "Intro",
+      "part": "Phrase2",
+      "midi_channel_1based": 16,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Ending/Rhythm1",
+      "section": "Ending",
+      "part": "Rhythm1",
+      "midi_channel_1based": 9,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Ending/Rhythm2",
+      "section": "Ending",
+      "part": "Rhythm2",
+      "midi_channel_1based": 10,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Ending/Bass",
+      "section": "Ending",
+      "part": "Bass",
+      "midi_channel_1based": 11,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Ending/Chord1",
+      "section": "Ending",
+      "part": "Chord1",
+      "midi_channel_1based": 12,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Ending/Chord2",
+      "section": "Ending",
+      "part": "Chord2",
+      "midi_channel_1based": 13,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Ending/Pad",
+      "section": "Ending",
+      "part": "Pad",
+      "midi_channel_1based": 14,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Ending/Phrase1",
+      "section": "Ending",
+      "part": "Phrase1",
+      "midi_channel_1based": 15,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/LoveSong/Ending/Phrase2",
+      "section": "Ending",
+      "part": "Phrase2",
+      "midi_channel_1based": 16,
+      "availability": "UNKNOWN",
+      "silence_or_absence": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/keyboard/RIGHT1",
+      "part": "RIGHT1",
+      "midi_channel_1based": 1,
+      "style_stopped": "REQUIRED",
+      "voice_before": "UNKNOWN",
+      "voice_after": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/keyboard/RIGHT2",
+      "part": "RIGHT2",
+      "midi_channel_1based": 2,
+      "style_stopped": "REQUIRED",
+      "voice_before": "UNKNOWN",
+      "voice_after": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/keyboard/RIGHT3",
+      "part": "RIGHT3",
+      "midi_channel_1based": 3,
+      "style_stopped": "REQUIRED",
+      "voice_before": "UNKNOWN",
+      "voice_after": "UNKNOWN",
+      "status": "UNVERIFIED"
+    },
+    {
+      "fixture_id": "capture/keyboard/LEFT",
+      "part": "LEFT",
+      "midi_channel_1based": 4,
+      "style_stopped": "REQUIRED",
+      "voice_before": "UNKNOWN",
+      "voice_after": "UNKNOWN",
+      "status": "UNVERIFIED"
+    }
+  ],
+  "special_cases": [
+    "PC73 absent and exact kit present",
+    "source banks 126/127/128 and MIDI MSB126/127",
+    "per-key donor velocities 1/64/127 plus actual zone boundaries",
+    "known trims -6/-6/+12 and UNKNOWN others",
+    "cross-source same bank/PC conflicts",
+    "source generation and note-on/off owner through transition",
+    "pitch bend/envelope/controllers",
+    "keyboard voice before/after isolation with style stopped"
+  ]
+}
