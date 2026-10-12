@@ -88,9 +88,9 @@ class ArrangerBrain @Inject constructor(
     // deliberately separate. During Auto Fill, activeSection must not be used
     // as the "currently playing" section because it already points at the
     // future Main target.
-    private var activeSection: ArrangerSection = ArrangerSection.MainA
-    private var currentPlayingSection: ArrangerSection = ArrangerSection.MainA
-    private var pendingMainTarget: ArrangerSection? = null
+    @Volatile private var activeSection: ArrangerSection = ArrangerSection.MainA
+    @Volatile private var currentPlayingSection: ArrangerSection = ArrangerSection.MainA
+    @Volatile private var pendingMainTarget: ArrangerSection? = null
 
     private val _state = MutableStateFlow(ArrangerState())
     val state: StateFlow<ArrangerState> = _state.asStateFlow()
