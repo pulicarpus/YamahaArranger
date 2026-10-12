@@ -471,6 +471,34 @@ class ArrangerBrain @Inject constructor(
         val targetTick = if (quantizeToNextBar) {
             sequencer.nextBarTargetTick(style.ppq, style.meter.numerator, style.meter.denominator)
         } else null
+        // Preserve the existing active-Fill request policy; its Yamaha
+        // interruption contract is not established. Main admissions use the
+        // target already computed by the existing musical clock/window rule.
+        if (targetTick != null && currentPlayingSection !in fillVariations) {
+            val firstModel = style.sections[section.styleName]
+            val finalModel = thenPlay?.let { style.sections[it.styleName] }
+            if (firstModel != null && (thenPlay == null || finalModel != null)) {
+                val sequence = if (finalModel != null) listOf(firstModel to 1, finalModel to -1)
+                    else listOf(firstModel to if (thenStop) 1 else -1)
+                val admitted = sequencer.queueScheduledTransition(sequence, style.ppq, targetTick,
+                    onFirstSectionStarted = {
+                        currentPlayingSection = section
+                        activeSection = section
+                        if (section in mainVariations) pendingMainTarget = null
+                    },
+                    onFinalSectionStarted = if (thenPlay == null) null else ({
+                        currentPlayingSection = thenPlay
+                        activeSection = thenPlay
+                        pendingMainTarget = null
+                        _state.update { it.copy(currentSection = thenPlay) }
+                    }),
+                    onComplete = if (!thenStop) null else ({
+                        sequencer.stop()
+                        _state.update { it.copy(isPlaying = false) }
+                    }))
+                if (admitted) { pendingTransitionJob = null; return }
+            }
+        }
         val waitMs = if (targetTick != null) {
             sequencer.millisToNextBar(style.ppq, style.meter.numerator, style.meter.denominator)
         } else 0L

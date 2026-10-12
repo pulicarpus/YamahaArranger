@@ -320,12 +320,35 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         }
         pendingTransition = PendingTransition(queue, currentTick)
         pendingSectionQueue.clear()
+        wakeMusicalClock()
 
         com.yourapp.yamahaarranger.ui.DebugLog.add(
             "🎼 TRANSITION QUEUED: " +
                 queue.joinToString(" → ") +
                 " at current masterTick=$currentTick (phase continuous)"
         )
+    }
+
+    // Admit a known musical boundary now, rather than racing the worker
+    // with a separate Brain timer at that boundary. Existing cleanup/ownership
+    // and natural successor handling remain the outer loop's responsibility.
+    fun queueScheduledTransition(
+        sections: List<Pair<StyleSectionModel, Int>>, ppq: Int, startTick: Long,
+        onFirstSectionStarted: (() -> Unit)? = null,
+        onFinalSectionStarted: (() -> Unit)? = null,
+        onComplete: (() -> Unit)? = null
+    ): Boolean {
+        if (sections.isEmpty() || startTick < 0L || playbackJob?.isActive != true) return false
+        val queue = sections.mapIndexed { index, item ->
+            PendingSection(item.first, ppq, item.second,
+                if (index == sections.lastIndex) onComplete else null,
+                { if (index == 0) onFirstSectionStarted?.invoke()
+                  if (index == sections.lastIndex) onFinalSectionStarted?.invoke() })
+        }
+        pendingSectionQueue.clear()
+        pendingTransition = PendingTransition(queue, startTick, nextBarBoundary = true)
+        wakeMusicalClock()
+        return true
     }
 
     // Narrow NextBar request: outside the unresolved first-beat window.
@@ -355,7 +378,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             val now: Long
             synchronized(musicalClockLock) {
                 revision = musicalClockRevision.value
-                boundaryTick = pendingTransition?.takeIf { it.nextBarBoundary }?.startTick
+                boundaryTick = pendingTransition?.startTick
                 targetNanos = tickDeadlineNanos(absoluteTick, ppq, clock)
                 boundaryNanos = boundaryTick?.let { tickDeadlineNanos(it, ppq, clock) }
                 now = System.nanoTime()
@@ -367,7 +390,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             if (waitMs > 0L) waitForClockChange(revision, waitMs) else {
                 // Preserve baseline's sub-millisecond event dispatch tolerance.
                 // Future bar boundaries still require a suspended wait.
-                if (boundaryNanos != null && boundaryNanos < targetNanos) delay(1L)
+                if (boundaryNanos != null && boundaryNanos <= targetNanos) delay(1L)
                 else return null
             }
         }
@@ -1029,6 +1052,16 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             if (boundary != null) {
                 interruptedByTransition = true
                 lastProcessedTick = boundary
+                break
+            }
+            // A transition may have arrived while the event was suspended.
+            // Revalidate before dispatching an event of the outgoing section.
+            val afterWaitTransition = pendingTransition
+            if (afterWaitTransition != null && absoluteTick >= afterWaitTransition.startTick &&
+                (!afterWaitTransition.nextBarBoundary || System.nanoTime() >=
+                    tickDeadlineNanos(afterWaitTransition.startTick, ppq, clock))) {
+                interruptedByTransition = true
+                lastProcessedTick = afterWaitTransition.startTick
                 break
             }
             val targetNanos = tickDeadlineNanos(absoluteTick, ppq, clock)
