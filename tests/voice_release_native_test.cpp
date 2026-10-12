@@ -18,6 +18,14 @@ class VoiceReleaseTestAccess { public:
 };
 static int checks=0;
 static void check(bool ok,const std::string& message) { ++checks;if(!ok){std::cerr<<"FAIL: "<<message<<'\n';std::exit(1);} }
+static std::string diagnosisFromReport(const std::string& report) {
+    const std::string prefix="RELEASE DIAGNOSIS=";
+    const auto at=report.find(prefix);
+    if(at==std::string::npos)return {};
+    const auto start=at+prefix.size();
+    const auto end=report.find_first_of(" \t\r\n",start);
+    return report.substr(start,end==std::string::npos?end:end-start);
+}
 struct Preset {std::string role,file,name;uint64_t id;int bank,pc;};
 static std::vector<Preset> parse(const std::string& text) {
     std::vector<Preset> result;std::istringstream records(text);std::string record;
@@ -122,8 +130,10 @@ int main(int argc,char** argv) {
     check(has("RELEASE PCM reverbTail value=0"),"probe reports the reverb-only tail at the live sends");
 #ifdef VOICE_RELEASE_REAL_BASS
     check(has("RELEASE DIAGNOSIS=RELEASE_RESPONDS_AT_DECODER"),"real decoder release response diagnosed");
+    check(diagnosisFromReport(probeReport)=="RELEASE_RESPONDS_AT_DECODER","diagnosis parser extracts only the value, excluding other fields");
 #else
     check(has("RELEASE DIAGNOSIS=NO_HELD_PCM_AT_PROBE_KEY"),"silent mock PCM is never reported as a preset limitation");
+    check(diagnosisFromReport(probeReport)=="NO_HELD_PCM_AT_PROBE_KEY","diagnosis parser extracts only the value, excluding other fields");
 #endif
     for(int ch=0;ch<4;++ch) {
         for(const auto& preset:catalog) {
@@ -217,7 +227,7 @@ int main(int argc,char** argv) {
         }
         player.diagnosticKeyboardReleaseWav(0,60,100);const auto report=player.keyboardReleaseProbeReport();
         const auto at=report.find("RELEASE DIAGNOSIS=");check(at!=std::string::npos,"character diagnosis present");
-        const auto diagnosis=report.substr(at+18,report.find(' ',at)-at-18);
+        const auto diagnosis=diagnosisFromReport(report);
         std::cout<<"RELEASE_CHARACTER name='"<<c.name<<"' sf2ReleaseTc="<<(c.hasRelease?c.releaseTc:-12000)
                  <<" looped="<<c.looped<<" livePath tailMinus40Ms(0,64,127)="<<minus40[0]<<','<<minus40[1]<<','<<minus40[2]
                  <<" tailMinus60Ms="<<minus60[0]<<','<<minus60[1]<<','<<minus60[2]<<" probeDiagnosis="<<diagnosis<<'\n';

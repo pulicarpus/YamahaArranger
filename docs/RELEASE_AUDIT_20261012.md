@@ -127,3 +127,11 @@ direproduksi pada salinan bersih basis `28f697f`: ini kegagalan baseline,
 bukan perubahan style oleh patch. Guard tetap utuh; status ini bukan PASS.
 Pemeriksaan byte terhadap checkpoint `c75122d` lulus. Tes real BASS dan APK
 harus dilihat pada run Actions untuk commit integrasi, bukan diasumsikan dari mock.
+
+Run integrasi pertama `38321613574` berhenti pada gate PCM; APK tidak dibangun.
+Strings live terbukti merespons (ekor -40 dB 10/200/3000 ms untuk 0/64/127),
+tetapi parser diagnosis di tes handoff mencari spasi dari awal label `RELEASE DIAGNOSIS=`.
+Spasi itu mendahului nilai, sehingga panjang substring underflow dan perbandingan
+mengambil seluruh sisa laporan. Parser diperbaiki untuk mencari pemisah setelah
+nilai dimulai; tes exact-value ditambahkan pada mock dan real. Asersi matriks
+monotonik dan kesesuaian diagnosis tetap utuh. Hasil real wajib diuji ulang.
