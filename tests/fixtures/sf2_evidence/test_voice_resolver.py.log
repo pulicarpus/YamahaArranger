@@ -1,0 +1,40 @@
+S5_NATIVE_LIFECYCLE checks=8 productionPlayer=true BASS_NOTEOFF1=true API_mock=true nativeSDK_acceptance=NOT_MEASURED PCM=NOT_MEASURED
+Love Song Bass family=BASS FINAL Yamaha SX700 SX900 Melody.sf2 / BASS score=99065 reason=same_family;yamaha_msb;semantic_exact;same_pc_support_only;yamaha_source
+Love Song Piano family=PIANO FINAL ColomboGMGS2_BM.sf2 / Wide Piano 2 score=2240 reason=same_family;semantic_partial;same_pc_support_only
+Love Song A.Guitar family=GUITAR FINAL Yamaha SX700 SX900 Melody.sf2 / Steel Guitar score=91765 reason=same_family;yamaha_msb;acoustic_variation;same_pc_support_only;yamaha_source
+Love Song Strings1 family=STRINGS FINAL ColomboGMGS2_BM.sf2 / Strings score=9000 reason=same_family;semantic_exact
+Love Song Strings2 family=STRINGS FINAL ColomboGMGS2_BM.sf2 / Strings score=9000 reason=same_family;semantic_exact
+PASS: 210 resolver checks
+PASS: 70 native routing checks (mock BASS; no audio assertion)
+PASS: 48 audio-path diagnostic checks (observation only)
+PASS 30 SF2 zone metadata checks
+PASS 15 all-kit coverage checks (metadata only)
+PASS 30 compact drum export checks (metadata only)
+PASS 29 focused drum comparison checks (metadata only)
+managed SF2 audition: 12 native scenarios PASS; production events/state untouched; resources freed
+BANK_TRANSLATION checks=63 production_player=true mapping_error=false mock_API_scope=true no_PCM_claim=true
+ACCOMPANIMENT_NATIVE checks=32 production_player=true no_PCM_claim=true
+PERCUSSION_NATIVE checks=238 production_adapter=true mock_API_not_original_PCM
+ROLE_PCM_NATIVE checks=177 production_player=true no_extra_NOTE_ON=true PCM_buffer_unchanged=true cap_and_cleanup=true
+DIAGNOSTIC_LIVENESS checks=4 blocked_formatter_does_not_block_render_or_UI_synth=true snapshot_consistent=true ROLE_LAYER_preserved=true export_no_MIDI=true
+SHADOW HOST 46 checks PASS NOTE_ON p50=280ns p95=310ns p99=481ns samples=3000; mock synth, no device xrun measurement
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_drum_shadow_guards.py", line 15, in <module>
+    assert hashlib.sha256(strip_metadata(path,(root/path).read_text()).encode()).hexdigest()==expected, "#770 production path changed: "+path
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/sff_dialect_source_guard.py", line 41, in strip_metadata
+    text=normalize_s3(path,historical_bytes(path,text.encode())).decode()
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/f04_source_guard.py", line 20, in historical_bytes
+    data = baseline_bytes(path,data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/f12_source_guard.py", line 15, in baseline_bytes
+    assert sha(data)==rule['after_sha256'],'Unreviewed F12 file: '+path
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Unreviewed F12 file: app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_voice_resolver.py", line 107, in <module>
+    subprocess.run(["python3",str(root / "tools/test_drum_shadow_guards.py")],check=True)
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['python3', '/workspace/work/sf2-audit/reference/tools/test_drum_shadow_guards.py']' returned non-zero exit status 1.

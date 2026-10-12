@@ -1,0 +1,13 @@
+{
+  "checkpoint": "c75122daf5d1077db55d50d1c261144fde59af4a",
+  "guard": "tools/f12_source_guard.py",
+  "path": "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt",
+  "actual_raw_sha256": "c768285a3b4a303c270f1d1c68e04d559bb2951d28a249d3c19455715a97cf89",
+  "expected_before_sha256": "09da84a3db83dddca662afc472cf74b7ead472bfaa59aa2d27e51f217cfb352e",
+  "expected_after_sha256": "ed80d7c5983ce23ab684601e25ec59b12d9c9e8b307b2abad13051b5ed02250a",
+  "historical_input": null,
+  "cause": "Checkpoint NextBar/section changes are outside the exact reversible historical F12 source allowlist. Failure precedes downstream shadow and mix assertions.",
+  "guard_modified": false,
+  "expectations_modified": false,
+  "downstream_assertions": "UNVERIFIED"
+}

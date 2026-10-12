@@ -1,0 +1,19 @@
+test_all_conflicts_preserve_provenance_and_unverified_runtime (__main__.RealInventoryTests.test_all_conflicts_preserve_provenance_and_unverified_runtime) ... ok
+test_conflict_count_name_and_gain_mutations_rejected (__main__.RealInventoryTests.test_conflict_count_name_and_gain_mutations_rejected) ... ok
+test_duplicate_and_missing_metadata_rejected (__main__.RealInventoryTests.test_duplicate_and_missing_metadata_rejected) ... ok
+test_missing_or_duplicate_collision_rejected (__main__.RealInventoryTests.test_missing_or_duplicate_collision_rejected) ... ok
+test_no_drum_cache_preset_selected_in_melodic_probes (__main__.RealInventoryTests.test_no_drum_cache_preset_selected_in_melodic_probes) ... ok
+test_no_unknown_annotations_promoted_to_runtime_or_master_go (__main__.RealInventoryTests.test_no_unknown_annotations_promoted_to_runtime_or_master_go) ... ok
+test_optional_pool_exclusion_is_respected (__main__.RealInventoryTests.test_optional_pool_exclusion_is_respected) ... ok
+test_original_metadata_totals_and_complete_membership (__main__.RealInventoryTests.test_original_metadata_totals_and_complete_membership) ... ok
+test_pc73_source_presence_not_legacy_winner (__main__.RealInventoryTests.test_pc73_source_presence_not_legacy_winner) ... ok
+test_simulation_covers_every_original_preset (__main__.RealInventoryTests.test_simulation_covers_every_original_preset) ... ok
+test_special_msb126_127_hard_rejection (__main__.RealInventoryTests.test_special_msb126_127_hard_rejection) ... ok
+test_uploaded_files_exact_digests (__main__.RealInventoryTests.test_uploaded_files_exact_digests) ... ok
+test_wrong_source_hash_rejected (__main__.RealInventoryTests.test_wrong_source_hash_rejected) ... ok
+test_wrong_source_role_rejected (__main__.RealInventoryTests.test_wrong_source_role_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 19.284s
+
+OK

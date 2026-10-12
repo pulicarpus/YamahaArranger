@@ -1,0 +1,87 @@
+[
+  {
+    "test": "test_sf2_original_phdr.py",
+    "exit_code": 0,
+    "status": "PASS",
+    "elapsed_seconds": 0.08
+  },
+  {
+    "test": "test_sf2_lovesong_capture.py",
+    "exit_code": 0,
+    "status": "PASS",
+    "elapsed_seconds": 3.94
+  },
+  {
+    "test": "test_sf2_golden_routing.py",
+    "exit_code": 0,
+    "status": "PASS",
+    "elapsed_seconds": 1.09
+  },
+  {
+    "test": "test_sf2_real_inventory.py",
+    "exit_code": 0,
+    "status": "PASS",
+    "elapsed_seconds": 19.36
+  },
+  {
+    "test": "test_sf2_partial_original_metadata.py",
+    "exit_code": 0,
+    "status": "PASS",
+    "elapsed_seconds": 0.07
+  },
+  {
+    "test": "test_sf2_checkpoint_host.py",
+    "exit_code": 0,
+    "status": "PASS",
+    "elapsed_seconds": 93.4
+  },
+  {
+    "test": "test_voice_resolver.py",
+    "exit_code": 1,
+    "status": "FAIL",
+    "elapsed_seconds": 130.74
+  },
+  {
+    "test": "test_drum_shadow_guards.py",
+    "exit_code": 1,
+    "status": "FAIL",
+    "elapsed_seconds": 0.02
+  },
+  {
+    "test": "test_role_pcm_guards.py",
+    "exit_code": 1,
+    "status": "FAIL",
+    "elapsed_seconds": 0.04
+  },
+  {
+    "test": "test_diagnostic788_guards.py",
+    "exit_code": 1,
+    "status": "FAIL",
+    "elapsed_seconds": 0.03
+  },
+  {
+    "test": "test_mix_percussion_boundaries.py",
+    "exit_code": 1,
+    "status": "FAIL"
+  },
+  {
+    "test": "test_production_regression_bypass.py",
+    "exit_code": 1,
+    "status": "FAIL"
+  },
+  {
+    "test": "test_sff_dialect_source_guard.py",
+    "exit_code": 0,
+    "status": "PASS"
+  },
+  {
+    "test": "test_sff_casm_source_guard.py",
+    "exit_code": 0,
+    "status": "PASS"
+  },
+  {
+    "test": "test_f04_source_guard.py",
+    "exit_code": 1,
+    "status": "FAIL"
+  }
+]

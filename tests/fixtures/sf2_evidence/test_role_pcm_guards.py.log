@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_role_pcm_guards.py", line 17, in <module>
+    assert hashlib.sha256(strip_observers(file,strip_balance(file,(root/file).read_text())).encode()).hexdigest()==h,file
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt

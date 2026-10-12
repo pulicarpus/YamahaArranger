@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_diagnostic788_guards.py", line 33, in <module>
+    assert hashlib.sha256(normalize(path,(root/path).read_text()).encode()).hexdigest()==h,path
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: app/src/main/java/com/yourapp/ui/MainViewModel.kt

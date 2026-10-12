@@ -1,0 +1,29 @@
+CHECKPOINT snapshot verified: 84 files
+Love Song Bass family=BASS FINAL Yamaha SX700 SX900 Melody.sf2 / BASS score=99065 reason=same_family;yamaha_msb;semantic_exact;same_pc_support_only;yamaha_source
+Love Song Piano family=PIANO FINAL ColomboGMGS2_BM.sf2 / Wide Piano 2 score=2240 reason=same_family;semantic_partial;same_pc_support_only
+Love Song A.Guitar family=GUITAR FINAL Yamaha SX700 SX900 Melody.sf2 / Steel Guitar score=91765 reason=same_family;yamaha_msb;acoustic_variation;same_pc_support_only;yamaha_source
+Love Song Strings1 family=STRINGS FINAL ColomboGMGS2_BM.sf2 / Strings score=9000 reason=same_family;semantic_exact
+Love Song Strings2 family=STRINGS FINAL ColomboGMGS2_BM.sf2 / Strings score=9000 reason=same_family;semantic_exact
+PASS: 210 resolver checks
+HOST PASS voice_resolver_test
+PASS: 70 native routing checks (mock BASS; no audio assertion)
+HOST PASS native_resolver_test
+BANK_TRANSLATION checks=63 production_player=true mapping_error=false mock_API_scope=true no_PCM_claim=true
+HOST PASS bank_translation_readback_test
+ACCOMPANIMENT_NATIVE checks=32 production_player=true no_PCM_claim=true
+HOST PASS accompaniment_presence_test
+PERCUSSION_NATIVE checks=238 production_adapter=true mock_API_not_original_PCM
+HOST PASS percussion_fidelity_test
+S5_NATIVE_LIFECYCLE checks=8 productionPlayer=true BASS_NOTEOFF1=true API_mock=true nativeSDK_acceptance=NOT_MEASURED PCM=NOT_MEASURED
+HOST PASS f03_native_lifecycle_test
+PASS 30 SF2 zone metadata checks
+HOST PASS sf2_zone_diagnostic_test
+PASS: 48 audio-path diagnostic checks (observation only)
+HOST PASS audio_path_diagnostic_test
+PASS 15 all-kit coverage checks (metadata only)
+HOST PASS drum_kit_audit_test
+PASS 30 compact drum export checks (metadata only)
+HOST PASS drum_compatibility_report_test
+GOLDEN_BOUNDARIES checks=17 synthetic=true mock_BASS=true PC73_bank126_127_128_gain_collision=true runtime_UNVERIFIED
+HOST PASS sf2_golden_boundaries_test
+HOST targets=11; mocked BASS, synthetic fixtures; PCM/device UNVERIFIED

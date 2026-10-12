@@ -1,0 +1,20 @@
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_mix_percussion_boundaries.py", line 13, in <module>
+    actual=method(strip_balance(record['path'],(root/record['path']).read_text()),record['method'])
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/measured_balance_guard.py", line 8, in strip_balance
+    text=strip_headroom(path,text)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/pcm_headroom_guard.py", line 8, in strip_headroom
+    text=strip_metadata(path,text)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/sff_dialect_source_guard.py", line 41, in strip_metadata
+    text=normalize_s3(path,historical_bytes(path,text.encode())).decode()
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/f04_source_guard.py", line 20, in historical_bytes
+    data = baseline_bytes(path,data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/f12_source_guard.py", line 15, in baseline_bytes
+    assert sha(data)==rule['after_sha256'],'Unreviewed F12 file: '+path
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Unreviewed F12 file: app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt

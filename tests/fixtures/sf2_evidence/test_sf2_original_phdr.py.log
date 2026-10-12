@@ -1,0 +1,17 @@
+test_decoy_phdr_bytes_and_odd_chunk_padding_ignored (__main__.OriginalPhdrTests.test_decoy_phdr_bytes_and_odd_chunk_padding_ignored) ... ok
+test_duplicate_address_rejected_even_with_different_name (__main__.OriginalPhdrTests.test_duplicate_address_rejected_even_with_different_name) ... ok
+test_duplicate_and_missing_phdr_rejected (__main__.OriginalPhdrTests.test_duplicate_and_missing_phdr_rejected) ... ok
+test_invalid_program_and_terminal_bag_rejected (__main__.OriginalPhdrTests.test_invalid_program_and_terminal_bag_rejected) ... ok
+test_lossless_name_no_trim_or_ascii_ignore (__main__.OriginalPhdrTests.test_lossless_name_no_trim_or_ascii_ignore) ... ok
+test_missing_and_early_eop_rejected (__main__.OriginalPhdrTests.test_missing_and_early_eop_rejected) ... ok
+test_no_binaries_does_not_create_order_or_output_directory (__main__.OriginalPhdrTests.test_no_binaries_does_not_create_order_or_output_directory) ... ok
+test_nonmultiple_record_size_rejected (__main__.OriginalPhdrTests.test_nonmultiple_record_size_rejected) ... ok
+test_repository_fingerprints_and_metadata_counts (__main__.OriginalPhdrTests.test_repository_fingerprints_and_metadata_counts) ... ok
+test_streamed_hash_multiset_and_source_no_write (__main__.OriginalPhdrTests.test_streamed_hash_multiset_and_source_no_write) ... ok
+test_truncated_parent_and_invalid_riff_rejected (__main__.OriginalPhdrTests.test_truncated_parent_and_invalid_riff_rejected) ... ok
+test_unsorted_original_order_not_metadata_sort_order (__main__.OriginalPhdrTests.test_unsorted_original_order_not_metadata_sort_order) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.011s
+
+OK

@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_drum_shadow_guards.py", line 15, in <module>
+    assert hashlib.sha256(strip_metadata(path,(root/path).read_text()).encode()).hexdigest()==expected, "#770 production path changed: "+path
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/sff_dialect_source_guard.py", line 41, in strip_metadata
+    text=normalize_s3(path,historical_bytes(path,text.encode())).decode()
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/f04_source_guard.py", line 20, in historical_bytes
+    data = baseline_bytes(path,data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/f12_source_guard.py", line 15, in baseline_bytes
+    assert sha(data)==rule['after_sha256'],'Unreviewed F12 file: '+path
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Unreviewed F12 file: app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt

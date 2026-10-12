@@ -1,0 +1,13 @@
+test_actual_name_and_bank_context_required (__main__.LoveSongCaptureTests.test_actual_name_and_bank_context_required) ... ok
+test_build_trace_commit_and_loaded_source_binding (__main__.LoveSongCaptureTests.test_build_trace_commit_and_loaded_source_binding) ... ok
+test_empty_or_duplicate_requests_not_a_capture (__main__.LoveSongCaptureTests.test_empty_or_duplicate_requests_not_a_capture) ... ok
+test_frozen_sources_remain_pinned (__main__.LoveSongCaptureTests.test_frozen_sources_remain_pinned) ... ok
+test_missing_original_style_cannot_replay (__main__.LoveSongCaptureTests.test_missing_original_style_cannot_replay) ... ok
+test_real_export_hash_and_exact_identity (__main__.LoveSongCaptureTests.test_real_export_hash_and_exact_identity) ... ok
+test_similar_name_or_wrong_bytes_rejected (__main__.LoveSongCaptureTests.test_similar_name_or_wrong_bytes_rejected) ... ok
+test_synthetic_style_smoke_replay_is_not_native_runtime (__main__.LoveSongCaptureTests.test_synthetic_style_smoke_replay_is_not_native_runtime) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 3.827s
+
+OK

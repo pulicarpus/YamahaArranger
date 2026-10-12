@@ -1,0 +1,9 @@
+test_any_source_mutation_even_a_comment_is_rejected (__main__.DialectSourceGuardTests.test_any_source_mutation_even_a_comment_is_rejected) ... ok
+test_exact_new_and_recovered_old_profiles_are_pinned (__main__.DialectSourceGuardTests.test_exact_new_and_recovered_old_profiles_are_pinned) ... ok
+test_old_profile_requires_explicit_baseline_selection (__main__.DialectSourceGuardTests.test_old_profile_requires_explicit_baseline_selection) ... ok
+test_unlisted_metadata_block_is_rejected (__main__.DialectSourceGuardTests.test_unlisted_metadata_block_is_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.021s
+
+OK

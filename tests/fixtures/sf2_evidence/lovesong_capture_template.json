@@ -1,0 +1,53 @@
+{
+  "mode": "TEMPLATE_NOT_CAPTURE",
+  "reference_commit": "c75122daf5d1077db55d50d1c261144fde59af4a",
+  "style_id": "UNKNOWN",
+  "style_sha256": "UNKNOWN",
+  "raw_trace_sha256": "UNKNOWN",
+  "android_build_identity": "UNKNOWN",
+  "bassmidi_build_identity": "UNKNOWN",
+  "active_sources": [],
+  "requests": [],
+  "required_observation_fields": [
+    "selected_native_handle",
+    "selected_source_sha256",
+    "selected_bank",
+    "selected_pc_0based",
+    "selected_name",
+    "fallback_reason",
+    "family",
+    "drum_key",
+    "velocity",
+    "donor_zone",
+    "donor_source_sha256",
+    "gain_trim_db",
+    "controllers",
+    "source_generation",
+    "ownership"
+  ],
+  "note": "No runtime request or original ordering is supplied. UNKNOWN fields must remain UNKNOWN until observed. See tool validator and diagnostic guide for request schema.",
+  "request_schema": {
+    "event_ordinal": "integer contiguous starting at 0",
+    "fixture_id": "unique string",
+    "section": "checkpoint parser canonical section id",
+    "chord": "observed chord",
+    "destination_part": "observed lane name",
+    "trace_ref": "raw log location",
+    "beat_tick": "nonnegative integer",
+    "midi_channel_1based": "integer 1..16",
+    "request_msb": "integer 0..127",
+    "request_lsb": "integer 0..127",
+    "request_pc_0based": "integer 0..127",
+    "resolver_bank14": "integer 0..16383; melody MSB*128+LSB",
+    "request_voice_name": "actual string; explicitly empty is permitted",
+    "acmp_enabled": "boolean",
+    "observed": "object of actual binding fields or explicit UNKNOWN"
+  },
+  "active_source_schema": {
+    "source_sha256": "one of four pinned original full-file hashes",
+    "source_index": "0 primary /1,2 secondary in observed import order /3 dedicated-drum diagnostic surrogate",
+    "native_basename": "actual basename used by native resolver",
+    "load_role": "MELODY indices0..2 / DRUM index3",
+    "load_state": "LOADED; other states outside four-source replay contract"
+  }
+}

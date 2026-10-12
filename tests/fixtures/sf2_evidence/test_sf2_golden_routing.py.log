@@ -1,0 +1,24 @@
+test_canonical_determinism_handles_and_csv_roundtrip (__main__.GoldenRoutingTests.test_canonical_determinism_handles_and_csv_roundtrip) ... ok
+test_capture_coverage_is_explicitly_unverified (__main__.GoldenRoutingTests.test_capture_coverage_is_explicitly_unverified) ... ok
+test_capture_preset_and_donor_must_exist_in_inventory (__main__.GoldenRoutingTests.test_capture_preset_and_donor_must_exist_in_inventory) ... ok
+test_cli_exit_codes_and_no_master_go (__main__.GoldenRoutingTests.test_cli_exit_codes_and_no_master_go) ... ok
+test_conflicting_address_and_staging_rejected (__main__.GoldenRoutingTests.test_conflicting_address_and_staging_rejected) ... ok
+test_event_order_change_detected (__main__.GoldenRoutingTests.test_event_order_change_detected) ... ok
+test_every_context_and_semantic_change_detected (__main__.GoldenRoutingTests.test_every_context_and_semantic_change_detected) ... ok
+test_exact_checkpoint_policy_replay (__main__.GoldenRoutingTests.test_exact_checkpoint_policy_replay) ... ok
+test_full_original_scope_cannot_pass_without_inventory (__main__.GoldenRoutingTests.test_full_original_scope_cannot_pass_without_inventory) ... ok
+test_missing_event_and_donor_mapping (__main__.GoldenRoutingTests.test_missing_event_and_donor_mapping) ... ok
+test_missing_inventory_explicitly_unverified (__main__.GoldenRoutingTests.test_missing_inventory_explicitly_unverified) ... ok
+test_native_mapping_mismatch (__main__.GoldenRoutingTests.test_native_mapping_mismatch) ... ok
+test_original_partial_inventory_not_full_pass (__main__.GoldenRoutingTests.test_original_partial_inventory_not_full_pass) ... ok
+test_original_scope_rejects_synthetic_source_hashes (__main__.GoldenRoutingTests.test_original_scope_rejects_synthetic_source_hashes) ... ok
+test_pc73_exact_kit_regression (__main__.GoldenRoutingTests.test_pc73_exact_kit_regression) ... ok
+test_projection_preserves_identity_with_new_native_address (__main__.GoldenRoutingTests.test_projection_preserves_identity_with_new_native_address) ... ok
+test_synthetic_inventory_all_observed_conflicts (__main__.GoldenRoutingTests.test_synthetic_inventory_all_observed_conflicts) ... ok
+test_unknown_gain_and_missing_capture_cannot_pass (__main__.GoldenRoutingTests.test_unknown_gain_and_missing_capture_cannot_pass) ... ok
+
+----------------------------------------------------------------------
+Ran 18 tests in 1.020s
+
+OK
+POLICY_REPLAY deterministic, synthetic requests=9; no runtime capture

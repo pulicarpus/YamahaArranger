@@ -1,0 +1,41 @@
+FE...
+======================================================================
+ERROR: test_exact_candidate_and_all_historical_files (__main__.F04SourceGuardTest.test_exact_candidate_and_all_historical_files)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_f04_source_guard.py", line 8, in test_exact_candidate_and_all_historical_files
+    p=verify_profile()
+      ^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/f04_source_guard.py", line 40, in verify_profile
+    assert sha(historical_bytes(path))==expected, 'Non-F04 baseline drift: '+path
+               ^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/f04_source_guard.py", line 18, in historical_bytes
+    if data is None: data = (ROOT/path).read_bytes()
+                            ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1019, in read_bytes
+    with self.open(mode='rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/workspace/work/sf2-audit/reference/.github/workflows/inspect-sf2.yml'
+
+======================================================================
+FAIL: test_baseline_recovery_is_exact (__main__.F04SourceGuardTest.test_baseline_recovery_is_exact)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_f04_source_guard.py", line 13, in test_baseline_recovery_is_exact
+    data=historical_bytes(SOURCE)
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/f04_source_guard.py", line 20, in historical_bytes
+    data = baseline_bytes(path,data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/f12_source_guard.py", line 15, in baseline_bytes
+    assert sha(data)==rule['after_sha256'],'Unreviewed F12 file: '+path
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Unreviewed F12 file: app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.005s
+
+FAILED (failures=1, errors=1)

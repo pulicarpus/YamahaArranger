@@ -1,0 +1,50 @@
+{
+  "exact_app_selected_style": "UNKNOWN",
+  "export_origin_baseline": "05cdb1f0998d082d701bc0d1979580270ae2eefc",
+  "identified_export": {
+    "path": "tests/fixtures/sf2_evidence/LoveSong3_MainD_source_export.tsv",
+    "runtime": "UNVERIFIED",
+    "section": "MainD",
+    "sha256": "fa8bc3db1b1cf29068968a46571878a87196dd342e419ac801042735daee100d",
+    "style_id": "Ballad/LoveSong3.S687.prs"
+  },
+  "native_resource_git_blob": "adaf7e0422c396ad7bf490a6adcfcf94b78b2556",
+  "native_resource_sha256": "5136410612a6a721b2fc2b8e06cdb20f1fa38129870e7a5b4943f176c9c3b1a4",
+  "original_style_bytes_available": false,
+  "reference_style_checkpoint": "c75122daf5d1077db55d50d1c261144fde59af4a",
+  "scope": "PINNED_SOURCE_EXPORT_NOT_RUNTIME",
+  "styles": {
+    "Ballad/LoveSong1.S686.bcs": {
+      "bytes": 38469,
+      "file_sha256": "ad7a8125bdc959246b711dbb6dcebff25e7f4130deb8af4f2b2d1d2f8c1248dd",
+      "full_style_content_sha256": "5bdb4af6e086b3f23528a1cf3da6e96b02cad578d7afb976ab17fd645cb05171"
+    },
+    "Ballad/LoveSong2.S566.prs": {
+      "bytes": 38206,
+      "file_sha256": "e725927f6169a798754d9a43c4ae4fe6cc921268622e04931762e70fd78be673",
+      "full_style_content_sha256": "b26e2a13d900fa4abca1862d826e8fcb1cccbe13d24bbedebbf0a10262890e15"
+    },
+    "Ballad/LoveSong3.S687.prs": {
+      "bytes": 50294,
+      "file_sha256": "5c3dc10c4d20be5a28d6b572f7341bbb2889c2d0854b17f3ee5fe8fb26698773",
+      "full_style_content_sha256": "e898f663a3724aca9a6aea430f0f75af412d932c83a881fa8058b7baf98d4bdb",
+      "golden_baseline_expectation": {
+        "chord": "C_MAJOR",
+        "destinations": {
+          "10": 19,
+          "11": 70,
+          "12": 192,
+          "13": 3,
+          "14": 2,
+          "8": 117,
+          "9": 80
+        },
+        "dispatched_on": 483,
+        "raw_on": 503,
+        "section": "MainD",
+        "status": "BASELINE_OBSERVATION_NOT_MUSICAL_ORACLE"
+      },
+      "golden_main_d_protocol_sha256": "fa8bc3db1b1cf29068968a46571878a87196dd342e419ac801042735daee100d"
+    }
+  }
+}

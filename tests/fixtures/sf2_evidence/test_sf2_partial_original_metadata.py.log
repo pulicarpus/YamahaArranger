@@ -1,0 +1,7 @@
+test_partial_inventory_exactly_derived_from_pinned_export (__main__.PartialOriginalMetadataTests.test_partial_inventory_exactly_derived_from_pinned_export) ... ok
+test_true_velocity_and_key_ranges_remain_metadata_only (__main__.PartialOriginalMetadataTests.test_true_velocity_and_key_ranges_remain_metadata_only) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.001s
+
+OK

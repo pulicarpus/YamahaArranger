@@ -1,0 +1,9 @@
+test_any_byte_mutation_is_rejected (__main__.SourceGuardTests.test_any_byte_mutation_is_rejected) ... ok
+test_exact_s3_and_s2_recovery (__main__.SourceGuardTests.test_exact_s3_and_s2_recovery) ... ok
+test_old_profile_requires_explicit_baseline_selection (__main__.SourceGuardTests.test_old_profile_requires_explicit_baseline_selection) ... ok
+test_unlisted_metadata_is_rejected (__main__.SourceGuardTests.test_unlisted_metadata_is_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.005s
+
+OK
