@@ -471,10 +471,10 @@ class ArrangerBrain @Inject constructor(
         val targetTick = if (quantizeToNextBar) {
             sequencer.nextBarTargetTick(style.ppq, style.meter.numerator, style.meter.denominator)
         } else null
-        // Preserve the existing active-Fill request policy; its Yamaha
-        // interruption contract is not established. Main admissions use the
+        // Preserve non-Main request policies; their Yamaha interruption
+        // contracts are not established. Main admissions use the
         // target already computed by the existing musical clock/window rule.
-        if (targetTick != null && currentPlayingSection !in fillVariations) {
+        if (targetTick != null && currentPlayingSection in mainVariations) {
             val firstModel = style.sections[section.styleName]
             val finalModel = thenPlay?.let { style.sections[it.styleName] }
             if (firstModel != null && (thenPlay == null || finalModel != null)) {
