@@ -187,6 +187,16 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
         catch (e: Exception) { DebugLog.traceError("MIDI NOTE_ON failed ch=$ch note=$n: ${e.message}"); Timber.w(e, "sendNoteOn failed") }
     }
 
+    /** CC72 Release Time for an external keyboard; BASSMIDI receives the knob separately. */
+    fun sendReleaseTime(channel: Int, value: Int) {
+        if (!midiOutEnabled) { DebugLog.traceMidi("CC72 suppressed (MIDI OUT OFF) ch=$channel value=$value"); return }
+        val port = inputPort ?: run { DebugLog.traceMidi("CC72 dropped (no output port) ch=$channel"); return }
+        val ch = channel.coerceIn(0, 15)
+        val v = value.coerceIn(0, 127)
+        try { port.send(byteArrayOf((0xB0 or ch).toByte(), 72, v.toByte()), 0, 3); DebugLog.traceMidi("CC72 ch=$ch value=$v") }
+        catch (e: Exception) { DebugLog.traceError("MIDI CC72 failed ch=$ch: ${e.message}"); Timber.w(e, "sendReleaseTime failed") }
+    }
+
     fun sendNoteOff(channel: Int, note: Int) {
         if (!midiOutEnabled) { DebugLog.traceMidi("NOTE_OFF suppressed (MIDI OUT OFF) ch=$channel note=$note"); return }
         val port = inputPort ?: run { DebugLog.traceMidi("NOTE_OFF dropped (no output port) ch=$channel note=$note"); return }

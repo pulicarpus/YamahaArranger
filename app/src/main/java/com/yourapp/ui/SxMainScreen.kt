@@ -595,7 +595,8 @@ private fun SxEngineLogDialog(
     }
 
     val filteredLogs = when (filter) {
-        "AUDIO" -> logs.filter { it.contains("🔊 AUDIO") || it.contains("KEYBOARD VOICE") || it.contains("RELEASE PCM") }
+        "AUDIO" -> logs.filter { it.contains("🔊 AUDIO") || it.contains("KEYBOARD VOICE") || it.contains("RELEASE PCM") ||
+            it.contains("RELEASE LIVE") || it.contains("RELEASE SF2") || it.contains("RELEASE DIAGNOSIS") || it.contains("RELEASE CONTEXT") }
         "MIDI" -> logs.filter { it.contains("🎹 IN") || it.contains("📤 MIDI OUT") }
         "CASM" -> logs.filter { it.contains("CASM") || it.contains("RTR") || it.contains("RETARGET") }
         "STRING" -> logs.filter { it.contains("STRING") || it.contains("dst=13") || it.contains("dst13") }

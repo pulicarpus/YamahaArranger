@@ -138,6 +138,32 @@ class VoiceReleaseContractTest {
         assertFalse(engine.setKeyboardReleaseTime(0))
     }
 
+    @Test fun releaseCc72ReachesExternalKeyboardOnlyWhenMidiOutIsEnabled() {
+        val midi = MidiInputManager(mock(android.content.Context::class.java))
+        val port = mock(android.media.midi.MidiInputPort::class.java)
+        MidiInputManager::class.java.getDeclaredField("inputPort").apply { isAccessible = true }.set(midi, port)
+        midi.sendReleaseTime(1, 127)
+        verifyNoInteractions(port)
+        midi.midiOutEnabled = true
+        for ((channel, value) in listOf(0 to 0, 1 to 127, 2 to 200)) midi.sendReleaseTime(channel, value)
+        verify(port).send(byteArrayOf(0xB0.toByte(), 72, 0), 0, 3)
+        verify(port).send(byteArrayOf(0xB1.toByte(), 72, 127), 0, 3)
+        verify(port).send(byteArrayOf(0xB2.toByte(), 72, 127), 0, 3)
+    }
+
+    @Test fun sustainDefersRightNoteOffWhileReleaseControllerStillReachesNative() {
+        val (engine, bridge) = engine()
+        engine.loadSoundFontPair("m", "d")
+        val brain = ArrangerBrain(engine, ChordDetector(), mock(MidiInputManager::class.java))
+        brain.setKeyboardSustain(true)
+        brain.setKeyboardReleaseTime(0)
+        brain.onKeyboardNoteOn(72, 1f); brain.onKeyboardNoteOff(72)
+        verify(bridge).nativeSetKeyboardReleaseTime(0)
+        verify(bridge, never()).nativeSfNoteOffChannel(0, 72)
+        brain.setKeyboardSustain(false)
+        verify(bridge).nativeSfNoteOffChannel(0, 72)
+    }
+
     @Test fun rightLayersAndLeftStillUseTheirOwnNoteOnAndNoteOffChannels() {
         val (engine, bridge) = engine()
         engine.loadSoundFontPair("m", "d")

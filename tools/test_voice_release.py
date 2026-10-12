@@ -77,6 +77,14 @@ def native(output, real):
         (output/('linux-pcm.log' if real else 'recorder.log')).write_text(observed.stdout+observed.stderr)
         assert observed.returncode==0, 'native voice/release test failed'
 
+def envelope(output):
+    """Static SF2 release metadata interpretation; host-only, no BASS and no PCM claim."""
+    with tempfile.TemporaryDirectory(prefix='release-envelope-') as directory:
+        executable=output/'release-envelope'
+        run(['g++','-std=c++17','-O2','-Iapp/src/main/cpp','-Itests',
+             'tests/release_envelope_evidence_test.cpp','-o',str(executable)])
+        run([str(executable),directory])
+
 def regressions(output):
     with tempfile.TemporaryDirectory(prefix='voice-release-safety-') as directory:
         cases=['f03_native_lifecycle_test','native_resolver_test','bank_translation_readback_test',
@@ -96,6 +104,7 @@ def main():
     parser.add_argument('--regressions',action='store_true')
     args=parser.parse_args();output=ROOT/'build/voice-release';output.mkdir(parents=True,exist_ok=True)
     frozen_style()
+    envelope(output)
     native(output,args.real)
     if args.regressions:regressions(output)
     if args.jvm:jvm(output,args.fetch_dependencies)

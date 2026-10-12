@@ -132,3 +132,12 @@ preset retention; compare the RELEASE knob on sustained voices; run/save the
 on-device PCM probe; compare live playback with the previous style checkpoint.
 Host PCM does not certify Android speaker audibility, latency/xruns or style
 smoothness.
+
+## RELEASE audit follow-up (2026-10-12)
+
+Android reported RELEASE 0 and 127 sounding identical on a Strings preset. The
+control path is intact; see [RELEASE_AUDIT_20261012.md](RELEASE_AUDIT_20261012.md).
+The probe now adds live delivery, original SF2 envelope metadata, a -60 dB
+threshold, the tail with live reverb/chorus sends (including dry signal), and a
+single `RELEASE DIAGNOSIS` line. MIDI OUT
+now carries CC72 to RIGHT1-3 (PSR-E343 response unverified).

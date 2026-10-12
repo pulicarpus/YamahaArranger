@@ -1,5 +1,6 @@
 #include "bassmidi_player.h"
 #include "keyboard_release_probe.h"
+#include "release_envelope_evidence.h"
 #include "voice_resolver.h"
 #include "sf2_fingerprint.h"
 #ifndef YAMAHA_COMPATIBLE_PERCUSSION
@@ -1963,10 +1964,42 @@ std::vector<unsigned char> BassMidiPlayer::diagnosticKeyboardReleaseWav(int chan
     BASS_MIDI_FONT actual{};
     if(!p||!selection.verified||!BASS_MIDI_StreamGetPreset(stream_,channel,&actual)||
        actual.font!=p->font||actual.bank!=p->nativeBank||actual.preset!=p->program)return {};
-    auto result=keyboard_release_probe::run(p->font,p->nativeBank,p->program,p->bank==127||p->bank==128,key,velocity,sampleRate_);
+    const std::array<int,2> sends{int(BASS_MIDI_StreamGetEvent(stream_,channel,MIDI_EVENT_REVERB)),
+                                  int(BASS_MIDI_StreamGetEvent(stream_,channel,MIDI_EVENT_CHORUS))};
+    auto result=keyboard_release_probe::run(p->font,p->nativeBank,p->program,p->bank==127||p->bank==128,key,velocity,sampleRate_,sends);
+    // Live production state is read only: the knob value must be the controller
+    // the next NOTE_OFF of this part will use, and BASS-level CC64 must be off.
+    const int liveRelease=int(BASS_MIDI_StreamGetEvent(stream_,channel,MIDI_EVENT_RELEASE));
+    const int liveSustain=int(BASS_MIDI_StreamGetEvent(stream_,channel,MIDI_EVENT_SUSTAIN));
+    const int expectedRelease=channel<3?keyboardReleaseTime_:64;
+    std::ostringstream live;
+    live<<"RELEASE LIVE part="<<(channel==3?std::string("LEFT"):"RIGHT"+std::to_string(channel+1))
+        <<" knob="<<keyboardReleaseTime_<<" liveController="<<liveRelease<<" expected="<<expectedRelease
+        <<" delivered="<<(liveRelease==expectedRelease)<<" bassSustainCC64="<<liveSustain
+        <<" reverbSend="<<sends[0]<<" chorusSend="<<sends[1]<<'\n';
+    // Original-bank zone metadata of the exact selected source (never the normalized copy).
+    std::string path;
+    if(p->fontId==melodyFontId_)path=melodyPath_;
+    else if(p->fontId==drumFontId_)path=drumPath_;
+    else for(const auto& secondary:secondaryMelodies_) if(secondary.fontId==p->fontId)path=secondary.path;
+    release_envelope::Summary envelope;
+    if(const auto melodic=melodicZoneInventories_.find(path);melodic!=melodicZoneInventories_.end()&&melodic->second)
+        envelope=release_envelope::summarize(*melodic->second,p->bank,p->program,key,velocity,0.5);
+    if(!envelope.metadataKnown)
+        if(const auto drum=drumZoneInventories_.find(path);drum!=drumZoneInventories_.end())
+            envelope=release_envelope::summarize(drum->second,p->bank,p->program,key,velocity,0.5);
+    std::ostringstream verdict;
+    verdict<<"RELEASE DIAGNOSIS="<<(liveRelease!=expectedRelease?std::string("LIVE_CONTROLLER_NOT_DELIVERED")
+                                    :liveSustain>=64?std::string("BASS_SUSTAIN_HOLDS_NOTES")
+                                    :release_envelope::diagnose(envelope,result.classification,result.tailMinus40Ms[2]-result.tailMinus40Ms[0]))
+           <<" pcmClass="<<(result.classification.empty()?"FAIL":result.classification)
+           <<" sf2Verdict="<<envelope.verdict<<" tailMinus40Ms="<<result.tailMinus40Ms[0]<<','<<result.tailMinus40Ms[1]
+           <<','<<result.tailMinus40Ms[2]<<" liveSendsTailMinus40Ms="<<result.reverbTailMinus40Ms
+           <<" liveEffectsTailMayMaskRelease="<<(result.reverbTailMinus40Ms>0&&result.reverbTailMinus40Ms>=result.tailMinus40Ms[2])<<'\n';
     keyboardReleaseProbeReport_="RELEASE PCM part="+(channel==3?std::string("LEFT"):"RIGHT"+std::to_string(channel+1))+
         " channel="+std::to_string(channel)+" fontId="+std::to_string(p->fontId)+" sf2='"+p->file+"' preset='"+p->name+
-        "' bank="+std::to_string(p->bank)+" nativeBank="+std::to_string(p->nativeBank)+" pc="+std::to_string(p->program)+"\n"+result.report;
+        "' bank="+std::to_string(p->bank)+" nativeBank="+std::to_string(p->nativeBank)+" pc="+std::to_string(p->program)+"\n"+
+        result.report+live.str()+release_envelope::describe(envelope,p->bank,p->program,key,velocity)+verdict.str();
     return result.wav;
 }
 

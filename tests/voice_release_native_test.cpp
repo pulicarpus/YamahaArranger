@@ -1,5 +1,8 @@
 #include "bassmidi_player.h"
 #include "voice_release_fixture.h"
+#include "release_character_fixture.h"
+#include "keyboard_release_probe.h"
+#include "release_envelope_evidence.h"
 #include <jni.h>
 #include <cstdlib>
 #include <iostream>
@@ -14,7 +17,7 @@ class VoiceReleaseTestAccess { public:
     }
 };
 static int checks=0;
-static void check(bool ok,const char* message) { ++checks;if(!ok){std::cerr<<"FAIL: "<<message<<'\n';std::exit(1);} }
+static void check(bool ok,const std::string& message) { ++checks;if(!ok){std::cerr<<"FAIL: "<<message<<'\n';std::exit(1);} }
 struct Preset {std::string role,file,name;uint64_t id;int bank,pc;};
 static std::vector<Preset> parse(const std::string& text) {
     std::vector<Preset> result;std::istringstream records(text);std::string record;
@@ -111,7 +114,17 @@ int main(int argc,char** argv) {
 #else
     check(player.keyboardReleaseProbeReport().find("classification=RESPONDS")!=std::string::npos,"same diagnostic shipped in APK measures real release PCM response");
 #endif
-    std::cout<<player.keyboardReleaseProbeReport();
+    const auto probeReport=player.keyboardReleaseProbeReport();std::cout<<probeReport;
+    auto has=[&](const std::string& text){return probeReport.find(text)!=std::string::npos;};
+    check(has("RELEASE LIVE part=RIGHT1 knob=64 liveController=64 expected=64 delivered=1 bassSustainCC64=0"),"probe reports live knob delivery and BASS sustain state");
+    check(has("RELEASE SF2 ENVELOPE bank=0 pc=24 key=60 velocity=100 metadataKnown=1")&&has("verdict=SF2_RELEASE_AUDIBLE_LOOPED"),
+          "probe reports original-bank SF2 release metadata of the exact selected source");
+    check(has("RELEASE PCM reverbTail value=0"),"probe reports the reverb-only tail at the live sends");
+#ifdef VOICE_RELEASE_REAL_BASS
+    check(has("RELEASE DIAGNOSIS=RELEASE_RESPONDS_AT_DECODER"),"real decoder release response diagnosed");
+#else
+    check(has("RELEASE DIAGNOSIS=NO_HELD_PCM_AT_PROBE_KEY"),"silent mock PCM is never reported as a preset limitation");
+#endif
     for(int ch=0;ch<4;++ch) {
         for(const auto& preset:catalog) {
             check(player.setKeyboardPreset(ch,preset.id,preset.bank,preset.pc),"exact keyboard selection accepted/readback");
@@ -182,6 +195,58 @@ int main(int argc,char** argv) {
         check(rms(beforeOff)<0.00001 && rms(afterOff)<0.00001,"finite sample already ended before key-up; not parameter delivery failure");
         std::cout<<"RELEASE_LIMITATION value="<<value<<" acceptedAndReadback=1 cause=sample_exhausted_before_keyup tailRms="<<rms(afterOff)<<'\n';
     }
+    // Preset characters through the production keyboard path: exact selection ->
+    // knob -> NOTE_ON -> 500 ms hold -> NOTE_OFF -> 3 s tail, reverb/chorus 0.
+    // Consistent thresholds: last 10 ms block above held RMS -40 dB / -60 dB.
+    check(player.loadMelody(release_character_fixture::write(dir)),"release character fixture");
+    const auto characters=parse(player.presetList());
+    auto choose=[&](int ch,int pc){
+        for(const auto& p:characters)if(p.role=="MELODY"&&p.bank==0&&p.pc==pc){
+            check(player.setKeyboardPreset(ch,p.id,0,pc),"select release character");player.setChannelMixer(ch,127,64,127,0,0);return;}
+        check(false,"character preset present");
+    };
+    auto heldRms=[](const std::vector<float>& on){return rms(std::vector<float>(on.end()-4800,on.end()));};
+    for(int pc=0;pc<release_character_fixture::count;++pc) {
+        const auto& c=release_character_fixture::characters[pc];int minus40[3],minus60[3],i=0;
+        for(int value:{0,64,127}) {
+            choose(0,pc);check(player.setKeyboardReleaseTime(value),"character knob value");
+            player.noteOn(0,60,100/127.f);const auto on=render(player,24000);const double held=heldRms(on);
+            check(held>0.001,"character held PCM present");player.noteOff(0,60);const auto off=render(player,144000);
+            minus40[i]=keyboard_release_probe::lastAboveMs(off,held,0.01,48000);
+            minus60[i]=keyboard_release_probe::lastAboveMs(off,held,0.001,48000);++i;
+        }
+        player.diagnosticKeyboardReleaseWav(0,60,100);const auto report=player.keyboardReleaseProbeReport();
+        const auto at=report.find("RELEASE DIAGNOSIS=");check(at!=std::string::npos,"character diagnosis present");
+        const auto diagnosis=report.substr(at+18,report.find(' ',at)-at-18);
+        std::cout<<"RELEASE_CHARACTER name='"<<c.name<<"' sf2ReleaseTc="<<(c.hasRelease?c.releaseTc:-12000)
+                 <<" looped="<<c.looped<<" livePath tailMinus40Ms(0,64,127)="<<minus40[0]<<','<<minus40[1]<<','<<minus40[2]
+                 <<" tailMinus60Ms="<<minus60[0]<<','<<minus60[1]<<','<<minus60[2]<<" probeDiagnosis="<<diagnosis<<'\n';
+        if(pc<3) {
+            check(minus40[0]<minus40[1]&&minus40[1]<minus40[2],std::string("live tail grows 0<64<127 for ")+c.name);
+            check(diagnosis=="RELEASE_RESPONDS_AT_DECODER",std::string("probe agrees with live response for ")+c.name);
+        } else {
+            // Absent SF2 release: whatever BASSMIDI does, a preset-limitation verdict
+            // is only allowed when the live 0 -> 127 tail difference is inaudible.
+            const bool audible=minus40[2]-minus40[0]>=release_envelope::audibleSpanMs;
+            check(diagnosis=="RELEASE_RESPONDS_AT_DECODER"||diagnosis=="PRESET_LIMITATION_SF2_RELEASE_NEAR_INSTANT",
+                  "near-instant SF2 release has a definite diagnosis");
+            check(!(audible&&diagnosis!="RELEASE_RESPONDS_AT_DECODER"),"preset is never blamed while live release is audible");
+        }
+    }
+    // Isolation/note ownership: RIGHT1 key-up with RELEASE 0 must not end RIGHT2's held note,
+    // and RIGHT2's preset change must not alter RIGHT1's tail.
+    choose(0,0);choose(1,1);check(player.setKeyboardReleaseTime(0),"short release for isolation");
+    player.noteOn(1,60,100/127.f);render(player,24000);const double right2Alone=heldRms(render(player,4800));
+    player.noteOn(0,60,100/127.f);render(player,24000);player.noteOff(0,60);render(player,9600);
+    const double afterRight1Off=rms(render(player,4800));
+    std::cout<<"RELEASE_ISOLATION right2HeldRms="<<right2Alone<<" afterRight1OffRms="<<afterRight1Off<<'\n';
+    check(afterRight1Off>right2Alone*0.7,"RIGHT1 NOTE_OFF/RELEASE leaves RIGHT2's same-key held note sounding");
+    player.noteOff(1,60);render(player,96000);
+    check(player.setKeyboardReleaseTime(127),"long release for isolation");
+    player.noteOn(0,60,100/127.f);const double right1Held=heldRms(render(player,24000));player.noteOff(0,60);
+    const auto beforeChange=rms(render(player,4800));choose(1,2);const auto afterChange=rms(render(player,4800));
+    std::cout<<"RELEASE_ISOLATION right1Held="<<right1Held<<" right1TailBeforeRight2Change="<<beforeChange<<" after="<<afterChange<<'\n';
+    check(afterChange>beforeChange*0.7,"RIGHT2 voice change keeps RIGHT1's release tail");
 #endif
     std::cout<<"VOICE_RELEASE_NATIVE checks="<<checks<<" PASS PCM="
 #ifdef VOICE_RELEASE_REAL_BASS

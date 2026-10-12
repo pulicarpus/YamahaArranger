@@ -388,7 +388,11 @@ class MainViewModel @Inject constructor(
         // Serial/conflated delivery keeps the last knob value authoritative,
         // without blocking the UI on a concurrent large SF2 load.
         viewModelScope.launch(Dispatchers.Default) {
-            _releaseTime.collect { arrangerBrain.setKeyboardReleaseTime(it) }
+            _releaseTime.collect { value ->
+                arrangerBrain.setKeyboardReleaseTime(value)
+                // MIDI OUT only mirrors notes; without CC72 an external keyboard never hears RELEASE.
+                for (channel in 0..2) midiInputManager.sendReleaseTime(channel, value)
+            }
         }
         DebugLog.add("🎵 ViewModel init")
         DebugLog.add("📂 SF2 folder: /storage/emulated/0/YamahaArranger/SF2")
@@ -440,7 +444,11 @@ class MainViewModel @Inject constructor(
         }
     }
     fun refreshMidiConnection() { _midiStatus.value = "Connecting…"; connectFirstAvailableMidiDevice() }
-    fun toggleMidiOut() { val newVal = !_midiOutEnabled.value; _midiOutEnabled.value = newVal; midiInputManager.midiOutEnabled = newVal; DebugLog.add(if (newVal) "📤 MIDI OUT: ON" else "📤 MIDI OUT: OFF") }
+    fun toggleMidiOut() {
+        val newVal = !_midiOutEnabled.value; _midiOutEnabled.value = newVal; midiInputManager.midiOutEnabled = newVal
+        if (newVal) for (channel in 0..2) midiInputManager.sendReleaseTime(channel, _releaseTime.value)
+        DebugLog.add(if (newVal) "📤 MIDI OUT: ON" else "📤 MIDI OUT: OFF")
+    }
     override fun onCleared() { midiInputManager.close(); audioEngine.stop(); super.onCleared() }
 
     fun onKeyboardNoteOn(midiNote: Int, velocity: Float) = arrangerBrain.onKeyboardNoteOn(midiNote, velocity)
@@ -512,6 +520,8 @@ class MainViewModel @Inject constructor(
                     val msb = if (preset.bank >= 128) preset.bank / 128 else preset.bank
                     val lsb = if (preset.bank >= 128) preset.bank % 128 else 0
                     midiInputManager.sendProgramChange(layer, preset.program, msb, lsb)
+                    // A voice change may restore the external voice's own release.
+                    if (layer in 0..2) midiInputManager.sendReleaseTime(layer, _releaseTime.value)
                 }
             } else {
                 DebugLog.add("❌ VOICE selection unavailable/failed: ${preset.soundFontName} ${preset.bank}:${preset.program}")
@@ -686,6 +696,8 @@ class MainViewModel @Inject constructor(
                 val probe = audioEngine.diagnosticKeyboardRelease(part) { !arrangerBrain.state.value.isPlaying }
                 wav = probe.wav
                 probe.report.lineSequence().filter { it.isNotBlank() }.forEach(DebugLog::add)
+                DebugLog.add("RELEASE CONTEXT part=${part.label} knob=${_releaseTime.value} panelSustain=${_sustainEnabled.value} " +
+                    "midiOut=${_midiOutEnabled.value} externalAudioUsesCC72=${_midiOutEnabled.value}")
                 audioEngine.keyboardVoiceSnapshot().lineSequence().filter { it.isNotBlank() }.forEach(DebugLog::add)
             } catch (error: Exception) {
                 DebugLog.add("❌ RELEASE PCM failed: ${error.javaClass.simpleName}: ${error.message}")

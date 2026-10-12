@@ -1,13 +1,13 @@
 name: Voice & Release experimental APK
 on:
   push:
-    branches: [experiment/universal-sf2-release]
+    branches: [experiment/universal-sf2-release, claude/fitur-realis-audit-ocmbkl]
   workflow_dispatch: {}
 permissions:
   contents: read
 jobs:
   build:
-    if: github.ref == 'refs/heads/experiment/universal-sf2-release'
+    if: github.ref == 'refs/heads/experiment/universal-sf2-release' || github.ref == 'refs/heads/claude/fitur-realis-audit-ocmbkl'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
