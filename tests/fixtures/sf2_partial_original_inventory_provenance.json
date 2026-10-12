@@ -1,0 +1,12 @@
+{
+  "scope": "PARTIAL_ORIGINAL_EXPORTED_METADATA",
+  "source_artifact": "app/src/test/resources/drum_audit770_zone_rows.tsv",
+  "source_commit": "822cbda8f9b3b90aa7cf12b919e549767a3732f7",
+  "artifact_git_blob_sha1": "ee39b493c0b45dc0bda6c03608eac779ce9983b9",
+  "artifact_sha256": "209166ecc786c8eec91894e2d5479766878c2938efe3e07224091ad71ad380c9",
+  "observed_zone_rows": 8,
+  "observed_presets": 2,
+  "full_inventory": false,
+  "original_binaries_rehashed": false,
+  "classification": "UNKNOWN"
+}

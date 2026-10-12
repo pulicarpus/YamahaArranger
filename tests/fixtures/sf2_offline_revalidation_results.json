@@ -1,0 +1,238 @@
+{
+  "date_jakarta": "2026-10-12",
+  "parent_commit": "822cbda8f9b3b90aa7cf12b919e549767a3732f7",
+  "reference_commit": "c75122daf5d1077db55d50d1c261144fde59af4a",
+  "python": "3.12.14",
+  "compiler": "c++ (Debian 14.2.0-19) 14.2.0",
+  "production_tree_matches_checkpoint": true,
+  "baseline_golden_tests": {
+    "status": "PASS",
+    "tests": 12
+  },
+  "updated_golden_tests": {
+    "status": "PASS",
+    "tests": 18,
+    "scope": "synthetic regression plus partial original membership checks,not full inventory"
+  },
+  "partial_original_export_tests": {
+    "status": "PASS",
+    "tests": 2,
+    "zone_rows": 8,
+    "presets": 2,
+    "sources": 2,
+    "routing_certified": false
+  },
+  "checkpoint_host_tests": {
+    "status": "PASS",
+    "targets": 11,
+    "checks": 761,
+    "scope": "synthetic,mocked BASS"
+  },
+  "legacy_aggregate": {
+    "status": "FAIL",
+    "returncode": 1,
+    "native_targets_passed": 15,
+    "first_failure": "test_drum_shadow_guards.py: Unreviewed F12 file: StyleSequencer.kt"
+  },
+  "source_checks": [
+    {
+      "test": "test_drum_shadow_guards.py",
+      "returncode": 1,
+      "status": "FAIL",
+      "tail": [
+        "           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+        "AssertionError: Unreviewed F12 file: app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      ]
+    },
+    {
+      "test": "test_production_regression_bypass.py",
+      "returncode": 1,
+      "status": "FAIL",
+      "tail": [
+        "           ^^^^^^^^^^^^^^^^^",
+        "AssertionError: Protected #776 mismatch: app/src/main/java/com/yourapp/ui/ContentResolverProvider.kt"
+      ]
+    },
+    {
+      "test": "test_mix_percussion_boundaries.py",
+      "returncode": 1,
+      "status": "FAIL",
+      "tail": [
+        "           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+        "AssertionError: Unreviewed F12 file: app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      ]
+    },
+    {
+      "test": "test_role_pcm_guards.py",
+      "returncode": 1,
+      "status": "FAIL",
+      "tail": [
+        "           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+        "AssertionError: app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt"
+      ]
+    },
+    {
+      "test": "test_diagnostic788_guards.py",
+      "returncode": 1,
+      "status": "FAIL",
+      "tail": [
+        "           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+        "AssertionError: app/src/main/java/com/yourapp/ui/MainViewModel.kt"
+      ]
+    },
+    {
+      "test": "sff_dialect_source_guard.py",
+      "returncode": 0,
+      "status": "PASS",
+      "tail": [
+        "S2_SOURCE_IDENTITY PASS: six exact new hashes; checked metadata removal recovers every old byte"
+      ]
+    },
+    {
+      "test": "test_sff_dialect_source_guard.py",
+      "returncode": 0,
+      "status": "PASS",
+      "tail": [
+        "",
+        "OK"
+      ]
+    },
+    {
+      "test": "sff_casm_source_guard.py",
+      "returncode": 0,
+      "status": "PASS",
+      "tail": [
+        "S3_SOURCE_IDENTITY PASS: six exact physical hashes; every old S2 byte recovered"
+      ]
+    },
+    {
+      "test": "test_sff_casm_source_guard.py",
+      "returncode": 0,
+      "status": "PASS",
+      "tail": [
+        "",
+        "OK"
+      ]
+    },
+    {
+      "test": "test_sff_casm_native.py",
+      "returncode": 0,
+      "status": "PASS",
+      "tail": [
+        "S3_NATIVE_SELF_TEST PASS: Ctab-only/Bass-bit omission, Cntt before/after override, last-Cntt/cross-CSEG override provenance, unknown-tag encoding, absent source, load/failure isolation; UNKNOWN SMF only"
+      ]
+    },
+    {
+      "test": "test_generated_bass_sdk_guard.py",
+      "returncode": 5,
+      "status": "UNVERIFIED",
+      "tail": [
+        "",
+        "FAILED (errors=1)"
+      ],
+      "reason": "native SDK/vendor files absent in text snapshot; zero tests ran"
+    },
+    {
+      "test": "test_readiness_build_input.py",
+      "returncode": 5,
+      "status": "UNVERIFIED",
+      "tail": [
+        "",
+        "FAILED (errors=1)"
+      ],
+      "reason": "native SDK/vendor files absent in text snapshot; zero tests ran"
+    }
+  ],
+  "additional_checks": [
+    {
+      "test": "test_f04_source_guard.py",
+      "returncode": 1,
+      "status": "FAIL",
+      "last_lines": [
+        "",
+        "----------------------------------------------------------------------",
+        "Ran 5 tests in 0.005s",
+        "",
+        "FAILED (failures=1, errors=1)"
+      ],
+      "log": "test_f04_source_guard.py.log"
+    },
+    {
+      "test": "test_f12_timing.py",
+      "returncode": 1,
+      "status": "UNVERIFIED",
+      "last_lines": [
+        "         ^^^^^^^^^^^^^^^^^^^^",
+        "  File \"/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py\", line 1013, in open",
+        "    return io.open(self, mode, buffering, encoding, errors, newline)",
+        "           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+        "FileNotFoundError: [Errno 2] No such file or directory: '/workspace/work/sf2-audit/reference/.github/workflows/inspect-sf2.yml'"
+      ],
+      "log": "test_f12_timing.py.log"
+    },
+    {
+      "test": "test_sff_root_selection.py",
+      "returncode": 5,
+      "status": "UNVERIFIED",
+      "last_lines": [
+        "",
+        "----------------------------------------------------------------------",
+        "Ran 0 tests in 0.001s",
+        "",
+        "FAILED (errors=1)"
+      ],
+      "log": "test_sff_root_selection.py.log"
+    },
+    {
+      "test": "test_f03_ownership.py",
+      "returncode": 1,
+      "status": "UNVERIFIED",
+      "last_lines": [
+        "",
+        "----------------------------------------------------------------------",
+        "Ran 7 tests in 0.002s",
+        "",
+        "FAILED (errors=7)"
+      ],
+      "log": "test_f03_ownership.py.log"
+    },
+    {
+      "test": "test_f03_prototype.py",
+      "returncode": 1,
+      "status": "UNVERIFIED",
+      "last_lines": [
+        "         ^^^^^^^^^^^^^^^^^^^^",
+        "  File \"/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py\", line 1013, in open",
+        "    return io.open(self, mode, buffering, encoding, errors, newline)",
+        "           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+        "FileNotFoundError: [Errno 2] No such file or directory: '/workspace/work/sf2-audit/reference/.github/workflows/build-colombo.yml'"
+      ],
+      "log": "test_f03_prototype.py.log"
+    },
+    {
+      "test": "test_sff1_harness.py",
+      "returncode": 1,
+      "status": "UNVERIFIED",
+      "reason": "3/7 cases pass,4 errors due missing SFF resources; overall not PASS",
+      "last_lines": [
+        "",
+        "----------------------------------------------------------------------",
+        "Ran 7 tests in 0.003s",
+        "",
+        "FAILED (errors=4)"
+      ]
+    }
+  ],
+  "complete_original_inventory": {
+    "status": "UNVERIFIED",
+    "presets_expected_from_prior_gate": 1148,
+    "conflict_groups_expected_from_prior_gate": 158,
+    "original_presets_observed_in_partial_export": 2,
+    "binary_rehash": false
+  },
+  "golden_runtime_rows": 0,
+  "go_for_capture_preparation": true,
+  "master_export": "NO-GO",
+  "log_sha256": "33e78bb23c684658ecc0e7ffcf241caa8e378ca121e416e7d6e67e0806250c72",
+  "synthetic_decision_trace_sha256": "5af6722db60e85f46f202f3527c57f5c5075cde027a6f8833fc98f1ffa4babff"
+}

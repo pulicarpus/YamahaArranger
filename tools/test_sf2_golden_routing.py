@@ -75,7 +75,7 @@ class GoldenRoutingTests(unittest.TestCase):
         self.assertTrue(routing.compare([self.a], [self.b], self.m))
 
     def test_unknown_gain_and_missing_capture_cannot_pass(self):
-        meta=dict(schema_version=1,mode="four_original",reference_commit="c75122daf5d1077db55d50d1c261144fde59af4a",
+        meta=dict(evidence_scope="SYNTHETIC",schema_version=1,mode="four_original",reference_commit="c75122daf5d1077db55d50d1c261144fde59af4a",
                   android_build_identity="synthetic",bassmidi_build_identity="synthetic",raw_trace_sha256="f"*64,source_sha256=HASHES)
         routing.validate_evidence([self.a],meta,"four_original")
         for field in ("volume_trim_db","source_file_sha256","native_bank","decision_trace"):
@@ -107,7 +107,7 @@ class GoldenRoutingTests(unittest.TestCase):
             def write_csv(path,r):
                 with path.open("w",newline="") as f:
                     w=csv.DictWriter(f,routing.FIELDS);w.writeheader();w.writerow(r)
-            meta=dict(schema_version=1,mode="four_original",reference_commit="c75122daf5d1077db55d50d1c261144fde59af4a",
+            meta=dict(evidence_scope="SYNTHETIC",schema_version=1,mode="four_original",reference_commit="c75122daf5d1077db55d50d1c261144fde59af4a",
                       android_build_identity="synthetic",bassmidi_build_identity="synthetic",raw_trace_sha256="f"*64,source_sha256=HASHES)
             ma.write_text(json.dumps(meta));mb.write_text(json.dumps(dict(meta,mode="experimental_master")))
             m.write_text(json.dumps(self.m));write_csv(a,self.a);write_csv(b,self.b)
@@ -115,10 +115,88 @@ class GoldenRoutingTests(unittest.TestCase):
             result=subprocess.run(cmd,capture_output=True,text=True)
             self.assertEqual(result.returncode,0,result.stdout)
             self.assertFalse(json.loads(result.stdout)["master_export_go"])
+            self.assertEqual(json.loads(result.stdout)["evidence_scope"],"SYNTHETIC")
             write_csv(b,dict(self.b,fallback_reason="exact_kit"))
             self.assertEqual(subprocess.run(cmd,capture_output=True).returncode,1)
             write_csv(b,dict(self.b,volume_trim_db="UNKNOWN"))
             self.assertEqual(subprocess.run(cmd,capture_output=True).returncode,2)
+
+    def test_original_scope_rejects_synthetic_source_hashes(self):
+        meta=dict(evidence_scope="ORIGINAL",schema_version=1,mode="four_original",reference_commit="c75122daf5d1077db55d50d1c261144fde59af4a",
+                  android_build_identity="synthetic",bassmidi_build_identity="synthetic",raw_trace_sha256="f"*64,source_sha256=HASHES)
+        with self.assertRaisesRegex(ValueError,"verified original hashes"):
+            routing.validate_evidence([self.a],meta,"four_original")
+
+    def test_missing_inventory_explicitly_unverified(self):
+        report=routing.inspect_inventory()
+        self.assertEqual(report["status"],"UNVERIFIED")
+        self.assertEqual(report["rows_observed"],0)
+        self.assertFalse(report["conflicts_complete"])
+
+    def test_full_original_scope_cannot_pass_without_inventory(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp=Path(tmp)
+            r=dict(self.a,source_file_sha256=routing.SOURCES["ColomboGMGS2_BM.sf2"][0],source_program_0based="2")
+            master=dict(r,native_bank="4",native_program="12")
+            for name,row in (("a.csv",r),("b.csv",master)):
+                with (tmp/name).open("w",newline="") as f:
+                    w=csv.DictWriter(f,routing.FIELDS);w.writeheader();w.writerow(row)
+            m=[dict(self.m[0],source_sha256=r["source_file_sha256"],original_program=2)]
+            (tmp/"m.json").write_text(json.dumps(m))
+            meta=dict(evidence_scope="ORIGINAL",schema_version=1,mode="four_original",reference_commit="c75122daf5d1077db55d50d1c261144fde59af4a",
+                      android_build_identity="test_only",bassmidi_build_identity="test_only",raw_trace_sha256="f"*64,source_sha256=[v[0] for v in routing.SOURCES.values()])
+            for name,mode in (("ma.json","four_original"),("mb.json","experimental_master")):
+                (tmp/name).write_text(json.dumps(dict(meta,mode=mode)))
+            command=["python3",str(ROOT/"tools/sf2_golden_routing.py"),"compare"]+[str(tmp/n) for n in ("a.csv","b.csv","m.json","ma.json","mb.json")]
+            result=subprocess.run(command,capture_output=True,text=True)
+            self.assertEqual(result.returncode,2)
+            self.assertIn("full original inventory required",result.stdout)
+            command += ["--inventory",str(ROOT/"tests/fixtures/sf2_partial_original_inventory.csv")]
+            result=subprocess.run(command,capture_output=True,text=True)
+            self.assertEqual(result.returncode,2)
+            self.assertIn("full original inventory required",result.stdout)
+
+    def test_synthetic_inventory_all_observed_conflicts(self):
+        cases=json.loads((ROOT/"tests/fixtures/sf2_golden_policy_cases.json").read_text())
+        import hashlib
+        rows=[dict(zip(routing.INVENTORY_FIELDS,[c[1],hashlib.sha256(c[1].encode()).hexdigest(),c[2],c[3],c[4]])) for c in cases["candidates"]]
+        with tempfile.TemporaryDirectory() as tmp:
+            p=Path(tmp)/"inventory.csv"
+            def write(data):
+                with p.open("w",newline="") as f:
+                    w=csv.DictWriter(f,routing.INVENTORY_FIELDS);w.writeheader();w.writerows(data)
+            write(rows)
+            report=routing.inspect_inventory(p,"SYNTHETIC")
+            self.assertEqual(report["rows_observed"],9)
+            self.assertEqual(report["unique_raw_addresses"],8)
+            self.assertEqual(report["cross_source_conflict_groups"],1)
+            self.assertFalse(report["conflicts_complete"])
+            self.assertEqual(report["conflicts"][0]["resolver_decision"],"UNVERIFIED_NEEDS_REQUEST_CONTEXT")
+            with self.assertRaisesRegex(ValueError,"source filename/hash"):routing.inspect_inventory(p,"ORIGINAL")
+            write(rows+[rows[0]])
+            with self.assertRaisesRegex(ValueError,"duplicate"):routing.inspect_inventory(p,"SYNTHETIC")
+            write([dict(rows[0],original_program=128)])
+            with self.assertRaisesRegex(ValueError,"invalid original bank/program"):routing.inspect_inventory(p,"SYNTHETIC")
+
+    def test_original_partial_inventory_not_full_pass(self):
+        path=ROOT/"tests/fixtures/sf2_partial_original_inventory.csv"
+        report=routing.inspect_inventory(path,"ORIGINAL")
+        self.assertEqual(report["status"],"UNVERIFIED")
+        self.assertEqual(report["rows_observed"],2)
+        self.assertEqual(len(report["counts_by_source"]),2)
+        self.assertFalse(report["full_original_inventory_validated"])
+        self.assertEqual(report["review_banks_126_127_128"],{"126":1,"127":0,"128":1})
+        melody=routing.SOURCES["MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2"][0]
+        self.assertEqual(report["normalization_projection"][melody][0]["native_virtual_bank"],"UNKNOWN")
+
+    def test_capture_preset_and_donor_must_exist_in_inventory(self):
+        path=ROOT/"tests/fixtures/sf2_partial_original_inventory.csv"
+        a=dict(self.a,source_file_sha256=routing.SOURCES["ColomboGMGS2_BM.sf2"][0],source_program_0based="2")
+        routing.validate_inventory_membership([a],path)
+        with self.assertRaisesRegex(ValueError,"preset absent"):
+            routing.validate_inventory_membership([dict(a,source_program_0based="73")],path)
+        with self.assertRaisesRegex(ValueError,"donor absent"):
+            routing.validate_inventory_membership([dict(a,donor_source_sha256=a["source_file_sha256"],donor_bank="128",donor_program="73")],path)
 
     def test_exact_checkpoint_policy_replay(self):
         cases=json.loads((ROOT/"tests/fixtures/sf2_golden_policy_cases.json").read_text())

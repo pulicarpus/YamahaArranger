@@ -13,5 +13,7 @@
     "de5b1404630840a2a897e77c6083e2231c5d1523e6571a8afd972a4f684d36ce"
   ],
   "raw_trace_path": "UNKNOWN",
-  "master_file_sha256": "UNKNOWN"
+  "master_file_sha256": "UNKNOWN",
+  "evidence_scope": "ORIGINAL",
+  "full_original_inventory_path": "UNKNOWN"
 }

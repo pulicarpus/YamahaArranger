@@ -1,0 +1,87 @@
+fixture_id	candidate	source	sf2	bank	pc	family	accepted	score	selected	reason	decoded_name
+piano_collision	0	0	MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2	0	0	PIANO	1	109065	1	same_family;yamaha_exact;semantic_exact;same_pc_support_only;yamaha_source	Grand Piano
+piano_collision	1	0	MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2	8	1	GUITAR	0	-1	0	wrong_family	Grand Piano
+piano_collision	2	1	ColomboGMGS2_BM.sf2	0	0	PIANO	1	9040	0	same_family;semantic_exact;same_pc_support_only	Grand Piano
+piano_collision	3	1	ColomboGMGS2_BM.sf2	0	25	GUITAR	0	-1	0	wrong_family	Grand Piano
+piano_collision	4	2	yamaha tyros 4_just_t4_fixed.sf2	0	49	STRINGS	0	-1	0	wrong_family	Grand Piano
+piano_collision	5	2	yamaha tyros 4_just_t4_fixed.sf2	126	1	PERCUSSION	0	-1	0	wrong_role	Grand Piano
+piano_collision	6	2	yamaha tyros 4_just_t4_fixed.sf2	127	0	PERCUSSION	0	-1	0	wrong_role	Grand Piano
+piano_collision	7	2	yamaha tyros 4_just_t4_fixed.sf2	128	0	PERCUSSION	0	-1	0	wrong_role	Grand Piano
+piano_collision	8	1	ColomboGMGS2_BM.sf2	104	1	PIANO	1	2200	0	same_family;semantic_partial	Grand Piano
+lsb_variation	0	0	MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2	0	0	PIANO	0	-1	0	wrong_family	Steel Guitar
+lsb_variation	1	0	MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2	8	1	GUITAR	1	99765	1	same_family;yamaha_msb;semantic_exact;acoustic_variation;same_pc_support_only;yamaha_source	Steel Guitar
+lsb_variation	2	1	ColomboGMGS2_BM.sf2	0	0	PIANO	0	-1	0	wrong_family	Steel Guitar
+lsb_variation	3	1	ColomboGMGS2_BM.sf2	0	25	GUITAR	1	9700	0	same_family;semantic_exact;acoustic_variation	Steel Guitar
+lsb_variation	4	2	yamaha tyros 4_just_t4_fixed.sf2	0	49	STRINGS	0	-1	0	wrong_family	Steel Guitar
+lsb_variation	5	2	yamaha tyros 4_just_t4_fixed.sf2	126	1	PERCUSSION	0	-1	0	wrong_role	Steel Guitar
+lsb_variation	6	2	yamaha tyros 4_just_t4_fixed.sf2	127	0	PERCUSSION	0	-1	0	wrong_role	Steel Guitar
+lsb_variation	7	2	yamaha tyros 4_just_t4_fixed.sf2	128	0	PERCUSSION	0	-1	0	wrong_role	Steel Guitar
+lsb_variation	8	1	ColomboGMGS2_BM.sf2	104	1	PIANO	0	-1	0	wrong_family	Steel Guitar
+name_decode	0	0	MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2	0	0	PIANO	0	-1	0	wrong_family	Steel Guitar
+name_decode	1	0	MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2	8	1	GUITAR	1	99765	1	same_family;yamaha_msb;semantic_exact;acoustic_variation;same_pc_support_only;yamaha_source	Steel Guitar
+name_decode	2	1	ColomboGMGS2_BM.sf2	0	0	PIANO	0	-1	0	wrong_family	Steel Guitar
+name_decode	3	1	ColomboGMGS2_BM.sf2	0	25	GUITAR	1	9700	0	same_family;semantic_exact;acoustic_variation	Steel Guitar
+name_decode	4	2	yamaha tyros 4_just_t4_fixed.sf2	0	49	STRINGS	0	-1	0	wrong_family	Steel Guitar
+name_decode	5	2	yamaha tyros 4_just_t4_fixed.sf2	126	1	PERCUSSION	0	-1	0	wrong_role	Steel Guitar
+name_decode	6	2	yamaha tyros 4_just_t4_fixed.sf2	127	0	PERCUSSION	0	-1	0	wrong_role	Steel Guitar
+name_decode	7	2	yamaha tyros 4_just_t4_fixed.sf2	128	0	PERCUSSION	0	-1	0	wrong_role	Steel Guitar
+name_decode	8	1	ColomboGMGS2_BM.sf2	104	1	PIANO	0	-1	0	wrong_family	Steel Guitar
+msb104_numeric_not_identity	0	0	MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2	0	0	PIANO	0	-1	0	wrong_family	Steel Guitar
+msb104_numeric_not_identity	1	0	MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2	8	1	GUITAR	1	9765	1	same_family;semantic_exact;acoustic_variation;same_pc_support_only;yamaha_source	Steel Guitar
+msb104_numeric_not_identity	2	1	ColomboGMGS2_BM.sf2	0	0	PIANO	0	-1	0	wrong_family	Steel Guitar
+msb104_numeric_not_identity	3	1	ColomboGMGS2_BM.sf2	0	25	GUITAR	1	9700	0	same_family;semantic_exact;acoustic_variation	Steel Guitar
+msb104_numeric_not_identity	4	2	yamaha tyros 4_just_t4_fixed.sf2	0	49	STRINGS	0	-1	0	wrong_family	Steel Guitar
+msb104_numeric_not_identity	5	2	yamaha tyros 4_just_t4_fixed.sf2	126	1	PERCUSSION	0	-1	0	wrong_role	Steel Guitar
+msb104_numeric_not_identity	6	2	yamaha tyros 4_just_t4_fixed.sf2	127	0	PERCUSSION	0	-1	0	wrong_role	Steel Guitar
+msb104_numeric_not_identity	7	2	yamaha tyros 4_just_t4_fixed.sf2	128	0	PERCUSSION	0	-1	0	wrong_role	Steel Guitar
+msb104_numeric_not_identity	8	1	ColomboGMGS2_BM.sf2	104	1	PIANO	0	-1	0	wrong_family	Steel Guitar
+msb104_unknown	0	0	MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2	0	0	PIANO	0	-1	0	unknown_request_family	
+msb104_unknown	1	0	MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2	8	1	GUITAR	0	-1	0	unknown_request_family	
+msb104_unknown	2	1	ColomboGMGS2_BM.sf2	0	0	PIANO	0	-1	0	unknown_request_family	
+msb104_unknown	3	1	ColomboGMGS2_BM.sf2	0	25	GUITAR	0	-1	0	unknown_request_family	
+msb104_unknown	4	2	yamaha tyros 4_just_t4_fixed.sf2	0	49	STRINGS	0	-1	0	unknown_request_family	
+msb104_unknown	5	2	yamaha tyros 4_just_t4_fixed.sf2	126	1	PERCUSSION	0	-1	0	wrong_role	
+msb104_unknown	6	2	yamaha tyros 4_just_t4_fixed.sf2	127	0	PERCUSSION	0	-1	0	wrong_role	
+msb104_unknown	7	2	yamaha tyros 4_just_t4_fixed.sf2	128	0	PERCUSSION	0	-1	0	wrong_role	
+msb104_unknown	8	1	ColomboGMGS2_BM.sf2	104	1	PIANO	0	-1	0	unknown_request_family	
+msb104_unknown	NONE	UNKNOWN	UNKNOWN	UNKNOWN	UNKNOWN	UNKNOWN	0	-1	0	no_compatible_candidate	
+original126_percussion_reject	0	0	MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2	0	0	PIANO	0	-1	0	wrong_family	Drum Kit
+original126_percussion_reject	1	0	MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2	8	1	GUITAR	0	-1	0	wrong_family	Drum Kit
+original126_percussion_reject	2	1	ColomboGMGS2_BM.sf2	0	0	PIANO	0	-1	0	wrong_family	Drum Kit
+original126_percussion_reject	3	1	ColomboGMGS2_BM.sf2	0	25	GUITAR	0	-1	0	wrong_family	Drum Kit
+original126_percussion_reject	4	2	yamaha tyros 4_just_t4_fixed.sf2	0	49	STRINGS	0	-1	0	wrong_family	Drum Kit
+original126_percussion_reject	5	2	yamaha tyros 4_just_t4_fixed.sf2	126	1	PERCUSSION	0	-1	0	wrong_role	Drum Kit
+original126_percussion_reject	6	2	yamaha tyros 4_just_t4_fixed.sf2	127	0	PERCUSSION	0	-1	0	wrong_role	Drum Kit
+original126_percussion_reject	7	2	yamaha tyros 4_just_t4_fixed.sf2	128	0	PERCUSSION	0	-1	0	wrong_role	Drum Kit
+original126_percussion_reject	8	1	ColomboGMGS2_BM.sf2	104	1	PIANO	0	-1	0	wrong_family	Drum Kit
+original126_percussion_reject	NONE	UNKNOWN	UNKNOWN	UNKNOWN	UNKNOWN	PERCUSSION	0	-1	0	no_compatible_candidate	Drum Kit
+request_msb126_reject	0	0	MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2	0	0	PIANO	0	-1	0	wrong_role	Grand Piano
+request_msb126_reject	1	0	MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2	8	1	GUITAR	0	-1	0	wrong_role	Grand Piano
+request_msb126_reject	2	1	ColomboGMGS2_BM.sf2	0	0	PIANO	0	-1	0	wrong_role	Grand Piano
+request_msb126_reject	3	1	ColomboGMGS2_BM.sf2	0	25	GUITAR	0	-1	0	wrong_role	Grand Piano
+request_msb126_reject	4	2	yamaha tyros 4_just_t4_fixed.sf2	0	49	STRINGS	0	-1	0	wrong_role	Grand Piano
+request_msb126_reject	5	2	yamaha tyros 4_just_t4_fixed.sf2	126	1	PERCUSSION	0	-1	0	wrong_role	Grand Piano
+request_msb126_reject	6	2	yamaha tyros 4_just_t4_fixed.sf2	127	0	PERCUSSION	0	-1	0	wrong_role	Grand Piano
+request_msb126_reject	7	2	yamaha tyros 4_just_t4_fixed.sf2	128	0	PERCUSSION	0	-1	0	wrong_role	Grand Piano
+request_msb126_reject	8	1	ColomboGMGS2_BM.sf2	104	1	PIANO	0	-1	0	wrong_role	Grand Piano
+request_msb126_reject	NONE	UNKNOWN	UNKNOWN	UNKNOWN	UNKNOWN	PIANO	0	-1	0	no_compatible_candidate	Grand Piano
+request_msb127_reject	0	0	MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2	0	0	PIANO	0	-1	0	wrong_role	Grand Piano
+request_msb127_reject	1	0	MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2	8	1	GUITAR	0	-1	0	wrong_role	Grand Piano
+request_msb127_reject	2	1	ColomboGMGS2_BM.sf2	0	0	PIANO	0	-1	0	wrong_role	Grand Piano
+request_msb127_reject	3	1	ColomboGMGS2_BM.sf2	0	25	GUITAR	0	-1	0	wrong_role	Grand Piano
+request_msb127_reject	4	2	yamaha tyros 4_just_t4_fixed.sf2	0	49	STRINGS	0	-1	0	wrong_role	Grand Piano
+request_msb127_reject	5	2	yamaha tyros 4_just_t4_fixed.sf2	126	1	PERCUSSION	0	-1	0	wrong_role	Grand Piano
+request_msb127_reject	6	2	yamaha tyros 4_just_t4_fixed.sf2	127	0	PERCUSSION	0	-1	0	wrong_role	Grand Piano
+request_msb127_reject	7	2	yamaha tyros 4_just_t4_fixed.sf2	128	0	PERCUSSION	0	-1	0	wrong_role	Grand Piano
+request_msb127_reject	8	1	ColomboGMGS2_BM.sf2	104	1	PIANO	0	-1	0	wrong_role	Grand Piano
+request_msb127_reject	NONE	UNKNOWN	UNKNOWN	UNKNOWN	UNKNOWN	PIANO	0	-1	0	no_compatible_candidate	Grand Piano
+pad_no_wrong_family_fallback	0	0	MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2	0	0	PIANO	0	-1	0	wrong_family	Warm Pad
+pad_no_wrong_family_fallback	1	0	MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2	8	1	GUITAR	0	-1	0	wrong_family	Warm Pad
+pad_no_wrong_family_fallback	2	1	ColomboGMGS2_BM.sf2	0	0	PIANO	0	-1	0	wrong_family	Warm Pad
+pad_no_wrong_family_fallback	3	1	ColomboGMGS2_BM.sf2	0	25	GUITAR	0	-1	0	wrong_family	Warm Pad
+pad_no_wrong_family_fallback	4	2	yamaha tyros 4_just_t4_fixed.sf2	0	49	STRINGS	0	-1	0	wrong_family	Warm Pad
+pad_no_wrong_family_fallback	5	2	yamaha tyros 4_just_t4_fixed.sf2	126	1	PERCUSSION	0	-1	0	wrong_role	Warm Pad
+pad_no_wrong_family_fallback	6	2	yamaha tyros 4_just_t4_fixed.sf2	127	0	PERCUSSION	0	-1	0	wrong_role	Warm Pad
+pad_no_wrong_family_fallback	7	2	yamaha tyros 4_just_t4_fixed.sf2	128	0	PERCUSSION	0	-1	0	wrong_role	Warm Pad
+pad_no_wrong_family_fallback	8	1	ColomboGMGS2_BM.sf2	104	1	PIANO	0	-1	0	wrong_family	Warm Pad
+pad_no_wrong_family_fallback	NONE	UNKNOWN	UNKNOWN	UNKNOWN	UNKNOWN	PAD	0	-1	0	no_compatible_candidate	Warm Pad

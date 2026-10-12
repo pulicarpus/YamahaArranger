@@ -1,0 +1,1 @@
+{"conflicts": [], "conflicts_complete": false, "evidence_scope": "ORIGINAL", "expected_rows_from_prior_gate": 1148, "master_export_go": false, "reason": "original inventory not supplied", "required_columns": ["source_filename", "source_sha256", "original_bank", "original_program", "original_name"], "rows_observed": 0, "status": "UNVERIFIED"}

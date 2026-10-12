@@ -10,12 +10,96 @@ import csv
 import io
 import json
 import math
+from collections import Counter, defaultdict
 from pathlib import Path
 
 UNKNOWN = {"", "UNKNOWN", "UNVERIFIED"}
 FIELDS = "fixture_id,style_sha256,section,beat_tick,chord,acmp_enabled,destination_part,midi_channel_1based,request_msb,request_lsb,request_pc_0based,source_file_sha256,source_bank,source_program_0based,native_handle_id,native_bank,native_program,fallback_reason,semantic_family,drum_key,velocity,donor_source_sha256,donor_bank,donor_program,donor_key,volume_trim_db,decision_trace,pcm_reference_sha256,status".split(",")
 CONTEXT = FIELDS[:11] + ["drum_key", "velocity"]
 SEMANTICS = ["source_file_sha256", "source_bank", "source_program_0based", "fallback_reason", "semantic_family", "donor_source_sha256", "donor_bank", "donor_program", "donor_key", "volume_trim_db"]
+SOURCES = {
+    "ColomboGMGS2_BM.sf2": ("9e4686e4aa7173ffd1baf7ec6f80fcb3fe90880e824cf8c4e1defb5d153d47eb", 892),
+    "DRUMKIT YAMAHA PSR-SX700 & SX900 PRIME.sf2": ("a72158c09677c585eec348762a33da49509bf338c5b36d0e787af58cca0b9f8a", 21),
+    "MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2": ("e8c7356159c200d945f13e113595ff06e7955779b0e9361709d9c7cdba164a82", 93),
+    "yamaha tyros 4_just_t4_fixed.sf2": ("de5b1404630840a2a897e77c6083e2231c5d1523e6571a8afd972a4f684d36ce", 142),
+}
+INVENTORY_FIELDS = ["source_filename", "source_sha256", "original_bank", "original_program", "original_name"]
+
+def inspect_inventory(path=None, scope="ORIGINAL"):
+    """Inspect supplied rows only; declared hashes do not rehash source binaries."""
+    if path is None:
+        return {"status": "UNVERIFIED", "evidence_scope": "ORIGINAL", "rows_observed": 0,
+                "reason": "original inventory not supplied", "required_columns": INVENTORY_FIELDS,
+                "expected_rows_from_prior_gate": 1148, "conflicts": [], "conflicts_complete": False,
+                "master_export_go": False}
+    if scope not in ("ORIGINAL", "SYNTHETIC"):
+        raise ValueError("invalid inventory scope")
+    with Path(path).open(newline="", encoding="utf-8-sig") as f:
+        reader = csv.DictReader(f)
+        if not reader.fieldnames or not set(INVENTORY_FIELDS) <= set(reader.fieldnames):
+            raise ValueError("inventory columns required: " + ",".join(INVENTORY_FIELDS))
+        rows = list(reader)
+    if not rows:
+        raise ValueError("empty inventory")
+    seen, addresses, counts, banks = set(), defaultdict(list), Counter(), defaultdict(set)
+    for row in rows:
+        if None in row or any(row.get(k) in UNKNOWN or row.get(k) is None for k in INVENTORY_FIELDS):
+            raise ValueError("malformed/unknown inventory field")
+        filename, sha = row["source_filename"], row["source_sha256"]
+        if not digest(sha):
+            raise ValueError("invalid inventory source hash")
+        if scope == "ORIGINAL" and (filename not in SOURCES or sha != SOURCES[filename][0]):
+            raise ValueError("source filename/hash does not match verified source gate")
+        bank, pc = int(row["original_bank"]), int(row["original_program"])
+        if not 0 <= bank <= 65535 or not 0 <= pc <= 127:
+            raise ValueError("invalid original bank/program")
+        identity = (sha, bank, pc)
+        if identity in seen:
+            raise ValueError("duplicate original source bank/program provenance")
+        seen.add(identity); counts[filename] += 1; banks[sha].add(bank)
+        addresses[(bank, pc)].append({"source_filename": filename, "source_sha256": sha,
+                                     "original_bank": bank, "original_program": pc,
+                                     "original_name": row["original_name"]})
+    conflicts = []
+    if scope == "ORIGINAL" and any(n > SOURCES[name][1] for name, n in counts.items()):
+        raise ValueError("source preset count exceeds verified source gate")
+    for (bank, pc), members in sorted(addresses.items()):
+        if len({r["source_sha256"] for r in members}) > 1:
+            conflicts.append({"bank": bank, "program_0based": pc,
+                              "members": sorted(members, key=lambda r: (r["source_filename"], r["source_sha256"])),
+                              "resolver_decision": "UNVERIFIED_NEEDS_REQUEST_CONTEXT"})
+    complete = scope == "ORIGINAL" and dict(counts) == {k:v[1] for k,v in SOURCES.items()}
+    normalized = {}
+    for sha, original in sorted(banks.items()):
+        melodic = sorted(original - {127, 128})
+        if len(melodic) > 127:
+            raise ValueError("source exceeds checkpoint normalizer bank capacity")
+        normalized[sha] = [{"original_bank": b, "native_virtual_bank": i if complete or scope == "SYNTHETIC" else "UNKNOWN",
+                            "observed_subset_virtual_bank": i,
+                            "generic_destination_msb": b // 128 if b >= 128 else b,
+                            "generic_destination_lsb": b % 128 if b >= 128 else 0}
+                           for i, b in enumerate(melodic)]
+    if complete and (len(addresses) != 911 or len(conflicts) != 158 or len(rows)-len(addresses) != 237):
+        raise ValueError("full inventory collision totals differ from prior gate")
+    return {"status": "PASS" if complete or scope == "SYNTHETIC" else "UNVERIFIED",
+            "evidence_scope": scope, "rows_observed": len(rows), "counts_by_source": dict(sorted(counts.items())),
+            "unique_raw_addresses": len(addresses), "cross_source_conflict_groups": len(conflicts),
+            "extra_colliding_entries": len(rows)-len(addresses), "conflicts": conflicts,
+            "conflicts_complete": complete, "full_original_inventory_validated": complete,
+            "normalization_projection": normalized,
+            "normalization_projection_scope": "FULL_ORIGINAL_BANK_SET" if complete else "OBSERVED_SUBSET_ONLY_NOT_RUNTIME",
+            "review_banks_126_127_128": {str(b):sum(len(v) for (bank, _),v in addresses.items() if bank == b) for b in (126,127,128)},
+            "source_binaries_rehashed": False, "routing_certified": False, "master_export_go": False}
+
+def validate_inventory_membership(rows, path):
+    with Path(path).open(newline="", encoding="utf-8-sig") as f:
+        identities = {(r["source_sha256"], str(int(r["original_bank"])), str(int(r["original_program"]))) for r in csv.DictReader(f)}
+    for r in rows:
+        for prefix, columns in (("preset", ("source_file_sha256", "source_bank", "source_program_0based")),
+                                ("donor", ("donor_source_sha256", "donor_bank", "donor_program"))):
+            if prefix == "donor" and r[columns[0]] == "NONE": continue
+            if tuple(r[k] for k in columns) not in identities:
+                raise ValueError("capture " + prefix + " absent from original inventory")
 
 def digest(value):
     return len(value) == 64 and all(c in "0123456789abcdef" for c in value)
@@ -51,6 +135,9 @@ def canonical(rows):
     return out.getvalue()
 
 def validate_evidence(rows, metadata, mode):
+    scope = metadata.get("evidence_scope")
+    if scope not in ("SYNTHETIC", "ORIGINAL"):
+        raise ValueError("explicit evidence_scope ORIGINAL or SYNTHETIC required")
     if metadata.get("schema_version") != 1 or metadata.get("mode") != mode:
         raise ValueError("missing schema version/mode")
     if metadata.get("reference_commit") != "c75122daf5d1077db55d50d1c261144fde59af4a":
@@ -63,6 +150,8 @@ def validate_evidence(rows, metadata, mode):
     hashes = metadata.get("source_sha256", [])
     if len(set(hashes)) != 4 or not all(digest(x) for x in hashes):
         raise ValueError("four source hashes required")
+    if scope == "ORIGINAL" and set(hashes) != {v[0] for v in SOURCES.values()}:
+        raise ValueError("capture sources do not match four verified original hashes")
     for r in rows:
         if r["status"] != "VERIFIED":
             raise ValueError("row not runtime verified: " + r["fixture_id"])
@@ -134,19 +223,38 @@ def main():
     comp = subs.add_parser("compare")
     for name in ("reference", "master", "manifest", "reference_metadata", "master_metadata"):
         comp.add_argument(name)
+    comp.add_argument("--inventory", help="required full original inventory for ORIGINAL scope")
+    inv = subs.add_parser("inventory")
+    inv.add_argument("csv", nargs="?")
+    inv.add_argument("--scope", choices=("ORIGINAL", "SYNTHETIC"), default="ORIGINAL")
     args = parser.parse_args()
     try:
+        if args.command == "inventory":
+            report = inspect_inventory(args.csv, args.scope)
+            print(json.dumps(report, sort_keys=True))
+            return 0 if report["status"] == "PASS" else 2
         if args.command == "canonicalize":
             print(canonical(read_csv(args.capture)), end="")
             return 0
         a, b = read_csv(args.reference), read_csv(args.master)
-        validate_evidence(a, json.loads(Path(args.reference_metadata).read_text()), "four_original")
-        validate_evidence(b, json.loads(Path(args.master_metadata).read_text()), "experimental_master")
+        reference_meta = json.loads(Path(args.reference_metadata).read_text())
+        master_meta = json.loads(Path(args.master_metadata).read_text())
+        validate_evidence(a, reference_meta, "four_original")
+        validate_evidence(b, master_meta, "experimental_master")
+        scope = reference_meta["evidence_scope"]
+        if master_meta["evidence_scope"] != scope or set(reference_meta["source_sha256"]) != set(master_meta["source_sha256"]):
+            raise ValueError("capture evidence scope/source sets differ")
+        if scope == "ORIGINAL":
+            report = inspect_inventory(args.inventory)
+            if not report.get("full_original_inventory_validated"):
+                raise ValueError("full original inventory required for ORIGINAL comparison")
+            validate_inventory_membership(a, args.inventory)
+            validate_inventory_membership(b, args.inventory)
         differences = compare(a, b, json.loads(Path(args.manifest).read_text()))
-        print(json.dumps({"routing": "MISMATCH" if differences else "EQUIVALENT", "differences": differences, "pcm": "UNVERIFIED", "master_export_go": False}, sort_keys=True))
+        print(json.dumps({"routing": "MISMATCH" if differences else "EQUIVALENT", "evidence_scope": scope, "differences": differences, "pcm": "UNVERIFIED", "master_export_go": False}, sort_keys=True))
         return int(bool(differences))
-    except (ValueError, KeyError, OSError) as e:
-        print(json.dumps({"routing": "UNVERIFIED", "error": str(e), "master_export_go": False}, sort_keys=True))
+    except (ValueError, KeyError, OSError, TypeError) as e:
+        print(json.dumps({"routing": "UNVERIFIED", "status": "FAIL" if args.command == "inventory" else "UNVERIFIED", "error": str(e), "master_export_go": False}, sort_keys=True))
         return 2
 
 if __name__ == "__main__":

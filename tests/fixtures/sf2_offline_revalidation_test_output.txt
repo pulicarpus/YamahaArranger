@@ -1,0 +1,556 @@
+Offline revalidation at parent 822cbda8f9b3b90aa7cf12b919e549767a3732f7; runtime/PCM not measured.
+
+===== golden-before.log =====
+test_canonical_determinism_handles_and_csv_roundtrip (__main__.GoldenRoutingTests.test_canonical_determinism_handles_and_csv_roundtrip) ... ok
+test_capture_coverage_is_explicitly_unverified (__main__.GoldenRoutingTests.test_capture_coverage_is_explicitly_unverified) ... ok
+test_cli_exit_codes_and_no_master_go (__main__.GoldenRoutingTests.test_cli_exit_codes_and_no_master_go) ... ok
+test_conflicting_address_and_staging_rejected (__main__.GoldenRoutingTests.test_conflicting_address_and_staging_rejected) ... ok
+test_event_order_change_detected (__main__.GoldenRoutingTests.test_event_order_change_detected) ... ok
+test_every_context_and_semantic_change_detected (__main__.GoldenRoutingTests.test_every_context_and_semantic_change_detected) ... ok
+test_exact_checkpoint_policy_replay (__main__.GoldenRoutingTests.test_exact_checkpoint_policy_replay) ... ok
+test_missing_event_and_donor_mapping (__main__.GoldenRoutingTests.test_missing_event_and_donor_mapping) ... ok
+test_native_mapping_mismatch (__main__.GoldenRoutingTests.test_native_mapping_mismatch) ... ok
+test_pc73_exact_kit_regression (__main__.GoldenRoutingTests.test_pc73_exact_kit_regression) ... ok
+test_projection_preserves_identity_with_new_native_address (__main__.GoldenRoutingTests.test_projection_preserves_identity_with_new_native_address) ... ok
+test_unknown_gain_and_missing_capture_cannot_pass (__main__.GoldenRoutingTests.test_unknown_gain_and_missing_capture_cannot_pass) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.994s
+
+OK
+POLICY_REPLAY deterministic, synthetic requests=9; no runtime capture
+
+===== golden-final.log =====
+test_canonical_determinism_handles_and_csv_roundtrip (__main__.GoldenRoutingTests.test_canonical_determinism_handles_and_csv_roundtrip) ... ok
+test_capture_coverage_is_explicitly_unverified (__main__.GoldenRoutingTests.test_capture_coverage_is_explicitly_unverified) ... ok
+test_capture_preset_and_donor_must_exist_in_inventory (__main__.GoldenRoutingTests.test_capture_preset_and_donor_must_exist_in_inventory) ... ok
+test_cli_exit_codes_and_no_master_go (__main__.GoldenRoutingTests.test_cli_exit_codes_and_no_master_go) ... ok
+test_conflicting_address_and_staging_rejected (__main__.GoldenRoutingTests.test_conflicting_address_and_staging_rejected) ... ok
+test_event_order_change_detected (__main__.GoldenRoutingTests.test_event_order_change_detected) ... ok
+test_every_context_and_semantic_change_detected (__main__.GoldenRoutingTests.test_every_context_and_semantic_change_detected) ... ok
+test_exact_checkpoint_policy_replay (__main__.GoldenRoutingTests.test_exact_checkpoint_policy_replay) ... ok
+test_full_original_scope_cannot_pass_without_inventory (__main__.GoldenRoutingTests.test_full_original_scope_cannot_pass_without_inventory) ... ok
+test_missing_event_and_donor_mapping (__main__.GoldenRoutingTests.test_missing_event_and_donor_mapping) ... ok
+test_missing_inventory_explicitly_unverified (__main__.GoldenRoutingTests.test_missing_inventory_explicitly_unverified) ... ok
+test_native_mapping_mismatch (__main__.GoldenRoutingTests.test_native_mapping_mismatch) ... ok
+test_original_partial_inventory_not_full_pass (__main__.GoldenRoutingTests.test_original_partial_inventory_not_full_pass) ... ok
+test_original_scope_rejects_synthetic_source_hashes (__main__.GoldenRoutingTests.test_original_scope_rejects_synthetic_source_hashes) ... ok
+test_pc73_exact_kit_regression (__main__.GoldenRoutingTests.test_pc73_exact_kit_regression) ... ok
+test_projection_preserves_identity_with_new_native_address (__main__.GoldenRoutingTests.test_projection_preserves_identity_with_new_native_address) ... ok
+test_synthetic_inventory_all_observed_conflicts (__main__.GoldenRoutingTests.test_synthetic_inventory_all_observed_conflicts) ... ok
+test_unknown_gain_and_missing_capture_cannot_pass (__main__.GoldenRoutingTests.test_unknown_gain_and_missing_capture_cannot_pass) ... ok
+
+----------------------------------------------------------------------
+Ran 18 tests in 0.992s
+
+OK
+POLICY_REPLAY deterministic, synthetic requests=9; no runtime capture
+
+===== partial-final.log =====
+test_partial_inventory_exactly_derived_from_pinned_export (__main__.PartialOriginalMetadataTests.test_partial_inventory_exactly_derived_from_pinned_export) ... ok
+test_true_velocity_and_key_ranges_remain_metadata_only (__main__.PartialOriginalMetadataTests.test_true_velocity_and_key_ranges_remain_metadata_only) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.001s
+
+OK
+
+===== checkpoint.log =====
+CHECKPOINT snapshot verified: 84 files
+Love Song Bass family=BASS FINAL Yamaha SX700 SX900 Melody.sf2 / BASS score=99065 reason=same_family;yamaha_msb;semantic_exact;same_pc_support_only;yamaha_source
+Love Song Piano family=PIANO FINAL ColomboGMGS2_BM.sf2 / Wide Piano 2 score=2240 reason=same_family;semantic_partial;same_pc_support_only
+Love Song A.Guitar family=GUITAR FINAL Yamaha SX700 SX900 Melody.sf2 / Steel Guitar score=91765 reason=same_family;yamaha_msb;acoustic_variation;same_pc_support_only;yamaha_source
+Love Song Strings1 family=STRINGS FINAL ColomboGMGS2_BM.sf2 / Strings score=9000 reason=same_family;semantic_exact
+Love Song Strings2 family=STRINGS FINAL ColomboGMGS2_BM.sf2 / Strings score=9000 reason=same_family;semantic_exact
+PASS: 210 resolver checks
+HOST PASS voice_resolver_test
+PASS: 70 native routing checks (mock BASS; no audio assertion)
+HOST PASS native_resolver_test
+BANK_TRANSLATION checks=63 production_player=true mapping_error=false mock_API_scope=true no_PCM_claim=true
+HOST PASS bank_translation_readback_test
+ACCOMPANIMENT_NATIVE checks=32 production_player=true no_PCM_claim=true
+HOST PASS accompaniment_presence_test
+PERCUSSION_NATIVE checks=238 production_adapter=true mock_API_not_original_PCM
+HOST PASS percussion_fidelity_test
+S5_NATIVE_LIFECYCLE checks=8 productionPlayer=true BASS_NOTEOFF1=true API_mock=true nativeSDK_acceptance=NOT_MEASURED PCM=NOT_MEASURED
+HOST PASS f03_native_lifecycle_test
+PASS 30 SF2 zone metadata checks
+HOST PASS sf2_zone_diagnostic_test
+PASS: 48 audio-path diagnostic checks (observation only)
+HOST PASS audio_path_diagnostic_test
+PASS 15 all-kit coverage checks (metadata only)
+HOST PASS drum_kit_audit_test
+PASS 30 compact drum export checks (metadata only)
+HOST PASS drum_compatibility_report_test
+GOLDEN_BOUNDARIES checks=17 synthetic=true mock_BASS=true PC73_bank126_127_128_gain_collision=true runtime_UNVERIFIED
+HOST PASS sf2_golden_boundaries_test
+HOST targets=11; mocked BASS, synthetic fixtures; PCM/device UNVERIFIED
+
+===== aggregate.log =====
+S5_NATIVE_LIFECYCLE checks=8 productionPlayer=true BASS_NOTEOFF1=true API_mock=true nativeSDK_acceptance=NOT_MEASURED PCM=NOT_MEASURED
+Love Song Bass family=BASS FINAL Yamaha SX700 SX900 Melody.sf2 / BASS score=99065 reason=same_family;yamaha_msb;semantic_exact;same_pc_support_only;yamaha_source
+Love Song Piano family=PIANO FINAL ColomboGMGS2_BM.sf2 / Wide Piano 2 score=2240 reason=same_family;semantic_partial;same_pc_support_only
+Love Song A.Guitar family=GUITAR FINAL Yamaha SX700 SX900 Melody.sf2 / Steel Guitar score=91765 reason=same_family;yamaha_msb;acoustic_variation;same_pc_support_only;yamaha_source
+Love Song Strings1 family=STRINGS FINAL ColomboGMGS2_BM.sf2 / Strings score=9000 reason=same_family;semantic_exact
+Love Song Strings2 family=STRINGS FINAL ColomboGMGS2_BM.sf2 / Strings score=9000 reason=same_family;semantic_exact
+PASS: 210 resolver checks
+PASS: 70 native routing checks (mock BASS; no audio assertion)
+PASS: 48 audio-path diagnostic checks (observation only)
+PASS 30 SF2 zone metadata checks
+PASS 15 all-kit coverage checks (metadata only)
+PASS 30 compact drum export checks (metadata only)
+PASS 29 focused drum comparison checks (metadata only)
+managed SF2 audition: 12 native scenarios PASS; production events/state untouched; resources freed
+BANK_TRANSLATION checks=63 production_player=true mapping_error=false mock_API_scope=true no_PCM_claim=true
+ACCOMPANIMENT_NATIVE checks=32 production_player=true no_PCM_claim=true
+PERCUSSION_NATIVE checks=238 production_adapter=true mock_API_not_original_PCM
+ROLE_PCM_NATIVE checks=177 production_player=true no_extra_NOTE_ON=true PCM_buffer_unchanged=true cap_and_cleanup=true
+DIAGNOSTIC_LIVENESS checks=4 blocked_formatter_does_not_block_render_or_UI_synth=true snapshot_consistent=true ROLE_LAYER_preserved=true export_no_MIDI=true
+SHADOW HOST 46 checks PASS NOTE_ON p50=260ns p95=281ns p99=531ns samples=3000; mock synth, no device xrun measurement
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_drum_shadow_guards.py", line 15, in <module>
+    assert hashlib.sha256(strip_metadata(path,(root/path).read_text()).encode()).hexdigest()==expected, "#770 production path changed: "+path
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/sff_dialect_source_guard.py", line 41, in strip_metadata
+    text=normalize_s3(path,historical_bytes(path,text.encode())).decode()
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/f04_source_guard.py", line 20, in historical_bytes
+    data = baseline_bytes(path,data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/f12_source_guard.py", line 15, in baseline_bytes
+    assert sha(data)==rule['after_sha256'],'Unreviewed F12 file: '+path
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Unreviewed F12 file: app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_voice_resolver.py", line 107, in <module>
+    subprocess.run(["python3",str(root / "tools/test_drum_shadow_guards.py")],check=True)
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['python3', '/workspace/work/sf2-audit/reference/tools/test_drum_shadow_guards.py']' returned non-zero exit status 1.
+
+===== test_drum_shadow_guards.py.log =====
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_drum_shadow_guards.py", line 15, in <module>
+    assert hashlib.sha256(strip_metadata(path,(root/path).read_text()).encode()).hexdigest()==expected, "#770 production path changed: "+path
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/sff_dialect_source_guard.py", line 41, in strip_metadata
+    text=normalize_s3(path,historical_bytes(path,text.encode())).decode()
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/f04_source_guard.py", line 20, in historical_bytes
+    data = baseline_bytes(path,data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/f12_source_guard.py", line 15, in baseline_bytes
+    assert sha(data)==rule['after_sha256'],'Unreviewed F12 file: '+path
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Unreviewed F12 file: app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt
+
+===== test_production_regression_bypass.py.log =====
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_production_regression_bypass.py", line 25, in <module>
+    assert musical==expected,'Protected #776 mismatch: '+path
+           ^^^^^^^^^^^^^^^^^
+AssertionError: Protected #776 mismatch: app/src/main/java/com/yourapp/ui/ContentResolverProvider.kt
+
+===== test_mix_percussion_boundaries.py.log =====
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_mix_percussion_boundaries.py", line 13, in <module>
+    actual=method(strip_balance(record['path'],(root/record['path']).read_text()),record['method'])
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/measured_balance_guard.py", line 8, in strip_balance
+    text=strip_headroom(path,text)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/pcm_headroom_guard.py", line 8, in strip_headroom
+    text=strip_metadata(path,text)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/sff_dialect_source_guard.py", line 41, in strip_metadata
+    text=normalize_s3(path,historical_bytes(path,text.encode())).decode()
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/f04_source_guard.py", line 20, in historical_bytes
+    data = baseline_bytes(path,data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/f12_source_guard.py", line 15, in baseline_bytes
+    assert sha(data)==rule['after_sha256'],'Unreviewed F12 file: '+path
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Unreviewed F12 file: app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt
+
+===== test_role_pcm_guards.py.log =====
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_role_pcm_guards.py", line 17, in <module>
+    assert hashlib.sha256(strip_observers(file,strip_balance(file,(root/file).read_text())).encode()).hexdigest()==h,file
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt
+
+===== test_diagnostic788_guards.py.log =====
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_diagnostic788_guards.py", line 33, in <module>
+    assert hashlib.sha256(normalize(path,(root/path).read_text()).encode()).hexdigest()==h,path
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: app/src/main/java/com/yourapp/ui/MainViewModel.kt
+
+===== sff_dialect_source_guard.py.log =====
+S2_SOURCE_IDENTITY PASS: six exact new hashes; checked metadata removal recovers every old byte
+
+===== test_sff_dialect_source_guard.py.log =====
+test_any_source_mutation_even_a_comment_is_rejected (__main__.DialectSourceGuardTests.test_any_source_mutation_even_a_comment_is_rejected) ... ok
+test_exact_new_and_recovered_old_profiles_are_pinned (__main__.DialectSourceGuardTests.test_exact_new_and_recovered_old_profiles_are_pinned) ... ok
+test_old_profile_requires_explicit_baseline_selection (__main__.DialectSourceGuardTests.test_old_profile_requires_explicit_baseline_selection) ... ok
+test_unlisted_metadata_block_is_rejected (__main__.DialectSourceGuardTests.test_unlisted_metadata_block_is_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.023s
+
+OK
+
+===== sff_casm_source_guard.py.log =====
+S3_SOURCE_IDENTITY PASS: six exact physical hashes; every old S2 byte recovered
+
+===== test_sff_casm_source_guard.py.log =====
+test_any_byte_mutation_is_rejected (__main__.SourceGuardTests.test_any_byte_mutation_is_rejected) ... ok
+test_exact_s3_and_s2_recovery (__main__.SourceGuardTests.test_exact_s3_and_s2_recovery) ... ok
+test_old_profile_requires_explicit_baseline_selection (__main__.SourceGuardTests.test_old_profile_requires_explicit_baseline_selection) ... ok
+test_unlisted_metadata_is_rejected (__main__.SourceGuardTests.test_unlisted_metadata_is_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.005s
+
+OK
+
+===== test_sff_casm_native.py.log =====
+S3_NATIVE_SELF_TEST PASS: Ctab-only/Bass-bit omission, Cntt before/after override, last-Cntt/cross-CSEG override provenance, unknown-tag encoding, absent source, load/failure isolation; UNKNOWN SMF only
+
+===== test_generated_bass_sdk_guard.py.log =====
+E
+======================================================================
+ERROR: setUpClass (__main__.GeneratedSdkGuardTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_generated_bass_sdk_guard.py", line 18, in setUpClass
+    cls.vendor = {p: (ROOT / p).read_bytes() for p in PATHS}
+                     ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1019, in read_bytes
+    with self.open(mode='rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/workspace/work/sf2-audit/reference/app/src/main/jniLibs/arm64-v8a/libbassmidi.so'
+
+----------------------------------------------------------------------
+Ran 0 tests in 0.001s
+
+FAILED (errors=1)
+
+===== test_readiness_build_input.py.log =====
+E
+======================================================================
+ERROR: setUpClass (__main__.BuildInputTest)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_readiness_build_input.py", line 12, in setUpClass
+    verify_generated_sdk(REPO, PATHS)
+  File "/workspace/work/sf2-audit/reference/tools/generated_bass_sdk_guard.py", line 30, in verify_generated_sdk
+    assert file.is_file() and not file.is_symlink(), 'SDK must be a regular file: ' + path
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: SDK must be a regular file: app/src/main/cpp/basssdk/bass.h
+
+----------------------------------------------------------------------
+Ran 0 tests in 0.001s
+
+FAILED (errors=1)
+
+===== test_f04_source_guard.py.log =====
+FE...
+======================================================================
+ERROR: test_exact_candidate_and_all_historical_files (__main__.F04SourceGuardTest.test_exact_candidate_and_all_historical_files)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_f04_source_guard.py", line 8, in test_exact_candidate_and_all_historical_files
+    p=verify_profile()
+      ^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/f04_source_guard.py", line 40, in verify_profile
+    assert sha(historical_bytes(path))==expected, 'Non-F04 baseline drift: '+path
+               ^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/f04_source_guard.py", line 18, in historical_bytes
+    if data is None: data = (ROOT/path).read_bytes()
+                            ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1019, in read_bytes
+    with self.open(mode='rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/workspace/work/sf2-audit/reference/.github/workflows/inspect-sf2.yml'
+
+======================================================================
+FAIL: test_baseline_recovery_is_exact (__main__.F04SourceGuardTest.test_baseline_recovery_is_exact)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_f04_source_guard.py", line 13, in test_baseline_recovery_is_exact
+    data=historical_bytes(SOURCE)
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/f04_source_guard.py", line 20, in historical_bytes
+    data = baseline_bytes(path,data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/f12_source_guard.py", line 15, in baseline_bytes
+    assert sha(data)==rule['after_sha256'],'Unreviewed F12 file: '+path
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Unreviewed F12 file: app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.005s
+
+FAILED (failures=1, errors=1)
+
+===== test_f12_timing.py.log =====
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_f12_timing.py", line 10, in <module>
+    raw=(ROOT/f).read_bytes();restored=baseline_bytes(f,raw)
+        ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1019, in read_bytes
+    with self.open(mode='rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/workspace/work/sf2-audit/reference/.github/workflows/inspect-sf2.yml'
+
+===== test_sff_root_selection.py.log =====
+setUpClass (__main__.RootSelectionEvidenceTests) ... ERROR
+
+======================================================================
+ERROR: setUpClass (__main__.RootSelectionEvidenceTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_sff_root_selection.py", line 73, in setUpClass
+    cls.reference = json.loads(REFERENCE.read_text())
+                               ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1027, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/workspace/work/sf2-audit/reference/tests/fixtures/sff1_root_selection_reference_s4.json'
+
+----------------------------------------------------------------------
+Ran 0 tests in 0.001s
+
+FAILED (errors=1)
+
+===== test_f03_ownership.py.log =====
+EEEEEEE
+======================================================================
+ERROR: test_JVM_fixture_and_CSV_exact_hashes (__main__.F03EvidenceTests.test_JVM_fixture_and_CSV_exact_hashes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_f03_ownership.py", line 46, in test_JVM_fixture_and_CSV_exact_hashes
+    ref=json.loads((ROOT/'tests/fixtures/f03_ownership_reference_s5.json').read_text())
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1027, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/workspace/work/sf2-audit/reference/tests/fixtures/f03_ownership_reference_s5.json'
+
+======================================================================
+ERROR: test_all1046_dispatch_transcripts_remain_pinned (__main__.F03EvidenceTests.test_all1046_dispatch_transcripts_remain_pinned)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_f03_ownership.py", line 54, in test_all1046_dispatch_transcripts_remain_pinned
+    trace=(ROOT/'tests/fixtures/f03_dispatch_trace_s5.txt').read_bytes()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1019, in read_bytes
+    with self.open(mode='rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/workspace/work/sf2-audit/reference/tests/fixtures/f03_dispatch_trace_s5.txt'
+
+======================================================================
+ERROR: test_all523_original_counterexamples_and_offsets (__main__.F03EvidenceTests.test_all523_original_counterexamples_and_offsets)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_f03_ownership.py", line 40, in test_all523_original_counterexamples_and_offsets
+    data=json.loads((ROOT/'tests/fixtures/f03_ownership_reference_s5.json').read_text())
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1027, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/workspace/work/sf2-audit/reference/tests/fixtures/f03_ownership_reference_s5.json'
+
+======================================================================
+ERROR: test_exact_S4_sources_existing_tests_workflow_refs_golden_and_ledger (__main__.F03EvidenceTests.test_exact_S4_sources_existing_tests_workflow_refs_golden_and_ledger)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_f03_ownership.py", line 33, in test_exact_S4_sources_existing_tests_workflow_refs_golden_and_ledger
+    portable_production_identity()
+  File "/workspace/work/sf2-audit/reference/tools/test_sff_root_selection.py", line 44, in portable_production_identity
+    require(hashlib.sha256(reference.read_bytes()).hexdigest()==S1_REFERENCE_SHA256,'S1 reference identity drift')
+                           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1019, in read_bytes
+    with self.open(mode='rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/workspace/work/sf2-audit/reference/tests/fixtures/sff1_reference.json'
+
+======================================================================
+ERROR: test_negative_changed_event_provenance_fails (__main__.F03EvidenceTests.test_negative_changed_event_provenance_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_f03_ownership.py", line 64, in test_negative_changed_event_provenance_fails
+    data=json.loads((ROOT/'tests/fixtures/f03_ownership_reference_s5.json').read_text())
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1027, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/workspace/work/sf2-audit/reference/tests/fixtures/f03_ownership_reference_s5.json'
+
+======================================================================
+ERROR: test_negative_corrupt_overlap_count_fails (__main__.F03EvidenceTests.test_negative_corrupt_overlap_count_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_f03_ownership.py", line 60, in test_negative_corrupt_overlap_count_fails
+    data=json.loads((ROOT/'tests/fixtures/f03_ownership_reference_s5.json').read_text());data['overlapping_on']=522
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1027, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/workspace/work/sf2-audit/reference/tests/fixtures/f03_ownership_reference_s5.json'
+
+======================================================================
+ERROR: test_summary_joins_all_real_provenance_and_actual_dispatch (__main__.F03EvidenceTests.test_summary_joins_all_real_provenance_and_actual_dispatch)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_f03_ownership.py", line 29, in test_summary_joins_all_real_provenance_and_actual_dispatch
+    expected=json.loads((ROOT/'tests/fixtures/f03_dispatch_summary_s5.json').read_text())
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1027, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/workspace/work/sf2-audit/reference/tests/fixtures/f03_dispatch_summary_s5.json'
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.002s
+
+FAILED (errors=7)
+
+===== test_f03_prototype.py.log =====
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_f03_prototype.py", line 38, in <module>
+    main()
+  File "/workspace/work/sf2-audit/reference/tools/test_f03_prototype.py", line 19, in main
+    manifest = integrity()
+               ^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/test_f03_prototype.py", line 13, in integrity
+    actual = hashlib.sha256(historical_bytes(name)).hexdigest()
+                            ^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/f04_source_guard.py", line 18, in historical_bytes
+    if data is None: data = (ROOT/path).read_bytes()
+                            ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1019, in read_bytes
+    with self.open(mode='rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/workspace/work/sf2-audit/reference/.github/workflows/build-colombo.yml'
+
+===== test_sff1_harness.py.log =====
+test_casm_child_cannot_escape_parent_bounds (__main__.Sff1HarnessFailureTests.test_casm_child_cannot_escape_parent_bounds) ... ok
+test_compact_reference_pins_all_provenance_and_generated_bytes (__main__.Sff1HarnessFailureTests.test_compact_reference_pins_all_provenance_and_generated_bytes) ... ERROR
+test_compact_reference_rejects_inconsistent_content_digest (__main__.Sff1HarnessFailureTests.test_compact_reference_rejects_inconsistent_content_digest) ... ok
+test_incomplete_directory_is_not_a_partial_success (__main__.Sff1HarnessFailureTests.test_incomplete_directory_is_not_a_partial_success) ... ERROR
+test_record_never_overwrites_pinned_expected (__main__.Sff1HarnessFailureTests.test_record_never_overwrites_pinned_expected) ... ERROR
+test_vlq_and_data_readers_enforce_bounds (__main__.Sff1HarnessFailureTests.test_vlq_and_data_readers_enforce_bounds) ... ok
+test_wrong_archive_identity_fails_before_extraction (__main__.Sff1HarnessFailureTests.test_wrong_archive_identity_fails_before_extraction) ... ERROR
+
+======================================================================
+ERROR: test_compact_reference_pins_all_provenance_and_generated_bytes (__main__.Sff1HarnessFailureTests.test_compact_reference_pins_all_provenance_and_generated_bytes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_sff1_harness.py", line 67, in test_compact_reference_pins_all_provenance_and_generated_bytes
+    reference=compact_reference(manifest,full)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/audit_sff1_corpus.py", line 516, in compact_reference
+    reference["pipeline_capture_resource_sha256"]=file_sha(ROOT/"app/src/test/resources/sff1_pipeline_digests.tsv")
+                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/audit_sff1_corpus.py", line 80, in file_sha
+    with Path(path).open("rb") as stream:
+         ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/workspace/work/sf2-audit/reference/app/src/test/resources/sff1_pipeline_digests.tsv'
+
+======================================================================
+ERROR: test_incomplete_directory_is_not_a_partial_success (__main__.Sff1HarnessFailureTests.test_incomplete_directory_is_not_a_partial_success)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_sff1_harness.py", line 37, in test_incomplete_directory_is_not_a_partial_success
+    self.run_failure(Path(temp), "reference corpus must contain exactly 503 files")
+  File "/workspace/work/sf2-audit/reference/tools/test_sff1_harness.py", line 18, in run_failure
+    before = {path: file_sha(path) for path in (MANIFEST, RESOURCE)}
+                    ^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/audit_sff1_corpus.py", line 80, in file_sha
+    with Path(path).open("rb") as stream:
+         ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/workspace/work/sf2-audit/reference/app/src/test/resources/sff1_main_d_native.tsv'
+
+======================================================================
+ERROR: test_record_never_overwrites_pinned_expected (__main__.Sff1HarnessFailureTests.test_record_never_overwrites_pinned_expected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_sff1_harness.py", line 40, in test_record_never_overwrites_pinned_expected
+    self.run_failure(Path("unused-input"), "--record never overwrites expected fixtures", "--record")
+  File "/workspace/work/sf2-audit/reference/tools/test_sff1_harness.py", line 18, in run_failure
+    before = {path: file_sha(path) for path in (MANIFEST, RESOURCE)}
+                    ^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/audit_sff1_corpus.py", line 80, in file_sha
+    with Path(path).open("rb") as stream:
+         ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/workspace/work/sf2-audit/reference/app/src/test/resources/sff1_main_d_native.tsv'
+
+======================================================================
+ERROR: test_wrong_archive_identity_fails_before_extraction (__main__.Sff1HarnessFailureTests.test_wrong_archive_identity_fails_before_extraction)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_sff1_harness.py", line 33, in test_wrong_archive_identity_fails_before_extraction
+    self.run_failure(archive, "archive SHA256 differs from audited corpus")
+  File "/workspace/work/sf2-audit/reference/tools/test_sff1_harness.py", line 18, in run_failure
+    before = {path: file_sha(path) for path in (MANIFEST, RESOURCE)}
+                    ^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/audit_sff1_corpus.py", line 80, in file_sha
+    with Path(path).open("rb") as stream:
+         ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/workspace/work/sf2-audit/reference/app/src/test/resources/sff1_main_d_native.tsv'
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.003s
+
+FAILED (errors=4)
