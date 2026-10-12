@@ -58,6 +58,9 @@ public:
     bool setKeyboardReleaseTime(int releaseTime);
     void setMasterGain(float gain);
     std::string presetList() const;
+    std::string keyboardVoiceSnapshot() const;
+    std::vector<unsigned char> diagnosticKeyboardReleaseWav(int channel,int key,int velocity);
+    std::string keyboardReleaseProbeReport() const;
     std::string shadowDrumSnapshot() const;
     std::vector<unsigned char> diagnosticDrumWav(int bank,int pc,int key,int velocity);
     std::string noteZoneReport() const;
@@ -79,11 +82,19 @@ private:
     std::array<KeyboardPreset, 4> keyboardPresets_{};
     uint64_t nextFontId_ = 1, melodyFontId_ = 0, drumFontId_ = 0;
     int keyboardReleaseTime_ = 64;
-    bool applyKeyboardRelease();
+    bool applyKeyboardRelease(int onlyChannel = -1);
     void refreshBrowserPresets();
     const BrowserPreset* keyboardPreset(const KeyboardPreset& selection) const;
-    bool restoreKeyboardPresets();
+    bool restoreKeyboardPresets(int onlyChannel = -1);
     friend class VoiceReleaseTestAccess;
+    struct KeyboardEvidence {
+        uint64_t ons=0, sent=0, offs=0;
+        int key=-1, velocity=0, release=64;
+        BASS_MIDI_FONT actual{};
+        bool needsReadback=true, notePresetVerified=false;
+    };
+    std::array<KeyboardEvidence,4> keyboardEvidence_{};
+    std::string keyboardReleaseProbeReport_;
     struct ChannelState {
         int bankMsb = 0;
         int bankLsb = 0;

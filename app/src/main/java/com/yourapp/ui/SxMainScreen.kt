@@ -1,5 +1,7 @@
 package com.yourapp.yamahaarranger.ui
 
+import com.yourapp.yamahaarranger.audio.KeyboardPart
+import com.yourapp.yamahaarranger.audio.KeyboardVoiceBrowserState
 import com.yourapp.yamahaarranger.audio.SoundFontPresetCatalog
 import com.yourapp.yamahaarranger.audio.AudioEngineManager
 
@@ -56,9 +58,19 @@ fun SxMainScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     var voiceSelectionError by remember { mutableStateOf<String?>(null) }
+    var releaseProbeBusy by remember { mutableStateOf(false) }
+    var releaseWav by remember { mutableStateOf<ByteArray?>(null) }
+    var releaseWavPart by remember { mutableStateOf<KeyboardPart?>(null) }
     val stylePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(viewModel::onStyleFilePicked) }
     val soundFontPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(viewModel::onSoundFontFilePicked) }
     val context = LocalContext.current
+    val saveReleaseLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("audio/wav")) { uri ->
+        if (uri != null) releaseWav?.let { wav ->
+            runCatching { requireNotNull(context.contentResolver.openOutputStream(uri)).use { it.write(wav) } }
+                .onSuccess { Toast.makeText(context, "Release PCM WAV saved: 0, 64, 127", Toast.LENGTH_LONG).show() }
+                .onFailure { Toast.makeText(context, "WAV save failed", Toast.LENGTH_SHORT).show() }
+        }
+    }
     val saveLogLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
         if (uri != null) {
             val fullTrace = DebugLog.getFullText()
@@ -78,9 +90,10 @@ fun SxMainScreen(
     var showMixer by remember { mutableStateOf(false) }
     var showSf2Manager by remember { mutableStateOf(false) }
     var rightVoicePickerLayer by remember { mutableStateOf<Int?>(null) }
-    var selectedVoiceCategory by remember { mutableStateOf<String?>(null) }
+    var voiceBrowser by remember { mutableStateOf(KeyboardVoiceBrowserState()) }
+    val selectedVoiceCategory = voiceBrowser.category
     var lcdPage by remember { mutableStateOf("HOME") }
-    var selectedVoiceLayer by remember { mutableStateOf(0) }
+    val selectedVoiceLayer = voiceBrowser.part.channel
     var selectedStyleUri by remember { mutableStateOf<Uri?>(null) }
     var selectedStyleFolderUri by remember { mutableStateOf<Uri?>(null) }
     var selectedDataParameter by remember { mutableStateOf("TEMPO") }
@@ -100,13 +113,12 @@ fun SxMainScreen(
                 navH,
                 onStyle = { selectedStyleUri = null; selectedStyleFolderUri = null; viewModel.refreshStyleList(); lcdPage = "STYLE" },
                 onVoice = {
-                    selectedVoiceCategory = null
-                    selectedVoiceLayer = 0
+                    voiceBrowser = voiceBrowser.selectCategory(null)
                     rightVoicePickerLayer = null
                     lcdPage = "VOICE"
                 },
                 onMixer = { showMixer = true },
-                onUtility = { showUtilityLog = true },
+                onUtility = { viewModel.logKeyboardVoiceSnapshot(); showUtilityLog = true },
                 onInspector = onOpenInspector
             )
             Spacer(Modifier.height(gap))
@@ -146,8 +158,7 @@ fun SxMainScreen(
                         compact,
                         onPickStyle = { selectedStyleUri = null; selectedStyleFolderUri = null; viewModel.refreshStyleList(); lcdPage = "STYLE" },
                         onPickRightVoice = {
-                            selectedVoiceLayer = it
-                            selectedVoiceCategory = null
+                            voiceBrowser = voiceBrowser.selectPart(KeyboardPart.fromChannel(it))
                             rightVoicePickerLayer = null
                             lcdPage = "VOICE"
                         },
@@ -164,20 +175,20 @@ fun SxMainScreen(
                         voicePresets = state.sf2Presets,
                         voiceCategory = selectedVoiceCategory,
                         selectedVoiceLayer = selectedVoiceLayer,
-                        onVoiceSelect = { preset ->
-                            viewModel.setRightVoice(selectedVoiceLayer, preset) { ok ->
-                                if (ok) { lcdPage = "HOME"; selectedVoiceCategory = null }
-                                else voiceSelectionError = "${preset.soundFontName} • ${preset.bank}/${preset.program} could not be selected. Refresh the SF2 list and try again."
+                        onVoiceSelect = { part, preset ->
+                            viewModel.setKeyboardVoice(part, preset) { ok ->
+                                if (ok) {
+                                    if (voiceBrowser.part == part) { lcdPage = "HOME"; voiceBrowser = voiceBrowser.selectCategory(null) }
+                                } else voiceSelectionError = "${preset.soundFontName} • ${preset.bank}/${preset.program} could not be selected. Refresh the SF2 list and try again."
                             }
                         },
                         onVoiceCategory = { category ->
-                            selectedVoiceCategory = category
-                            selectedVoiceLayer = 0
+                            voiceBrowser = voiceBrowser.selectCategory(category)
                             lcdPage = "VOICE"
                         },
                         onBackHome = {
                             lcdPage = "HOME"
-                            selectedVoiceCategory = null
+                            voiceBrowser = voiceBrowser.selectCategory(null)
                         },
                         modifier = Modifier.fillMaxSize()
                     )
@@ -193,8 +204,7 @@ fun SxMainScreen(
                     selectedStyleFolderUri = selectedStyleFolderUri,
                     onPickStyleFolder = { folder -> selectedStyleFolderUri = folder; lcdPage = "STYLE" },
                     onPickVoice = { category ->
-                        selectedVoiceCategory = category
-                        selectedVoiceLayer = 0
+                        voiceBrowser = voiceBrowser.selectCategory(category)
                         rightVoicePickerLayer = null
                         lcdPage = "VOICE"
                     }
@@ -246,11 +256,11 @@ fun SxMainScreen(
                 category = selectedVoiceCategory,
                 onDismiss = {
                     rightVoicePickerLayer = null
-                    selectedVoiceCategory = null
+                    voiceBrowser = voiceBrowser.selectCategory(null)
                 },
                 onSelect = { preset ->
-                    viewModel.setRightVoice(layer, preset) { ok ->
-                        if (ok) { rightVoicePickerLayer = null; selectedVoiceCategory = null }
+                    viewModel.setKeyboardVoice(KeyboardPart.fromChannel(layer), preset) { ok ->
+                        if (ok) { rightVoicePickerLayer = null; voiceBrowser = voiceBrowser.selectCategory(null) }
                         else voiceSelectionError = "${preset.soundFontName} • ${preset.bank}/${preset.program} could not be selected. Refresh the SF2 list and try again."
                     }
                 },
@@ -277,7 +287,21 @@ fun SxMainScreen(
     }
 
     if (showUtilityLog) {
-        SxEngineLogDialog(onDismiss = { showUtilityLog = false }, onSaveAllLog = { saveLogLauncher.launch("YamahaArranger_AllLog_" + java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(java.util.Date()) + ".txt") })
+        SxEngineLogDialog(onDismiss = { showUtilityLog = false },
+            onSaveAllLog = { saveLogLauncher.launch("YamahaArranger_AllLog_" + java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(java.util.Date()) + ".txt") },
+            probePart = voiceBrowser.part,
+            probeEnabled = !state.isPlaying && !releaseProbeBusy && voiceBrowser.part != KeyboardPart.LEFT,
+            probeBusy = releaseProbeBusy,
+            onProbe = {
+                releaseProbeBusy = true
+                releaseWav = null
+                val part = voiceBrowser.part
+                viewModel.runKeyboardReleaseProbe(part) { wav ->
+                    releaseWav = wav.takeIf { it.isNotEmpty() }; releaseWavPart = part; releaseProbeBusy = false
+                }
+            },
+            hasWav = releaseWav != null,
+            onSaveWav = { saveReleaseLauncher.launch("YamahaArranger_Release_${releaseWavPart?.name}_0_64_127.wav") })
     }
 }
 
@@ -554,7 +578,11 @@ private fun SxNavBar(
 }
 
 @Composable
-private fun SxEngineLogDialog(onDismiss: () -> Unit, onSaveAllLog: () -> Unit) {
+private fun SxEngineLogDialog(
+    onDismiss: () -> Unit, onSaveAllLog: () -> Unit, probePart: KeyboardPart,
+    probeEnabled: Boolean, probeBusy: Boolean, onProbe: () -> Unit,
+    hasWav: Boolean, onSaveWav: () -> Unit
+) {
     var logs by remember { mutableStateOf(listOf<String>()) }
     var filter by remember { mutableStateOf("ALL") }
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -567,7 +595,7 @@ private fun SxEngineLogDialog(onDismiss: () -> Unit, onSaveAllLog: () -> Unit) {
     }
 
     val filteredLogs = when (filter) {
-        "AUDIO" -> logs.filter { it.contains("🔊 AUDIO") }
+        "AUDIO" -> logs.filter { it.contains("🔊 AUDIO") || it.contains("KEYBOARD VOICE") || it.contains("RELEASE PCM") }
         "MIDI" -> logs.filter { it.contains("🎹 IN") || it.contains("📤 MIDI OUT") }
         "CASM" -> logs.filter { it.contains("CASM") || it.contains("RTR") || it.contains("RETARGET") }
         "STRING" -> logs.filter { it.contains("STRING") || it.contains("dst=13") || it.contains("dst13") }
@@ -580,6 +608,13 @@ private fun SxEngineLogDialog(onDismiss: () -> Unit, onSaveAllLog: () -> Unit) {
         text = {
             Column(Modifier.fillMaxWidth().heightIn(max = 520.dp)) {
                 Text("Live engine/MIDI diagnostics. Full history is saved with SAVE ALL LOG.", color = SxDim, fontSize = 9.sp)
+                Text("Stop style. PCM test uses the selected part at C4, velocity 100; WAV order 0 / 64 / 127.", color = SxDim, fontSize = 9.sp)
+                Row(Modifier.fillMaxWidth()) {
+                    TextButton(enabled = probeEnabled, onClick = onProbe) {
+                        Text(if (probeBusy) "MEASURING PCM…" else "RELEASE PCM • ${probePart.label}", fontSize = 9.sp)
+                    }
+                    TextButton(enabled = hasWav && !probeBusy, onClick = onSaveWav) { Text("SAVE WAV", fontSize = 9.sp) }
+                }
                 Spacer(Modifier.height(5.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                     listOf("ALL", "AUDIO", "MIDI", "CASM", "STRING", "ERROR").forEach { f ->
@@ -724,7 +759,7 @@ private fun SxCenterDisplay(
     voicePresets: List<AudioEngineManager.SfPreset>,
     voiceCategory: String?,
     selectedVoiceLayer: Int,
-    onVoiceSelect: (AudioEngineManager.SfPreset) -> Unit,
+    onVoiceSelect: (KeyboardPart, AudioEngineManager.SfPreset) -> Unit,
     onVoiceCategory: (String) -> Unit,
     onBackHome: () -> Unit,
     modifier: Modifier
@@ -947,7 +982,7 @@ private fun SxVoiceLcdPage(
     selectedLayer: Int,
     compact: Boolean,
     onCategory: (String) -> Unit,
-    onSelect: (AudioEngineManager.SfPreset) -> Unit,
+    onSelect: (KeyboardPart, AudioEngineManager.SfPreset) -> Unit,
     onBack: () -> Unit
 ) {
     var search by remember { mutableStateOf("") }
@@ -1021,7 +1056,7 @@ private fun SxVoiceLcdPage(
                                         color = if (selected) SxBlue else Color(0xFF20262D),
                                         shape = RoundedCornerShape(3.dp),
                                         modifier = Modifier.weight(1f).fillMaxHeight()
-                                            .clickable { onSelect(item) }
+                                            .clickable { onSelect(KeyboardPart.fromChannel(selectedLayer), item) }
                                             .border(
                                                 1.dp,
                                                 if (selected) Color(0xFF58A9FF) else Color(0xFF38434E),
@@ -1271,6 +1306,9 @@ private fun SxPresetFilters(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val sources = presets.distinctBy { it.soundFontId }
+    LaunchedEffect(sources.map { it.soundFontId }, fontId) {
+        if (fontId != null && sources.none { it.soundFontId == fontId }) onFont(null)
+    }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         OutlinedTextField(value = search, onValueChange = onSearch,
             modifier = Modifier.weight(1f), singleLine = true,

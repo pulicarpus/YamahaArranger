@@ -1,4 +1,5 @@
 #include "bassmidi_player.h"
+#include "keyboard_release_probe.h"
 #include "voice_resolver.h"
 #include "sf2_fingerprint.h"
 #ifndef YAMAHA_COMPATIBLE_PERCUSSION
@@ -1224,6 +1225,15 @@ void BassMidiPlayer::noteOn(int channel, int key, float velocity, const AudioPat
     // on every note was one of the diagnostic build's major correctness bugs.
     const bool sent = send(channel, MIDI_EVENT_NOTE,
                            static_cast<DWORD>(key | (vel << 8)));
+    if (channel < 4) {
+        auto& evidence=keyboardEvidence_[channel];
+        ++evidence.ons;evidence.sent+=sent;evidence.key=key;evidence.velocity=vel;
+        if (sent && evidence.needsReadback) {
+            evidence.notePresetVerified=BASS_MIDI_StreamGetPreset(stream_,channel,&evidence.actual);
+            evidence.release=BASS_MIDI_StreamGetEvent(stream_,channel,MIDI_EVENT_RELEASE);
+            evidence.needsReadback=false;
+        }
+    }
     const int error = sent ? 0 : BASS_ErrorGetCode();
     logAudioPath(channel, key, vel, sent, error, origin, sent ? "bass_event_accepted" : "bass_event_failed", 0);
 }
@@ -1237,6 +1247,7 @@ void BassMidiPlayer::noteOff(int channel, int key, const AudioPathOrigin& origin
     if (percussionOff(channel,key,origin)) return;
     captureChordState("OFF_PRE",channel,key,0,-1,0,origin);
     const bool sent = send(channel, MIDI_EVENT_NOTE, static_cast<DWORD>(key));
+    if (channel < 4 && sent) ++keyboardEvidence_[channel].offs;
     const int offError = sent ? 0 : BASS_ErrorGetCode();
     captureChordState("OFF_POST",channel,key,0,sent ? 1 : 0,offError,origin);
     if (channel >= 4) {
@@ -1395,7 +1406,7 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program, const 
     // does not reintroduce the old synchronous render-thread stall.
     preloadCurrentPreset(channel);
     if(wantDrum) preparePercussionLane(channel, audioDiagnostics_[channel].requestedPc);
-    if (channel < 3) applyKeyboardRelease();
+    if (channel < 3) applyKeyboardRelease(channel);
     updateRolePcmMeter(channel); // read-only PCM observation; MIDI selection unchanged
 }
 
@@ -1426,10 +1437,12 @@ void BassMidiPlayer::setKeyboardSustain(bool enabled) {
          enabled ? "ON" : "OFF");
 }
 
-bool BassMidiPlayer::applyKeyboardRelease() {
+bool BassMidiPlayer::applyKeyboardRelease(int onlyChannel) {
     if (!stream_) return false;
     bool ok = true;
     for (int channel = 0; channel < 3; ++channel) {
+        if (onlyChannel >= 0 && channel != onlyChannel) continue;
+        keyboardEvidence_[channel].needsReadback=true;
         const bool sent = BASS_MIDI_StreamEvent(stream_, channel, MIDI_EVENT_RELEASE, keyboardReleaseTime_);
         const auto actual = BASS_MIDI_StreamGetEvent(stream_, channel, MIDI_EVENT_RELEASE);
         ok = sent && actual == static_cast<DWORD>(keyboardReleaseTime_) && ok;
@@ -1847,12 +1860,14 @@ void BassMidiPlayer::refreshBrowserPresets() {
     for (auto& s : keyboardPresets_) s.verified = false;
 }
 
-bool BassMidiPlayer::restoreKeyboardPresets() {
+bool BassMidiPlayer::restoreKeyboardPresets(int onlyChannel) {
     bool allOk = true;
     for (int ch = 0; ch < 4; ++ch) {
+        if (onlyChannel >= 0 && ch != onlyChannel) continue;
         auto& selection = keyboardPresets_[ch];
         if (!selection.fontId) continue;
         selection.verified = false;
+        keyboardEvidence_[ch].needsReadback=true;
         const auto* p = keyboardPreset(selection);
         if (!p) { allOk = false; continue; }
         bool ok = send(ch, MIDI_EVENT_DRUMS, (p->bank == 127 || p->bank == 128) ? 1 : 0);
@@ -1890,11 +1905,11 @@ bool BassMidiPlayer::setKeyboardPreset(int channel, uint64_t fontId, int bank, i
         }
         return false;
     }
-    restoreKeyboardPresets();
-    const bool releaseOk = channel >= 3 || applyKeyboardRelease();
+    restoreKeyboardPresets(channel);
+    const bool releaseOk = channel >= 3 || applyKeyboardRelease(channel);
     if (!keyboardPresets_[channel].verified || !releaseOk) {
         keyboardPresets_[channel] = previous;
-        if (applyFonts()) restoreKeyboardPresets();
+        if (applyFonts()) restoreKeyboardPresets(channel);
         else {
             for (auto& s : keyboardPresets_) s.verified = false;
             if (!publishedFontTableIntact()) invalidateMelodicChannels();
@@ -1911,6 +1926,52 @@ std::string BassMidiPlayer::presetList() const {
         out << p.role << '\x1f' << p.fontId << '\x1f' << p.file << '\x1f'
             << p.bank << '\x1f' << p.program << '\x1f' << p.name << '\x1e';
     return out.str();
+}
+
+std::string BassMidiPlayer::keyboardVoiceSnapshot() const {
+    struct Row {KeyboardPreset request;KeyboardEvidence evidence;BASS_MIDI_FONT actual{};bool ok=false;int release=64;std::string file,name;uint64_t id=0;};
+    std::array<Row,4> rows;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        for(int ch=0;ch<4;++ch) {
+            auto& r=rows[ch];r.request=keyboardPresets_[ch];r.evidence=keyboardEvidence_[ch];
+            if(stream_) {r.ok=BASS_MIDI_StreamGetPreset(stream_,ch,&r.actual);r.release=BASS_MIDI_StreamGetEvent(stream_,ch,MIDI_EVENT_RELEASE);}
+            for(const auto& p:browserPresets_) if(r.ok&&p.font==r.actual.font&&p.nativeBank==r.actual.bank&&p.program==r.actual.preset) {
+                r.file=p.file;r.name=p.name;r.id=p.fontId;break;
+            }
+        }
+    }
+    std::ostringstream out;
+    for(int ch=0;ch<4;++ch) {
+        const auto& r=rows[ch];const auto& e=r.evidence;
+        out<<"KEYBOARD VOICE part="<<(ch==3?"LEFT":"RIGHT"+std::to_string(ch+1))<<" channel="<<ch
+           <<" requestedFontId="<<r.request.fontId<<" requestedBank="<<r.request.bank<<" requestedPC="<<r.request.program
+           <<" selectionVerified="<<r.request.verified<<" actualFontId="<<r.id<<" actualSF2='"<<r.file<<"' actualPreset='"<<r.name
+           <<"' nativeBank="<<r.actual.bank<<" nativePC="<<r.actual.preset<<" liveReadback="<<r.ok<<" release="<<r.release
+           <<" noteOns="<<e.ons<<" sent="<<e.sent<<" noteOffs="<<e.offs<<" lastKey="<<e.key<<" lastVelocity="<<e.velocity
+           <<" atNoteFont="<<e.actual.font<<" atNoteBank="<<e.actual.bank<<" atNotePC="<<e.actual.preset
+           <<" atNoteReadback="<<e.notePresetVerified<<" atNoteRelease="<<e.release<<'\n';
+    }
+    return out.str();
+}
+
+std::vector<unsigned char> BassMidiPlayer::diagnosticKeyboardReleaseWav(int channel,int key,int velocity) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    keyboardReleaseProbeReport_="RELEASE PCM unavailable: select a verified keyboard preset first\n";
+    if(channel<0||channel>3||key<0||key>127||velocity<1||velocity>127||!stream_)return {};
+    const auto& selection=keyboardPresets_[channel];const auto* p=keyboardPreset(selection);
+    BASS_MIDI_FONT actual{};
+    if(!p||!selection.verified||!BASS_MIDI_StreamGetPreset(stream_,channel,&actual)||
+       actual.font!=p->font||actual.bank!=p->nativeBank||actual.preset!=p->program)return {};
+    auto result=keyboard_release_probe::run(p->font,p->nativeBank,p->program,p->bank==127||p->bank==128,key,velocity,sampleRate_);
+    keyboardReleaseProbeReport_="RELEASE PCM part="+(channel==3?std::string("LEFT"):"RIGHT"+std::to_string(channel+1))+
+        " channel="+std::to_string(channel)+" fontId="+std::to_string(p->fontId)+" sf2='"+p->file+"' preset='"+p->name+
+        "' bank="+std::to_string(p->bank)+" nativeBank="+std::to_string(p->nativeBank)+" pc="+std::to_string(p->program)+"\n"+result.report;
+    return result.wav;
+}
+
+std::string BassMidiPlayer::keyboardReleaseProbeReport() const {
+    std::lock_guard<std::mutex> lock(mutex_);return keyboardReleaseProbeReport_;
 }
 
 void BassMidiPlayer::render(float* out, int numFrames) {

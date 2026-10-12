@@ -41,6 +41,7 @@ def jvm(output, fetch):
     sources=[bridge,log,ROOT/'app/src/main/java/com/yourapp/audio/SampleProvider.kt',
              ROOT/'app/src/main/java/com/yourapp/yamahaarranger/audio/AudioEngineManager.kt',
              ROOT/'app/src/main/java/com/yourapp/yamahaarranger/audio/SoundFontPresetCatalog.kt',
+             ROOT/'app/src/main/java/com/yourapp/yamahaarranger/audio/KeyboardPart.kt',
              ROOT/'app/src/main/java/com/yourapp/yamahaarranger/lifecycle/ReadyToPlayGate.kt',
              ROOT/'app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt',
              ROOT/'app/src/main/java/com/yourapp/style/StyleModel.kt',
@@ -76,13 +77,27 @@ def native(output, real):
         (output/('linux-pcm.log' if real else 'recorder.log')).write_text(observed.stdout+observed.stderr)
         assert observed.returncode==0, 'native voice/release test failed'
 
+def regressions(output):
+    with tempfile.TemporaryDirectory(prefix='voice-release-safety-') as directory:
+        cases=['f03_native_lifecycle_test','native_resolver_test','bank_translation_readback_test',
+               'accompaniment_presence_test','percussion_fidelity_test','role_pcm_native_test',
+               'diagnostic_snapshot_liveness_test']
+        for name in cases:
+            executable=output/name
+            run(['g++','-std=c++17','-O2','-pthread','-DYAMAHA_COMPATIBLE_PERCUSSION=1',
+                 '-DYAMAHA_ROLE_PCM_METERS=1','-Itests/mocks','-Iapp/src/main/cpp','-Itests',
+                 'tests/'+name+'.cpp','app/src/main/cpp/bassmidi_player.cpp','-o',str(executable)])
+            run([str(executable),directory])
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--real',action='store_true');parser.add_argument('--jvm',action='store_true')
     parser.add_argument('--fetch-dependencies',action='store_true')
+    parser.add_argument('--regressions',action='store_true')
     args=parser.parse_args();output=ROOT/'build/voice-release';output.mkdir(parents=True,exist_ok=True)
     frozen_style()
     native(output,args.real)
+    if args.regressions:regressions(output)
     if args.jvm:jvm(output,args.fetch_dependencies)
 
 if __name__=='__main__': main()

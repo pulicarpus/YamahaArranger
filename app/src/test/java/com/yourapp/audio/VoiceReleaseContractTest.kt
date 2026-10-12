@@ -9,6 +9,46 @@ import org.junit.Test
 import org.mockito.Mockito.*
 
 class VoiceReleaseContractTest {
+    @Test fun categoryNavigationPreservesEveryTargetPartIncludingRight2AndRight3() {
+        val (engine, bridge) = engine()
+        `when`(bridge.nativeSetKeyboardPreset(anyInt(), anyLong(), anyInt(), anyInt())).thenReturn(true)
+        val preset = AudioEngineManager.SfPreset("MELODY", 1025, 24, "Variation", 8, "a.sf2")
+        for (part in KeyboardPart.entries) {
+            var browser = KeyboardVoiceBrowserState().selectPart(part)
+            for (category in listOf("STRINGS", "PIANO", "USER")) {
+                browser = browser.selectCategory(category)
+                assertEquals(part, browser.part)
+            }
+            assertTrue(engine.selectKeyboardPreset(browser.part.channel, preset))
+            verify(bridge).nativeSetKeyboardPreset(part.channel, 8, 1025, 24)
+            assertEquals(part, browser.selectCategory(null).part)
+        }
+    }
+
+    @Test fun supersededVoiceRequestDoesNotReachNative() {
+        val (engine, bridge) = engine()
+        val preset = AudioEngineManager.SfPreset("MELODY", 0, 24, "Guitar", 7, "a.sf2")
+        assertFalse(engine.selectKeyboardPreset(KeyboardPart.RIGHT2.channel, preset) { false })
+        verify(bridge, never()).nativeSetKeyboardPreset(anyInt(), anyLong(), anyInt(), anyInt())
+    }
+
+    @Test fun offlineProbeRequiresStoppedStyleAndRightPartThenResumesSameRelease() {
+        val (engine, bridge) = engine()
+        engine.setKeyboardReleaseTime(127); engine.start()
+        assertTrue(engine.diagnosticKeyboardRelease(KeyboardPart.RIGHT2) { false }.wav.isEmpty())
+        assertTrue(engine.diagnosticKeyboardRelease(KeyboardPart.LEFT) { true }.wav.isEmpty())
+        verify(bridge, never()).nativeDiagnosticKeyboardReleaseWav(anyInt(), anyInt(), anyInt())
+        verify(bridge, never()).nativeStop()
+        `when`(bridge.nativeDiagnosticKeyboardReleaseWav(1,60,100)).thenReturn(byteArrayOf(1,2))
+        `when`(bridge.nativeKeyboardReleaseProbeReport()).thenReturn("measured actual source")
+        val result = engine.diagnosticKeyboardRelease(KeyboardPart.RIGHT2) { true }
+        assertArrayEquals(byteArrayOf(1,2), result.wav)
+        assertEquals("measured actual source", result.report)
+        verify(bridge).nativeStop()
+        verify(bridge, times(3)).nativeSetKeyboardReleaseTime(127)
+        verify(bridge, never()).nativeSetChannelPreset(anyInt(), anyInt(), anyInt())
+    }
+
     private fun engine(): Pair<AudioEngineManager, NativeAudioBridge> {
         val bridge = mock(NativeAudioBridge::class.java)
         `when`(bridge.nativeStart()).thenReturn(true)

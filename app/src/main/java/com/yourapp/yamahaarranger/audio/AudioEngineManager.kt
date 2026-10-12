@@ -334,13 +334,27 @@ class AudioEngineManager @Inject constructor(
         SoundFontPresetCatalog.parse(bridge.nativeGetSoundFontPresets())
     } }
 
-    fun selectKeyboardPreset(channel: Int, preset: SfPreset): Boolean = runBlocking { readiness.operations.withLock {
-        if (channel !in 0..3 || preset.soundFontId <= 0) return@withLock false
+    fun selectKeyboardPreset(channel: Int, preset: SfPreset, isCurrent: () -> Boolean = { true }): Boolean = runBlocking { readiness.operations.withLock {
+        if (channel !in 0..3 || preset.soundFontId <= 0 || !isCurrent()) return@withLock false
         val ok = bridge.nativeSetKeyboardPreset(channel, preset.soundFontId, preset.bank, preset.program)
         DebugLog.add("🎹 VOICE ch=$channel sf2=${preset.soundFontName} id=${preset.soundFontId} " +
             "bank=${preset.bank} pc=${preset.program} verified=$ok")
         ok
     } }
+
+    data class KeyboardReleaseProbe(val wav: ByteArray, val report: String)
+
+    fun keyboardVoiceSnapshot(): String = bridge.nativeKeyboardVoiceSnapshot()
+
+    fun diagnosticKeyboardRelease(part: KeyboardPart, allowed: () -> Boolean): KeyboardReleaseProbe =
+        runBlocking { readiness.operations.withLock {
+            if (part == KeyboardPart.LEFT || !allowed()) return@withLock KeyboardReleaseProbe(
+                byteArrayOf(), "RELEASE PCM blocked: stop style and select a RIGHT part first")
+            withAudioStreamPausedUnsafe {
+                val wav = bridge.nativeDiagnosticKeyboardReleaseWav(part.channel, 60, 100)
+                KeyboardReleaseProbe(wav, bridge.nativeKeyboardReleaseProbeReport())
+            }
+        } }
 
     // Named overload carries the Yamaha/CASM voice identity into BASSMIDI resolution.
     fun setChannelProgram(channel: Int, program: Int, bank: Int = 0, voiceName: String? = null) {

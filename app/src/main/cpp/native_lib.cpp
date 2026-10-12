@@ -96,6 +96,18 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_Nativ
     const std::string safePresets = sanitizeUtf8ForJni(presets.c_str());
     return env->NewStringUTF(safePresets.c_str());
 }
+extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeKeyboardVoiceSnapshot(JNIEnv* env,jobject){
+    return env->NewStringUTF(g_engine?sanitizeUtf8ForJni(g_engine->sfKeyboardVoiceSnapshot().c_str()).c_str():"KEYBOARD VOICE unavailable\n");
+}
+extern "C" JNIEXPORT jbyteArray JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeDiagnosticKeyboardReleaseWav(JNIEnv* env,jobject,jint ch,jint key,jint velocity){
+    const auto wav=g_engine?g_engine->sfDiagnosticKeyboardReleaseWav(ch,key,velocity):std::vector<unsigned char>{};
+    auto result=env->NewByteArray(static_cast<jsize>(wav.size()));
+    if(result&&!wav.empty())env->SetByteArrayRegion(result,0,wav.size(),reinterpret_cast<const jbyte*>(wav.data()));
+    return result;
+}
+extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeKeyboardReleaseProbeReport(JNIEnv* env,jobject){
+    return env->NewStringUTF(g_engine?sanitizeUtf8ForJni(g_engine->sfKeyboardReleaseProbeReport().c_str()).c_str():"RELEASE PCM unavailable\n");
+}
 extern "C" JNIEXPORT jbyteArray JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeDiagnosticDrumWav(JNIEnv* env,jobject,jint bank,jint pc,jint key,jint velocity){
     if(!g_engine) return env->NewByteArray(0);
     const auto wav=g_engine->sfDiagnosticDrumWav(bank,pc,key,velocity);

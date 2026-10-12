@@ -45,6 +45,9 @@ class NativeAudioBridge @Inject constructor() {
     external fun nativeSetKeyboardReleaseTime(releaseTime: Int): Boolean
     external fun nativeSetMasterGain(gain: Float)
     external fun nativeGetSoundFontPresets(): String
+    external fun nativeKeyboardVoiceSnapshot(): String
+    external fun nativeDiagnosticKeyboardReleaseWav(channel: Int, key: Int, velocity: Int): ByteArray
+    external fun nativeKeyboardReleaseProbeReport(): String
     external fun nativeDiagnosticDrumWav(bank: Int, pc: Int, key: Int, velocity: Int): ByteArray
     external fun nativeGetNoteZoneReport(): String
     external fun nativeGetDrumKitCoverage(histogram: IntArray): String

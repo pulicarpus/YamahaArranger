@@ -30,9 +30,12 @@ inline std::string write(const std::string& dir, const std::string& filename, in
                 if (std::memcmp(payload.data()+at,"phdr",4)==0) bytes=ph;
                 if (std::memcmp(payload.data()+at,"pbag",4)==0) bytes=pb;
                 if (std::memcmp(payload.data()+at,"pgen",4)==0) bytes=pg;
-                if (oneShot && std::memcmp(payload.data()+at,"igen",4)==0)
-                    for(size_t op=0;op+4<=bytes.size();op+=4)
-                        if((bytes[op]|(bytes[op+1]<<8))==54)word(bytes,op+2,0);
+                if (std::memcmp(payload.data()+at,"igen",4)==0)
+                    for(size_t op=0;op+4<=bytes.size();op+=4) {
+                        const int generator=bytes[op]|(bytes[op+1]<<8);
+                        if(generator==43)word(bytes,op+2,127<<8); // test LEFT in the real split range, too
+                        if(oneShot && generator==54)word(bytes,op+2,0);
+                    }
                 chunk(pd,reinterpret_cast<const char*>(payload.data()+at),bytes);
                 at+=8+n+(n&1);
             }

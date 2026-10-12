@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yourapp.yamahaarranger.arranger.ArrangerBrain
 import com.yourapp.yamahaarranger.arranger.ArrangerSection
+import com.yourapp.yamahaarranger.audio.KeyboardPart
 import com.yourapp.yamahaarranger.audio.AudioEngineManager
 import com.yourapp.audio.SoundFontInspector
 import com.yourapp.midi.MidiInputManager
@@ -16,6 +17,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
@@ -256,6 +258,7 @@ class MainViewModel @Inject constructor(
     private val _activeRegSlot = MutableStateFlow(0)
     private val _voiceAssignments = MutableStateFlow(defaultVoices())
     private val _rightVoices = MutableStateFlow(defaultKeyboardVoices())
+    private val voiceRequestIds = java.util.concurrent.atomic.AtomicLongArray(4)
     private var activeChordNotes: List<Int> = emptyList()
 
     private val volumeState = combine(
@@ -490,24 +493,30 @@ class MainViewModel @Inject constructor(
     fun onRight3VolumeChange(value: Int) { _right3Volume.value = value.coerceIn(0, 127); audioEngine.setChannelExpression(2, _right3Volume.value) }
 
     /** Assign RIGHT1/2/3 or LEFT by an exact loaded SF2 identity. */
-    fun setRightVoice(layer: Int, preset: AudioEngineManager.SfPreset, onResult: (Boolean) -> Unit = {}) {
-        if (layer !in 0..3) return
+    fun setKeyboardVoice(part: KeyboardPart, preset: AudioEngineManager.SfPreset, onResult: (Boolean) -> Unit = {}) {
+        val layer = part.channel
+        val requestId = voiceRequestIds.incrementAndGet(layer)
+        DebugLog.add("VOICE UI part=${part.label} channel=$layer request=$requestId fontId=${preset.soundFontId} bank=${preset.bank} pc=${preset.program}")
         viewModelScope.launch(Dispatchers.Default) {
-            val ok = audioEngine.selectKeyboardPreset(layer, preset)
+            val ok = audioEngine.selectKeyboardPreset(layer, preset) { voiceRequestIds.get(layer) == requestId }
+            if (voiceRequestIds.get(layer) != requestId) return@launch
             if (ok) {
-                _rightVoices.value = _rightVoices.value.map { slot ->
+                _rightVoices.update { slots -> slots.map { slot ->
                     if (slot.layer == layer) slot.copy(program = preset.program, bank = preset.bank,
                         name = preset.name, soundFontId = preset.soundFontId,
                         soundFontName = preset.soundFontName, available = true) else slot
-                }
+                } }
                 // An external MIDI device cannot receive an SF2 identity. Only
                 // mirror standard MIDI-sized values; never clamp a native preset.
-                if (preset.program in 0..127 && preset.bank in 0..16383)
-                    midiInputManager.sendProgramChange(layer, preset.program, preset.bank)
+                if (midiInputManager.midiOutEnabled && preset.program in 0..127 && preset.bank in 0..16383) {
+                    val msb = if (preset.bank >= 128) preset.bank / 128 else preset.bank
+                    val lsb = if (preset.bank >= 128) preset.bank % 128 else 0
+                    midiInputManager.sendProgramChange(layer, preset.program, msb, lsb)
+                }
             } else {
                 DebugLog.add("❌ VOICE selection unavailable/failed: ${preset.soundFontName} ${preset.bank}:${preset.program}")
             }
-            withContext(Dispatchers.Main) { onResult(ok) }
+            withContext(Dispatchers.Main) { if (voiceRequestIds.get(layer) == requestId) onResult(ok) }
         }
     }
 
@@ -515,9 +524,9 @@ class MainViewModel @Inject constructor(
     fun toggleRightVoice(layer: Int) {
         if (layer == 3) { arrangerBrain.toggleLeftVoice(); return }
         if (layer !in 0..2) return
-        _rightVoices.value = _rightVoices.value.map { slot ->
+        _rightVoices.update { slots -> slots.map { slot ->
             if (slot.layer == layer) slot.copy(enabled = !slot.enabled) else slot
-        }
+        } }
         val slot = _rightVoices.value.first { it.layer == layer }
         arrangerBrain.setRightVoiceEnabled(layer, slot.enabled)
         DebugLog.add("🎹 " + slot.label + ": " + if (slot.enabled) "ON" else "OFF")
@@ -662,6 +671,28 @@ class MainViewModel @Inject constructor(
         _voiceAssignments.value = updated
         arrangerBrain.updateLockedChannels(updated.filter { it.locked }.map { it.channel }.toSet())
     }
+    fun logKeyboardVoiceSnapshot() {
+        viewModelScope.launch(Dispatchers.Default) {
+            DebugLog.add("KEYBOARD UI release=${_releaseTime.value} sustain=${_sustainEnabled.value} " +
+                _rightVoices.value.joinToString { "${it.label}:enabled=${it.enabled},fontId=${it.soundFontId},bank=${it.bank},pc=${it.program}" })
+            audioEngine.keyboardVoiceSnapshot().lineSequence().filter { it.isNotBlank() }.forEach(DebugLog::add)
+        }
+    }
+
+    fun runKeyboardReleaseProbe(part: KeyboardPart, onResult: (ByteArray) -> Unit) {
+        viewModelScope.launch(Dispatchers.Default) {
+            var wav = byteArrayOf()
+            try {
+                val probe = audioEngine.diagnosticKeyboardRelease(part) { !arrangerBrain.state.value.isPlaying }
+                wav = probe.wav
+                probe.report.lineSequence().filter { it.isNotBlank() }.forEach(DebugLog::add)
+                audioEngine.keyboardVoiceSnapshot().lineSequence().filter { it.isNotBlank() }.forEach(DebugLog::add)
+            } catch (error: Exception) {
+                DebugLog.add("❌ RELEASE PCM failed: ${error.javaClass.simpleName}: ${error.message}")
+            } finally { withContext(NonCancellable + Dispatchers.Main) { onResult(wav) } }
+        }
+    }
+
     fun playTestTone() {
         viewModelScope.launch {
             DebugLog.add("🔊 TEST TONE")

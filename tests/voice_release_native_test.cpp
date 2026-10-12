@@ -56,8 +56,62 @@ int main(int argc,char** argv) {
     check(addresses.count({1025,24})&&addresses.count({65535,127}),"original non-GM bank identities preserved");
     std::cout<<"VOICE_DUPLICATES addressGroups="<<addresses.size()<<" extraEntries="<<catalog.size()-addresses.size()<<'\n';
     auto stream=VoiceReleaseTestAccess::stream(player);
-    player.setChannelPreset(10,0,24,"Acoustic Guitar");player.setChannelPreset(9,128,0,"Drums");
+    for(int ch=10;ch<16;++ch)player.setChannelPreset(ch,0,24,"Acoustic Guitar");
+    player.setChannelPreset(8,128,0,"Drums");player.setChannelPreset(9,128,0,"Drums");
     BASS_MIDI_FONT style{},rhythm{};check(BASS_MIDI_StreamGetPreset(stream,10,&style),"style readback");check(BASS_MIDI_StreamGetPreset(stream,9,&rhythm),"rhythm readback");
+    auto find=[&](const std::string& file,int bank,int pc) {
+        for(const auto& p:catalog)if(p.file==file&&p.bank==bank&&p.pc==pc)return p;
+        std::cerr<<"missing controlled fixture preset\n";std::exit(1);
+    };
+    std::array<Preset,4> independent={find("voice-primary.sf2",0,24),find("voice-secondary.sf2",0,24),
+        find("voice-third.sf2",1025,24),find("voice-drum.sf2",0,24)};
+    for(int ch=0;ch<4;++ch) {
+        const auto& p=independent[ch];check(player.setKeyboardPreset(ch,p.id,p.bank,p.pc),"assign simultaneous independent parts");
+        player.setChannelMixer(ch,127,64,127,0,0);
+    }
+    check(player.setKeyboardReleaseTime(64),"simultaneous test normal release");
+    for(int ch=0;ch<4;++ch) player.noteOn(ch,ch==3?40:60,95/127.f);
+    for(int ch=0;ch<4;++ch) {
+        BASS_MIDI_FONT actual{};const auto& p=independent[ch];
+        check(BASS_MIDI_StreamGetPreset(stream,ch,&actual)&&VoiceReleaseTestAccess::matches(player,p.id,p.bank,p.pc,actual),"all four sources verified after simultaneous NOTE_ON");
+    }
+#ifdef VOICE_RELEASE_REAL_BASS
+    render(player,4096);const auto simultaneous=render(player,4096);
+    for(int frequency:{375,750,1125,472})check(tone(simultaneous,frequency)>tone(simultaneous,2500)*10,"all four SF2 signatures are present in the simultaneous PCM mix");
+#endif
+    const auto sameSourceVariation=find("voice-primary.sf2",1025,24);
+#ifndef VOICE_RELEASE_REAL_BASS
+    mock_bass::history.clear();
+#endif
+    check(player.setKeyboardPreset(1,sameSourceVariation.id,sameSourceVariation.bank,sameSourceVariation.pc),"change RIGHT2 to a different preset from RIGHT1's SF2");
+#ifndef VOICE_RELEASE_REAL_BASS
+    for(const auto& event:mock_bass::history)if(std::get<0>(event)==stream)
+        check(std::get<1>(event)==1,"RIGHT2 selection sends no MIDI controller or sound-off to RIGHT1/RIGHT3/LEFT/style");
+#endif
+    independent[1]=sameSourceVariation;
+    for(int ch=0;ch<4;++ch) {
+        BASS_MIDI_FONT actual{};const auto& p=independent[ch];
+        check(BASS_MIDI_StreamGetPreset(stream,ch,&actual)&&VoiceReleaseTestAccess::matches(player,p.id,p.bank,p.pc,actual),"changing RIGHT2 preserves every other part's source");
+    }
+#ifdef VOICE_RELEASE_REAL_BASS
+    const auto unchangedHeld=render(player,4096);
+    for(int frequency:{375,1125,472})check(tone(unchangedHeld,frequency)>tone(simultaneous,frequency)*0.75,"RIGHT1/RIGHT3/LEFT held PCM survives RIGHT2 voice change");
+#endif
+    std::cout<<"VOICE_SIMULTANEOUS fourIndependentSources=true sameSf2DifferentBanks=true nonTargetMidiUnchanged=true PASS\n";
+    for(int ch=0;ch<4;++ch)BASS_MIDI_StreamEvent(stream,ch,MIDI_EVENT_SOUNDOFF,0);
+    const auto beforeProbe=player.keyboardVoiceSnapshot();
+#ifndef VOICE_RELEASE_REAL_BASS
+    mock_bass::history.clear();
+#endif
+    const auto probe=player.diagnosticKeyboardReleaseWav(0,60,100);
+    check(probe.size()==44+48000*33,"offline probe produces stereo WAV for three 2.75-second segments");
+    check(player.keyboardVoiceSnapshot()==beforeProbe,"offline RELEASE probe preserves all production presets/controllers/note evidence");
+#ifndef VOICE_RELEASE_REAL_BASS
+    for(const auto& event:mock_bass::history)check(std::get<0>(event)!=stream,"offline probe sends no production-stream MIDI");
+#else
+    check(player.keyboardReleaseProbeReport().find("classification=RESPONDS")!=std::string::npos,"same diagnostic shipped in APK measures real release PCM response");
+#endif
+    std::cout<<player.keyboardReleaseProbeReport();
     for(int ch=0;ch<4;++ch) {
         for(const auto& preset:catalog) {
             check(player.setKeyboardPreset(ch,preset.id,preset.bank,preset.pc),"exact keyboard selection accepted/readback");
@@ -65,7 +119,11 @@ int main(int argc,char** argv) {
             check(BASS_MIDI_FontGetPreset(actual.font,actual.preset,actual.bank)!=nullptr,"selected preset really exists");
             check(VoiceReleaseTestAccess::matches(player,preset.id,preset.bank,preset.pc,actual),"actual SF2 handle/native bank/program match exact browser identity");
             BASS_MIDI_FONT after{};check(BASS_MIDI_StreamGetPreset(stream,10,&after)&&after.font==style.font&&after.bank==style.bank&&after.preset==style.preset,"style mapping unchanged");
-            check(BASS_MIDI_StreamGetPreset(stream,9,&after)&&after.font==rhythm.font&&after.bank==rhythm.bank&&after.preset==rhythm.preset,"ACMP drum mapping unchanged");
+            for(int acmp=8;acmp<16;++acmp) {
+                const auto& expected=acmp<10?rhythm:style;
+                check(BASS_MIDI_StreamGetPreset(stream,acmp,&after)&&after.font==expected.font&&after.bank==expected.bank&&after.preset==expected.preset,"every ACMP channel mapping remains unchanged");
+                check(BASS_MIDI_StreamGetEvent(stream,acmp,MIDI_EVENT_RELEASE)==64,"every ACMP channel release remains normal");
+            }
             player.setChannelMixer(ch,127,64,127,0,0);player.noteOn(ch,60,95/127.f);
 #ifdef VOICE_RELEASE_REAL_BASS
             render(player,512);const auto pcm=render(player,4096);check(rms(pcm)>0.005,"selected voice has PCM");
