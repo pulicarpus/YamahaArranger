@@ -33,28 +33,70 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.withLock
 
 object DebugLog {
-    private val _lines = ConcurrentLinkedQueue<String>()
-    private val _fullLines = ConcurrentLinkedQueue<String>()
     private const val MAX_LINES = 30
     private const val MAX_FULL_LINES = 30000
+    // The monitor protects bounded append/copy/clear only. No external call,
+    // formatter, JNI, MIDI or callback is made while holding it.
+    private val logLock = Any()
+    private val _lines = java.util.ArrayDeque<String>(MAX_LINES)
+    private val _fullLines = java.util.ArrayDeque<String>(MAX_FULL_LINES)
+    private val timestamp = ThreadLocal.withInitial {
+        SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
+    }
+    private class LogTiming {
+        @Volatile var active = true
+        val count = java.util.concurrent.atomic.AtomicLong(0)
+        val formatNs = java.util.concurrent.atomic.AtomicLong(0)
+        val maxFormatNs = java.util.concurrent.atomic.AtomicLong(0)
+        val maxWaitNs = java.util.concurrent.atomic.AtomicLong(0)
+        val maxHoldNs = java.util.concurrent.atomic.AtomicLong(0)
+        fun maximum(a: java.util.concurrent.atomic.AtomicLong, v: Long) {
+            var old = a.get()
+            while (v > old && !a.compareAndSet(old, v)) old = a.get()
+        }
+        fun record(format: Long, wait: Long, hold: Long) {
+            if (!active) return
+            count.incrementAndGet(); formatNs.addAndGet(format)
+            maximum(maxFormatNs, format); maximum(maxWaitNs, wait); maximum(maxHoldNs, hold)
+        }
+    }
+    @Volatile private var timing: LogTiming? = null
+    fun beginTiming() { timing?.active = false; timing = LogTiming() }
+    fun endTiming() { timing?.active = false }
+    fun timingReport(): String {
+        val t = timing ?: return "F12_LOGGER unavailable=1"
+        return "F12_LOGGER active=${t.active} calls=${t.count.get()} formatTotalNs=${t.formatNs.get()} maxFormatNs=${t.maxFormatNs.get()} maxWaitNs=${t.maxWaitNs.get()} maxHoldNs=${t.maxHoldNs.get()} snapshotAtomic=0 audioCauseProven=0"
+    }
     @Volatile private var longText: String = ""
     @JvmStatic fun add(msg: String) {
-        val ts = SimpleDateFormat("HH:mm:ss.SSS", Locale.US).format(Date())
-        val line = "[$ts] $msg"
-        _lines.add(line)
-        while (_lines.size > MAX_LINES) _lines.poll()
-        _fullLines.add(line)
-        while (_fullLines.size > MAX_FULL_LINES) _fullLines.poll()
+        val diagnostic = timing?.takeIf { it.active }
+        val began = if (diagnostic != null) System.nanoTime() else 0L
+        val formatter = timestamp.get()
+        // Preserve system timezone changes as well as the original format.
+        formatter.timeZone = java.util.TimeZone.getDefault()
+        val line = "[${formatter.format(Date())}] $msg"
+        val formatted = if (diagnostic != null) System.nanoTime() else 0L
+        var acquired = 0L
+        var released = 0L
+        synchronized(logLock) {
+            if (diagnostic != null) acquired = System.nanoTime()
+            if (_lines.size == MAX_LINES) _lines.removeFirst()
+            _lines.addLast(line)
+            if (_fullLines.size == MAX_FULL_LINES) _fullLines.removeFirst()
+            _fullLines.addLast(line)
+            if (diagnostic != null) released = System.nanoTime()
+        }
+        diagnostic?.record(formatted - began, acquired - formatted, released - acquired)
     }
     @JvmStatic fun traceAudio(msg: String) = add("🔊 AUDIO $msg")
     @JvmStatic fun traceMidi(msg: String) = add("📤 MIDI OUT $msg")
     @JvmStatic fun traceError(msg: String) = add("❌ ERROR $msg")
-    fun getAll(): List<String> = _lines.toList()
-    fun getFullAll(): List<String> = _fullLines.toList()
+    fun getAll(): List<String> = synchronized(logLock) { _lines.toList() }
+    fun getFullAll(): List<String> = synchronized(logLock) { _fullLines.toList() }
     fun setLongText(text: String) { longText = text }
     fun getLongText(): String = longText
-    fun getFullText(): String = _fullLines.joinToString("\n")
-    fun clear() { _lines.clear(); _fullLines.clear(); longText = "" }
+    fun getFullText(): String = getFullAll().joinToString("\n")
+    fun clear() { synchronized(logLock) { _lines.clear(); _fullLines.clear(); longText = "" } }
 }
 
 data class VoiceSlot(
@@ -621,17 +663,19 @@ class MainViewModel @Inject constructor(
     }
 
     fun armChordDiagnostic() {
+        DebugLog.beginTiming()
         arrangerBrain.armChordDiagnostic()
         DebugLog.add("CHORD CAPTURE armed for 60s; play C -> F -> G -> C, then END CAPTURE and SAVE CHORD (small file)")
     }
     fun stopChordDiagnostic() {
         arrangerBrain.stopChordDiagnostic()
+        DebugLog.endTiming()
         DebugLog.add("CHORD CAPTURE ended; SAVE CHORD exports the small focused report")
     }
 
     suspend fun compactChordReport(): String = withContext(Dispatchers.Default) {
         val header = "YAMAHA ARRANGER CHORD CAPTURE (compact)\nStyle=${uiState.value.styleName.take(64)} section=${uiState.value.activeSection} maxFileBytes=49152\nNo SF2 inventories/zone dumps. Channel numbers zero-based.\n"
-        val rows = (arrangerBrain.compactChordDiagnosticReport() + "\n" + audioEngine.compactChordDiagnosticReport()).lineSequence().toList()
+        val rows = (DebugLog.timingReport() + "\n" + arrangerBrain.compactChordDiagnosticReport() + "\n" + audioEngine.compactChordDiagnosticReport()).lineSequence().toList()
         com.yourapp.yamahaarranger.arranger.ChordReportBounds.lines(header, rows)
     }
 
