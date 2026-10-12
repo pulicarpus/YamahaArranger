@@ -1,0 +1,78 @@
+{
+  "ambiguity_rows": 3468,
+  "collision_members": 395,
+  "conflict_groups": 158,
+  "drum_exact_pc73": [
+    {
+      "bank": 127,
+      "name": "XG Alternative",
+      "source": "COLOMBO_FALLBACK"
+    },
+    {
+      "bank": 128,
+      "name": "Alternative",
+      "source": "COLOMBO_FALLBACK"
+    }
+  ],
+  "drum_fallback_first_entry": "UNKNOWN_PHDR_ORDER",
+  "extra_colliding_entries": 237,
+  "input_sha256": {
+    "SF2_ORIGINAL_PRESET_METADATA.csv": "4caa6a18582deb5ec4ddf867c3be518029af0a0e87ce079e764da594d7cac495",
+    "SF2_REAL_COLLISION_GROUPS.csv": "f4d16e764e36fbadc6acfefb7ee65bdf9df72330ff0daacca55d119d60612bde"
+  },
+  "master_export_go": false,
+  "melodic_verified_unknown": 1148,
+  "melody_cache_members": 989,
+  "metadata_status": "PASS",
+  "original_binaries_rehashed": false,
+  "per_key_donor": "UNVERIFIED_NO_FULL_ZONE_AND_LIVE_CAPTURE",
+  "phdr_order_unknown": 1148,
+  "policy_classification_counts": {
+    "ACCORDION": 5,
+    "BASS": 65,
+    "BRASS_HORN": 37,
+    "CHOIR": 33,
+    "CHROMATIC": 19,
+    "EFFECTS": 16,
+    "ETHNIC": 8,
+    "GUITAR": 51,
+    "ORGAN": 24,
+    "PAD": 23,
+    "PERCUSSION": 25,
+    "PIANO": 45,
+    "SAX": 16,
+    "STRINGS": 54,
+    "SYNTH": 27,
+    "UNKNOWN": 671,
+    "WOODWIND": 29
+  },
+  "policy_header_sha256": "8fab33a64f530ccf77cd94de238ea6471571661eb8a761f6c6e54c5f299e29e0",
+  "presets": 1148,
+  "reference_commit": "c75122daf5d1077db55d50d1c261144fde59af4a",
+  "rejects": 2009,
+  "runtime": "UNVERIFIED",
+  "score_tie_cases": 604,
+  "selection_counts": {
+    "COLOMBO_FALLBACK": 868,
+    "NONE": 2009,
+    "SX_MELODY": 867,
+    "TYROS_FALLBACK": 991
+  },
+  "simulation_requests": 4735,
+  "simulation_status": "PASS_DETERMINISTIC_POLICY_EXECUTION_NOT_RUNTIME_EQUIVALENCE",
+  "source_bank_counts": {
+    "COLOMBO_FALLBACK": 52,
+    "SX_DRUM": 1,
+    "SX_MELODY": 5,
+    "TYROS_FALLBACK": 3
+  },
+  "source_counts": {
+    "COLOMBO_FALLBACK": 892,
+    "SX_DRUM": 21,
+    "SX_MELODY": 93,
+    "TYROS_FALLBACK": 142
+  },
+  "source_fingerprint_declarations": "PASS_MATCH_REPOSITORY_NOT_BINARY_REHASH",
+  "sx_drum_pc73_present": false,
+  "unique_addresses": 911
+}

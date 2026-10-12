@@ -1,0 +1,763 @@
+{
+  "cache_unknown_families": 526,
+  "conflict_flags": {
+    "DRUM_PHDR_AND_FONTEX2_PRIORITY_REQUIRE_CAPTURE": 24,
+    "MEMBER_POLICY_FAMILY_DISAGREEMENT": 90,
+    "MEMBER_POLICY_FAMILY_UNKNOWN": 99,
+    "RAW126_SFX_PERCUSSION_ROLE_REVIEW_REQUIRED": 2,
+    "RAW_UI_BANK_DIFFERS_FROM_GENERIC_MIDI_NAMESPACE": 4,
+    "SOURCE_HASH_KEYED_GAIN_PROFILE_MUST_SURVIVE": 3
+  },
+  "family_probes": {
+    "Bass": {
+      "cases": 164,
+      "selected_sources": {
+        "NONE": 5,
+        "SX_MELODY": 153,
+        "TYROS_FALLBACK": 6
+      }
+    },
+    "Strings1": {
+      "cases": 164,
+      "selected_sources": {
+        "COLOMBO_FALLBACK": 3,
+        "NONE": 5,
+        "SX_MELODY": 142,
+        "TYROS_FALLBACK": 14
+      }
+    },
+    "Warm Pad": {
+      "cases": 164,
+      "selected_sources": {
+        "COLOMBO_FALLBACK": 4,
+        "NONE": 5,
+        "TYROS_FALLBACK": 155
+      }
+    }
+  },
+  "optional_pool_changes": {
+    "NO_COLOMBO": [
+      {
+        "baseline": "p0096",
+        "group_id": "0:3",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0000"
+      },
+      {
+        "baseline": "p0102",
+        "group_id": "0:9",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0005"
+      },
+      {
+        "baseline": "p0103",
+        "group_id": "0:10",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0005"
+      },
+      {
+        "baseline": "p0106",
+        "group_id": "0:13",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0005"
+      },
+      {
+        "baseline": "p0108",
+        "group_id": "0:15",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0005"
+      },
+      {
+        "baseline": "p0120",
+        "group_id": "0:27",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0013"
+      },
+      {
+        "baseline": "p0140",
+        "group_id": "0:47",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0026"
+      },
+      {
+        "baseline": "p0152",
+        "group_id": "0:59",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p1041"
+      },
+      {
+        "baseline": "p0163",
+        "group_id": "0:70",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0048"
+      },
+      {
+        "baseline": "p0169",
+        "group_id": "0:76",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0048"
+      },
+      {
+        "baseline": "p0170",
+        "group_id": "0:77",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0048"
+      },
+      {
+        "baseline": "p0172",
+        "group_id": "0:79",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0048"
+      },
+      {
+        "baseline": "p0173",
+        "group_id": "0:80",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p1075"
+      },
+      {
+        "baseline": "p0174",
+        "group_id": "0:81",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p1075"
+      },
+      {
+        "baseline": "p0175",
+        "group_id": "0:82",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p1075"
+      },
+      {
+        "baseline": "p0176",
+        "group_id": "0:83",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p1075"
+      },
+      {
+        "baseline": "p0177",
+        "group_id": "0:84",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p1075"
+      },
+      {
+        "baseline": "p0178",
+        "group_id": "0:85",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p1075"
+      },
+      {
+        "baseline": "p0179",
+        "group_id": "0:86",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p1075"
+      },
+      {
+        "baseline": "p0181",
+        "group_id": "0:88",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p1074"
+      },
+      {
+        "baseline": "p0183",
+        "group_id": "0:90",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p1074"
+      },
+      {
+        "baseline": "p0189",
+        "group_id": "0:96",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "NONE"
+      },
+      {
+        "baseline": "p0190",
+        "group_id": "0:97",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "NONE"
+      },
+      {
+        "baseline": "p0191",
+        "group_id": "0:98",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "NONE"
+      },
+      {
+        "baseline": "p0192",
+        "group_id": "0:99",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "NONE"
+      },
+      {
+        "baseline": "p0193",
+        "group_id": "0:100",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "NONE"
+      },
+      {
+        "baseline": "p0194",
+        "group_id": "0:101",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "NONE"
+      },
+      {
+        "baseline": "p0195",
+        "group_id": "0:102",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "NONE"
+      },
+      {
+        "baseline": "p0196",
+        "group_id": "0:103",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "NONE"
+      },
+      {
+        "baseline": "p0197",
+        "group_id": "0:104",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "NONE"
+      },
+      {
+        "baseline": "p0198",
+        "group_id": "0:105",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "NONE"
+      },
+      {
+        "baseline": "p0199",
+        "group_id": "0:106",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "NONE"
+      },
+      {
+        "baseline": "p0200",
+        "group_id": "0:107",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "NONE"
+      },
+      {
+        "baseline": "p0201",
+        "group_id": "0:108",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "NONE"
+      },
+      {
+        "baseline": "p0202",
+        "group_id": "0:109",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "NONE"
+      },
+      {
+        "baseline": "p0203",
+        "group_id": "0:110",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "NONE"
+      },
+      {
+        "baseline": "p0204",
+        "group_id": "0:111",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "NONE"
+      },
+      {
+        "baseline": "p0213",
+        "group_id": "0:120",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "NONE"
+      },
+      {
+        "baseline": "p0214",
+        "group_id": "0:121",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "NONE"
+      },
+      {
+        "baseline": "p0215",
+        "group_id": "0:122",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "NONE"
+      },
+      {
+        "baseline": "p0216",
+        "group_id": "0:123",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "NONE"
+      },
+      {
+        "baseline": "p0217",
+        "group_id": "0:124",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "NONE"
+      },
+      {
+        "baseline": "p0218",
+        "group_id": "0:125",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "NONE"
+      },
+      {
+        "baseline": "p0219",
+        "group_id": "0:126",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "NONE"
+      },
+      {
+        "baseline": "p0220",
+        "group_id": "0:127",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "NONE"
+      }
+    ],
+    "NO_TYROS": [
+      {
+        "baseline": "p0989",
+        "group_id": "0:4",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0097"
+      },
+      {
+        "baseline": "p0990",
+        "group_id": "0:5",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0098"
+      },
+      {
+        "baseline": "p0991",
+        "group_id": "0:6",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0099"
+      },
+      {
+        "baseline": "p0993",
+        "group_id": "0:8",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0101"
+      },
+      {
+        "baseline": "p0999",
+        "group_id": "0:14",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0107"
+      },
+      {
+        "baseline": "p1002",
+        "group_id": "0:17",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0110"
+      },
+      {
+        "baseline": "p1003",
+        "group_id": "0:18",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0111"
+      },
+      {
+        "baseline": "p1004",
+        "group_id": "0:19",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0112"
+      },
+      {
+        "baseline": "p1005",
+        "group_id": "0:20",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0113"
+      },
+      {
+        "baseline": "p1010",
+        "group_id": "0:25",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0118"
+      },
+      {
+        "baseline": "p1011",
+        "group_id": "0:26",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0119"
+      },
+      {
+        "baseline": "p1014",
+        "group_id": "0:29",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0122"
+      },
+      {
+        "baseline": "p1015",
+        "group_id": "0:30",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0123"
+      },
+      {
+        "baseline": "p1016",
+        "group_id": "0:31",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0124"
+      },
+      {
+        "baseline": "p1020",
+        "group_id": "0:35",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0128"
+      },
+      {
+        "baseline": "p1021",
+        "group_id": "0:36",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0129"
+      },
+      {
+        "baseline": "p1022",
+        "group_id": "0:37",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0130"
+      },
+      {
+        "baseline": "p1023",
+        "group_id": "0:38",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0131"
+      },
+      {
+        "baseline": "p1024",
+        "group_id": "0:39",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0132"
+      },
+      {
+        "baseline": "p1025",
+        "group_id": "0:40",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0133"
+      },
+      {
+        "baseline": "p1026",
+        "group_id": "0:41",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0134"
+      },
+      {
+        "baseline": "p1028",
+        "group_id": "0:43",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0136"
+      },
+      {
+        "baseline": "p1029",
+        "group_id": "0:44",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0137"
+      },
+      {
+        "baseline": "p1030",
+        "group_id": "0:45",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0138"
+      },
+      {
+        "baseline": "p1037",
+        "group_id": "0:52",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0145"
+      },
+      {
+        "baseline": "p1038",
+        "group_id": "0:53",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0146"
+      },
+      {
+        "baseline": "p1039",
+        "group_id": "0:54",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0147"
+      },
+      {
+        "baseline": "p1041",
+        "group_id": "0:56",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0149"
+      },
+      {
+        "baseline": "p1042",
+        "group_id": "0:57",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0150"
+      },
+      {
+        "baseline": "p1043",
+        "group_id": "0:58",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0151"
+      },
+      {
+        "baseline": "p1045",
+        "group_id": "0:60",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0153"
+      },
+      {
+        "baseline": "p1046",
+        "group_id": "0:61",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0154"
+      },
+      {
+        "baseline": "p1047",
+        "group_id": "0:62",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0155"
+      },
+      {
+        "baseline": "p1048",
+        "group_id": "0:63",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0156"
+      },
+      {
+        "baseline": "p1052",
+        "group_id": "0:67",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0160"
+      },
+      {
+        "baseline": "p1053",
+        "group_id": "0:68",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0161"
+      },
+      {
+        "baseline": "p1056",
+        "group_id": "0:71",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0164"
+      },
+      {
+        "baseline": "p1057",
+        "group_id": "0:72",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0165"
+      },
+      {
+        "baseline": "p1058",
+        "group_id": "0:73",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0166"
+      },
+      {
+        "baseline": "p1063",
+        "group_id": "0:78",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0171"
+      },
+      {
+        "baseline": "p1075",
+        "group_id": "0:87",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0173"
+      },
+      {
+        "baseline": "p1074",
+        "group_id": "0:89",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0182"
+      },
+      {
+        "baseline": "p1074",
+        "group_id": "0:91",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0181"
+      },
+      {
+        "baseline": "p1077",
+        "group_id": "0:92",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0185"
+      },
+      {
+        "baseline": "p1078",
+        "group_id": "0:93",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0186"
+      },
+      {
+        "baseline": "p1079",
+        "group_id": "0:94",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0187"
+      },
+      {
+        "baseline": "p1080",
+        "group_id": "0:95",
+        "runtime": "UNVERIFIED",
+        "without_optional_source": "p0188"
+      }
+    ]
+  },
+  "variation_probes": [
+    {
+      "request_lsb": 1,
+      "request_msb": 8,
+      "request_name": "Piano",
+      "request_pc": 0,
+      "scope": "SIMULATION_ONLY",
+      "selected_bank": "0",
+      "selected_name": "Acoustic Grand Piano",
+      "selected_pc": "0",
+      "selected_source": "COLOMBO_FALLBACK"
+    },
+    {
+      "request_lsb": 1,
+      "request_msb": 8,
+      "request_name": "A.Guitar",
+      "request_pc": 1,
+      "scope": "SIMULATION_ONLY",
+      "selected_bank": "8",
+      "selected_name": "Steel Guitar",
+      "selected_pc": "1",
+      "selected_source": "SX_MELODY"
+    },
+    {
+      "request_lsb": 1,
+      "request_msb": 8,
+      "request_name": "Bass",
+      "request_pc": 17,
+      "scope": "SIMULATION_ONLY",
+      "selected_bank": "8",
+      "selected_name": "BASS",
+      "selected_pc": "17",
+      "selected_source": "SX_MELODY"
+    },
+    {
+      "request_lsb": 1,
+      "request_msb": 8,
+      "request_name": "Strings1",
+      "request_pc": 49,
+      "scope": "SIMULATION_ONLY",
+      "selected_bank": "0",
+      "selected_name": "t4 strings slow",
+      "selected_pc": "49",
+      "selected_source": "TYROS_FALLBACK"
+    },
+    {
+      "request_lsb": 1,
+      "request_msb": 8,
+      "request_name": "Warm Pad",
+      "request_pc": 89,
+      "scope": "SIMULATION_ONLY",
+      "selected_bank": "0",
+      "selected_name": "woarm pad",
+      "selected_pc": "89",
+      "selected_source": "TYROS_FALLBACK"
+    },
+    {
+      "request_lsb": 2,
+      "request_msb": 8,
+      "request_name": "Piano",
+      "request_pc": 0,
+      "scope": "SIMULATION_ONLY",
+      "selected_bank": "0",
+      "selected_name": "Acoustic Grand Piano",
+      "selected_pc": "0",
+      "selected_source": "COLOMBO_FALLBACK"
+    },
+    {
+      "request_lsb": 2,
+      "request_msb": 8,
+      "request_name": "A.Guitar",
+      "request_pc": 1,
+      "scope": "SIMULATION_ONLY",
+      "selected_bank": "8",
+      "selected_name": "Steel Guitar",
+      "selected_pc": "1",
+      "selected_source": "SX_MELODY"
+    },
+    {
+      "request_lsb": 2,
+      "request_msb": 8,
+      "request_name": "Bass",
+      "request_pc": 17,
+      "scope": "SIMULATION_ONLY",
+      "selected_bank": "8",
+      "selected_name": "BASS",
+      "selected_pc": "17",
+      "selected_source": "SX_MELODY"
+    },
+    {
+      "request_lsb": 2,
+      "request_msb": 8,
+      "request_name": "Strings1",
+      "request_pc": 49,
+      "scope": "SIMULATION_ONLY",
+      "selected_bank": "0",
+      "selected_name": "t4 strings slow",
+      "selected_pc": "49",
+      "selected_source": "TYROS_FALLBACK"
+    },
+    {
+      "request_lsb": 2,
+      "request_msb": 8,
+      "request_name": "Warm Pad",
+      "request_pc": 89,
+      "scope": "SIMULATION_ONLY",
+      "selected_bank": "0",
+      "selected_name": "woarm pad",
+      "selected_pc": "89",
+      "selected_source": "TYROS_FALLBACK"
+    },
+    {
+      "request_lsb": 5,
+      "request_msb": 8,
+      "request_name": "Piano",
+      "request_pc": 0,
+      "scope": "SIMULATION_ONLY",
+      "selected_bank": "0",
+      "selected_name": "Acoustic Grand Piano",
+      "selected_pc": "0",
+      "selected_source": "COLOMBO_FALLBACK"
+    },
+    {
+      "request_lsb": 5,
+      "request_msb": 8,
+      "request_name": "A.Guitar",
+      "request_pc": 1,
+      "scope": "SIMULATION_ONLY",
+      "selected_bank": "8",
+      "selected_name": "Steel Guitar",
+      "selected_pc": "1",
+      "selected_source": "SX_MELODY"
+    },
+    {
+      "request_lsb": 5,
+      "request_msb": 8,
+      "request_name": "Bass",
+      "request_pc": 17,
+      "scope": "SIMULATION_ONLY",
+      "selected_bank": "8",
+      "selected_name": "BASS",
+      "selected_pc": "17",
+      "selected_source": "SX_MELODY"
+    },
+    {
+      "request_lsb": 5,
+      "request_msb": 8,
+      "request_name": "Strings1",
+      "request_pc": 49,
+      "scope": "SIMULATION_ONLY",
+      "selected_bank": "0",
+      "selected_name": "t4 strings slow",
+      "selected_pc": "49",
+      "selected_source": "TYROS_FALLBACK"
+    },
+    {
+      "request_lsb": 5,
+      "request_msb": 8,
+      "request_name": "Warm Pad",
+      "request_pc": 89,
+      "scope": "SIMULATION_ONLY",
+      "selected_bank": "0",
+      "selected_name": "woarm pad",
+      "selected_pc": "89",
+      "selected_source": "TYROS_FALLBACK"
+    }
+  ]
+}

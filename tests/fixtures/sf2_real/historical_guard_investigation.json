@@ -1,0 +1,33 @@
+{
+  "checkpoint": "c75122daf5d1077db55d50d1c261144fde59af4a",
+  "parent": "7182d6a999010d3625f44f1fcfd7213ae6158998",
+  "production_blob_count": 126,
+  "production_diff": [],
+  "style_history": [
+    {
+      "sha": "4f061e31fe3518767114fa3dcaf24d9ade00047c",
+      "message": "Experiment: admit section boundaries before waiting and suppress outgoing events\n\nFreeze T01+B+C. Publish known Brain NextBar target before boundary, wake all pending transitions, require equality boundaries before dispatch, and recheck after wait. Preserve existing active-Fill policy and ownership cleanup. Intro/Ending from STOP, S01 and RTR continuity remain unresolved.",
+      "date": "2026-10-12T02:33:36Z"
+    },
+    {
+      "sha": "e75cee02887dfee3f0b3f8c924ffa40fcfc899a1",
+      "message": "Experiment: freeze T01 NextBar and tempo continuity candidate\n\nDebug device testing only; not READY or musical/audio certification. Baseline c13fa3e1aec416b8378010e13b1c86914c246e4a. Exactly two production source files; known Main/Fill admission, Intro/Ending STOP, Fill-to-Fill and S01 limitations remain.",
+      "date": "2026-10-11T23:09:17Z"
+    },
+    {
+      "sha": "f798f9dc584fe2fcaa3e6a53f34d24f9d8f925a9",
+      "message": "diag: measure F12 dispatch locks synth waits and callback gaps over build 811",
+      "date": "2026-10-09T14:22:29Z"
+    },
+    {
+      "sha": "e563d55bcf2112bdaf3928469206a8b783e66c6c",
+      "message": "fix: prevent rejected melodic CASM lanes from falling back to rhythm",
+      "date": "2026-10-08T16:36:31Z"
+    },
+    {
+      "sha": "ee833203fc8c37091549a457f8e99cc08c60ab7b",
+      "message": "Fix style mix cache and preserve percussion target identities\n\nRestore installed controller cache after style automation. Bind audition evidence to its source semantic identity and abstain on unproved variant collisions. Preserve native ownership, routing, ACMP and source dynamics; add real BASS response proof and passive level evidence. Deliver device-test APK through existing Telegram workflow.",
+      "date": "2026-10-05T14:18:17Z"
+    }
+  ]
+}

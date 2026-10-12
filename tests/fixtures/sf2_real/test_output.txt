@@ -1,0 +1,263 @@
+Reference checkpoint c75122daf5d1077db55d50d1c261144fde59af4a; runtime and PCM UNVERIFIED.
+
+===== new_original_inventory_tests =====
+test_all_conflicts_preserve_provenance_and_unverified_runtime (__main__.RealInventoryTests.test_all_conflicts_preserve_provenance_and_unverified_runtime) ... ok
+test_conflict_count_name_and_gain_mutations_rejected (__main__.RealInventoryTests.test_conflict_count_name_and_gain_mutations_rejected) ... ok
+test_duplicate_and_missing_metadata_rejected (__main__.RealInventoryTests.test_duplicate_and_missing_metadata_rejected) ... ok
+test_missing_or_duplicate_collision_rejected (__main__.RealInventoryTests.test_missing_or_duplicate_collision_rejected) ... ok
+test_no_drum_cache_preset_selected_in_melodic_probes (__main__.RealInventoryTests.test_no_drum_cache_preset_selected_in_melodic_probes) ... ok
+test_no_unknown_annotations_promoted_to_runtime_or_master_go (__main__.RealInventoryTests.test_no_unknown_annotations_promoted_to_runtime_or_master_go) ... ok
+test_optional_pool_exclusion_is_respected (__main__.RealInventoryTests.test_optional_pool_exclusion_is_respected) ... ok
+test_original_metadata_totals_and_complete_membership (__main__.RealInventoryTests.test_original_metadata_totals_and_complete_membership) ... ok
+test_pc73_source_presence_not_legacy_winner (__main__.RealInventoryTests.test_pc73_source_presence_not_legacy_winner) ... ok
+test_simulation_covers_every_original_preset (__main__.RealInventoryTests.test_simulation_covers_every_original_preset) ... ok
+test_special_msb126_127_hard_rejection (__main__.RealInventoryTests.test_special_msb126_127_hard_rejection) ... ok
+test_uploaded_files_exact_digests (__main__.RealInventoryTests.test_uploaded_files_exact_digests) ... ok
+test_wrong_source_hash_rejected (__main__.RealInventoryTests.test_wrong_source_hash_rejected) ... ok
+test_wrong_source_role_rejected (__main__.RealInventoryTests.test_wrong_source_role_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 19.909s
+
+OK
+
+===== previous_golden_tests =====
+test_canonical_determinism_handles_and_csv_roundtrip (__main__.GoldenRoutingTests.test_canonical_determinism_handles_and_csv_roundtrip) ... ok
+test_capture_coverage_is_explicitly_unverified (__main__.GoldenRoutingTests.test_capture_coverage_is_explicitly_unverified) ... ok
+test_capture_preset_and_donor_must_exist_in_inventory (__main__.GoldenRoutingTests.test_capture_preset_and_donor_must_exist_in_inventory) ... ok
+test_cli_exit_codes_and_no_master_go (__main__.GoldenRoutingTests.test_cli_exit_codes_and_no_master_go) ... ok
+test_conflicting_address_and_staging_rejected (__main__.GoldenRoutingTests.test_conflicting_address_and_staging_rejected) ... ok
+test_event_order_change_detected (__main__.GoldenRoutingTests.test_event_order_change_detected) ... ok
+test_every_context_and_semantic_change_detected (__main__.GoldenRoutingTests.test_every_context_and_semantic_change_detected) ... ok
+test_exact_checkpoint_policy_replay (__main__.GoldenRoutingTests.test_exact_checkpoint_policy_replay) ... ok
+test_full_original_scope_cannot_pass_without_inventory (__main__.GoldenRoutingTests.test_full_original_scope_cannot_pass_without_inventory) ... ok
+test_missing_event_and_donor_mapping (__main__.GoldenRoutingTests.test_missing_event_and_donor_mapping) ... ok
+test_missing_inventory_explicitly_unverified (__main__.GoldenRoutingTests.test_missing_inventory_explicitly_unverified) ... ok
+test_native_mapping_mismatch (__main__.GoldenRoutingTests.test_native_mapping_mismatch) ... ok
+test_original_partial_inventory_not_full_pass (__main__.GoldenRoutingTests.test_original_partial_inventory_not_full_pass) ... ok
+test_original_scope_rejects_synthetic_source_hashes (__main__.GoldenRoutingTests.test_original_scope_rejects_synthetic_source_hashes) ... ok
+test_pc73_exact_kit_regression (__main__.GoldenRoutingTests.test_pc73_exact_kit_regression) ... ok
+test_projection_preserves_identity_with_new_native_address (__main__.GoldenRoutingTests.test_projection_preserves_identity_with_new_native_address) ... ok
+test_synthetic_inventory_all_observed_conflicts (__main__.GoldenRoutingTests.test_synthetic_inventory_all_observed_conflicts) ... ok
+test_unknown_gain_and_missing_capture_cannot_pass (__main__.GoldenRoutingTests.test_unknown_gain_and_missing_capture_cannot_pass) ... ok
+
+----------------------------------------------------------------------
+Ran 18 tests in 2.076s
+
+OK
+POLICY_REPLAY deterministic, synthetic requests=9; no runtime capture
+
+===== checkpoint_host =====
+CHECKPOINT snapshot verified: 84 files
+Love Song Bass family=BASS FINAL Yamaha SX700 SX900 Melody.sf2 / BASS score=99065 reason=same_family;yamaha_msb;semantic_exact;same_pc_support_only;yamaha_source
+Love Song Piano family=PIANO FINAL ColomboGMGS2_BM.sf2 / Wide Piano 2 score=2240 reason=same_family;semantic_partial;same_pc_support_only
+Love Song A.Guitar family=GUITAR FINAL Yamaha SX700 SX900 Melody.sf2 / Steel Guitar score=91765 reason=same_family;yamaha_msb;acoustic_variation;same_pc_support_only;yamaha_source
+Love Song Strings1 family=STRINGS FINAL ColomboGMGS2_BM.sf2 / Strings score=9000 reason=same_family;semantic_exact
+Love Song Strings2 family=STRINGS FINAL ColomboGMGS2_BM.sf2 / Strings score=9000 reason=same_family;semantic_exact
+PASS: 210 resolver checks
+HOST PASS voice_resolver_test
+PASS: 70 native routing checks (mock BASS; no audio assertion)
+HOST PASS native_resolver_test
+BANK_TRANSLATION checks=63 production_player=true mapping_error=false mock_API_scope=true no_PCM_claim=true
+HOST PASS bank_translation_readback_test
+ACCOMPANIMENT_NATIVE checks=32 production_player=true no_PCM_claim=true
+HOST PASS accompaniment_presence_test
+PERCUSSION_NATIVE checks=238 production_adapter=true mock_API_not_original_PCM
+HOST PASS percussion_fidelity_test
+S5_NATIVE_LIFECYCLE checks=8 productionPlayer=true BASS_NOTEOFF1=true API_mock=true nativeSDK_acceptance=NOT_MEASURED PCM=NOT_MEASURED
+HOST PASS f03_native_lifecycle_test
+PASS 30 SF2 zone metadata checks
+HOST PASS sf2_zone_diagnostic_test
+PASS: 48 audio-path diagnostic checks (observation only)
+HOST PASS audio_path_diagnostic_test
+PASS 15 all-kit coverage checks (metadata only)
+HOST PASS drum_kit_audit_test
+PASS 30 compact drum export checks (metadata only)
+HOST PASS drum_compatibility_report_test
+GOLDEN_BOUNDARIES checks=17 synthetic=true mock_BASS=true PC73_bank126_127_128_gain_collision=true runtime_UNVERIFIED
+HOST PASS sf2_golden_boundaries_test
+HOST targets=11; mocked BASS, synthetic fixtures; PCM/device UNVERIFIED
+
+===== legacy_aggregate =====
+S5_NATIVE_LIFECYCLE checks=8 productionPlayer=true BASS_NOTEOFF1=true API_mock=true nativeSDK_acceptance=NOT_MEASURED PCM=NOT_MEASURED
+Love Song Bass family=BASS FINAL Yamaha SX700 SX900 Melody.sf2 / BASS score=99065 reason=same_family;yamaha_msb;semantic_exact;same_pc_support_only;yamaha_source
+Love Song Piano family=PIANO FINAL ColomboGMGS2_BM.sf2 / Wide Piano 2 score=2240 reason=same_family;semantic_partial;same_pc_support_only
+Love Song A.Guitar family=GUITAR FINAL Yamaha SX700 SX900 Melody.sf2 / Steel Guitar score=91765 reason=same_family;yamaha_msb;acoustic_variation;same_pc_support_only;yamaha_source
+Love Song Strings1 family=STRINGS FINAL ColomboGMGS2_BM.sf2 / Strings score=9000 reason=same_family;semantic_exact
+Love Song Strings2 family=STRINGS FINAL ColomboGMGS2_BM.sf2 / Strings score=9000 reason=same_family;semantic_exact
+PASS: 210 resolver checks
+PASS: 70 native routing checks (mock BASS; no audio assertion)
+PASS: 48 audio-path diagnostic checks (observation only)
+PASS 30 SF2 zone metadata checks
+PASS 15 all-kit coverage checks (metadata only)
+PASS 30 compact drum export checks (metadata only)
+PASS 29 focused drum comparison checks (metadata only)
+managed SF2 audition: 12 native scenarios PASS; production events/state untouched; resources freed
+BANK_TRANSLATION checks=63 production_player=true mapping_error=false mock_API_scope=true no_PCM_claim=true
+ACCOMPANIMENT_NATIVE checks=32 production_player=true no_PCM_claim=true
+PERCUSSION_NATIVE checks=238 production_adapter=true mock_API_not_original_PCM
+ROLE_PCM_NATIVE checks=177 production_player=true no_extra_NOTE_ON=true PCM_buffer_unchanged=true cap_and_cleanup=true
+DIAGNOSTIC_LIVENESS checks=4 blocked_formatter_does_not_block_render_or_UI_synth=true snapshot_consistent=true ROLE_LAYER_preserved=true export_no_MIDI=true
+SHADOW HOST 46 checks PASS NOTE_ON p50=271ns p95=291ns p99=331ns samples=3000; mock synth, no device xrun measurement
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_drum_shadow_guards.py", line 15, in <module>
+    assert hashlib.sha256(strip_metadata(path,(root/path).read_text()).encode()).hexdigest()==expected, "#770 production path changed: "+path
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/sff_dialect_source_guard.py", line 41, in strip_metadata
+    text=normalize_s3(path,historical_bytes(path,text.encode())).decode()
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/f04_source_guard.py", line 20, in historical_bytes
+    data = baseline_bytes(path,data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/f12_source_guard.py", line 15, in baseline_bytes
+    assert sha(data)==rule['after_sha256'],'Unreviewed F12 file: '+path
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Unreviewed F12 file: app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_voice_resolver.py", line 107, in <module>
+    subprocess.run(["python3",str(root / "tools/test_drum_shadow_guards.py")],check=True)
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['python3', '/workspace/work/sf2-audit/reference/tools/test_drum_shadow_guards.py']' returned non-zero exit status 1.
+
+===== partial_export_tests =====
+test_partial_inventory_exactly_derived_from_pinned_export (__main__.PartialOriginalMetadataTests.test_partial_inventory_exactly_derived_from_pinned_export) ... ok
+test_true_velocity_and_key_ranges_remain_metadata_only (__main__.PartialOriginalMetadataTests.test_true_velocity_and_key_ranges_remain_metadata_only) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.001s
+
+OK
+
+===== test_drum_shadow_guards.py =====
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_drum_shadow_guards.py", line 15, in <module>
+    assert hashlib.sha256(strip_metadata(path,(root/path).read_text()).encode()).hexdigest()==expected, "#770 production path changed: "+path
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/sff_dialect_source_guard.py", line 41, in strip_metadata
+    text=normalize_s3(path,historical_bytes(path,text.encode())).decode()
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/f04_source_guard.py", line 20, in historical_bytes
+    data = baseline_bytes(path,data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/f12_source_guard.py", line 15, in baseline_bytes
+    assert sha(data)==rule['after_sha256'],'Unreviewed F12 file: '+path
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Unreviewed F12 file: app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt
+
+===== test_production_regression_bypass.py =====
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_production_regression_bypass.py", line 25, in <module>
+    assert musical==expected,'Protected #776 mismatch: '+path
+           ^^^^^^^^^^^^^^^^^
+AssertionError: Protected #776 mismatch: app/src/main/java/com/yourapp/ui/ContentResolverProvider.kt
+
+===== test_mix_percussion_boundaries.py =====
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_mix_percussion_boundaries.py", line 13, in <module>
+    actual=method(strip_balance(record['path'],(root/record['path']).read_text()),record['method'])
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/measured_balance_guard.py", line 8, in strip_balance
+    text=strip_headroom(path,text)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/pcm_headroom_guard.py", line 8, in strip_headroom
+    text=strip_metadata(path,text)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/sff_dialect_source_guard.py", line 41, in strip_metadata
+    text=normalize_s3(path,historical_bytes(path,text.encode())).decode()
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/f04_source_guard.py", line 20, in historical_bytes
+    data = baseline_bytes(path,data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/f12_source_guard.py", line 15, in baseline_bytes
+    assert sha(data)==rule['after_sha256'],'Unreviewed F12 file: '+path
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Unreviewed F12 file: app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt
+
+===== test_role_pcm_guards.py =====
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_role_pcm_guards.py", line 17, in <module>
+    assert hashlib.sha256(strip_observers(file,strip_balance(file,(root/file).read_text())).encode()).hexdigest()==h,file
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt
+
+===== test_diagnostic788_guards.py =====
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_diagnostic788_guards.py", line 33, in <module>
+    assert hashlib.sha256(normalize(path,(root/path).read_text()).encode()).hexdigest()==h,path
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: app/src/main/java/com/yourapp/ui/MainViewModel.kt
+
+===== sff_dialect_source_guard.py =====
+S2_SOURCE_IDENTITY PASS: six exact new hashes; checked metadata removal recovers every old byte
+
+===== test_sff_dialect_source_guard.py =====
+test_any_source_mutation_even_a_comment_is_rejected (__main__.DialectSourceGuardTests.test_any_source_mutation_even_a_comment_is_rejected) ... ok
+test_exact_new_and_recovered_old_profiles_are_pinned (__main__.DialectSourceGuardTests.test_exact_new_and_recovered_old_profiles_are_pinned) ... ok
+test_old_profile_requires_explicit_baseline_selection (__main__.DialectSourceGuardTests.test_old_profile_requires_explicit_baseline_selection) ... ok
+test_unlisted_metadata_block_is_rejected (__main__.DialectSourceGuardTests.test_unlisted_metadata_block_is_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.032s
+
+OK
+
+===== sff_casm_source_guard.py =====
+S3_SOURCE_IDENTITY PASS: six exact physical hashes; every old S2 byte recovered
+
+===== test_sff_casm_source_guard.py =====
+test_any_byte_mutation_is_rejected (__main__.SourceGuardTests.test_any_byte_mutation_is_rejected) ... ok
+test_exact_s3_and_s2_recovery (__main__.SourceGuardTests.test_exact_s3_and_s2_recovery) ... ok
+test_old_profile_requires_explicit_baseline_selection (__main__.SourceGuardTests.test_old_profile_requires_explicit_baseline_selection) ... ok
+test_unlisted_metadata_is_rejected (__main__.SourceGuardTests.test_unlisted_metadata_is_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.006s
+
+OK
+
+===== test_sff_casm_native.py =====
+S3_NATIVE_SELF_TEST PASS: Ctab-only/Bass-bit omission, Cntt before/after override, last-Cntt/cross-CSEG override provenance, unknown-tag encoding, absent source, load/failure isolation; UNKNOWN SMF only
+
+===== test_f04_source_guard.py =====
+FE...
+======================================================================
+ERROR: test_exact_candidate_and_all_historical_files (__main__.F04SourceGuardTest.test_exact_candidate_and_all_historical_files)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_f04_source_guard.py", line 8, in test_exact_candidate_and_all_historical_files
+    p=verify_profile()
+      ^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/f04_source_guard.py", line 40, in verify_profile
+    assert sha(historical_bytes(path))==expected, 'Non-F04 baseline drift: '+path
+               ^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/f04_source_guard.py", line 18, in historical_bytes
+    if data is None: data = (ROOT/path).read_bytes()
+                            ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1019, in read_bytes
+    with self.open(mode='rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/workspace/work/sf2-audit/reference/.github/workflows/inspect-sf2.yml'
+
+======================================================================
+FAIL: test_baseline_recovery_is_exact (__main__.F04SourceGuardTest.test_baseline_recovery_is_exact)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/work/sf2-audit/reference/tools/test_f04_source_guard.py", line 13, in test_baseline_recovery_is_exact
+    data=historical_bytes(SOURCE)
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/f04_source_guard.py", line 20, in historical_bytes
+    data = baseline_bytes(path,data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/work/sf2-audit/reference/tools/f12_source_guard.py", line 15, in baseline_bytes
+    assert sha(data)==rule['after_sha256'],'Unreviewed F12 file: '+path
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Unreviewed F12 file: app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.005s
+
+FAILED (failures=1, errors=1)

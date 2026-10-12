@@ -1,0 +1,146 @@
+{
+  "checkpoint_host": {
+    "checks": 761,
+    "scope": "mock BASS/synthetic fixtures",
+    "status": "PASS",
+    "targets": 11
+  },
+  "compiler": "c++ (Debian 14.2.0-19) 14.2.0",
+  "date_jakarta": "2026-10-12",
+  "guards": [
+    {
+      "returncode": 1,
+      "status": "FAIL",
+      "tail": [
+        "  File \"/workspace/work/sf2-audit/reference/tools/f12_source_guard.py\", line 15, in baseline_bytes",
+        "    assert sha(data)==rule['after_sha256'],'Unreviewed F12 file: '+path",
+        "           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+        "AssertionError: Unreviewed F12 file: app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      ],
+      "test": "test_drum_shadow_guards.py"
+    },
+    {
+      "returncode": 1,
+      "status": "FAIL",
+      "tail": [
+        "  File \"/workspace/work/sf2-audit/reference/tools/test_production_regression_bypass.py\", line 25, in <module>",
+        "    assert musical==expected,'Protected #776 mismatch: '+path",
+        "           ^^^^^^^^^^^^^^^^^",
+        "AssertionError: Protected #776 mismatch: app/src/main/java/com/yourapp/ui/ContentResolverProvider.kt"
+      ],
+      "test": "test_production_regression_bypass.py"
+    },
+    {
+      "returncode": 1,
+      "status": "FAIL",
+      "tail": [
+        "  File \"/workspace/work/sf2-audit/reference/tools/f12_source_guard.py\", line 15, in baseline_bytes",
+        "    assert sha(data)==rule['after_sha256'],'Unreviewed F12 file: '+path",
+        "           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+        "AssertionError: Unreviewed F12 file: app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt"
+      ],
+      "test": "test_mix_percussion_boundaries.py"
+    },
+    {
+      "returncode": 1,
+      "status": "FAIL",
+      "tail": [
+        "  File \"/workspace/work/sf2-audit/reference/tools/test_role_pcm_guards.py\", line 17, in <module>",
+        "    assert hashlib.sha256(strip_observers(file,strip_balance(file,(root/file).read_text())).encode()).hexdigest()==h,file",
+        "           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+        "AssertionError: app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt"
+      ],
+      "test": "test_role_pcm_guards.py"
+    },
+    {
+      "returncode": 1,
+      "status": "FAIL",
+      "tail": [
+        "  File \"/workspace/work/sf2-audit/reference/tools/test_diagnostic788_guards.py\", line 33, in <module>",
+        "    assert hashlib.sha256(normalize(path,(root/path).read_text()).encode()).hexdigest()==h,path",
+        "           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+        "AssertionError: app/src/main/java/com/yourapp/ui/MainViewModel.kt"
+      ],
+      "test": "test_diagnostic788_guards.py"
+    },
+    {
+      "returncode": 0,
+      "status": "PASS",
+      "tail": [
+        "S2_SOURCE_IDENTITY PASS: six exact new hashes; checked metadata removal recovers every old byte"
+      ],
+      "test": "sff_dialect_source_guard.py"
+    },
+    {
+      "returncode": 0,
+      "status": "PASS",
+      "tail": [
+        "----------------------------------------------------------------------",
+        "Ran 4 tests in 0.032s",
+        "",
+        "OK"
+      ],
+      "test": "test_sff_dialect_source_guard.py"
+    },
+    {
+      "returncode": 0,
+      "status": "PASS",
+      "tail": [
+        "S3_SOURCE_IDENTITY PASS: six exact physical hashes; every old S2 byte recovered"
+      ],
+      "test": "sff_casm_source_guard.py"
+    },
+    {
+      "returncode": 0,
+      "status": "PASS",
+      "tail": [
+        "----------------------------------------------------------------------",
+        "Ran 4 tests in 0.006s",
+        "",
+        "OK"
+      ],
+      "test": "test_sff_casm_source_guard.py"
+    },
+    {
+      "returncode": 0,
+      "status": "PASS",
+      "tail": [
+        "S3_NATIVE_SELF_TEST PASS: Ctab-only/Bass-bit omission, Cntt before/after override, last-Cntt/cross-CSEG override provenance, unknown-tag encoding, absent source, load/failure isolation; UNKNOWN SMF only"
+      ],
+      "test": "test_sff_casm_native.py"
+    },
+    {
+      "returncode": 1,
+      "status": "FAIL",
+      "tail": [
+        "----------------------------------------------------------------------",
+        "Ran 5 tests in 0.005s",
+        "",
+        "FAILED (failures=1, errors=1)"
+      ],
+      "test": "test_f04_source_guard.py"
+    }
+  ],
+  "legacy_aggregate": {
+    "first_failure": "Unreviewed F12 file: StyleSequencer.kt",
+    "native_targets_passed": 15,
+    "status": "FAIL"
+  },
+  "log_sha256": "b4152342e7d8c9ce9ee23fa5f155208645d26896c0f06f623e47af27a17046fd",
+  "master_export": "NO-GO",
+  "new_original_metadata_and_simulation_tests": {
+    "status": "PASS",
+    "tests": 14
+  },
+  "parent_commit": "7182d6a999010d3625f44f1fcfd7213ae6158998",
+  "partial_export_tests": {
+    "status": "PASS",
+    "tests": 2
+  },
+  "previous_golden_tests": {
+    "status": "PASS",
+    "tests": 18
+  },
+  "python": "3.12.14",
+  "runtime": "UNVERIFIED"
+}
