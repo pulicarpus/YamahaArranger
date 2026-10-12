@@ -1,0 +1,72 @@
+{
+  "label": "EXPERIMENTAL-UNVERIFIED",
+  "branch": "experiment/style-chord-recovery",
+  "baseline": "c13fa3e1aec416b8378010e13b1c86914c246e4a",
+  "predecessor_source": "e75cee02887dfee3f0b3f8c924ffa40fcfc899a1",
+  "APK_source": "c75122daf5d1077db55d50d1c261144fde59af4a",
+  "source_sha256": {
+    "app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt": "eec8ff3eae2c1ff6b84afd06938759a3737f23fba41a9075509c0c6a9314cac4",
+    "app/src/main/java/com/yourapp/ui/MainViewModel.kt": "a870e677b9f1d2be444d2f0507dbc51f794ef5ea0ddd14a8ae2a499cdbbe38e2",
+    "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt": "c768285a3b4a303c270f1d1c68e04d559bb2951d28a249d3c19455715a97cf89"
+  },
+  "protected_original_files": 414,
+  "host": {
+    "logger": 8,
+    "T01": 192,
+    "B": 144,
+    "C": 234,
+    "admission": 24,
+    "section_cases": 99,
+    "musical_F04": 90,
+    "READY_engine": 17,
+    "READY_admission": 24,
+    "Default_clock": 18,
+    "LoveSong_controls": 9,
+    "LoveSong_tempo_replays": 32,
+    "input_verifier": 18
+  },
+  "before_after": {
+    "admission_before": "12/24 FAIL",
+    "admission_after": "24/24 PASS",
+    "Ending_request500ms_on_twoBarMain": {
+      "beforeMs": 4000,
+      "afterMs": 2000
+    },
+    "immediate_pending_during_wait": {
+      "admittedMs": 500,
+      "beforeMs": 3000,
+      "afterMs": 500,
+      "old_future_ON_before": true,
+      "old_future_ON_after": false
+    },
+    "logger_30000_retained_host_p50_us": {
+      "before": 247.522,
+      "after": 0.57
+    }
+  },
+  "known_failures_or_unknown": [
+    "Manual pending Fill cancellation retained: strict baseline/candidate FAIL, Yamaha UNKNOWN",
+    "Intro/Ending START from STOP contract/looping",
+    "Existing <=25ms fallback",
+    "S01 STOP worker/session lifecycle",
+    "F03 selective ownership and RTR held-voice continuity",
+    "Android PCM/crackling not verified",
+    "Xrun not measured; callback gaps are not xruns",
+    "503 corpus BLOCKED"
+  ],
+  "CI": "PENDING; host tests executed before push; not READY certification",
+  "host_log_sha256": {
+    "t01-frozen-workflow.log": "020f8f8da9294f7d1edf83d53373a1f2ee07e5fa2b74813356181e6353528426",
+    "b144.log": "45809583d3cb67d2dd572a49a8cf9b84331d0204abe6f88193079f5e56fdae51",
+    "c234.log": "fddc9cb23c43e1f17fccc8ff38dc02593073c4ea50f2b73473b58814a56fc444",
+    "group2/after-pinned.log": "f58ff7ea9f967f21cd9221d7ba74df2483cbc16a18984c059bd0bcd0e6dd62c4",
+    "group2/transitions-pinned.log": "8f9f3d5d3baac53455bb302bb8c279115ef28094d8670a9fc20a6cdb23e5b09f",
+    "regressions-frozen-workflow.log": "3232f19e0f48c31a769c47f2c72a4a0c32fec4dcd063c108a32f9ee2d86c41d6",
+    "ready24.log": "6b2432cab06c30d8f2cf4d00422faf87f210fcec34dbc5df8fb806f1cb27bfed",
+    "default.log": "f31efc95c9bdf16d259cb9f9de1cd8a43580f1c415aaa7f92ff090d123f554ae",
+    "portable-proof-final.log": "9d45f793cbb6b55f8a07973c0a4a884f3e7c261ddf5184750aa107769dac0ee9",
+    "verifier-tests-final.log": "fe9b4f88fa1f0a8ec2996a7f7ba653cb2e6801456831ad3b4aedc2a162a634d9",
+    "local-build-pinned.log": "93203231b841b6a6c98164733a6394c84c856df5f54612f1784525bc60e2156e",
+    "group3/proof-complete.log": "7093a619b56918a08fbc56c1c49a11d7fb861a598c767ee93965002ae67d46ee"
+  }
+}

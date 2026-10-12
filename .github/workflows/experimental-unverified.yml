@@ -1,18 +1,19 @@
 name: EXPERIMENTAL-UNVERIFIED debug APK
 on:
   push:
-    branches: [experiment/smooth-style-transition]
+    branches: [experiment/style-chord-recovery]
   workflow_dispatch: {}
 permissions:
   contents: read
 jobs:
   debug:
-    if: github.ref == 'refs/heads/experiment/smooth-style-transition'
+    if: github.ref == 'refs/heads/experiment/style-chord-recovery'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
       PYTHONDONTWRITEBYTECODE: '1'
-      SOURCE_SHA: e75cee02887dfee3f0b3f8c924ffa40fcfc899a1
+      SOURCE_SHA: c75122daf5d1077db55d50d1c261144fde59af4a
+      SOURCE_PARENT: 1e2c0aeb29db415c2133d3e5650c4fcde353dbc2
       BASELINE_SHA: c13fa3e1aec416b8378010e13b1c86914c246e4a
       ANDROID_HOME: /usr/local/lib/android/sdk
       ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
@@ -46,11 +47,10 @@ jobs:
           def git(*args):
               return subprocess.check_output(['git',*args],cwd=root)
           source=os.environ['SOURCE_SHA'];base=os.environ['BASELINE_SHA']
-          allowed={
-            'app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt':'2cc9ea2b48e007089615f9bf0d71b81d4ebc9ebf6ecdcb2390bd3c06aff032ec',
-            'app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt':'6231ba78b041a0d9549a22c551731cb5f2f622d3db75bbd575c112fcd94847da'}
+          allowed={'app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt': 'eec8ff3eae2c1ff6b84afd06938759a3737f23fba41a9075509c0c6a9314cac4', 'app/src/main/java/com/yourapp/ui/MainViewModel.kt': 'a870e677b9f1d2be444d2f0507dbc51f794ef5ea0ddd14a8ae2a499cdbbe38e2', 'app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt': 'c768285a3b4a303c270f1d1c68e04d559bb2951d28a249d3c19455715a97cf89'}
           assert git('rev-parse','HEAD').decode().strip()==source,'Wrong source SHA'
-          assert git('rev-parse','HEAD^').decode().strip()==base,'Wrong source parent'
+          assert git('rev-parse','HEAD^').decode().strip()==os.environ['SOURCE_PARENT'],'Wrong source parent'
+          subprocess.run(['git','merge-base','--is-ancestor',base,source],cwd=root,check=True)
           def tree(sha):
               out={}
               for item in git('ls-tree','-rz',sha).split(b'\x00'):
@@ -60,7 +60,10 @@ jobs:
                       out[path.decode()]=(mode,oid)
               return out
           before=tree(base);after=tree(source)
-          assert len(before)==417 and before.keys()==after.keys(),'Path set drift'
+          infrastructure=['.github/workflows/experimental-unverified.yml','docs/EXPERIMENTAL_UNVERIFIED_T01_B_C.json']
+          inherited=tree('036fe0e05438b4a0cb22157df05e51c957568981')
+          assert len(before)==417 and set(after)==set(before)|set(infrastructure),'Path set drift'
+          assert all(after[p]==inherited[p] for p in infrastructure),'Inherited infrastructure drift'
           changed={p for p in before if before[p]!=after[p]}
           assert changed==set(allowed),'Unauthorized committed delta'
           assert not git('status','--porcelain','--untracked-files=no'),'Tracked worktree/index drift'
@@ -74,7 +77,7 @@ jobs:
               if path in allowed:
                   assert hashlib.sha256(data).hexdigest()==allowed[path],'Wrong frozen source'
                   assert mode==before[path][0],'Production mode drift'
-              else:
+              elif path not in infrastructure:
                   assert after[path]==before[path],'Protected blob drift'
           phase=sys.argv[1]
           sys.path.insert(0,str(root/'tools'))
@@ -92,13 +95,15 @@ jobs:
           verify_generated_sdk(root,sdk)
           report={'label':'EXPERIMENTAL-UNVERIFIED','source_sha':source,'baseline_sha':base,
             'workflow_sha':os.environ['GITHUB_SHA'],'workflow_run':os.environ['GITHUB_RUN_ID'],
-            'frozen_source_sha256':allowed,'protected_tracked_paths':415,'sdk_files':6,
+            'frozen_source_sha256':allowed,'protected_tracked_paths':414,'sdk_files':6,
             'phase':phase,'ready_certified':False,'audio_certified':False,
-            'known_risks':['Main/Fill admission failures','Intro/Ending from STOP','Fill-to-Fill UNKNOWN','S01 STOP lifecycle','Android PCM unverified']}
+            'known_risks':['Manual Fill request can be superseded by a newer Main request (legacy)','Intro/Ending from STOP','Yamaha Fill-to-Fill interruption UNKNOWN','RTR continuity unchanged','S01 STOP lifecycle','Android PCM/xrun unverified']}
           Path('evidence/input-'+phase+'.json').write_text(json.dumps(report,indent=2)+'\n')
           print(json.dumps(report))
           PYVERIFY
           git -C candidate diff "$BASELINE_SHA" "$SOURCE_SHA" > evidence/frozen-source.diff
+          git -C candidate show "$GITHUB_SHA:docs/EXPERIMENTAL_STYLE_CHORD_RECOVERY.json" > evidence/host-evidence.json
+          git -C candidate show "$GITHUB_SHA:docs/EXPERIMENTAL_STYLE_CHORD_RECOVERY.md" > evidence/recovery-report.md
       - name: Install CMake and exact historical Android SDK inputs
         working-directory: candidate
         run: |
@@ -117,7 +122,7 @@ jobs:
             cp "$(find /tmp/bass -type f -path "*/$abi/libbass.so" -print -quit)" "app/src/main/jniLibs/$abi/libbass.so"
             cp "$(find /tmp/bassmidi -type f -path "*/$abi/libbassmidi.so" -print -quit)" "app/src/main/jniLibs/$abi/libbassmidi.so"
           done
-      - name: Verify clean candidate SHA, two source blobs, 415 protected paths and SDK6
+      - name: Verify clean candidate SHA, three source blobs, 414 protected paths and SDK6
         run: python3 evidence/verify.py before
       - name: Assemble original debug configuration (both ABIs; no READY certification)
         working-directory: candidate
@@ -154,6 +159,6 @@ jobs:
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
-          name: EXPERIMENTAL-UNVERIFIED-arm64-v8a-armeabi-v7a
+          name: EXPERIMENTAL-UNVERIFIED-style-chord-arm64-v8a-armeabi-v7a
           path: candidate/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error

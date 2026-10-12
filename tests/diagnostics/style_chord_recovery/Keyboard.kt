@@ -1,0 +1,4 @@
+package audit
+import com.yourapp.yamahaarranger.arranger.*
+import org.mockito.Mockito.*
+fun main(){val r=Rig(mainBars=2);doAnswer{r.trace.add("${Clock.ms}|ON|[0, ${it.arguments[0]}, ${it.arguments[1]}]");null}.`when`(r.a).noteOn(anyInt(),anyFloat());doAnswer{r.trace.add("${Clock.ms}|OFF|[0, ${it.arguments[0]}]");null}.`when`(r.a).noteOff(anyInt());r.brain.setAutoFill(false);r.start(ArrangerSection.MainA);r.brain.onKeyboardNoteOn(90,0.8f);Clock.until(500);r.brain.selectMainVariation(ArrangerSection.MainB);Clock.until(2100);check(r.onTimes(ArrangerSection.MainB).first()==2000L);check(r.trace.none{it.contains("|OFF|[0, 90]")||it.contains("|MIDI_OFF|[0, 90]")});check(r.trace.count{it.contains("ALL_OFF")}==1);r.brain.onKeyboardNoteOff(90);check(r.trace.count{it.contains("|OFF|[0, 90]")}==1);r.close();println("KEYBOARD_ISOLATION new scheduled transition PASS; explicit keyboard release only")}
