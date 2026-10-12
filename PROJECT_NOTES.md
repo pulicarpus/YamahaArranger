@@ -1,5 +1,16 @@
 # YamahaArranger — Catatan Proyek
 
+## Checkpoint 2026-10-12 — Style usable; SF2 single-master planning
+
+- Device report: style from experimental style/chord recovery is **much improved and playable, not yet perfectly smooth**. Preserve source checkpoint `c75122daf5d1077db55d50d1c261144fde59af4a` and protected READY `c13fa3e1aec416b8378010e13b1c86914c246e4a`. Do not claim production certification or alter style in SF2 planning.
+- Voice & RELEASE experimental `7121a35` (branch `experiment/universal-sf2-release`) built successfully and host tests passed, **but device test FAILED**: RELEASE not audibly effective, RIGHT2/RIGHT3 cannot retain other voices than piano, selector may redirect changes to RIGHT1/LEFT. Do not promote this experiment to main.
+- User's four SF2 binaries on laptop: ColomboGMGS2_BM (892 presets, 52 banks), Yamaha SX700/SX900 melody (93, 5 banks), Yamaha SX700/SX900 drum (21, bank128), Tyros4 (142, 3 banks). **1,148 entries, 911 unique bank/program addresses, 158 cross-file collision groups, 237 duplicate-address entries.** Original files remain immutable.
+- Read-only Codex mapping study found priority based on source identity and voice family, normalized bank mappings and FONTEX2, drum fallback by PC/key, and source-hash-bound gain/percussion evidence. Risks: drum PC73 fallback changes when merged; gain trims Melody 0:0/8:1 -6 dB and Tyros 0:49 +12 dB can be lost. Existing `loadSingleSoundFont()` calls two native loads, so one path does not guarantee one BASSMIDI handle or less RAM.
+- The four-SF2 mapping study is supplied in the conversation as `SF2_MASTER_MAPPING_PLAN.md`; user-generated inventory artifacts `SF2_PRESET_INVENTORY.csv`, `SF2_BANK_CONFLICTS.csv`, `SF2_SUMMARY.txt` have not been committed to this repository. Do not claim their byte-level integrity or invent SHA-256s.
+- Branch `plan/sf2-single-master` is documentation/planning only, based on playable style checkpoint, **not** the unverified Voice & RELEASE experiment. First task: manifest original SHA256 + bank + program -> unique master address, source provenance, priority, fallback and gain; capture reference PCM and RAM before conversion. Do not overwrite source SF2 or change production loader/style.
+- Promotion to `main` is separately gated: current main `18081d24346a87d30f091e089a350b5481715982` diverges from style checkpoint by 133 ahead / 1 behind; review large diff, preserve historical main, verify CI and device, then merge through PR. No automatic blind merge.
+
+
 ## Latest checkpoint — Focused drum musical-compatibility evidence (2026-10-02 device report)
 
 - GitHub source/APK `eb8c411a2817bed3dfda031d40f89a1ad7fae26d`, branch `diag/drum-compatibility-compact`, parent `0bcd66ae0157b5511cc4824a03be4ca1134bc6fb`. Protected #765 baseline branch remains `10d82dc`. [Full evidence tables, limitations and design-only recommendation](docs/DRUM_MUSICAL_COMPATIBILITY_CHECKPOINT_20261002.md).
