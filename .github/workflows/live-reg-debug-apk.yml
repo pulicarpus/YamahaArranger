@@ -1,0 +1,125 @@
+name: LIVE CONTROL Phase 3 Debug APK
+on:
+  push:
+    branches: [experiment/live-control-reg]
+    paths: [.github/workflows/live-reg-debug-apk.yml]
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  build:
+    if: github.ref == 'refs/heads/experiment/live-control-reg'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+      PYTHONDONTWRITEBYTECODE: '1'
+      PHASE3_CHECKPOINT: d03e7fb897ac15e07a80e02eb4bf5a4b1da9fe45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify only the approved workflow differs from Phase 3
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          git merge-base --is-ancestor "$PHASE3_CHECKPOINT" HEAD
+          python3 - <<'PYCODE'
+          import os,subprocess
+          changed=subprocess.check_output(['git','diff','--name-only',os.environ['PHASE3_CHECKPOINT'],'HEAD'],text=True).splitlines()
+          assert set(changed) <= {'.github/workflows/live-reg-debug-apk.yml'}, changed
+          print('Phase 3 source, tests and guards byte-identical PASS')
+          PYCODE
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install real Linux BASSMIDI
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/bass-linux /tmp/bassmidi-linux
+          curl -fL --retry 3 https://www.un4seen.com/files/bass24-linux.zip -o /tmp/bass-linux.zip
+          curl -fL --retry 3 https://www.un4seen.com/files/bassmidi24-linux.zip -o /tmp/bassmidi-linux.zip
+          unzip -q /tmp/bass-linux.zip -d /tmp/bass-linux
+          unzip -q /tmp/bassmidi-linux.zip -d /tmp/bassmidi-linux
+          sha256sum /tmp/bass-linux/libs/x86_64/libbass.so /tmp/bassmidi-linux/libs/x86_64/libbassmidi.so > evidence/linux-sdk.sha256
+      - name: Required Phase 3 and certified historical snapshot gates including real PCM
+        run: |
+          set -euo pipefail
+          python3 tools/test_live_reg_phase3.py --history --real --fetch-dependencies 2>&1 | tee evidence/phase3-gates.log
+          git diff --exit-code HEAD
+      - uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r26d
+          link-to-sdk: true
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+      - name: Install CMake and checkpoint Android BASS SDK inputs
+        run: |
+          set -euo pipefail
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install 'cmake;3.22.1'
+          mkdir -p /tmp/bass-android /tmp/bassmidi-android app/src/main/cpp/basssdk
+          curl -fL --retry 3 https://www.un4seen.com/files/bass24-android.zip -o /tmp/bass-android.zip
+          curl -fL --retry 3 https://www.un4seen.com/files/bassmidi24-android.zip -o /tmp/bassmidi-android.zip
+          unzip -q /tmp/bass-android.zip -d /tmp/bass-android
+          unzip -q /tmp/bassmidi-android.zip -d /tmp/bassmidi-android
+          cp "$(find /tmp/bass-android -type f -iname bass.h -print -quit)" app/src/main/cpp/basssdk/bass.h
+          cp "$(find /tmp/bassmidi-android -type f -iname bassmidi.h -print -quit)" app/src/main/cpp/basssdk/bassmidi.h
+          for abi in arm64-v8a armeabi-v7a; do
+            cp "$(find /tmp/bass-android -type f -path "*/$abi/libbass.so" -print -quit)" "app/src/main/jniLibs/$abi/libbass.so"
+            cp "$(find /tmp/bassmidi-android -type f -path "*/$abi/libbassmidi.so" -print -quit)" "app/src/main/jniLibs/$abi/libbassmidi.so"
+          done
+          python3 - <<'PY'
+          import sys
+          from pathlib import Path
+          sys.path.insert(0,'tools')
+          from generated_bass_sdk_guard import PATHS,verify_generated_sdk
+          verify_generated_sdk(Path('.').resolve(),PATHS)
+          print('Checkpoint Android SDK identities PASS')
+          PY
+      - name: Build both Android ABIs
+        run: |
+          set -euo pipefail
+          gradle --no-daemon --max-workers=2 assembleDebug --stacktrace 2>&1 | tee evidence/android-build.log
+          git diff --exit-code HEAD
+      - name: Verify signed APK, both ABIs and provenance
+        run: |
+          set -euo pipefail
+          cp app/build/outputs/apk/debug/app-debug.apk evidence/YamahaArranger-LiveControl-Phase3-Debug.apk
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose evidence/YamahaArranger-LiveControl-Phase3-Debug.apk > evidence/apk-signature.txt
+          python3 - <<'PYCODE'
+          import hashlib,json,os,zipfile
+          from pathlib import Path
+          apk=Path('evidence/YamahaArranger-LiveControl-Phase3-Debug.apk')
+          with zipfile.ZipFile(apk) as z:
+              for abi in ['arm64-v8a','armeabi-v7a']:
+                  for lib in ['bass','bassmidi','yamaha_arranger_native']:
+                      assert f'lib/{abi}/lib{lib}.so' in z.namelist(), (abi,lib)
+          Path('evidence/provenance.json').write_text(json.dumps({
+              'source_checkpoint':os.environ['PHASE3_CHECKPOINT'],
+              'build_commit':os.environ['GITHUB_SHA'],
+              'branch':os.environ['GITHUB_REF_NAME'],
+              'run_id':os.environ['GITHUB_RUN_ID'],
+              'apk_sha256':hashlib.sha256(apk.read_bytes()).hexdigest(),
+              'abis':['arm64-v8a','armeabi-v7a'],
+              'device_gates':{k:'UNVERIFIED' for k in ['D1','D2','D5','D11']},
+              'phase4_implemented':False
+          },indent=2)+'\n')
+          PYCODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: LiveControl-Phase3-Debug-evidence-${{ github.sha }}
+          path: |
+            evidence/*.log
+            evidence/*.json
+            evidence/*.txt
+            evidence/*.sha256
+          if-no-files-found: warn
+      - uses: actions/upload-artifact@v4
+        with:
+          name: YamahaArranger-LiveControl-Phase3-Debug
+          path: evidence/YamahaArranger-LiveControl-Phase3-Debug.apk
+          if-no-files-found: error
