@@ -198,6 +198,28 @@ int main(int argc,char** argv) {
     std::cout<<"MIXER_STYLE_PCM muteUnmute=true styleTrimRatio="<<trimRatio<<" keyboardPreserved=true PASS\n";
 #endif
     for(int ch=8;ch<16;++ch)player.setChannelExpression(ch,127);
+    // Console multi-solo uses only the existing expression/mute gains, not part OFF.
+    for(int ch=1;ch<4;++ch)player.setChannelExpression(ch,0);
+    render(player,512);const auto soloMix=render(player,4096);
+    for(int ch=1;ch<4;++ch)player.setChannelExpression(ch,127);
+    render(player,512);const auto soloRestored=render(player,4096);
+#ifdef VOICE_RELEASE_REAL_BASS
+    for(int frequency:{375,1500})check(tone(soloMix,frequency)>tone(volumeReference,frequency)*0.7,"multi-solo preserves RIGHT1 and style selected sources");
+    for(int frequency:{750,1125,472}) {
+        check(tone(soloMix,frequency)<tone(volumeReference,frequency)*0.1,"multi-solo cuts excluded keyboard parts using gains only");
+        check(tone(soloRestored,frequency)>tone(volumeReference,frequency)*0.7,"leaving solo restores excluded held notes without retrigger");
+    }
+    std::cout<<"MIXER_SOLO_GAIN_PCM selectedRightAndStylePreserved=true excludedPartsRestoredWithoutRetrigger=true PASS\n";
+#endif
+    player.setMasterGain(0);render(player,512);const auto masterCut=render(player,4096);
+    player.setMasterGain(1);render(player,512);const auto masterRestored=render(player,4096);
+#ifdef VOICE_RELEASE_REAL_BASS
+    for(int frequency:{375,750,1125,472,1500}) {
+        check(tone(masterCut,frequency)<tone(volumeReference,frequency)*0.1,"MASTER zero silences all mixed sources");
+        check(tone(masterRestored,frequency)>tone(volumeReference,frequency)*0.7,"MASTER unity restores all held sources without retrigger");
+    }
+    std::cout<<"MIXER_MASTER_PCM zeroAndUnityRestore=true allSourcesRestoredWithoutRetrigger=true PASS\n";
+#endif
 #ifndef VOICE_RELEASE_REAL_BASS
     mock_bass::history.clear();
 #endif

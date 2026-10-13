@@ -9,6 +9,17 @@ import org.junit.Test
 import org.mockito.Mockito.*
 
 class VoiceReleaseContractTest {
+    @Test fun masterFaderUsesExistingMasterGainAndDoesNotSendPartControllers() {
+        val (engine, bridge) = engine(); clearInvocations(bridge)
+        engine.setMasterVolume(-1); engine.setMasterVolume(100); engine.setMasterVolume(200)
+        verify(bridge).nativeSetMasterGain(0f)
+        verify(bridge).nativeSetMasterGain(1f)
+        verify(bridge).nativeSetMasterGain(1.27f)
+        verify(bridge, never()).nativeSetChannelExpression(anyInt(), anyInt())
+        verify(bridge, never()).nativeSetKeyboardReleaseTime(anyInt())
+        verify(bridge, never()).nativeAllNotesOff()
+    }
+
     @Test fun verticalFaderMapsTopCenterBottomAndClamps() {
         assertEquals(127, mixerFaderValue(0f, 200f))
         assertEquals(64, mixerFaderValue(100f, 200f))
