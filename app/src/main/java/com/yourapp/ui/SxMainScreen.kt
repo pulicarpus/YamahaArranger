@@ -7,8 +7,6 @@ import com.yourapp.yamahaarranger.audio.AudioEngineManager
 
 import android.widget.Toast
 import android.net.Uri
-import android.view.View
-import android.view.WindowManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -20,7 +18,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogWindowProvider
 import kotlin.math.roundToInt
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -54,7 +51,8 @@ private val SxDim = Color(0xFF9AA3AD)
 @Composable
 fun SxMainScreen(
     viewModel: MainViewModel = hiltViewModel(),
-    onOpenInspector: () -> Unit = {}
+    onOpenInspector: () -> Unit = {},
+    onMixerVisibilityChanged: (Boolean) -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsState()
     var voiceSelectionError by remember { mutableStateOf<String?>(null) }
@@ -98,7 +96,10 @@ fun SxMainScreen(
     var selectedStyleFolderUri by remember { mutableStateOf<Uri?>(null) }
     var selectedDataParameter by remember { mutableStateOf("TEMPO") }
 
-    BoxWithConstraints(Modifier.fillMaxSize().background(SxBlack)) {
+    androidx.activity.compose.BackHandler(enabled = showMixer) { showMixer = false }
+    LaunchedEffect(showMixer) { onMixerVisibilityChanged(showMixer) }
+
+    if (!showMixer) BoxWithConstraints(Modifier.fillMaxSize().background(SxBlack)) {
         val compact = maxHeight < 620.dp
         val gap = if (compact) 4.dp else 6.dp
         val headerH = if (compact) 34.dp else 40.dp
@@ -224,7 +225,9 @@ fun SxMainScreen(
     }
 
     if (showMixer) {
-        SxStyleMixerDialog(
+        SxMixerPage(
+            state = state,
+            vm = viewModel,
             voices = state.voiceAssignments,
             presets = state.sf2Presets,
             onDismiss = { showMixer = false },
@@ -306,141 +309,137 @@ fun SxMainScreen(
 }
 
 @Composable
-private fun SxStyleMixerDialog(voices: List<VoiceSlot>, presets: List<AudioEngineManager.SfPreset>, onDismiss: () -> Unit, onMixer: (Int, Int, Int, Int, Int, Int) -> Unit, onMute: (Int) -> Unit, onVoice: (Int, Int, Int) -> Unit) {
-    var expandedChannel by remember { mutableStateOf<Int?>(null) }
+private fun SxMixerPage(state: MainUiState, vm: MainViewModel, voices: List<VoiceSlot>, presets: List<AudioEngineManager.SfPreset>, onDismiss: () -> Unit, onMixer: (Int, Int, Int, Int, Int, Int) -> Unit, onMute: (Int) -> Unit, onVoice: (Int, Int, Int) -> Unit) {
     var voicePickerSlot by remember { mutableStateOf<VoiceSlot?>(null) }
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = androidx.compose.ui.window.DialogProperties(
-            usePlatformDefaultWidth = false,
-            decorFitsSystemWindows = false
-        )
-    ) {
-        val dialogWindow = (androidx.compose.ui.platform.LocalView.current.parent as? DialogWindowProvider)?.window
-        DisposableEffect(dialogWindow) {
-            val decor = dialogWindow?.decorView
-            val oldFlags = decor?.systemUiVisibility ?: 0
-            decor?.systemUiVisibility =
-                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
-                View.SYSTEM_UI_FLAG_FULLSCREEN or
-                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
-                View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
-                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-            dialogWindow?.setFlags(
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
-            )
-            onDispose {
-                decor?.systemUiVisibility = oldFlags
-                dialogWindow?.clearFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
-            }
+    val hostContext = LocalContext.current
+    val activity = generateSequence(hostContext) { (it as? android.content.ContextWrapper)?.baseContext }
+        .filterIsInstance<android.app.Activity>().firstOrNull()
+    DisposableEffect(activity) {
+        val window = activity?.window
+        val controller = window?.let { androidx.core.view.WindowCompat.getInsetsController(it, it.decorView) }
+        val insets = window?.let { androidx.core.view.ViewCompat.getRootWindowInsets(it.decorView) }
+        val visibleTypes = listOf(androidx.core.view.WindowInsetsCompat.Type.statusBars(),
+            androidx.core.view.WindowInsetsCompat.Type.navigationBars()).fold(0) { mask, type ->
+            if (insets?.isVisible(type) != false) mask or type else mask
         }
-
-        Surface(color = SxPanel, modifier = Modifier.fillMaxSize()) {
-            Column(Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 6.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().height(44.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            "STYLE MIXER • " + voices.size + " PARTS",
-                            color = Color.White,
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "STYLE CHANNELS • FULL SCREEN • HORIZONTAL",
-                            color = SxDim,
-                            fontSize = 9.sp,
-                            maxLines = 1
-                        )
-                    }
-                    TextButton(onClick = onDismiss) { Text("CLOSE", color = SxGreen, fontWeight = FontWeight.Bold) }
+        controller?.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+        onDispose { if (visibleTypes != 0) controller?.show(visibleTypes) }
+    }
+    Surface(color = SxPanel, modifier = Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 6.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().height(44.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "MIXER • " + voices.size + " STYLE CHANNELS",
+                        color = Color.White,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "VOLUMES • USED STYLE CHANNELS • SWIPE CHANNELS",
+                        color = SxDim,
+                        fontSize = 9.sp,
+                        maxLines = 1
+                    )
                 }
+                TextButton(onClick = onDismiss) { Text("ARRANGER", color = SxGreen, fontWeight = FontWeight.Bold) }
+            }
 
-                Spacer(Modifier.height(4.dp))
-
-                if (voices.isEmpty()) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("No style instruments detected", color = SxDim, fontSize = 14.sp)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val volumes = listOf("STYLE" to state.styleVolume, "RIGHT1" to state.right1Volume,
+                    "RIGHT2" to state.right2Volume, "RIGHT3" to state.right3Volume, "LEFT" to state.leftVolume)
+                val callbacks: List<(Int) -> Unit> = listOf(vm::onStyleVolumeChange, vm::onRight1VolumeChange,
+                    vm::onRight2VolumeChange, vm::onRight3VolumeChange, vm::onLeftVolumeChange)
+                volumes.forEachIndexed { index, (label, value) ->
+                    Column(Modifier.weight(1f)) {
+                        Text(label, color = SxBlue, fontSize = 10.sp)
+                        SxMixRow("VOL", value, callbacks[index])
                     }
-                } else {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(7.dp)
-                    ) {
-                        voices.forEach { slot ->
-                            Surface(
-                                color = if (slot.styleMuted) SxPanel2 else Color(0xFF171D23),
-                                shape = RoundedCornerShape(5.dp),
-                                modifier = Modifier.width(220.dp).fillMaxHeight()
-                            ) {
-                                Column(Modifier.fillMaxSize().padding(8.dp)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(
-                                            "CH" + slot.channel,
-                                            color = SxBlue,
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Spacer(Modifier.width(7.dp))
-                                        val resolvedName = presets
-                                            .firstOrNull { it.bank == slot.bank && it.program == slot.program && (if (slot.isDrum()) it.role == "DRUM" else it.role == "MELODY") }
-                                            ?.name
-                                            ?: presets
-                                                .firstOrNull { it.program == slot.program && (if (slot.isDrum()) it.role == "DRUM" else it.role == "MELODY") }
-                                                ?.name
-                                        Text(
-                                            resolvedName ?: slot.displayName(),
-                                            color = Color.White,
-                                            fontSize = 10.sp,
-                                            modifier = Modifier.weight(1f),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
+                }
+            }
+            Spacer(Modifier.height(4.dp))
 
+            if (voices.isEmpty()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("No style instruments detected", color = SxDim, fontSize = 14.sp)
+                }
+            } else {
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    voices.forEach { slot ->
+                        Surface(
+                            color = if (slot.styleMuted) SxPanel2 else Color(0xFF171D23),
+                            shape = RoundedCornerShape(5.dp),
+                            modifier = Modifier.width(220.dp).fillMaxHeight()
+                        ) {
+                            Column(Modifier.fillMaxSize().padding(8.dp).verticalScroll(rememberScrollState())) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(
-                                        slot.label.substringAfter(") ", slot.label),
-                                        color = SxDim,
-                                        fontSize = 8.sp,
-                                        maxLines = 1
+                                        "CH" + slot.channel,
+                                        color = SxBlue,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
                                     )
-
-                                    Spacer(Modifier.height(5.dp))
-
-                                    Button(
-                                        onClick = { voicePickerSlot = slot },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        contentPadding = PaddingValues(vertical = 4.dp)
-                                    ) {
-                                        Text("VOICE", fontSize = 8.sp)
-                                    }
-
-                                    TextButton(
-                                        onClick = { onMute(slot.channel) },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        contentPadding = PaddingValues(vertical = 1.dp)
-                                    ) {
-                                        Text(if (slot.styleMuted) "UNMUTE" else "MUTE", fontSize = 8.sp)
-                                    }
-
-                                    SxMixRow("VOL", slot.styleVolume,
-                                        { onMixer(slot.channel, it, slot.stylePan, slot.styleExpression, slot.styleReverb, slot.styleChorus) })
-                                    SxMixRow("PAN", slot.stylePan,
-                                        { onMixer(slot.channel, slot.styleVolume, it, slot.styleExpression, slot.styleReverb, slot.styleChorus) })
-                                    SxMixRow("EXP", slot.styleExpression,
-                                        { onMixer(slot.channel, slot.styleVolume, slot.stylePan, it, slot.styleReverb, slot.styleChorus) })
-                                    SxMixRow("REV", slot.styleReverb,
-                                        { onMixer(slot.channel, slot.styleVolume, slot.stylePan, slot.styleExpression, it, slot.styleChorus) })
-                                    SxMixRow("CHO", slot.styleChorus,
-                                        { onMixer(slot.channel, slot.styleVolume, slot.stylePan, slot.styleExpression, slot.styleReverb, it) })
+                                    Spacer(Modifier.width(7.dp))
+                                    val resolvedName = presets
+                                        .firstOrNull { it.bank == slot.bank && it.program == slot.program && (if (slot.isDrum()) it.role == "DRUM" else it.role == "MELODY") }
+                                        ?.name
+                                        ?: presets
+                                            .firstOrNull { it.program == slot.program && (if (slot.isDrum()) it.role == "DRUM" else it.role == "MELODY") }
+                                            ?.name
+                                    Text(
+                                        resolvedName ?: slot.displayName(),
+                                        color = Color.White,
+                                        fontSize = 10.sp,
+                                        modifier = Modifier.weight(1f),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
                                 }
+
+                                Text(
+                                    slot.label.substringAfter(") ", slot.label),
+                                    color = SxDim,
+                                    fontSize = 8.sp,
+                                    maxLines = 1
+                                )
+
+                                Spacer(Modifier.height(5.dp))
+
+                                Button(
+                                    onClick = { voicePickerSlot = slot },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentPadding = PaddingValues(vertical = 4.dp)
+                                ) {
+                                    Text("VOICE", fontSize = 8.sp)
+                                }
+
+                                TextButton(
+                                    onClick = { onMute(slot.channel) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentPadding = PaddingValues(vertical = 1.dp)
+                                ) {
+                                    Text(if (slot.styleMuted) "UNMUTE" else "MUTE", fontSize = 8.sp)
+                                }
+
+                                SxMixRow("VOL", slot.styleVolume,
+                                    { onMixer(slot.channel, it, slot.stylePan, slot.styleExpression, slot.styleReverb, slot.styleChorus) })
+                                SxMixRow("PAN", slot.stylePan,
+                                    { onMixer(slot.channel, slot.styleVolume, it, slot.styleExpression, slot.styleReverb, slot.styleChorus) })
+                                SxMixRow("EXP", slot.styleExpression,
+                                    { onMixer(slot.channel, slot.styleVolume, slot.stylePan, it, slot.styleReverb, slot.styleChorus) })
+                                SxMixRow("REV", slot.styleReverb,
+                                    { onMixer(slot.channel, slot.styleVolume, slot.stylePan, slot.styleExpression, it, slot.styleChorus) })
+                                SxMixRow("CHO", slot.styleChorus,
+                                    { onMixer(slot.channel, slot.styleVolume, slot.stylePan, slot.styleExpression, slot.styleReverb, it) })
                             }
                         }
                     }
@@ -817,6 +816,9 @@ private fun SxCenterDisplay(
                     SxValue("TEMPO", state.tempoBpm.toString(), Modifier.weight(.8f), vm::onTempoDown, vm::onTempoUp, compact, selectedDataParameter == "TEMPO") { onDataParameterSelect("TEMPO") }
                     SxValue("TRANSPOSE", if (state.transpose >= 0) "+" + state.transpose else state.transpose.toString(), Modifier.weight(.9f), vm::onTransposeDown, vm::onTransposeUp, compact, selectedDataParameter == "TRANSPOSE") { onDataParameterSelect("TRANSPOSE") }
                     SxValue("RELEASE", state.releaseTime.toString(), Modifier.weight(.8f), vm::onReleaseDown, vm::onReleaseUp, compact, selectedDataParameter == "RELEASE") { onDataParameterSelect("RELEASE") }
+                    TextButton(onClick = vm::toggleRelease, modifier = Modifier.weight(.7f).fillMaxHeight(), contentPadding = PaddingValues(1.dp)) {
+                        Text(if (state.releaseEnabled) "RELEASE\nON" else "RELEASE\nOFF · 64", color = if (state.releaseEnabled) SxGreen else SxDim, fontSize = 8.sp)
+                    }
                     SxValue("SPLIT", state.splitPoint, Modifier.weight(.8f), null, null, compact)
                     Surface(color = Color(0xFF172029), shape = RoundedCornerShape(3.dp), modifier = Modifier.weight(1.25f).fillMaxHeight().border(1.dp, Color(0xFF34404C), RoundedCornerShape(3.dp))) {
                         Row(Modifier.fillMaxSize().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {

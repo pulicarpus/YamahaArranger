@@ -145,6 +145,74 @@ class VoiceReleaseContractTest {
         verifyNoMoreInteractions(port)
     }
 
+    @Test fun releaseBypassRetainsKnobAndRestoresItAtBothRangeEnds() {
+        for (value in listOf(0, 37, 127)) {
+            val on = ReleaseControlState(value)
+            val off = on.toggle()
+            assertEquals(value, off.knobValue); assertEquals(64, off.effectiveValue)
+            assertEquals(value, off.toggle().effectiveValue)
+        }
+        assertEquals(127, ReleaseControlState(127).step(1).knobValue)
+        assertEquals(0, ReleaseControlState(0).step(-1).knobValue)
+        val edited = ReleaseControlState(37, false).step(1)
+        assertEquals(38, edited.knobValue); assertEquals(64, edited.effectiveValue)
+    }
+
+    @Test fun releaseBypassAndRestartDoNotStopHeldKeysOrLoseRightOwnership() {
+        val (engine, bridge) = engine(); engine.loadSoundFontPair("m", "d")
+        val brain = ArrangerBrain(engine, ChordDetector(), mock(MidiInputManager::class.java))
+        brain.setRightVoiceEnabled(1, true); brain.setRightVoiceEnabled(2, true)
+        brain.onKeyboardNoteOn(72, 1f); clearInvocations(bridge)
+        var control = ReleaseControlState(127)
+        brain.setKeyboardReleaseTime(control.effectiveValue)
+        control = control.toggle(); brain.setKeyboardReleaseTime(control.effectiveValue)
+        engine.start()
+        assertEquals(127, control.knobValue)
+        verify(bridge, atLeastOnce()).nativeSetKeyboardReleaseTime(64)
+        verify(bridge, never()).nativeAllNotesOff()
+        verify(bridge, never()).nativeStopKeyboardPart(anyInt())
+        verify(bridge, never()).nativeSfNoteOffChannel(anyInt(), anyInt())
+        control = control.toggle(); brain.setKeyboardReleaseTime(control.effectiveValue)
+        brain.onKeyboardNoteOff(72)
+        for (channel in 0..2) verify(bridge).nativeSfNoteOffChannel(channel, 72)
+        verify(bridge, times(2)).nativeSetKeyboardReleaseTime(127)
+    }
+
+    @Test fun existingMixerRetainsChannelVolumeThroughMuteAndUsesStyleBusOnly() {
+        val (engine, bridge) = engine(); engine.loadSoundFontPair("m", "d")
+        val brain = ArrangerBrain(engine, ChordDetector(), mock(MidiInputManager::class.java))
+        brain.attachScope(kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default))
+        brain.setStyleChannelMixer(10, 64, 96, 100, 50, 30)
+        verify(bridge).nativeSetChannelMixer(10,64,96,100,50,30)
+        brain.setStyleChannelMute(10,true)
+        brain.setStyleChannelMixer(10,80,96,100,50,30)
+        verify(bridge, times(2)).nativeSetChannelMixer(10,0,96,100,50,30)
+        brain.setStyleChannelMute(10,false)
+        verify(bridge).nativeSetChannelMixer(10,80,96,100,50,30)
+        clearInvocations(bridge)
+        brain.setStyleBusTrim(64)
+        verify(bridge).nativeSetChannelExpression(10,50)
+        for (channel in 0..3) verify(bridge, never()).nativeSetChannelExpression(eq(channel), anyInt())
+        engine.setChannelExpression(0,33); engine.setChannelExpression(1,44)
+        engine.setChannelExpression(2,55); engine.setChannelExpression(3,0)
+        verify(bridge).nativeSetChannelExpression(0,33); verify(bridge).nativeSetChannelExpression(1,44)
+        verify(bridge).nativeSetChannelExpression(2,55); verify(bridge).nativeSetChannelExpression(3,0)
+        verify(bridge, never()).nativeAllNotesOff()
+        verify(bridge, never()).nativeStopKeyboardPart(anyInt())
+    }
+
+    @Test fun mixerInventoryUsesRealNoteOnsAndEveryMatchingCasmDestination() {
+        fun policy(source: Int, dest: Int) = com.yourapp.yamahaarranger.style.CasmPolicyModel(source,dest,"Strings",0,0,0,0,127,0,127,0,false)
+        fun event(channel: Int, velocity: Int, on: Boolean = true) = com.yourapp.yamahaarranger.style.StyleNoteEvent(0,on,60,velocity,channel)
+        val part = com.yourapp.yamahaarranger.style.StylePartModel("part",listOf(event(14,100)),
+            casmPolicies=listOf(policy(14,11),policy(14,12),policy(13,15)))
+        assertEquals(setOf(11,12),StyleMixerChannels.destinations(part))
+        assertTrue(StyleMixerChannels.destinations(part.copy(events=listOf(event(14,0)))).isEmpty())
+        assertTrue(StyleMixerChannels.destinations(part.copy(events=listOf(event(14,64,false)))).isEmpty())
+        assertEquals(setOf(9),StyleMixerChannels.destinations(part.copy(casmPolicies=emptyList(),events=listOf(event(9,100)))))
+        assertTrue(StyleMixerChannels.destinations(part.copy(casmPolicies=listOf(policy(14,0),policy(14,3),policy(14,16)))).isEmpty())
+    }
+
     @Test fun categoryNavigationPreservesEveryTargetPartIncludingRight2AndRight3() {
         val (engine, bridge) = engine()
         `when`(bridge.nativeSetKeyboardPreset(anyInt(), anyLong(), anyInt(), anyInt())).thenReturn(true)

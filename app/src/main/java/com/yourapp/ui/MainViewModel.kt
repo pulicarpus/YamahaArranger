@@ -5,6 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yourapp.yamahaarranger.arranger.ArrangerBrain
 import com.yourapp.yamahaarranger.arranger.ArrangerSection
+import com.yourapp.yamahaarranger.audio.ReleaseControlState
+import com.yourapp.yamahaarranger.audio.StyleMixerChannels
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.distinctUntilChanged
 import com.yourapp.yamahaarranger.audio.KeyboardPart
 import com.yourapp.yamahaarranger.audio.AudioEngineManager
 import com.yourapp.audio.SoundFontInspector
@@ -214,9 +218,9 @@ data class MainUiState(
     val styleVolume: Int = 127, val leftVolume: Int = 100, val right1Volume: Int = 100, val right2Volume: Int = 100, val right3Volume: Int = 100, val masterVolume: Int = 100,
     val activeBank: Int = 1, val activeRegSlot: Int = 0, val voiceName: String = "GrandPiano",
     val right2Name: String = "OFF", val splitPoint: String = "C4",
-    val acmpEnabled: Boolean = true, val leftVoiceEnabled: Boolean = true, val sustainEnabled: Boolean = false, val releaseTime: Int = 64,
+    val acmpEnabled: Boolean = true, val leftVoiceEnabled: Boolean = true, val sustainEnabled: Boolean = false, val releaseTime: Int = 64, val releaseEnabled: Boolean = true, val effectiveReleaseTime: Int = 64,
     val rightVoices: List<KeyboardVoiceSlot> = defaultKeyboardVoices(),
-    val voiceAssignments: List<VoiceSlot> = defaultVoices(),
+    val voiceAssignments: List<VoiceSlot> = emptyList(),
     val availableSoundFonts: List<Pair<Uri, String>> = emptyList(),
     val styleFolders: List<StyleFolder> = emptyList(),
     val styleFiles: List<Pair<Uri, String>> = emptyList(),
@@ -240,7 +244,7 @@ class MainViewModel @Inject constructor(
     private val _midiOutEnabled = MutableStateFlow(false)
     private val _transpose = MutableStateFlow(0)
     private val _sustainEnabled = MutableStateFlow(false)
-    private val _releaseTime = MutableStateFlow(64)
+    private val _releaseControl = MutableStateFlow(ReleaseControlState())
     private val _soundFontName = MutableStateFlow("None")
     private val _availableSoundFonts = MutableStateFlow<List<Pair<Uri, String>>>(emptyList())
     private val _styleFolders = MutableStateFlow<List<StyleFolder>>(emptyList())
@@ -256,7 +260,7 @@ class MainViewModel @Inject constructor(
     private val _masterVolume = MutableStateFlow(100)
     private val _activeBank = MutableStateFlow(1)
     private val _activeRegSlot = MutableStateFlow(0)
-    private val _voiceAssignments = MutableStateFlow(defaultVoices())
+    private val _voiceAssignments = MutableStateFlow<List<VoiceSlot>>(emptyList())
     private val _rightVoices = MutableStateFlow(defaultKeyboardVoices())
     private val voiceRequestIds = java.util.concurrent.atomic.AtomicLongArray(4)
     private var activeChordNotes: List<Int> = emptyList()
@@ -287,13 +291,13 @@ class MainViewModel @Inject constructor(
     private val baseUiState: StateFlow<MainUiState> = combine(
         arrangerBrain.state,
         combine(_styleName, _midiStatus) { s, m -> s to m },
-        combine(_transpose, combine(_sustainEnabled, _releaseTime) { sustain, release -> sustain to release }, _soundFontName) { t, sustainRelease, sf -> Triple(t, sustainRelease, sf) },
+        combine(_transpose, combine(_sustainEnabled, _releaseControl) { sustain, release -> sustain to release }, _soundFontName) { t, sustainRelease, sf -> Triple(t, sustainRelease, sf) },
         volumeState,
         voiceAndSoundFontState
     ) { arranger, styleMidi, transposeSf, volumesMaster, voiceDataSf ->
         val (styleName, midi) = styleMidi
         val (transpose, sustainRelease, sfName) = transposeSf
-        val (sustain, releaseTime) = sustainRelease
+        val (sustain, releaseControl) = sustainRelease
         val (voiceVolumes, masterVol) = volumesMaster
         val (voiceData, sfData) = voiceDataSf
         val (bank, regSlot, voices) = voiceData
@@ -319,7 +323,9 @@ class MainViewModel @Inject constructor(
             acmpEnabled = arranger.acmpEnabled,
             leftVoiceEnabled = arranger.leftVoiceEnabled,
             sustainEnabled = sustain,
-            releaseTime = releaseTime,
+            releaseTime = releaseControl.knobValue,
+            releaseEnabled = releaseControl.enabled,
+            effectiveReleaseTime = releaseControl.effectiveValue,
             midiStatus = midi,
             midiOutEnabled = _midiOutEnabled.value,
             soundFontName = sfName,
@@ -388,7 +394,7 @@ class MainViewModel @Inject constructor(
         // Serial/conflated delivery keeps the last knob value authoritative,
         // without blocking the UI on a concurrent large SF2 load.
         viewModelScope.launch(Dispatchers.Default) {
-            _releaseTime.collect { value ->
+            _releaseControl.map { it.effectiveValue }.distinctUntilChanged().collect { value ->
                 arrangerBrain.setKeyboardReleaseTime(value)
                 // MIDI OUT only mirrors notes; without CC72 an external keyboard never hears RELEASE.
                 for (channel in 0..2) midiInputManager.sendReleaseTime(channel, value)
@@ -446,7 +452,7 @@ class MainViewModel @Inject constructor(
     fun refreshMidiConnection() { _midiStatus.value = "Connecting…"; connectFirstAvailableMidiDevice() }
     fun toggleMidiOut() {
         val newVal = !_midiOutEnabled.value; _midiOutEnabled.value = newVal; midiInputManager.midiOutEnabled = newVal
-        if (newVal) for (channel in 0..2) midiInputManager.sendReleaseTime(channel, _releaseTime.value)
+        if (newVal) for (channel in 0..2) midiInputManager.sendReleaseTime(channel, _releaseControl.value.effectiveValue)
         DebugLog.add(if (newVal) "📤 MIDI OUT: ON" else "📤 MIDI OUT: OFF")
     }
     override fun onCleared() { midiInputManager.close(); audioEngine.stop(); super.onCleared() }
@@ -478,14 +484,9 @@ class MainViewModel @Inject constructor(
         _transpose.value = value
         arrangerBrain.setKeyboardTranspose(value)
     }
-    fun onReleaseDown() {
-        val value = (_releaseTime.value - 1).coerceIn(0, 127)
-        _releaseTime.value = value
-    }
-    fun onReleaseUp() {
-        val value = (_releaseTime.value + 1).coerceIn(0, 127)
-        _releaseTime.value = value
-    }
+    fun onReleaseDown() { _releaseControl.update { it.step(-1) } }
+    fun onReleaseUp() { _releaseControl.update { it.step(1) } }
+    fun toggleRelease() { _releaseControl.update { it.toggle() } }
     fun toggleSustain() {
         val enabled = !_sustainEnabled.value
         _sustainEnabled.value = enabled
@@ -521,7 +522,7 @@ class MainViewModel @Inject constructor(
                     val lsb = if (preset.bank >= 128) preset.bank % 128 else 0
                     midiInputManager.sendProgramChange(layer, preset.program, msb, lsb)
                     // A voice change may restore the external voice's own release.
-                    if (layer in 0..2) midiInputManager.sendReleaseTime(layer, _releaseTime.value)
+                    if (layer in 0..2) midiInputManager.sendReleaseTime(layer, _releaseControl.value.effectiveValue)
                 }
             } else {
                 DebugLog.add("❌ VOICE selection unavailable/failed: ${preset.soundFontName} ${preset.bank}:${preset.program}")
@@ -572,37 +573,33 @@ class MainViewModel @Inject constructor(
 
         style.sections.values.forEach { section ->
             section.parts.forEach { part ->
-                val hasNoteData = part.events.any { e ->
-                    val hi = e.status and 0xF0
-                    hi == 0x90 || hi == 0x80
-                }
-                if (!hasNoteData) return@forEach
+                StyleMixerChannels.destinations(part).forEach { channel ->
+                    val policy = part.casmPolicies.firstOrNull { it.destinationChannel == channel } ?: part.casm
+                    val rawName = policy?.voiceName?.trim().orEmpty()
+                    val styleName = rawName.ifBlank {
+                        style.voiceMap[channel]?.trim().orEmpty()
+                    }.ifBlank {
+                        GM_VOICES.firstOrNull { it.second == part.program }?.first ?: "Ch$channel"
+                    }
+                    val drum = channel == 8 || channel == 9 || rawName.lowercase().let {
+                        it.contains("drum") || it.contains("kit") || it.contains("perc") || it.startsWith("dr")
+                    }
+                    val program = if (part.program in 0..127) part.program else
+                        GM_VOICES.firstOrNull { it.first.equals(styleName, ignoreCase = true) }?.second ?: 0
+                    val bank = if (drum) 128 else (part.bankMsb.coerceIn(0, 127) * 128 + part.bankLsb.coerceIn(0, 127))
 
-                val policy = part.casmPolicies.firstOrNull() ?: part.casm
-                val channel = policy?.destinationChannel ?: part.events.firstOrNull()?.channel ?: return@forEach
-                val rawName = policy?.voiceName?.trim().orEmpty()
-                val styleName = rawName.ifBlank {
-                    style.voiceMap[channel]?.trim().orEmpty()
-                }.ifBlank {
-                    GM_VOICES.firstOrNull { it.second == part.program }?.first ?: "Ch$channel"
+                    // Keep the first explicit instrument for a destination. CASM can
+                    // legitimately have multiple source channels feeding one destination.
+                    if (channel !in candidates) candidates[channel] = Candidate(styleName, program, bank, part.pan.takeIf { it in 0..127 } ?: 64,
+                        part.reverbSend.takeIf { it in 0..127 } ?: 40, part.chorusSend.takeIf { it in 0..127 } ?: 0)
                 }
-                val drum = channel == 8 || channel == 9 || rawName.lowercase().let {
-                    it.contains("drum") || it.contains("kit") || it.contains("perc") || it.startsWith("dr")
-                }
-                val program = if (part.program in 0..127) part.program else
-                    GM_VOICES.firstOrNull { it.first.equals(styleName, ignoreCase = true) }?.second ?: 0
-                val bank = if (drum) 128 else (part.bankMsb.coerceIn(0, 127) * 128 + part.bankLsb.coerceIn(0, 127))
-
-                // Keep the first explicit instrument for a destination. CASM can
-                // legitimately have multiple source channels feeding one destination.
-                if (channel !in candidates) candidates[channel] = Candidate(styleName, program, bank, part.pan.takeIf { it in 0..127 } ?: 64,
-                    part.reverbSend.takeIf { it in 0..127 } ?: 40, part.chorusSend.takeIf { it in 0..127 } ?: 0)
             }
         }
 
         return candidates.toSortedMap().map { (channel, candidate) ->
             val role = when (channel) {
-                9 -> "Drum"
+                8 -> "Rhythm1"
+                9 -> "Rhythm2"
                 10 -> "Bass"
                 11 -> "Chord1"
                 12 -> "Chord2"
@@ -683,7 +680,7 @@ class MainViewModel @Inject constructor(
     }
     fun logKeyboardVoiceSnapshot() {
         viewModelScope.launch(Dispatchers.Default) {
-            DebugLog.add("KEYBOARD UI release=${_releaseTime.value} sustain=${_sustainEnabled.value} " +
+            DebugLog.add("KEYBOARD UI release=${_releaseControl.value.effectiveValue} knob=${_releaseControl.value.knobValue} releaseEnabled=${_releaseControl.value.enabled} sustain=${_sustainEnabled.value} " +
                 _rightVoices.value.joinToString { "${it.label}:enabled=${it.enabled},fontId=${it.soundFontId},bank=${it.bank},pc=${it.program}" })
             audioEngine.keyboardVoiceSnapshot().lineSequence().filter { it.isNotBlank() }.forEach(DebugLog::add)
         }
@@ -696,7 +693,7 @@ class MainViewModel @Inject constructor(
                 val probe = audioEngine.diagnosticKeyboardRelease(part) { !arrangerBrain.state.value.isPlaying }
                 wav = probe.wav
                 probe.report.lineSequence().filter { it.isNotBlank() }.forEach(DebugLog::add)
-                DebugLog.add("RELEASE CONTEXT part=${part.label} knob=${_releaseTime.value} panelSustain=${_sustainEnabled.value} " +
+                DebugLog.add("RELEASE CONTEXT part=${part.label} knob=${_releaseControl.value.knobValue} effective=${_releaseControl.value.effectiveValue} releaseEnabled=${_releaseControl.value.enabled} panelSustain=${_sustainEnabled.value} " +
                     "midiOut=${_midiOutEnabled.value} externalAudioUsesCC72=${_midiOutEnabled.value}")
                 audioEngine.keyboardVoiceSnapshot().lineSequence().filter { it.isNotBlank() }.forEach(DebugLog::add)
             } catch (error: Exception) {

@@ -57,6 +57,8 @@ def jvm(output, fetch):
              ROOT/'app/src/main/java/com/yourapp/yamahaarranger/audio/AudioEngineManager.kt',
              ROOT/'app/src/main/java/com/yourapp/yamahaarranger/audio/SoundFontPresetCatalog.kt',
              ROOT/'app/src/main/java/com/yourapp/yamahaarranger/audio/KeyboardPart.kt',
+             ROOT/'app/src/main/java/com/yourapp/yamahaarranger/audio/ReleaseControlState.kt',
+             ROOT/'app/src/main/java/com/yourapp/yamahaarranger/audio/StyleMixerChannels.kt',
              ROOT/'app/src/main/java/com/yourapp/yamahaarranger/lifecycle/ReadyToPlayGate.kt',
              ROOT/'app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt',
              ROOT/'app/src/main/java/com/yourapp/style/StyleModel.kt',

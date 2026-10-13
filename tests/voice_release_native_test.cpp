@@ -166,6 +166,59 @@ int main(int argc,char** argv) {
         render(player,96000);
     }
     std::cout<<"RIGHT_OFF_SCOPE threeParts_twoSequences controllerAndSourcePreserved=true PASS\n";
+    // Existing mixer controls: live trim/mute must not replace sources or stop parts.
+    for(int ch=0;ch<4;++ch)player.noteOn(ch,ch==3?40:60,100/127.f);
+    player.setChannelMixer(10,127,64,127,0,0);player.noteOn(10,84,100/127.f);
+    render(player,24000);const auto volumeReference=render(player,4096);
+    player.setChannelMixer(10,0,64,127,0,0);render(player,512);const auto styleMuted=render(player,4096);
+    player.setChannelMixer(10,127,64,127,0,0);render(player,512);const auto styleUnmuted=render(player,4096);
+#ifdef VOICE_RELEASE_REAL_BASS
+    check(tone(styleMuted,1500)<tone(volumeReference,1500)*0.1,"style mute silences only style source");
+    check(tone(styleUnmuted,1500)>tone(volumeReference,1500)*0.7,"style unmute restores source gain");
+    for(int frequency:{375,750,1125,472})check(tone(styleMuted,frequency)>tone(volumeReference,frequency)*0.7,"style mute preserves keyboard PCM");
+#endif
+    const int volumeFrequencies[]={375,750,1125,472};
+    for(int ch=0;ch<4;++ch) {
+        player.setChannelExpression(ch,0);render(player,512);const auto cut=render(player,4096);
+        player.setChannelExpression(ch,127);render(player,512);const auto restored=render(player,4096);
+#ifdef VOICE_RELEASE_REAL_BASS
+        check(tone(cut,volumeFrequencies[ch])<tone(volumeReference,volumeFrequencies[ch])*0.1,"keyboard volume zero cuts selected part PCM");
+        check(tone(restored,volumeFrequencies[ch])>tone(volumeReference,volumeFrequencies[ch])*0.7,"keyboard volume restores selected source");
+        for(int other=0;other<4;++other)if(other!=ch)check(tone(cut,volumeFrequencies[other])>tone(volumeReference,volumeFrequencies[other])*0.7,"keyboard volume preserves other part PCM");
+        check(tone(cut,1500)>tone(volumeReference,1500)*0.7,"keyboard volume preserves style PCM");
+        std::cout<<"MIXER_VOLUME_PCM channel="<<ch<<" zeroAndRestore=true otherPartsAndStylePreserved=true PASS\n";
+#endif
+    }
+    for(int ch=8;ch<16;++ch)player.setChannelExpression(ch,64);
+    render(player,512);const auto styleTrimmed=render(player,4096);
+#ifdef VOICE_RELEASE_REAL_BASS
+    const double trimRatio=tone(styleTrimmed,1500)/tone(volumeReference,1500);
+    check(trimRatio>0.05&&trimRatio<0.9,"STYLE trim lowers gain without assuming a linear MIDI expression curve");
+    for(int frequency:{375,750,1125,472})check(tone(styleTrimmed,frequency)>tone(volumeReference,frequency)*0.7,"STYLE volume leaves keyboard gain unchanged");
+    std::cout<<"MIXER_STYLE_PCM muteUnmute=true styleTrimRatio="<<trimRatio<<" keyboardPreserved=true PASS\n";
+#endif
+    for(int ch=8;ch<16;++ch)player.setChannelExpression(ch,127);
+#ifndef VOICE_RELEASE_REAL_BASS
+    mock_bass::history.clear();
+#endif
+    for(int effective:{127,64,127}) {
+        check(player.setKeyboardReleaseTime(effective),"RELEASE ON/OFF effective value accepted");
+        for(int ch=0;ch<3;++ch)check(BASS_MIDI_StreamGetEvent(stream,ch,MIDI_EVENT_RELEASE)==DWORD(effective),"ON/OFF value reaches all RIGHT channels");
+        check(BASS_MIDI_StreamGetEvent(stream,3,MIDI_EVENT_RELEASE)==64,"ON/OFF leaves LEFT release unchanged");
+        for(int ch=8;ch<16;++ch)check(BASS_MIDI_StreamGetEvent(stream,ch,MIDI_EVENT_RELEASE)==64,"ON/OFF leaves style release unchanged");
+        const auto held=render(player,4096);
+#ifdef VOICE_RELEASE_REAL_BASS
+        for(int frequency:{375,750,1125,472,1500})check(tone(held,frequency)>tone(volumeReference,frequency)*0.7,"RELEASE toggle preserves sounding notes and source signatures");
+#endif
+    }
+#ifndef VOICE_RELEASE_REAL_BASS
+    for(const auto& event:mock_bass::history)if(std::get<0>(event)==stream)
+        check(std::get<1>(event)<3&&std::get<2>(event)==MIDI_EVENT_RELEASE,"RELEASE toggle sends only RIGHT release events, no panic or sound-off");
+#else
+    std::cout<<"RELEASE_BYPASS_PCM values=127,64,127 heldNotesAndSourcesPreserved=true PASS\n";
+#endif
+    for(int ch=0;ch<4;++ch){player.noteOff(ch,ch==3?40:60);BASS_MIDI_StreamEvent(stream,ch,MIDI_EVENT_SOUNDOFF,0);}
+    player.noteOff(10,84);render(player,96000);
     check(player.setKeyboardReleaseTime(64),"restore normal RELEASE after RIGHT OFF test matrix");
     const auto beforeProbe=player.keyboardVoiceSnapshot();
 #ifndef VOICE_RELEASE_REAL_BASS

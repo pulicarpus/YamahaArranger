@@ -75,12 +75,14 @@ class MainActivity : ComponentActivity() {
         setContent {
             YamahaArrangerTheme {
                 val showInspector = remember { mutableStateOf(false) }
+                val showMixer = remember { mutableStateOf(false) }
                 Box(Modifier.fillMaxSize()) {
                     SxMainScreen(
                         viewModel = viewModel,
-                        onOpenInspector = { showInspector.value = true }
+                        onOpenInspector = { showInspector.value = true },
+                        onMixerVisibilityChanged = { showMixer.value = it }
                     )
-                    ChordModeSelector(
+                    if (!showMixer.value) ChordModeSelector(
                         modifier = androidx.compose.ui.Modifier
                             .align(androidx.compose.ui.Alignment.TopCenter)
                             .padding(top = 7.dp)
