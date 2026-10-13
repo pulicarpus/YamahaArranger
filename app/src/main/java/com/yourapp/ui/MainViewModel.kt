@@ -1,5 +1,8 @@
 package com.yourapp.yamahaarranger.ui
 
+// BEGIN REG PHASE2 IMPORT
+import kotlinx.coroutines.async
+// END REG PHASE2 IMPORT
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -241,6 +244,115 @@ class MainViewModel @Inject constructor(
     private val midiInputManager: MidiInputManager,
     private val audioEngine: AudioEngineManager
 ) : ViewModel() {
+    // BEGIN REG PHASE2 ADDITIONS
+    private val registrationExternal = MutableStateFlow<List<com.yourapp.yamahaarranger.registration.ExternalVoice?>>(List(4) { null })
+    val currentExternal: StateFlow<List<com.yourapp.yamahaarranger.registration.ExternalVoice?>> = registrationExternal
+    private val registrationVoiceMutex = kotlinx.coroutines.sync.Mutex()
+    private val registrationPending = java.util.concurrent.ConcurrentLinkedQueue<kotlinx.coroutines.Deferred<com.yourapp.yamahaarranger.registration.VoiceResult>>()
+
+    /** Recall SF2 never mirrors bank/program to MIDI OUT; legacy manual API below is unchanged. */
+    suspend fun applyKeyboardVoice(part: KeyboardPart, preset: AudioEngineManager.SfPreset,
+        mirrorToMidiOut: Boolean = false, isCurrent: () -> Boolean = { true }, timeoutMs: Long = 1500): com.yourapp.yamahaarranger.registration.VoiceResult {
+        val failed = com.yourapp.yamahaarranger.registration.VoiceResult.FAILED
+        val superseded = com.yourapp.yamahaarranger.registration.VoiceResult.SUPERSEDED
+        if(mirrorToMidiOut || timeoutMs <= 0) return failed
+        if(!isCurrent()) return superseded
+        val layer=part.channel
+        val request=voiceRequestIds.incrementAndGet(layer)
+        val operation=viewModelScope.async(Dispatchers.Default) {
+            withContext(NonCancellable) {
+                registrationVoiceMutex.withLock {
+                    if(!isCurrent() || voiceRequestIds.get(layer)!=request) return@withLock superseded
+                    try {
+                        val ok=audioEngine.selectKeyboardPreset(layer,preset) { isCurrent() && voiceRequestIds.get(layer)==request }
+                        if(voiceRequestIds.get(layer)!=request) return@withLock superseded
+                        // Publish physical native completion even when recall generation changed.
+                        // Next serial recall must diff against what the synth actually applied (R-B).
+                        if(ok) _rightVoices.update { slots -> slots.map { slot ->
+                            if(slot.layer==layer) slot.copy(program=preset.program,bank=preset.bank,name=preset.name,
+                                soundFontId=preset.soundFontId,soundFontName=preset.soundFontName,available=true) else slot
+                        } }
+                        if(!isCurrent()) superseded else if(ok) com.yourapp.yamahaarranger.registration.VoiceResult.APPLIED else failed
+                    } catch(_: Exception) { failed }
+                }
+            }
+        }
+        registrationPending.add(operation)
+        return withContext(NonCancellable) {
+            try { kotlinx.coroutines.withTimeoutOrNull(timeoutMs) { operation.await() }
+                ?: com.yourapp.yamahaarranger.registration.VoiceResult.TIMEOUT }
+            catch(_: CancellationException) { superseded }
+            catch(_: Exception) { failed }
+        }
+    }
+
+    suspend fun awaitRegistrationVoicesIdle() {
+        withContext(NonCancellable) {
+            while(true) {
+                val op=registrationPending.peek() ?: break
+                try { op.await() } catch(_: Exception) { /* Result already reported; always release the queue. */ }
+                registrationPending.remove(op)
+            }
+        }
+    }
+
+    /** Explicit external identity only. OFF stores the selection, never queues MIDI for reconnect. */
+    fun selectExternalVoice(part: KeyboardPart, voice: com.yourapp.yamahaarranger.registration.ExternalVoice) {
+        require(voice.msb in 0..127 && voice.lsb in 0..127 && voice.program in 0..127)
+        registrationExternal.update { list -> list.mapIndexed { i, old -> if(i==part.channel) voice else old } }
+        if(midiInputManager.midiOutEnabled) midiInputManager.sendProgramChange(part.channel,voice.program,voice.msb,voice.lsb)
+    }
+    fun nudgeTempo(delta: Int) { arrangerBrain.setTempo((arrangerBrain.state.value.tempoBpm.toLong()+delta).coerceIn(20,280).toInt()) }
+
+    val registrationCoordinator by lazy { com.yourapp.yamahaarranger.registration.RegistrationCoordinator(viewModelScope, registrationPort) }
+    private val registrationPort = object : com.yourapp.yamahaarranger.registration.RegistrationPort {
+        override suspend fun snapshot(): com.yourapp.yamahaarranger.registration.RecallSnapshot {
+            val brain=arrangerBrain.state.value
+            return com.yourapp.yamahaarranger.registration.RecallSnapshot(_rightVoices.value.map { slot ->
+                com.yourapp.yamahaarranger.registration.PartSetup(
+                    if(slot.soundFontId>0 && slot.available) com.yourapp.yamahaarranger.registration.Sf2VoiceRef(slot.soundFontName,slot.bank,slot.program,slot.name.orEmpty()) else null,
+                    registrationExternal.value[slot.layer],if(slot.layer==3) brain.leftVoiceEnabled else slot.enabled,keyboardVolume(slot.layer).value)
+            },com.yourapp.yamahaarranger.registration.ReleaseSetup(_releaseControl.value.knobValue,_releaseControl.value.enabled),
+                brain.tempoBpm,_transpose.value,List(4) { voiceRequestIds.get(it) })
+        }
+        override suspend fun catalog() = audioEngine.loadedSoundFontPresets().map {
+            com.yourapp.yamahaarranger.registration.Sf2VoiceRef(it.soundFontName,it.bank,it.program,it.name)
+        }
+        override fun midiOutActive() = midiInputManager.midiOutEnabled
+        override suspend fun applySf2(part: com.yourapp.yamahaarranger.registration.Part, voice: com.yourapp.yamahaarranger.registration.Sf2VoiceRef, isCurrent: () -> Boolean): com.yourapp.yamahaarranger.registration.VoiceResult {
+            if(!isCurrent()) return com.yourapp.yamahaarranger.registration.VoiceResult.SUPERSEDED
+            val matches=audioEngine.loadedSoundFontPresets().filter { it.soundFontName==voice.sf2FileName && it.bank==voice.bank && it.program==voice.program && it.name==voice.presetName }
+            val preset=matches.singleOrNull() ?: return com.yourapp.yamahaarranger.registration.VoiceResult.FAILED
+            return applyKeyboardVoice(KeyboardPart.fromChannel(part.channel),preset,mirrorToMidiOut=false,isCurrent=isCurrent)
+        }
+        override suspend fun awaitSf2Idle() = awaitRegistrationVoicesIdle()
+        override suspend fun apply(step: com.yourapp.yamahaarranger.registration.RecallStep, isCurrent: () -> Boolean): com.yourapp.yamahaarranger.registration.VoiceResult {
+            if(!isCurrent()) return com.yourapp.yamahaarranger.registration.VoiceResult.SUPERSEDED
+            when(step) {
+                is com.yourapp.yamahaarranger.registration.RecallStep.External -> {
+                    if(!midiInputManager.midiOutEnabled) return com.yourapp.yamahaarranger.registration.VoiceResult.FAILED
+                    selectExternalVoice(KeyboardPart.fromChannel(step.part.channel),step.voice)
+                }
+                is com.yourapp.yamahaarranger.registration.RecallStep.Enabled -> {
+                    if(step.part.channel==3) setLeftVoiceEnabled(step.value)
+                    else if(_rightVoices.value[step.part.channel].enabled!=step.value) toggleRightVoice(step.part.channel)
+                }
+                is com.yourapp.yamahaarranger.registration.RecallStep.Volume -> when(step.part.channel) {
+                    0 -> onRight1VolumeChange(step.value); 1 -> onRight2VolumeChange(step.value)
+                    2 -> onRight3VolumeChange(step.value); 3 -> onLeftVolumeChange(step.value)
+                }
+                is com.yourapp.yamahaarranger.registration.RecallStep.Release -> _releaseControl.value=ReleaseControlState(step.value.knobValue.coerceIn(0,127),step.value.enabled)
+                is com.yourapp.yamahaarranger.registration.RecallStep.Transpose -> {
+                    _transpose.value=step.value.coerceIn(-12,12); arrangerBrain.setKeyboardTranspose(_transpose.value)
+                }
+                is com.yourapp.yamahaarranger.registration.RecallStep.Tempo -> arrangerBrain.setTempo(step.value.coerceIn(20,280))
+                is com.yourapp.yamahaarranger.registration.RecallStep.Sf2 -> return com.yourapp.yamahaarranger.registration.VoiceResult.FAILED
+            }
+            return com.yourapp.yamahaarranger.registration.VoiceResult.APPLIED
+        }
+    }
+    // END REG PHASE2 ADDITIONS
+
     private val _styleName = MutableStateFlow("No Style Loaded")
     private val _midiStatus = MutableStateFlow("No MIDI device")
     private val _midiOutEnabled = MutableStateFlow(false)

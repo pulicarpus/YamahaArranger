@@ -32,7 +32,7 @@ jobs:
       - name: Phase 0-1 isolation, persistence P1-P12, unchanged baseline and PCM gates
         run: |
           set -euo pipefail
-          python3 tools/test_live_reg.py --baseline --real --fetch-dependencies 2>&1 | tee evidence/phase01.log
+          python3 tools/test_live_reg_phase2.py --history --real --fetch-dependencies 2>&1 | tee evidence/phase01.log
           git diff --exit-code HEAD
       - uses: actions/upload-artifact@v4
         if: always()
