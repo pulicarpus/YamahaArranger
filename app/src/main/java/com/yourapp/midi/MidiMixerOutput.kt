@@ -65,7 +65,7 @@ class MidiMixerOutput(private val write: (ByteArray) -> Boolean) {
     @Synchronized fun program(channel: Int, program: Int, msb: Int, lsb: Int) {
         require(channel in 0..15)
         programs[channel] = intArrayOf(program.coerceIn(0, 127), msb.coerceIn(0, 127), lsb.coerceIn(0, 127))
-        if (active() && channel in channels) replayChannel(channel)
+        if (active() && channel in channels) replayChannel(channel, includeProgram = true)
     }
     @Synchronized fun noteOn(channel: Int, note: Int, velocity: Int) {
         if (!active() || channel !in channels) return
@@ -109,8 +109,10 @@ class MidiMixerOutput(private val write: (ByteArray) -> Boolean) {
             }
         }
     }
-    private fun replayChannel(ch: Int) {
-        programs[ch]?.let { p ->
+    private fun replayChannel(ch: Int, includeProgram: Boolean = ch !in 0..3) {
+        // Keyboard bank/program is sent only by an explicit voice selection,
+        // never by output enable or reconnect. Style replay stays unchanged.
+        if (includeProgram) programs[ch]?.let { p ->
             write(byteArrayOf((0xB0 or ch).toByte(), 0, p[1].toByte()))
             write(byteArrayOf((0xB0 or ch).toByte(), 32, p[2].toByte()))
             write(byteArrayOf((0xC0 or ch).toByte(), p[0].toByte()))

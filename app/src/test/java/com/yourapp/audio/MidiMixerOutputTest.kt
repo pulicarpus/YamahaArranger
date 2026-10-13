@@ -25,6 +25,47 @@ class MidiMixerOutputTest {
         assertFalse(events.any { it.size == 3 && it[0] and 240 == 176 && it[1] in listOf(120,121,123,64) })
     }
 
+    private fun isBankOrProgram(event: List<Int>) =
+        event[0] and 240 == 0xc0 || (event.size == 3 && event[0] and 240 == 0xb0 && event[1] in listOf(0,32))
+
+    @Test fun keyboardEnableNeverReplaysCachedBankProgramButKeepsCC11() {
+        val r=Recorder(); r.router.setEnabled(false)
+        for (ch in 0..3) { r.router.program(ch,0,0,0); r.router.update(ch,intArrayOf(11,70+ch)) }
+        r.events.clear(); r.router.setEnabled(true)
+        assertFalse(r.events.any(::isBankOrProgram))
+        for (ch in 0..3) assertEquals(70+ch,r.cc(ch,11))
+    }
+    @Test fun keyboardReconnectDoesNotReplayEvenExplicitlySelectedVoices() {
+        val r=Recorder()
+        for (ch in 0..3) { r.router.program(ch,48+ch,2,3); r.router.update(ch,intArrayOf(11,80+ch)) }
+        r.router.setConnected(false); r.events.clear(); r.router.setConnected(true)
+        assertFalse(r.events.any(::isBankOrProgram))
+        for (ch in 0..3) assertEquals(80+ch,r.cc(ch,11))
+    }
+    @Test fun explicitKeyboardVoiceSelectionStillSendsBankProgramForEveryPart() {
+        for (ch in 0..3) {
+            val r=Recorder(); r.router.program(ch,48,2,3)
+            assertEquals(listOf(listOf(0xb0 or ch,0,2),listOf(0xb0 or ch,32,3),listOf(0xc0 or ch,48)),r.events.take(3))
+            assertEquals(127,r.cc(ch,11)); assertTrue(r.events.all { it[0] and 15 == ch })
+        }
+    }
+    @Test fun styleBankProgramReplayIsPreservedAndStopNotesAreIdentical() {
+        val r=Recorder(); r.router.setChannels(setOf(10)); r.router.program(10,33,0,1)
+        r.router.program(1,48,2,3); r.router.setEnabled(false); r.events.clear(); r.router.setEnabled(true)
+        assertEquals(listOf(listOf(0xba,0,0),listOf(0xba,32,1),listOf(0xca,33)),r.events.filter(::isBankOrProgram))
+        r.events.clear()
+        for (ch in 0..3) { r.router.noteOn(ch,60+ch,99); r.router.noteOff(ch,60+ch) }
+        assertEquals((0..3).flatMap { listOf(listOf(0x90 or it,60+it,99),listOf(0x80 or it,60+it,0)) },r.events)
+    }
+    @Test fun productionManagerRetainsExplicitVoiceButOmitsAutoKeyboardBankProgram() {
+        val (midi,events)=manager()
+        midi.sendProgramChange(2,49,2,3)
+        assertEquals(listOf(listOf(0xb2,0,2),listOf(0xb2,32,3),listOf(0xc2,49)),events.take(3))
+        midi.setMixerControllers(2,intArrayOf(11,83)); events.clear()
+        midi.midiOutEnabled=false; midi.midiOutEnabled=true
+        assertFalse(events.any(::isBankOrProgram)); assertTrue(events.contains(listOf(0xb2,11,83)))
+    }
+
     @Test fun reconnectDoesNotInventUntouchedVolumePanOrEffectValues() {
         val r=Recorder(); r.router.setChannels(setOf(10)); r.router.update(10,intArrayOf(11,80))
         r.router.setConnected(false); r.events.clear(); r.router.setConnected(true)

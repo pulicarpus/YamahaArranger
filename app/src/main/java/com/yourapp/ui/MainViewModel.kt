@@ -506,14 +506,6 @@ class MainViewModel @Inject constructor(
         val newVal = !_midiOutEnabled.value
         if (newVal) {
             midiInputManager.setMixerStyleChannels(_voiceAssignments.value.map { it.channel }.toSet())
-            for (channel in 0..3) {
-                val slot = _rightVoices.value[channel]
-                if (slot.program in 0..127 && slot.bank in 0..16383) {
-                    val msb = if (slot.bank >= 128) slot.bank / 128 else slot.bank
-                    val lsb = if (slot.bank >= 128) slot.bank % 128 else 0
-                    midiInputManager.sendProgramChange(channel, slot.program, msb, lsb)
-                }
-            }
             midiInputManager.setMixerMasterVolume(_masterVolume.value)
             syncMixerMidiMute()
         }
