@@ -53,7 +53,7 @@ def jvm(output, fetch):
     log=output/'DebugLog.kt'
     log.write_text('package com.yourapp.yamahaarranger.ui\nobject DebugLog { '+
                    ';'.join('fun '+f+'(s:String){}' for f in ['add','setLongText','traceAudio','traceError','traceMidi'])+' }\n')
-    sources=[bridge,log,ROOT/'app/src/main/java/com/yourapp/audio/SampleProvider.kt',
+    sources=[ROOT/'app/src/main/java/com/yourapp/ui/CompactMixerLayout.kt', ROOT/'app/src/test/java/com/yourapp/ui/CompactMixerLayoutTest.kt',bridge,log,ROOT/'app/src/main/java/com/yourapp/audio/SampleProvider.kt',
              ROOT/'app/src/main/java/com/yourapp/yamahaarranger/audio/AudioEngineManager.kt',
              ROOT/'app/src/main/java/com/yourapp/yamahaarranger/audio/SoundFontPresetCatalog.kt',
              ROOT/'app/src/main/java/com/yourapp/yamahaarranger/audio/KeyboardPart.kt',
@@ -79,6 +79,7 @@ def jvm(output, fetch):
     run(['java','-javaagent:'+str(deps/'byte-buddy-agent.jar'),'-cp',str(jar)+':'+cp,'org.junit.runner.JUnitCore',
          'com.yourapp.audio.VoiceReleaseContractTest',
          'com.yourapp.audio.MidiMixerOutputTest',
+         'com.yourapp.yamahaarranger.ui.CompactMixerLayoutTest',
          'com.yourapp.yamahaarranger.lifecycle.ReadyToPlayEngineTest',
          'com.yourapp.yamahaarranger.lifecycle.ReadyToPlayBrainTest'])
 
