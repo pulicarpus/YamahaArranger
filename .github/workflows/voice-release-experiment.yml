@@ -1,13 +1,13 @@
 name: Voice & Release experimental APK
 on:
   push:
-    branches: [experiment/universal-sf2-release, claude/fitur-realis-audit-ocmbkl, experiment/right-off-note-lifecycle, experiment/fullscreen-mixer-release-switch]
+    branches: [experiment/universal-sf2-release, claude/fitur-realis-audit-ocmbkl, experiment/right-off-note-lifecycle, experiment/fullscreen-mixer-release-switch, experiment/vertical-mixer-console]
   workflow_dispatch: {}
 permissions:
   contents: read
 jobs:
   build:
-    if: github.ref == 'refs/heads/experiment/universal-sf2-release' || github.ref == 'refs/heads/claude/fitur-realis-audit-ocmbkl' || github.ref == 'refs/heads/experiment/right-off-note-lifecycle' || github.ref == 'refs/heads/experiment/fullscreen-mixer-release-switch'
+    if: github.ref == 'refs/heads/experiment/universal-sf2-release' || github.ref == 'refs/heads/claude/fitur-realis-audit-ocmbkl' || github.ref == 'refs/heads/experiment/right-off-note-lifecycle' || github.ref == 'refs/heads/experiment/fullscreen-mixer-release-switch' || github.ref == 'refs/heads/experiment/vertical-mixer-console'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:

@@ -9,6 +9,63 @@ import org.junit.Test
 import org.mockito.Mockito.*
 
 class VoiceReleaseContractTest {
+    @Test fun verticalFaderMapsTopCenterBottomAndClamps() {
+        assertEquals(127, mixerFaderValue(0f, 200f))
+        assertEquals(64, mixerFaderValue(100f, 200f))
+        assertEquals(0, mixerFaderValue(200f, 200f))
+        assertEquals(127, mixerFaderValue(-20f, 200f))
+        assertEquals(0, mixerFaderValue(220f, 200f))
+        assertEquals(64, mixerFaderValue(0f, 0f))
+        assertEquals(64, mixerFaderValue(Float.NaN, 100f))
+        for (value in 0..127) assertEquals(value, mixerFaderValue((127 - value).toFloat(), 127f))
+    }
+
+    @Test fun consoleMuteRetainsVolumeAndOnlyChangesTargetGain() {
+        val volumes = listOf(110, 78, 51, 99)
+        for (target in 0..3) {
+            val muted = MixerConsoleState().toggleMute(target)
+            for (channel in 0..3) assertEquals(if (channel == target) 0 else volumes[channel], muted.keyboardGain(channel, volumes[channel]))
+            val restored = muted.toggleMute(target)
+            for (channel in 0..3) assertEquals(volumes[channel], restored.keyboardGain(channel, volumes[channel]))
+        }
+    }
+
+    @Test fun consoleMultipleSolosRestoreManualMutesAndChangedVolumes() {
+        val state = MixerConsoleState().toggleMute(1).toggleSolo(0).toggleSolo(14)
+        assertFalse(state.muted(0)); assertFalse(state.muted(14))
+        assertTrue(state.muted(1)); assertTrue(state.muted(3)); assertTrue(state.muted(9))
+        assertTrue(state.muted(14, manualStyleMute = true))
+        assertEquals(0, state.keyboardGain(2, 85))
+        val restored = state.copy(solo = emptySet())
+        assertEquals(85, restored.keyboardGain(2, 85))
+        assertEquals(0, restored.keyboardGain(1, 100))
+        assertFalse(restored.muted(9)); assertTrue(restored.muted(9, manualStyleMute = true))
+    }
+
+    @Test fun removedStyleSoloCannotLeaveKeyboardSilenced() {
+        val state = MixerConsoleState().toggleSolo(14)
+        val restored = state.retainChannels(setOf(0, 1, 2, 3, 9))
+        assertTrue(restored.solo.isEmpty())
+        assertEquals(100, restored.keyboardGain(0, 100))
+        assertEquals(setOf(0), state.toggleSolo(0).retainChannels(setOf(0, 1, 2, 3)).solo)
+    }
+
+    @Test fun consoleGainBindingsPreserveReleaseOwnershipAndOtherParts() {
+        val (engine, bridge) = engine(); engine.loadSoundFontPair("m", "d")
+        for (target in 0..3) {
+            clearInvocations(bridge)
+            val muted = MixerConsoleState().toggleMute(target)
+            engine.setChannelExpression(target, muted.keyboardGain(target, 91))
+            engine.setChannelExpression(target, muted.toggleMute(target).keyboardGain(target, 91))
+            verify(bridge).nativeSetChannelExpression(target, 0)
+            verify(bridge).nativeSetChannelExpression(target, 91)
+            for (other in (0..15).filter { it != target }) verify(bridge, never()).nativeSetChannelExpression(eq(other), anyInt())
+            verify(bridge, never()).nativeAllNotesOff()
+            verify(bridge, never()).nativeStopKeyboardPart(anyInt())
+            verify(bridge, never()).nativeSetKeyboardReleaseTime(anyInt())
+        }
+    }
+
     @Test fun rightOffReleasesOwnedKeyBeforePhysicalKeyUp() {
         val (engine, bridge) = engine()
         engine.loadSoundFontPair("m", "d")

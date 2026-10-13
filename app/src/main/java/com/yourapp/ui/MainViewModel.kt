@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yourapp.yamahaarranger.arranger.ArrangerBrain
 import com.yourapp.yamahaarranger.arranger.ArrangerSection
+import com.yourapp.yamahaarranger.audio.MixerConsoleState
+import com.yourapp.yamahaarranger.audio.KeyboardMixerDetail
 import com.yourapp.yamahaarranger.audio.ReleaseControlState
 import com.yourapp.yamahaarranger.audio.StyleMixerChannels
 import kotlinx.coroutines.flow.map
@@ -258,6 +260,44 @@ class MainViewModel @Inject constructor(
     private val _right2Volume = MutableStateFlow(100)
     private val _right3Volume = MutableStateFlow(100)
     private val _masterVolume = MutableStateFlow(100)
+    private val _mixerConsole = MutableStateFlow(MixerConsoleState())
+    val mixerConsole: StateFlow<MixerConsoleState> = _mixerConsole
+    private val _keyboardMixerDetails = MutableStateFlow(List(4) { KeyboardMixerDetail() })
+    val keyboardMixerDetails: StateFlow<List<KeyboardMixerDetail>> = _keyboardMixerDetails
+    private fun keyboardVolume(channel: Int) = listOf(_right1Volume, _right2Volume, _right3Volume, _leftVolume)[channel]
+    private fun sendKeyboardGain(channel: Int) = audioEngine.setChannelExpression(channel,
+        _mixerConsole.value.keyboardGain(channel, keyboardVolume(channel).value))
+    private fun applyMixerFocus() {
+        (0..3).forEach(::sendKeyboardGain)
+        _voiceAssignments.value.forEach { slot ->
+            arrangerBrain.setStyleChannelMute(slot.channel, _mixerConsole.value.muted(slot.channel, slot.styleMuted))
+        }
+    }
+    fun toggleMixerKeyboardMute(channel: Int) {
+        _mixerConsole.update { it.toggleMute(channel) }; sendKeyboardGain(channel)
+    }
+    fun toggleMixerSolo(channel: Int) {
+        if (channel !in 0..3 && _voiceAssignments.value.none { it.channel == channel }) return
+        _mixerConsole.update { it.toggleSolo(channel) }; applyMixerFocus()
+    }
+    fun clearMixerSolo() {
+        if (_mixerConsole.value.solo.isEmpty()) return
+        _mixerConsole.update { it.copy(solo = emptySet()) }; applyMixerFocus()
+    }
+    fun reconcileMixerChannels() {
+        val channels = (0..3).toSet() + _voiceAssignments.value.map { it.channel }
+        val previous = _mixerConsole.value
+        _mixerConsole.update { it.retainChannels(channels) }
+        if (previous != _mixerConsole.value || _mixerConsole.value.solo.isNotEmpty() || _mixerConsole.value.keyboardMuted.isNotEmpty()) applyMixerFocus()
+    }
+    fun setKeyboardMixerDetail(channel: Int, detail: KeyboardMixerDetail) {
+        require(channel in 0..3)
+        val clamped = detail.copy(pan = detail.pan.coerceIn(0, 127), reverb = detail.reverb.coerceIn(0, 127), chorus = detail.chorus.coerceIn(0, 127))
+        _keyboardMixerDetails.update { list -> list.mapIndexed { index, old -> if (index == channel) clamped else old } }
+        audioEngine.setChannelMixer(channel, 127, clamped.pan,
+            _mixerConsole.value.keyboardGain(channel, keyboardVolume(channel).value), clamped.reverb, clamped.chorus)
+    }
+
     private val _activeBank = MutableStateFlow(1)
     private val _activeRegSlot = MutableStateFlow(0)
     private val _voiceAssignments = MutableStateFlow<List<VoiceSlot>>(emptyList())
@@ -496,10 +536,10 @@ class MainViewModel @Inject constructor(
         val v = value.coerceIn(0, 127); _styleVolume.value = v
         arrangerBrain.setStyleBusTrim(v)
     }
-    fun onLeftVolumeChange(value: Int) { _leftVolume.value = value.coerceIn(0, 127); audioEngine.setChannelExpression(3, _leftVolume.value) }
-    fun onRight1VolumeChange(value: Int) { _right1Volume.value = value.coerceIn(0, 127); audioEngine.setChannelExpression(0, _right1Volume.value) }
-    fun onRight2VolumeChange(value: Int) { _right2Volume.value = value.coerceIn(0, 127); audioEngine.setChannelExpression(1, _right2Volume.value) }
-    fun onRight3VolumeChange(value: Int) { _right3Volume.value = value.coerceIn(0, 127); audioEngine.setChannelExpression(2, _right3Volume.value) }
+    fun onLeftVolumeChange(value: Int) { keyboardVolume(3).value = value.coerceIn(0, 127); sendKeyboardGain(3) }
+    fun onRight1VolumeChange(value: Int) { keyboardVolume(0).value = value.coerceIn(0, 127); sendKeyboardGain(0) }
+    fun onRight2VolumeChange(value: Int) { keyboardVolume(1).value = value.coerceIn(0, 127); sendKeyboardGain(1) }
+    fun onRight3VolumeChange(value: Int) { keyboardVolume(2).value = value.coerceIn(0, 127); sendKeyboardGain(2) }
 
     /** Assign RIGHT1/2/3 or LEFT by an exact loaded SF2 identity. */
     fun setKeyboardVoice(part: KeyboardPart, preset: AudioEngineManager.SfPreset, onResult: (Boolean) -> Unit = {}) {
@@ -656,7 +696,7 @@ class MainViewModel @Inject constructor(
         val slot = _voiceAssignments.value.firstOrNull { it.channel == channel } ?: return
         val muted = !slot.styleMuted
         _voiceAssignments.value = _voiceAssignments.value.map { if (it.channel == channel) it.copy(styleMuted = muted) else it }
-        arrangerBrain.setStyleChannelMute(channel, muted)
+        arrangerBrain.setStyleChannelMute(channel, _mixerConsole.value.muted(channel, muted))
         DebugLog.add(if (muted) "🔇 STYLE CH$channel muted" else "🔊 STYLE CH$channel unmuted")
     }
 
