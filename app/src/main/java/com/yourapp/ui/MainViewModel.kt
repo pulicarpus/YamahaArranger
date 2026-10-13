@@ -267,14 +267,20 @@ class MainViewModel @Inject constructor(
     private fun keyboardVolume(channel: Int) = listOf(_right1Volume, _right2Volume, _right3Volume, _leftVolume)[channel]
     private fun sendKeyboardGain(channel: Int) = audioEngine.setChannelExpression(channel,
         _mixerConsole.value.keyboardGain(channel, keyboardVolume(channel).value))
+    private fun syncMixerMidiMute() {
+        val focus = _mixerConsole.value
+        midiInputManager.setMixerMutedChannels((0..3).filter { focus.muted(it) }.toSet() +
+            _voiceAssignments.value.filter { focus.muted(it.channel, it.styleMuted) }.map { it.channel })
+    }
     private fun applyMixerFocus() {
+        syncMixerMidiMute()
         (0..3).forEach(::sendKeyboardGain)
         _voiceAssignments.value.forEach { slot ->
             arrangerBrain.setStyleChannelMute(slot.channel, _mixerConsole.value.muted(slot.channel, slot.styleMuted))
         }
     }
     fun toggleMixerKeyboardMute(channel: Int) {
-        _mixerConsole.update { it.toggleMute(channel) }; sendKeyboardGain(channel)
+        _mixerConsole.update { it.toggleMute(channel) }; syncMixerMidiMute(); sendKeyboardGain(channel)
     }
     fun toggleMixerSolo(channel: Int) {
         if (channel !in 0..3 && _voiceAssignments.value.none { it.channel == channel }) return
@@ -288,6 +294,7 @@ class MainViewModel @Inject constructor(
         val channels = (0..3).toSet() + _voiceAssignments.value.map { it.channel }
         val previous = _mixerConsole.value
         _mixerConsole.update { it.retainChannels(channels) }
+        syncMixerMidiMute()
         if (previous != _mixerConsole.value || _mixerConsole.value.solo.isNotEmpty() || _mixerConsole.value.keyboardMuted.isNotEmpty()) applyMixerFocus()
     }
     fun setKeyboardMixerDetail(channel: Int, detail: KeyboardMixerDetail) {
@@ -430,13 +437,18 @@ class MainViewModel @Inject constructor(
     private var fontRequestSucceeded = false
 
     init {
+        audioEngine.onMixerControllers = midiInputManager::setMixerControllers
+        audioEngine.onMixerMasterVolume = midiInputManager::setMixerMasterVolume
+        midiInputManager.onOutputReady = {
+            for (channel in 0..2) midiInputManager.sendReleaseTime(channel, _releaseControl.value.effectiveValue)
+        }
         arrangerBrain.attachScope(viewModelScope)
         // Serial/conflated delivery keeps the last knob value authoritative,
         // without blocking the UI on a concurrent large SF2 load.
         viewModelScope.launch(Dispatchers.Default) {
             _releaseControl.map { it.effectiveValue }.distinctUntilChanged().collect { value ->
                 arrangerBrain.setKeyboardReleaseTime(value)
-                // MIDI OUT only mirrors notes; without CC72 an external keyboard never hears RELEASE.
+                // Mirror RELEASE separately as CC72; mixer controllers use the effective-value observer.
                 for (channel in 0..2) midiInputManager.sendReleaseTime(channel, value)
             }
         }
@@ -491,11 +503,30 @@ class MainViewModel @Inject constructor(
     }
     fun refreshMidiConnection() { _midiStatus.value = "Connecting…"; connectFirstAvailableMidiDevice() }
     fun toggleMidiOut() {
-        val newVal = !_midiOutEnabled.value; _midiOutEnabled.value = newVal; midiInputManager.midiOutEnabled = newVal
+        val newVal = !_midiOutEnabled.value
+        if (newVal) {
+            midiInputManager.setMixerStyleChannels(_voiceAssignments.value.map { it.channel }.toSet())
+            for (channel in 0..3) {
+                setKeyboardMixerDetail(channel, _keyboardMixerDetails.value[channel])
+                val slot = _rightVoices.value[channel]
+                if (slot.program in 0..127 && slot.bank in 0..16383) {
+                    val msb = if (slot.bank >= 128) slot.bank / 128 else slot.bank
+                    val lsb = if (slot.bank >= 128) slot.bank % 128 else 0
+                    midiInputManager.sendProgramChange(channel, slot.program, msb, lsb)
+                }
+            }
+            midiInputManager.setMixerMasterVolume(_masterVolume.value)
+            syncMixerMidiMute()
+        }
+        _midiOutEnabled.value = newVal; midiInputManager.midiOutEnabled = newVal
         if (newVal) for (channel in 0..2) midiInputManager.sendReleaseTime(channel, _releaseControl.value.effectiveValue)
         DebugLog.add(if (newVal) "📤 MIDI OUT: ON" else "📤 MIDI OUT: OFF")
     }
-    override fun onCleared() { midiInputManager.close(); audioEngine.stop(); super.onCleared() }
+    override fun onCleared() {
+        audioEngine.onMixerControllers = null; audioEngine.onMixerMasterVolume = null
+        midiInputManager.onOutputReady = null
+        midiInputManager.close(); audioEngine.stop(); super.onCleared()
+    }
 
     fun onKeyboardNoteOn(midiNote: Int, velocity: Float) = arrangerBrain.onKeyboardNoteOn(midiNote, velocity)
     fun onKeyboardNoteOff(midiNote: Int) = arrangerBrain.onKeyboardNoteOff(midiNote)
@@ -534,6 +565,7 @@ class MainViewModel @Inject constructor(
     }
     fun onStyleVolumeChange(value: Int) {
         val v = value.coerceIn(0, 127); _styleVolume.value = v
+        audioEngine.setAuxiliaryStyleBusTrim(v)
         arrangerBrain.setStyleBusTrim(v)
     }
     fun onLeftVolumeChange(value: Int) { keyboardVolume(3).value = value.coerceIn(0, 127); sendKeyboardGain(3) }
@@ -696,6 +728,7 @@ class MainViewModel @Inject constructor(
         val slot = _voiceAssignments.value.firstOrNull { it.channel == channel } ?: return
         val muted = !slot.styleMuted
         _voiceAssignments.value = _voiceAssignments.value.map { if (it.channel == channel) it.copy(styleMuted = muted) else it }
+        syncMixerMidiMute()
         arrangerBrain.setStyleChannelMute(channel, _mixerConsole.value.muted(channel, muted))
         DebugLog.add(if (muted) "🔇 STYLE CH$channel muted" else "🔊 STYLE CH$channel unmuted")
     }
@@ -942,6 +975,9 @@ class MainViewModel @Inject constructor(
                     drumAuditStyle = parsed
                     arrangerBrain.loadStyle(parsed)
                     _voiceAssignments.value = voiceSlotsFromStyle(parsed)
+                    // Register destinations before publishing READY; the first note must not race a UI collector.
+                    midiInputManager.setMixerStyleChannels(_voiceAssignments.value.map { it.channel }.toSet())
+                    syncMixerMidiMute()
                     _styleName.value = fileName
                     DebugLog.add("🎼 Mixer channels from style: ${_voiceAssignments.value.map { "${it.channel}:${it.sf2Name}@${it.bank}/${it.program}" }.joinToString()}")
                     DebugLog.add("✅ Loaded: $fileName")

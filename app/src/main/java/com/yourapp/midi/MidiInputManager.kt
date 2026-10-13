@@ -20,13 +20,24 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
     private val midiManager: MidiManager? = context.getSystemService(Context.MIDI_SERVICE) as? MidiManager
     private var openedDevice: MidiDevice? = null
     private var outputPort: MidiOutputPort? = null
-    private var inputPort: MidiInputPort? = null
+    @Volatile private var inputPort: MidiInputPort? = null
     var onNoteOn: ((midiNote: Int, velocity: Int) -> Unit)? = null
     var onNoteOff: ((midiNote: Int) -> Unit)? = null
     var onSustainChange: ((enabled: Boolean) -> Unit)? = null
     var connectedDeviceName: String? = null
         private set
-    var midiOutEnabled = false
+    private val mixerOutput = MidiMixerOutput { data ->
+        val port = inputPort
+        if (port == null) false else try { port.send(data, 0, data.size); true }
+        catch (e: Exception) { DebugLog.traceError("MIDI OUT write failed: ${e.message}"); false }
+    }
+    @Volatile var midiOutEnabled = false
+        set(value) { mixerOutput.setEnabled(value); field = value }
+    var onOutputReady: (() -> Unit)? = null
+    fun setMixerControllers(channel: Int, pairs: IntArray) = mixerOutput.update(channel, pairs)
+    fun setMixerMasterVolume(value: Int) = mixerOutput.setMaster(value)
+    fun setMixerStyleChannels(channels: Set<Int>) = mixerOutput.setChannels(channels)
+    fun setMixerMutedChannels(channels: Set<Int>) = mixerOutput.setMutedChannels(channels)
 
     /** MIDI channel used by the E343 keyboard for chord/ACMP input (0 = MIDI channel 1). */
     var chordInputChannel: Int = 0
@@ -72,6 +83,8 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
             val sendPort = device.openInputPort(0)
             if (sendPort != null) {
                 inputPort = sendPort
+                mixerOutput.setConnected(true)
+                onOutputReady?.invoke()
                 DebugLog.add("✅ MIDI OUT ready (port 0)")
             } else {
                 DebugLog.add("⚠ MIDI OUT port failed")
@@ -178,13 +191,8 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
     }
 
     fun sendNoteOn(channel: Int, note: Int, velocity: Int) {
-        if (!midiOutEnabled) { DebugLog.traceMidi("NOTE_ON suppressed (MIDI OUT OFF) ch=$channel note=$note vel=$velocity"); return }
-        val port = inputPort ?: run { DebugLog.traceMidi("NOTE_ON dropped (no output port) ch=$channel note=$note"); return }
-        val ch = channel.coerceIn(0, 15)
-        val n = note.coerceIn(0, 127)
-        val v = velocity.coerceIn(1, 127)
-        try { port.send(byteArrayOf((0x90 or ch).toByte(), n.toByte(), v.toByte()), 0, 3); DebugLog.traceMidi("NOTE_ON ch=$ch note=$n vel=$v") }
-        catch (e: Exception) { DebugLog.traceError("MIDI NOTE_ON failed ch=$ch note=$n: ${e.message}"); Timber.w(e, "sendNoteOn failed") }
+        if (channel !in 0..15) return
+        mixerOutput.noteOn(channel, note, velocity)
     }
 
     /** CC72 Release Time for an external keyboard; BASSMIDI receives the knob separately. */
@@ -198,12 +206,8 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
     }
 
     fun sendNoteOff(channel: Int, note: Int) {
-        if (!midiOutEnabled) { DebugLog.traceMidi("NOTE_OFF suppressed (MIDI OUT OFF) ch=$channel note=$note"); return }
-        val port = inputPort ?: run { DebugLog.traceMidi("NOTE_OFF dropped (no output port) ch=$channel note=$note"); return }
-        val ch = channel.coerceIn(0, 15)
-        val n = note.coerceIn(0, 127)
-        try { port.send(byteArrayOf((0x80 or ch).toByte(), n.toByte(), 0), 0, 3); DebugLog.traceMidi("NOTE_OFF ch=$ch note=$n") }
-        catch (e: Exception) { DebugLog.traceError("MIDI NOTE_OFF failed ch=$ch note=$n: ${e.message}"); Timber.w(e, "sendNoteOff failed") }
+        if (channel !in 0..15) return
+        mixerOutput.noteOff(channel, note)
     }
 
     /** Explicit RIGHT OFF affects only the selected external MIDI part. */
@@ -215,13 +219,8 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
     }
 
     fun sendProgramChange(channel: Int, program: Int, bankMsb: Int = 0, bankLsb: Int = 0) {
-        val port = inputPort ?: return
-        val ch = channel.coerceIn(0, 15)
-        try {
-            port.send(byteArrayOf((0xB0 or ch).toByte(), 0, bankMsb.coerceIn(0, 127).toByte()), 0, 3)
-            port.send(byteArrayOf((0xB0 or ch).toByte(), 32, bankLsb.coerceIn(0, 127).toByte()), 0, 3)
-            port.send(byteArrayOf((0xC0 or ch).toByte(), program.coerceIn(0, 127).toByte()), 0, 2)
-        } catch (e: Exception) { Timber.w(e, "sendProgramChange failed") }
+        if (channel !in 0..15) return
+        mixerOutput.program(channel, program, bankMsb, bankLsb)
     }
 
     fun allNotesOff() {
@@ -232,6 +231,7 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
     }
 
     fun close() {
+        mixerOutput.setConnected(false)
         try { outputPort?.close() } catch (e: Exception) { Timber.w(e, "close outputPort") }
         try { inputPort?.close() } catch (e: Exception) { Timber.w(e, "close inputPort") }
         try { openedDevice?.close() } catch (e: Exception) { Timber.w(e, "close device") }

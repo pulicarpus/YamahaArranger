@@ -64,6 +64,8 @@ def jvm(output, fetch):
              ROOT/'app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt',
              ROOT/'app/src/main/java/com/yourapp/style/StyleModel.kt',
              ROOT/'app/src/main/java/com/yourapp/midi/MidiInputManager.kt',
+             ROOT/'app/src/main/java/com/yourapp/midi/MidiMixerOutput.kt',
+             ROOT/'app/src/test/java/com/yourapp/audio/MidiMixerOutputTest.kt',
              ROOT/'app/src/test/java/com/yourapp/audio/VoiceReleaseContractTest.kt',
              ROOT/'tests/readiness_jvm/ReadyToPlayEngineTest.kt',
              ROOT/'app/src/test/java/com/yourapp/yamahaarranger/lifecycle/ReadyToPlayBrainTest.kt']
@@ -76,6 +78,7 @@ def jvm(output, fetch):
          '-nowarn','-jvm-target','17','-classpath',cp,'-d',str(jar),*map(str,sources)])
     run(['java','-javaagent:'+str(deps/'byte-buddy-agent.jar'),'-cp',str(jar)+':'+cp,'org.junit.runner.JUnitCore',
          'com.yourapp.audio.VoiceReleaseContractTest',
+         'com.yourapp.audio.MidiMixerOutputTest',
          'com.yourapp.yamahaarranger.lifecycle.ReadyToPlayEngineTest',
          'com.yourapp.yamahaarranger.lifecycle.ReadyToPlayBrainTest'])
 

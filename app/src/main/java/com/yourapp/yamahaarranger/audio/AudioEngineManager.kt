@@ -295,12 +295,47 @@ class AudioEngineManager @Inject constructor(
         return stopped
     }
 
-    fun setChannelMixer(channel: Int, volume: Int = 127, pan: Int = 64, expression: Int = 127, reverbSend: Int = 40, chorusSend: Int = 0) {
-        bridge.nativeSetChannelMixer(channel, volume.coerceIn(0,127), pan.coerceIn(0,127), expression.coerceIn(0,127), reverbSend.coerceIn(0,127), chorusSend.coerceIn(0,127))
+    // Serialize controller snapshots with their native write. This lock is not
+    // used by render, SF2 loading, note ownership or the scheduler clock.
+    private val mixerRoutingLock = Any()
+    @Volatile var onMixerControllers: ((Int, IntArray) -> Unit)? = null
+    @Volatile var onMixerMasterVolume: ((Int) -> Unit)? = null
+    private var auxiliaryStyleTrim = 127
+    private val auxiliaryExpression = IntArray(4) { 127 }
+    private val auxiliaryObserved = BooleanArray(4)
+    private fun effectiveMixerExpression(channel: Int, expression: Int): Int {
+        val value = expression.coerceIn(0, 127)
+        if (channel !in 4..7) return value
+        auxiliaryExpression[channel - 4] = value
+        auxiliaryObserved[channel - 4] = true
+        return (value * auxiliaryStyleTrim + 63) / 127
     }
-
+    /** Existing sequencer trims 8..15; cover compatible style destinations 4..7 once. */
+    fun setAuxiliaryStyleBusTrim(value: Int) = synchronized(mixerRoutingLock) {
+        auxiliaryStyleTrim = value.coerceIn(0, 127)
+        for (channel in 4..7) if (auxiliaryObserved[channel - 4]) {
+            val effective = (auxiliaryExpression[channel - 4] * auxiliaryStyleTrim + 63) / 127
+            bridge.nativeSetChannelExpression(channel, effective)
+            onMixerControllers?.invoke(channel, intArrayOf(11, effective))
+        }
+    }
+    fun setChannelMixer(channel: Int, volume: Int = 127, pan: Int = 64, expression: Int = 127, reverbSend: Int = 40, chorusSend: Int = 0) = synchronized(mixerRoutingLock) {
+        require(channel in 0..15)
+        val v = volume.coerceIn(0, 127); val p = pan.coerceIn(0, 127)
+        val e = effectiveMixerExpression(channel, expression)
+        val r = reverbSend.coerceIn(0, 127); val c = chorusSend.coerceIn(0, 127)
+        bridge.nativeSetChannelMixer(channel, v, p, e, r, c)
+        onMixerControllers?.invoke(channel, intArrayOf(7, v, 10, p, 11, e, 91, r, 93, c))
+        Unit
+    }
     fun setChannelVolume(channel: Int, volume: Int) = setChannelMixer(channel, volume=volume)
-    fun setChannelExpression(channel: Int, expression: Int) = bridge.nativeSetChannelExpression(channel, expression.coerceIn(0, 127))
+    fun setChannelExpression(channel: Int, expression: Int) = synchronized(mixerRoutingLock) {
+        require(channel in 0..15)
+        val effective = effectiveMixerExpression(channel, expression)
+        bridge.nativeSetChannelExpression(channel, effective)
+        onMixerControllers?.invoke(channel, intArrayOf(11, effective))
+        Unit
+    }
     fun shadowDrumSnapshot(): String = bridge.nativeShadowDrumSnapshot()
 
     fun diagnosticDrumWav(bank: Int, pc: Int, key: Int, velocity: Int): ByteArray = bridge.nativeDiagnosticDrumWav(bank, pc, key, velocity)
@@ -322,8 +357,11 @@ class AudioEngineManager @Inject constructor(
 
     fun setMasterVolume(volume: Int) {
         val v = volume.coerceIn(0, 127)
-        // Keep 100 as unity; 0 is silent and 127 gives modest headroom above unity.
-        bridge.nativeSetMasterGain((v / 100f).coerceIn(0f, 1.27f))
+        // 100 is unity and 0 is silent; the native player saturates values above unity.
+        synchronized(mixerRoutingLock) {
+            bridge.nativeSetMasterGain((v / 100f).coerceIn(0f, 1.27f))
+            onMixerMasterVolume?.invoke(v)
+        }
     }
 
 

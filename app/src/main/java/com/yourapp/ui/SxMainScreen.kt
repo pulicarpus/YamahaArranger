@@ -49,6 +49,7 @@ private val SxBlue = Color(0xFF0878D1)
 private val SxBlueDark = Color(0xFF063A67)
 private val SxOrange = Color(0xFFB65300)
 private val SxOrangeBright = Color(0xFFFF8A00)
+private val SxMixerBlue = Color(0xFF58B8FF)
 private val SxGreen = Color(0xFF27D887)
 private val SxDim = Color(0xFF9AA3AD)
 
@@ -317,6 +318,7 @@ private fun SxMixerPage(state: MainUiState, vm: MainViewModel, voices: List<Voic
     var voicePickerSlot by remember { mutableStateOf<VoiceSlot?>(null) }
     var keyboardPicker by remember { mutableStateOf<Int?>(null) }
     var detailChannel by remember { mutableStateOf<Int?>(null) }
+    var busDetail by remember { mutableStateOf<String?>(null) }
     var selectionError by remember { mutableStateOf<String?>(null) }
     val focus by vm.mixerConsole.collectAsState()
     val keyboardDetails by vm.keyboardMixerDetails.collectAsState()
@@ -339,34 +341,55 @@ private fun SxMixerPage(state: MainUiState, vm: MainViewModel, voices: List<Voic
         onDispose { if (visibleTypes != 0) controller?.show(visibleTypes) }
     }
     Surface(color = SxBlack, modifier = Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize().padding(6.dp)) {
-            Row(Modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("MIXING CONSOLE", color = SxGreen, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                    Text("${voices.size} STYLE CHANNELS • SWIPE CHANNEL STRIPS", color = SxDim, fontSize = 10.sp)
-                }
-                TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text("ARRANGER", color = SxGreen) }
-            }
-            Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Row(Modifier.weight(1f).fillMaxHeight().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    state.rightVoices.forEach { slot ->
-                        val ch = slot.layer
-                        SxConsoleStrip(slot.label, slot.displayName(), keyboardVolumes[ch], focus.muted(ch), ch in focus.solo,
-                            keyboardDetails[ch].pan, keyboardVolumeCallbacks[ch], { keyboardPicker = ch },
-                            { vm.toggleMixerKeyboardMute(ch) }, { vm.toggleMixerSolo(ch) }, { detailChannel = ch })
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val fixedPartWidth = if (maxWidth >= 1000.dp) 112.dp else 96.dp
+            val fixedPartPadding = if (maxWidth >= 1000.dp) 4.dp else 0.dp
+            val fixedBusWidth = if (maxWidth >= 1000.dp) 80.dp else 56.dp
+            Column(Modifier.fillMaxSize().padding(6.dp)) {
+                Row(Modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("MIXING CONSOLE", color = SxGreen, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                        Text("FIXED PARTS / BUSES • ${voices.size} STYLE CHANNELS → SWIPE", color = SxDim, fontSize = 10.sp)
                     }
-                    voices.forEach { slot ->
-                        SxConsoleStrip(slot.label.substringAfter(") ", slot.label), slot.sf2Name ?: slot.displayName(),
-                            slot.styleVolume, focus.muted(slot.channel, slot.styleMuted), slot.channel in focus.solo,
-                            slot.stylePan, { vm.setStyleChannelVolume(slot.channel, it) }, { voicePickerSlot = slot },
-                            { onMute(slot.channel) }, { vm.toggleMixerSolo(slot.channel) }, { detailChannel = slot.channel })
+                    TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text("ARRANGER", color = SxGreen) }
+                }
+                Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    // Four 96dp part strips keep both MUTE/SOLO targets at 48dp.
+                    // Six fixed strips never participate in the style scroll container.
+                    Row(Modifier.fillMaxHeight(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        state.rightVoices.forEach { slot ->
+                            val ch = slot.layer
+                            SxConsoleStrip(slot.label, slot.displayName(), keyboardVolumes[ch], focus.muted(ch), ch in focus.solo,
+                                keyboardDetails[ch].pan, keyboardVolumeCallbacks[ch], { keyboardPicker = ch },
+                                { vm.toggleMixerKeyboardMute(ch) }, { vm.toggleMixerSolo(ch) }, { detailChannel = ch },
+                                accent = SxMixerBlue, stripWidth = fixedPartWidth, innerPadding = fixedPartPadding)
+                        }
+                        SxConsoleBus("STYLE", state.styleVolume, vm::onStyleVolumeChange, SxMixerBlue, fixedBusWidth) { busDetail = "STYLE" }
+                        SxConsoleBus("MASTER", state.masterVolume, vm::onMasterVolumeChange, SxMixerBlue, fixedBusWidth) { busDetail = "MASTER" }
+                    }
+                    Box(Modifier.width(2.dp).fillMaxHeight().background(SxMixerBlue.copy(alpha = 0.6f)))
+                    if (voices.isEmpty()) {
+                        Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                            Text("No used style channels", color = SxDim, fontSize = 11.sp)
+                        }
+                    } else Row(Modifier.weight(1f).fillMaxHeight().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        voices.forEach { slot ->
+                            SxConsoleStrip(slot.label.substringAfter(") ", slot.label), slot.sf2Name ?: slot.displayName(),
+                                slot.styleVolume, focus.muted(slot.channel, slot.styleMuted), slot.channel in focus.solo,
+                                slot.stylePan, { vm.setStyleChannelVolume(slot.channel, it) }, { voicePickerSlot = slot },
+                                { onMute(slot.channel) }, { vm.toggleMixerSolo(slot.channel) }, { detailChannel = slot.channel })
+                        }
                     }
                 }
-                // Bus controls remain on the right; channel strips retain their full touch width.
-                SxConsoleBus("STYLE", state.styleVolume, vm::onStyleVolumeChange)
-                SxConsoleBus("MASTER", state.masterVolume, vm::onMasterVolumeChange)
             }
         }
+    }
+    busDetail?.let { bus ->
+        AlertDialog(onDismissRequest = { busDetail = null }, title = { Text("$bus VOLUME") },
+            text = { Text(if (bus == "MASTER")
+                "100 = unity; 0 = silence. Android uses the existing master gain. MIDI OUT trims CC11 only on RIGHT1/2/3, LEFT and used style channels, preserving their balance. Values above 100 stay at unity."
+                else "STYLE trims accompaniment expression while preserving each channel's own volume and expression, including style controller changes. Keyboard parts are unaffected.") },
+            confirmButton = { TextButton(onClick = { busDetail = null }) { Text("CLOSE") } })
     }
     detailChannel?.let { ch ->
         val slot = voices.firstOrNull { it.channel == ch }
@@ -411,24 +434,25 @@ private fun SxMixerPage(state: MainUiState, vm: MainViewModel, voices: List<Voic
 
 @Composable
 private fun SxConsoleStrip(name: String, voice: String, volume: Int, muted: Boolean, solo: Boolean, pan: Int,
-    onVolume: (Int) -> Unit, onVoice: () -> Unit, onMute: () -> Unit, onSolo: () -> Unit, onDetail: () -> Unit) {
-    Surface(color = SxPanel, shape = RoundedCornerShape(4.dp), modifier = Modifier.width(112.dp).fillMaxHeight()) {
-        Column(Modifier.fillMaxSize().padding(horizontal = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    onVolume: (Int) -> Unit, onVoice: () -> Unit, onMute: () -> Unit, onSolo: () -> Unit, onDetail: () -> Unit,
+    accent: Color = SxGreen, stripWidth: Dp = 112.dp, innerPadding: Dp = 4.dp) {
+    Surface(color = SxPanel, shape = RoundedCornerShape(4.dp), modifier = Modifier.width(stripWidth).fillMaxHeight()) {
+        Column(Modifier.fillMaxSize().padding(horizontal = innerPadding), horizontalAlignment = Alignment.CenterHorizontally) {
             TextButton(onClick = onVoice, modifier = Modifier.fillMaxWidth().height(48.dp), contentPadding = PaddingValues(0.dp)) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("VOICE", color = SxGreen, fontSize = 11.sp)
+                    Text("VOICE", color = accent, fontSize = 11.sp)
                     Text(voice, color = SxDim, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 10.sp)
                 }
             }
             Row(Modifier.fillMaxWidth()) {
-                SxConsoleSwitch("MUTE", muted, onMute, Modifier.weight(1f))
-                SxConsoleSwitch("SOLO", solo, onSolo, Modifier.weight(1f))
+                SxConsoleSwitch("MUTE", muted, onMute, Modifier.weight(1f), accent)
+                SxConsoleSwitch("SOLO", solo, onSolo, Modifier.weight(1f), accent)
             }
             TextButton(onClick = onDetail, modifier = Modifier.fillMaxWidth().height(48.dp), contentPadding = PaddingValues(0.dp)) {
                 Text("PAN $pan • DETAIL", color = SxDim, fontSize = 10.sp)
             }
-            Text(volume.toString(), color = if (muted) SxDim else SxGreen, fontSize = 13.sp)
-            SxVerticalFader(name, volume, onVolume, Modifier.weight(1f).fillMaxWidth())
+            Text(volume.toString(), color = if (muted) SxDim else accent, fontSize = 13.sp)
+            SxVerticalFader(name, volume, onVolume, Modifier.weight(1f).fillMaxWidth(), accent)
             Text(name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 11.sp,
                 maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.height(36.dp).padding(top = 4.dp))
         }
@@ -436,26 +460,29 @@ private fun SxConsoleStrip(name: String, voice: String, volume: Int, muted: Bool
 }
 
 @Composable
-private fun SxConsoleSwitch(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier) {
-    TextButton(onClick = onClick, modifier = modifier.height(48.dp).background(if (selected) SxGreen.copy(alpha = 0.18f) else Color.Transparent), contentPadding = PaddingValues(0.dp)) {
-        Text(label, color = if (selected) SxGreen else SxDim, fontSize = 10.sp)
+private fun SxConsoleSwitch(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier, accent: Color) {
+    TextButton(onClick = onClick, modifier = modifier.height(48.dp).background(if (selected) accent.copy(alpha = 0.18f) else Color.Transparent), contentPadding = PaddingValues(0.dp)) {
+        Text(label, color = if (selected) accent else SxDim, fontSize = 10.sp)
     }
 }
 
 @Composable
-private fun SxConsoleBus(name: String, volume: Int, onVolume: (Int) -> Unit) {
-    Surface(color = SxPanel2, shape = RoundedCornerShape(4.dp), modifier = Modifier.width(80.dp).fillMaxHeight()) {
-        Column(Modifier.fillMaxSize().padding(horizontal = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(Modifier.fillMaxWidth().height(144.dp), contentAlignment = Alignment.Center) { Text("VOLUME", color = SxGreen, fontSize = 11.sp) }
-            Text(volume.toString(), color = SxGreen, fontSize = 13.sp)
-            SxVerticalFader(name, volume, onVolume, Modifier.weight(1f).fillMaxWidth())
-            Text(name, color = SxGreen, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.height(36.dp).padding(top = 4.dp))
+private fun SxConsoleBus(name: String, volume: Int, onVolume: (Int) -> Unit, accent: Color, stripWidth: Dp, onDetail: () -> Unit) {
+    Surface(color = SxPanel2, shape = RoundedCornerShape(4.dp), modifier = Modifier.width(stripWidth).fillMaxHeight()) {
+        Column(Modifier.fillMaxSize().padding(horizontal = 2.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(Modifier.fillMaxWidth().height(144.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                Text("VOLUME", color = accent, fontSize = 10.sp)
+                TextButton(onClick = onDetail, modifier = Modifier.fillMaxWidth().height(48.dp), contentPadding = PaddingValues(0.dp)) { Text("DETAIL", color = accent, fontSize = 10.sp) }
+            }
+            Text(volume.toString(), color = accent, fontSize = 13.sp)
+            SxVerticalFader(name, volume, onVolume, Modifier.weight(1f).fillMaxWidth(), accent)
+            Text(name, color = accent, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.height(36.dp).padding(top = 4.dp))
         }
     }
 }
 
 @Composable
-private fun SxVerticalFader(name: String, value: Int, onChange: (Int) -> Unit, modifier: Modifier) {
+private fun SxVerticalFader(name: String, value: Int, onChange: (Int) -> Unit, modifier: Modifier, accent: Color = SxGreen) {
     val update by rememberUpdatedState(onChange)
     androidx.compose.foundation.Canvas(modifier
         .semantics {
@@ -481,7 +508,7 @@ private fun SxVerticalFader(name: String, value: Int, onChange: (Int) -> Unit, m
             drawLine(SxDim.copy(alpha = 0.5f), androidx.compose.ui.geometry.Offset(x - 22.dp.toPx(), y), androidx.compose.ui.geometry.Offset(x - 14.dp.toPx(), y), 1.dp.toPx())
         }
         val y = bottom - (bottom - pad) * value.coerceIn(0, 127) / 127f
-        drawRoundRect(SxGreen, androidx.compose.ui.geometry.Offset(x - 20.dp.toPx(), y - 9.dp.toPx()),
+        drawRoundRect(accent, androidx.compose.ui.geometry.Offset(x - 20.dp.toPx(), y - 9.dp.toPx()),
             androidx.compose.ui.geometry.Size(40.dp.toPx(), 18.dp.toPx()), androidx.compose.ui.geometry.CornerRadius(3.dp.toPx()))
         drawLine(SxBlack, androidx.compose.ui.geometry.Offset(x - 16.dp.toPx(), y), androidx.compose.ui.geometry.Offset(x + 16.dp.toPx(), y), 2.dp.toPx())
     }
