@@ -50,6 +50,7 @@ private val SxBlueDark = Color(0xFF063A67)
 private val SxOrange = Color(0xFFB65300)
 private val SxOrangeBright = Color(0xFFFF8A00)
 private val SxMixerBlue = Color(0xFF58B8FF)
+private val SxMixerMaster = Color(0xFFFFC857)
 private val SxGreen = Color(0xFF27D887)
 private val SxDim = Color(0xFF9AA3AD)
 
@@ -342,30 +343,28 @@ private fun SxMixerPage(state: MainUiState, vm: MainViewModel, voices: List<Voic
     }
     Surface(color = SxBlack, modifier = Modifier.fillMaxSize()) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
-            val fixedPartWidth = if (maxWidth >= 1000.dp) 112.dp else 96.dp
-            val fixedPartPadding = if (maxWidth >= 1000.dp) 4.dp else 0.dp
-            val fixedBusWidth = if (maxWidth >= 1000.dp) 80.dp else 56.dp
+            val stripWidth = compactMixerStripWidth(maxWidth.value).dp
             Column(Modifier.fillMaxSize().padding(6.dp)) {
                 Row(Modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("MIXING CONSOLE", color = SxGreen, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                        Text("FIXED PARTS / BUSES • ${voices.size} STYLE CHANNELS → SWIPE", color = SxDim, fontSize = 10.sp)
+                        Text("MIXER", color = SxGreen, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                        Text("${voices.size} STYLE CHANNELS  •  SWIPE →", color = SxDim, fontSize = 10.sp)
                     }
                     TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text("ARRANGER", color = SxGreen) }
                 }
                 Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    // Four 96dp part strips keep both MUTE/SOLO targets at 48dp.
+                    // Compact strips retain full-width 48dp touch targets.
                     // Six fixed strips never participate in the style scroll container.
                     Row(Modifier.fillMaxHeight(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         state.rightVoices.forEach { slot ->
                             val ch = slot.layer
                             SxConsoleStrip(slot.label, slot.displayName(), keyboardVolumes[ch], focus.muted(ch), ch in focus.solo,
-                                keyboardDetails[ch].pan, keyboardVolumeCallbacks[ch], { keyboardPicker = ch },
+                                keyboardDetails[ch].pan, keyboardVolumeCallbacks[ch],
                                 { vm.toggleMixerKeyboardMute(ch) }, { vm.toggleMixerSolo(ch) }, { detailChannel = ch },
-                                accent = SxMixerBlue, stripWidth = fixedPartWidth, innerPadding = fixedPartPadding)
+                                accent = SxMixerBlue, stripWidth = stripWidth)
                         }
-                        SxConsoleBus("STYLE", state.styleVolume, vm::onStyleVolumeChange, SxMixerBlue, fixedBusWidth) { busDetail = "STYLE" }
-                        SxConsoleBus("MASTER", state.masterVolume, vm::onMasterVolumeChange, SxMixerBlue, fixedBusWidth) { busDetail = "MASTER" }
+                        SxConsoleBus("STYLE", state.styleVolume, vm::onStyleVolumeChange, SxGreen, stripWidth) { busDetail = "STYLE" }
+                        SxConsoleBus("MASTER", state.masterVolume, vm::onMasterVolumeChange, SxMixerMaster, stripWidth) { busDetail = "MASTER" }
                     }
                     Box(Modifier.width(2.dp).fillMaxHeight().background(SxMixerBlue.copy(alpha = 0.6f)))
                     if (voices.isEmpty()) {
@@ -376,8 +375,8 @@ private fun SxMixerPage(state: MainUiState, vm: MainViewModel, voices: List<Voic
                         voices.forEach { slot ->
                             SxConsoleStrip(slot.label.substringAfter(") ", slot.label), slot.sf2Name ?: slot.displayName(),
                                 slot.styleVolume, focus.muted(slot.channel, slot.styleMuted), slot.channel in focus.solo,
-                                slot.stylePan, { vm.setStyleChannelVolume(slot.channel, it) }, { voicePickerSlot = slot },
-                                { onMute(slot.channel) }, { vm.toggleMixerSolo(slot.channel) }, { detailChannel = slot.channel })
+                                slot.stylePan, { vm.setStyleChannelVolume(slot.channel, it) },
+                                { onMute(slot.channel) }, { vm.toggleMixerSolo(slot.channel) }, { detailChannel = slot.channel }, stripWidth = stripWidth)
                         }
                     }
                 }
@@ -399,12 +398,14 @@ private fun SxMixerPage(state: MainUiState, vm: MainViewModel, voices: List<Voic
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
                     if (keyboard && d != null) {
+                        TextButton(onClick = { detailChannel = null; keyboardPicker = ch }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("VOICE: ${state.rightVoices[ch].displayName()}") }
                         SxMixRow("PAN", d.pan, { vm.setKeyboardMixerDetail(ch, d.copy(pan = it)) })
                         // Keyboard volume already uses CC11: EXP edits that same binding.
                         SxMixRow("EXP", keyboardVolumes[ch], keyboardVolumeCallbacks[ch])
                         SxMixRow("REV", d.reverb, { vm.setKeyboardMixerDetail(ch, d.copy(reverb = it)) })
                         SxMixRow("CHO", d.chorus, { vm.setKeyboardMixerDetail(ch, d.copy(chorus = it)) })
                     } else if (slot != null) {
+                        TextButton(onClick = { detailChannel = null; voicePickerSlot = slot }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("VOICE: ${slot.displayName()}") }
                         SxMixRow("PAN", slot.stylePan, { onMixer(ch, slot.styleVolume, it, slot.styleExpression, slot.styleReverb, slot.styleChorus) })
                         SxMixRow("EXP", slot.styleExpression, { onMixer(ch, slot.styleVolume, slot.stylePan, it, slot.styleReverb, slot.styleChorus) })
                         SxMixRow("REV", slot.styleReverb, { onMixer(ch, slot.styleVolume, slot.stylePan, slot.styleExpression, it, slot.styleChorus) })
@@ -434,27 +435,20 @@ private fun SxMixerPage(state: MainUiState, vm: MainViewModel, voices: List<Voic
 
 @Composable
 private fun SxConsoleStrip(name: String, voice: String, volume: Int, muted: Boolean, solo: Boolean, pan: Int,
-    onVolume: (Int) -> Unit, onVoice: () -> Unit, onMute: () -> Unit, onSolo: () -> Unit, onDetail: () -> Unit,
-    accent: Color = SxGreen, stripWidth: Dp = 112.dp, innerPadding: Dp = 4.dp) {
-    Surface(color = SxPanel, shape = RoundedCornerShape(4.dp), modifier = Modifier.width(stripWidth).fillMaxHeight()) {
-        Column(Modifier.fillMaxSize().padding(horizontal = innerPadding), horizontalAlignment = Alignment.CenterHorizontally) {
-            TextButton(onClick = onVoice, modifier = Modifier.fillMaxWidth().height(48.dp), contentPadding = PaddingValues(0.dp)) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("VOICE", color = accent, fontSize = 11.sp)
-                    Text(voice, color = SxDim, maxLines = 1, overflow = TextOverflow.Ellipsis, fontSize = 10.sp)
-                }
+    onVolume: (Int) -> Unit, onMute: () -> Unit, onSolo: () -> Unit, onDetail: () -> Unit,
+    accent: Color = SxGreen, stripWidth: Dp = 56.dp) {
+    Surface(color = SxPanel, shape = RoundedCornerShape(6.dp), border = androidx.compose.foundation.BorderStroke(1.dp, accent.copy(alpha = 0.24f)), modifier = Modifier.width(stripWidth).fillMaxHeight()) {
+        Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+            TextButton(onClick = onDetail, modifier = Modifier.fillMaxWidth().height(48.dp)
+                .semantics { contentDescription = "$name details and voice selection: $voice, pan $pan" }, contentPadding = PaddingValues(0.dp)) {
+                Text("DETAIL", color = accent, fontSize = 10.sp)
             }
-            Row(Modifier.fillMaxWidth()) {
-                SxConsoleSwitch("MUTE", muted, onMute, Modifier.weight(1f), accent)
-                SxConsoleSwitch("SOLO", solo, onSolo, Modifier.weight(1f), accent)
-            }
-            TextButton(onClick = onDetail, modifier = Modifier.fillMaxWidth().height(48.dp), contentPadding = PaddingValues(0.dp)) {
-                Text("PAN $pan • DETAIL", color = SxDim, fontSize = 10.sp)
-            }
+            SxConsoleSwitch("MUTE", muted, onMute, Modifier.fillMaxWidth().semantics { contentDescription = "$name mute" }, accent)
+            SxConsoleSwitch("SOLO", solo, onSolo, Modifier.fillMaxWidth().semantics { contentDescription = "$name solo" }, accent)
             Text(volume.toString(), color = if (muted) SxDim else accent, fontSize = 13.sp)
             SxVerticalFader(name, volume, onVolume, Modifier.weight(1f).fillMaxWidth(), accent)
-            Text(name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 11.sp,
-                maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.height(36.dp).padding(top = 4.dp))
+            Text(compactMixerLabel(name), color = accent, fontWeight = FontWeight.Bold, fontSize = 10.sp,
+                maxLines = 1, modifier = Modifier.height(32.dp).padding(top = 4.dp))
         }
     }
 }
@@ -468,15 +462,15 @@ private fun SxConsoleSwitch(label: String, selected: Boolean, onClick: () -> Uni
 
 @Composable
 private fun SxConsoleBus(name: String, volume: Int, onVolume: (Int) -> Unit, accent: Color, stripWidth: Dp, onDetail: () -> Unit) {
-    Surface(color = SxPanel2, shape = RoundedCornerShape(4.dp), modifier = Modifier.width(stripWidth).fillMaxHeight()) {
-        Column(Modifier.fillMaxSize().padding(horizontal = 2.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Column(Modifier.fillMaxWidth().height(144.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                Text("VOLUME", color = accent, fontSize = 10.sp)
-                TextButton(onClick = onDetail, modifier = Modifier.fillMaxWidth().height(48.dp), contentPadding = PaddingValues(0.dp)) { Text("DETAIL", color = accent, fontSize = 10.sp) }
+    Surface(color = SxPanel, shape = RoundedCornerShape(6.dp), border = androidx.compose.foundation.BorderStroke(1.dp, accent.copy(alpha = 0.24f)), modifier = Modifier.width(stripWidth).fillMaxHeight()) {
+        Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+            TextButton(onClick = onDetail, modifier = Modifier.fillMaxWidth().height(48.dp)
+                .semantics { contentDescription = "$name volume details" }, contentPadding = PaddingValues(0.dp)) {
+                Text("DETAIL", color = accent, fontSize = 10.sp)
             }
             Text(volume.toString(), color = accent, fontSize = 13.sp)
             SxVerticalFader(name, volume, onVolume, Modifier.weight(1f).fillMaxWidth(), accent)
-            Text(name, color = accent, fontWeight = FontWeight.Bold, fontSize = 11.sp, modifier = Modifier.height(36.dp).padding(top = 4.dp))
+            Text(compactMixerLabel(name), color = accent, fontWeight = FontWeight.Bold, fontSize = 10.sp, maxLines = 1, modifier = Modifier.height(32.dp).padding(top = 4.dp))
         }
     }
 }
@@ -502,15 +496,15 @@ private fun SxVerticalFader(name: String, value: Int, onChange: (Int) -> Unit, m
         val pad = 16.dp.toPx()
         val bottom = (size.height - pad).coerceAtLeast(pad)
         val x = size.width / 2f
-        drawLine(SxBlack, androidx.compose.ui.geometry.Offset(x, pad), androidx.compose.ui.geometry.Offset(x, bottom), 8.dp.toPx())
+        drawLine(SxBlack, androidx.compose.ui.geometry.Offset(x, pad), androidx.compose.ui.geometry.Offset(x, bottom), 4.dp.toPx())
         for (tick in 0..8) {
             val y = pad + (bottom - pad) * tick / 8f
             drawLine(SxDim.copy(alpha = 0.5f), androidx.compose.ui.geometry.Offset(x - 22.dp.toPx(), y), androidx.compose.ui.geometry.Offset(x - 14.dp.toPx(), y), 1.dp.toPx())
         }
         val y = bottom - (bottom - pad) * value.coerceIn(0, 127) / 127f
-        drawRoundRect(accent, androidx.compose.ui.geometry.Offset(x - 20.dp.toPx(), y - 9.dp.toPx()),
-            androidx.compose.ui.geometry.Size(40.dp.toPx(), 18.dp.toPx()), androidx.compose.ui.geometry.CornerRadius(3.dp.toPx()))
-        drawLine(SxBlack, androidx.compose.ui.geometry.Offset(x - 16.dp.toPx(), y), androidx.compose.ui.geometry.Offset(x + 16.dp.toPx(), y), 2.dp.toPx())
+        drawRoundRect(accent, androidx.compose.ui.geometry.Offset(x - 14.dp.toPx(), y - 8.dp.toPx()),
+            androidx.compose.ui.geometry.Size(28.dp.toPx(), 16.dp.toPx()), androidx.compose.ui.geometry.CornerRadius(3.dp.toPx()))
+        drawLine(SxBlack, androidx.compose.ui.geometry.Offset(x - 10.dp.toPx(), y), androidx.compose.ui.geometry.Offset(x + 10.dp.toPx(), y), 2.dp.toPx())
     }
 }
 
