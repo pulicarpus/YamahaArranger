@@ -91,7 +91,8 @@ fun SxMainScreen(
         }
     }
     var showUtilityLog by remember { mutableStateOf(false) }
-    var showMixer by remember { mutableStateOf(false) }
+    var navigation by remember { mutableStateOf(LiveNavigation()) }
+    val showMixer = navigation.page == LivePage.MIXER
     var showSf2Manager by remember { mutableStateOf(false) }
     var rightVoicePickerLayer by remember { mutableStateOf<Int?>(null) }
     var voiceBrowser by remember { mutableStateOf(KeyboardVoiceBrowserState()) }
@@ -102,10 +103,10 @@ fun SxMainScreen(
     var selectedStyleFolderUri by remember { mutableStateOf<Uri?>(null) }
     var selectedDataParameter by remember { mutableStateOf("TEMPO") }
 
-    androidx.activity.compose.BackHandler(enabled = showMixer) { showMixer = false }
-    LaunchedEffect(showMixer) { onMixerVisibilityChanged(showMixer) }
+    androidx.activity.compose.BackHandler(enabled = navigation.page != LivePage.HOME) { navigation = navigation.back() }
+    LaunchedEffect(navigation.page) { onMixerVisibilityChanged(navigation.page != LivePage.HOME) }
 
-    if (!showMixer) BoxWithConstraints(Modifier.fillMaxSize().background(SxBlack)) {
+    if (navigation.page == LivePage.HOME) BoxWithConstraints(Modifier.fillMaxSize().background(SxBlack)) {
         val compact = maxHeight < 620.dp
         val gap = if (compact) 4.dp else 6.dp
         val headerH = if (compact) 34.dp else 40.dp
@@ -124,7 +125,8 @@ fun SxMainScreen(
                     rightVoicePickerLayer = null
                     lcdPage = "VOICE"
                 },
-                onMixer = { showMixer = true },
+                onMixer = { navigation = navigation.mixer() },
+                onLive = { navigation = navigation.live() },
                 onUtility = { viewModel.logKeyboardVoiceSnapshot(); showUtilityLog = true },
                 onInspector = onOpenInspector
             )
@@ -230,13 +232,19 @@ fun SxMainScreen(
         }
     }
 
+    if (navigation.page == LivePage.LIVE) {
+        LiveControlScreen(state, viewModel,
+            onArranger = { navigation = navigation.home() },
+            onMixer = { navigation = navigation.mixer() })
+    }
     if (showMixer) {
         SxMixerPage(
             state = state,
             vm = viewModel,
             voices = state.voiceAssignments,
             presets = state.sf2Presets,
-            onDismiss = { showMixer = false },
+            onDismiss = { navigation = navigation.back() },
+            returnLabel = if (navigation.mixerReturn == LivePage.LIVE) "LIVE" else "ARRANGER",
             onMixer = viewModel::setStyleChannelMixer,
             onMute = viewModel::toggleStyleChannelMute,
             onVoice = viewModel::setChannelVoice,
@@ -315,7 +323,7 @@ fun SxMainScreen(
 }
 
 @Composable
-private fun SxMixerPage(state: MainUiState, vm: MainViewModel, voices: List<VoiceSlot>, presets: List<AudioEngineManager.SfPreset>, onDismiss: () -> Unit, onMixer: (Int, Int, Int, Int, Int, Int) -> Unit, onMute: (Int) -> Unit, onVoice: (Int, Int, Int) -> Unit) {
+private fun SxMixerPage(state: MainUiState, vm: MainViewModel, voices: List<VoiceSlot>, presets: List<AudioEngineManager.SfPreset>, onDismiss: () -> Unit, returnLabel: String = "ARRANGER", onMixer: (Int, Int, Int, Int, Int, Int) -> Unit, onMute: (Int) -> Unit, onVoice: (Int, Int, Int) -> Unit) {
     var voicePickerSlot by remember { mutableStateOf<VoiceSlot?>(null) }
     var keyboardPicker by remember { mutableStateOf<Int?>(null) }
     var detailChannel by remember { mutableStateOf<Int?>(null) }
@@ -350,7 +358,7 @@ private fun SxMixerPage(state: MainUiState, vm: MainViewModel, voices: List<Voic
                         Text("MIXER", color = SxGreen, fontWeight = FontWeight.Bold, fontSize = 17.sp)
                         Text("${voices.size} STYLE CHANNELS  •  SWIPE →", color = SxDim, fontSize = 10.sp)
                     }
-                    TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text("ARRANGER", color = SxGreen) }
+                    TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text(returnLabel, color = SxGreen) }
                 }
                 Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     // Compact strips retain full-width 48dp touch targets.
@@ -583,10 +591,11 @@ private fun SxNavBar(
     onStyle: () -> Unit,
     onVoice: () -> Unit,
     onMixer: () -> Unit,
+    onLive: () -> Unit,
     onUtility: () -> Unit,
     onInspector: () -> Unit
 ) {
-    val tabs = listOf("HOME", "STYLE", "VOICE", "SONG", "MULTI PAD", "REGIST", "MIXER", "UTILITY")
+    val tabs = listOf("HOME", "STYLE", "VOICE", "SONG", "MULTI PAD", "REGIST", "MIXER", "LIVE", "UTILITY")
     Row(
         Modifier.fillMaxWidth().height(height).background(Color(0xFF0D1115), RoundedCornerShape(5.dp)).padding(3.dp),
         horizontalArrangement = Arrangement.spacedBy(3.dp)
@@ -597,6 +606,7 @@ private fun SxNavBar(
                     "STYLE" -> Modifier.clickable(onClick = onStyle)
                     "VOICE" -> Modifier.clickable(onClick = onVoice)
                     "MIXER" -> Modifier.clickable(onClick = onMixer)
+                    "LIVE" -> Modifier.clickable(onClick = onLive)
                     "UTILITY" -> Modifier.clickable(onClick = onUtility)
                     else -> Modifier
                 }

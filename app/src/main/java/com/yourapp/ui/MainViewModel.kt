@@ -244,6 +244,57 @@ class MainViewModel @Inject constructor(
     private val midiInputManager: MidiInputManager,
     private val audioEngine: AudioEngineManager
 ) : ViewModel() {
+    // BEGIN LIVE PHASE3 STATE
+    private val liveRegistrationState = MutableStateFlow(LiveRegistrationState())
+    val liveRegistration: StateFlow<LiveRegistrationState> = liveRegistrationState
+    private val liveRequestId = java.util.concurrent.atomic.AtomicLong()
+
+    /** In-memory wiring only; bank creation/SAVE and disk persistence belong to Phase 4. */
+    fun installLiveRegistrationBanks(banks: List<com.yourapp.yamahaarranger.registration.RegistrationBank>,
+        freeze: com.yourapp.yamahaarranger.registration.FreezeFlags = com.yourapp.yamahaarranger.registration.FreezeFlags()) {
+        require(banks.map { it.id }.distinct().size == banks.size && banks.all { it.slots.size == 8 })
+        liveRequestId.incrementAndGet()
+        liveRegistrationState.value = LiveRegistrationState(banks=banks.map { it.copy(slots=it.slots.toList()) },
+            freeze=freeze,message=if(banks.isEmpty()) "NO BANK LOADED" else "READY")
+    }
+    fun onLiveBankChange(delta: Int) { liveRegistrationState.update { it.move(delta) } }
+    fun onLiveRegRecall(index: Int): Boolean {
+        val snapshot=liveRegistrationState.value
+        val bank=snapshot.bank ?: return false
+        val slot=snapshot.slot(index) ?: return false
+        val token=liveRequestId.incrementAndGet()
+        liveRegistrationState.update { it.copy(selectedBankId=bank.id,selectedSlot=index,
+            selectedMode=slot.outputMode,selectedHasExternal=slot.parts.any { p -> p.external!=null },
+            recalling=true,report=null,message="RECALL ${bank.name} ${index+1}…") }
+        val completion=registrationCoordinator.recall("${bank.id}:$index",slot,snapshot.freeze)
+        viewModelScope.launch {
+            val report=try { completion.await() } catch(_: CancellationException) { null }
+            if(liveRequestId.get()!=token) return@launch
+            liveRegistrationState.update { current -> current.copy(recalling=false,report=report,
+                message=liveRecallMessage(report)) }
+        }
+        return true
+    }
+    private val liveMainLetter=MutableStateFlow("A")
+    init {
+        viewModelScope.launch {
+            arrangerBrain.state.collect { state ->
+                val letter=when(state.currentSection) {
+                    ArrangerSection.MainA -> "A"; ArrangerSection.MainB -> "B"
+                    ArrangerSection.MainC -> "C"; ArrangerSection.MainD -> "D"; else -> null
+                }
+                if(letter!=null) liveMainLetter.value=letter
+            }
+        }
+    }
+    fun onLiveMainSelected(letter: String) {
+        require(letter in listOf("A","B","C","D"))
+        liveMainLetter.value=letter
+        onSectionSelected("Main $letter")
+    }
+    fun onLiveFill() { onSectionSelected("Fill ${liveMainLetter.value}") }
+    // END LIVE PHASE3 STATE
+
     // BEGIN REG PHASE2 ADDITIONS
     private val registrationExternal = MutableStateFlow<List<com.yourapp.yamahaarranger.registration.ExternalVoice?>>(List(4) { null })
     val currentExternal: StateFlow<List<com.yourapp.yamahaarranger.registration.ExternalVoice?>> = registrationExternal

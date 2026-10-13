@@ -75,14 +75,14 @@ class MainActivity : ComponentActivity() {
         setContent {
             YamahaArrangerTheme {
                 val showInspector = remember { mutableStateOf(false) }
-                val showMixer = remember { mutableStateOf(false) }
+                val overlayPageVisible = remember { mutableStateOf(false) }
                 Box(Modifier.fillMaxSize()) {
                     SxMainScreen(
                         viewModel = viewModel,
                         onOpenInspector = { showInspector.value = true },
-                        onMixerVisibilityChanged = { showMixer.value = it }
+                        onMixerVisibilityChanged = { overlayPageVisible.value = it }
                     )
-                    if (!showMixer.value) ChordModeSelector(
+                    if (!overlayPageVisible.value) ChordModeSelector(
                         modifier = androidx.compose.ui.Modifier
                             .align(androidx.compose.ui.Alignment.TopCenter)
                             .padding(top = 7.dp)
