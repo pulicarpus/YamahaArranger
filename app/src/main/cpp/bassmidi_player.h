@@ -50,6 +50,7 @@ public:
     std::string compactChordDiagnosticReport() const;
     std::string chordDiagnosticReport() const;
     void allNotesOff();
+    bool stopKeyboardPart(int channel);
     void setChannelPreset(int channel, int bank, int program, const std::string& voiceName = {});
     bool setKeyboardPreset(int channel, uint64_t fontId, int bank, int program);
     void setChannelMixer(int channel, int volume, int pan, int expression, int reverbSend, int chorusSend);

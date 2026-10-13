@@ -206,6 +206,14 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
         catch (e: Exception) { DebugLog.traceError("MIDI NOTE_OFF failed ch=$ch note=$n: ${e.message}"); Timber.w(e, "sendNoteOff failed") }
     }
 
+    /** Explicit RIGHT OFF affects only the selected external MIDI part. */
+    fun sendRightPartSoundOff(channel: Int) {
+        if (channel !in 0..2 || !midiOutEnabled) return
+        val port = inputPort ?: return
+        try { port.send(byteArrayOf((0xB0 or channel).toByte(), 120, 0), 0, 3) }
+        catch (e: Exception) { DebugLog.traceError("RIGHT PART OFF failed ch=$channel: ${e.message}") }
+    }
+
     fun sendProgramChange(channel: Int, program: Int, bankMsb: Int = 0, bankLsb: Int = 0) {
         val port = inputPort ?: return
         val ch = channel.coerceIn(0, 15)

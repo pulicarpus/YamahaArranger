@@ -1,13 +1,13 @@
 name: Voice & Release experimental APK
 on:
   push:
-    branches: [experiment/universal-sf2-release, claude/fitur-realis-audit-ocmbkl]
+    branches: [experiment/universal-sf2-release, claude/fitur-realis-audit-ocmbkl, experiment/right-off-note-lifecycle]
   workflow_dispatch: {}
 permissions:
   contents: read
 jobs:
   build:
-    if: github.ref == 'refs/heads/experiment/universal-sf2-release' || github.ref == 'refs/heads/claude/fitur-realis-audit-ocmbkl'
+    if: github.ref == 'refs/heads/experiment/universal-sf2-release' || github.ref == 'refs/heads/claude/fitur-realis-audit-ocmbkl' || github.ref == 'refs/heads/experiment/right-off-note-lifecycle'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -87,11 +87,13 @@ jobs:
                       assert 'lib/'+abi+'/lib'+lib+'.so' in z.namelist()
                   native=z.read('lib/'+abi+'/libyamaha_arranger_native.so')
                   for method in ['nativeSetKeyboardPreset', 'nativeKeyboardVoiceSnapshot',
-                                 'nativeDiagnosticKeyboardReleaseWav', 'nativeKeyboardReleaseProbeReport']:
+                                 'nativeDiagnosticKeyboardReleaseWav', 'nativeKeyboardReleaseProbeReport',
+                                 'nativeStopKeyboardPart']:
                       assert ('NativeAudioBridge_'+method).encode() in native, (abi, method)
           Path('evidence/provenance.json').write_text(json.dumps({
               'source_sha':os.environ['GITHUB_SHA'],
               'style_checkpoint':'c75122daf5d1077db55d50d1c261144fde59af4a',
+              'keyboard_checkpoint':'313bc115bb9f7a8b6ed6a6bd5da192fda7b38d3f',
               'branch':os.environ['GITHUB_REF_NAME'],'run_id':os.environ['GITHUB_RUN_ID'],
               'apk_sha256':hashlib.sha256(apk.read_bytes()).hexdigest(),
               'ready_certified':False,'android_audio_verified':False,

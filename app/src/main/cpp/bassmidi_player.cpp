@@ -1262,6 +1262,14 @@ void BassMidiPlayer::noteOff(int channel, int key, const AudioPathOrigin& origin
     }
 }
 
+bool BassMidiPlayer::stopKeyboardPart(int channel) {
+    if (channel < 0 || channel > 2) return false;
+    f12::SynthLock lock(mutex_, f12::NoteOff);
+    if (!stream_) return true;
+    // Channel-scoped stop covers held notes and release tails without resetting controllers.
+    return send(channel, MIDI_EVENT_SOUNDOFF, 0);
+}
+
 void BassMidiPlayer::allNotesOff() {
     f12::SynthLock lock(mutex_,f12::Other);
     if (!stream_) return;

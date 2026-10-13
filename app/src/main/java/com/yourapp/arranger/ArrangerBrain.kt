@@ -60,6 +60,9 @@ class ArrangerBrain @Inject constructor(
     // Yamaha-style upper keyboard layers: RIGHT 1/2/3 use synth channels 0/1/2.
     // RIGHT 1 is on by default; RIGHT 2 and RIGHT 3 are independently switchable.
     private val rightVoiceEnabled = booleanArrayOf(true, false, false)
+    // Serialize keyboard UI changes and MIDI callbacks; never used by style/render.
+    private val keyboardLock = Any()
+    private val rightNoteOwners = mutableMapOf<Int, MutableMap<Int, Int>>()
     private var acmpEnabled = true
     private var leftVoiceEnabled = true
     private val leftVoiceChannel = 3
@@ -136,11 +139,13 @@ class ArrangerBrain @Inject constructor(
     }
 
     fun setKeyboardSustain(enabled: Boolean) {
-        if (keyboardSustain == enabled) return
-        keyboardSustain = enabled
-        DebugLog.add("🎹 SUSTAIN = " + if (enabled) "ON" else "OFF")
-        audioEngine.setKeyboardSustain(enabled)
-        if (!enabled) flushSustainedNotes()
+        synchronized(keyboardLock) {
+            if (keyboardSustain == enabled) return
+            keyboardSustain = enabled
+            DebugLog.add("🎹 SUSTAIN = " + if (enabled) "ON" else "OFF")
+            audioEngine.setKeyboardSustain(enabled)
+            if (!enabled) flushSustainedNotes()
+        }
     }
 
     private fun engineNoteOn(channel: Int, note: Int, velocity: Float) {
@@ -180,103 +185,123 @@ class ArrangerBrain @Inject constructor(
         DebugLog.add("🎹 SUSTAIN RELEASE: ${notes.size} held note(s)")
     }
 
+    private fun startRightNote(sourceNote: Int, outputNote: Int, velocity: Float, velocity127: Int) {
+        rightNoteOwners.remove(sourceNote)?.forEach { (channel, pitch) ->
+            engineNoteOff(channel, pitch)
+            midiInputManager.sendNoteOff(channel, pitch)
+        }
+        val owners = mutableMapOf<Int, Int>()
+        rightNoteOwners[sourceNote] = owners
+        for (channel in 0..2) {
+            if (!rightVoiceEnabled[channel]) continue
+            stopSustainedNote(channel, outputNote)
+            engineNoteOn(channel, outputNote, velocity)
+            midiInputManager.sendNoteOn(channel, outputNote, velocity127)
+            owners[channel] = outputNote
+        }
+    }
+
+    private fun releaseRightNote(sourceNote: Int) {
+        rightNoteOwners.remove(sourceNote)?.forEach { (channel, pitch) ->
+            releaseKeyboardNote(channel, pitch)
+        }
+    }
+
     fun setKeyboardTranspose(semitones: Int) {
-        keyboardTranspose = semitones.coerceIn(-12, 12)
-        DebugLog.add("🎹 TRANSPOSE = " + if (keyboardTranspose >= 0) "+$keyboardTranspose" else keyboardTranspose.toString())
+        synchronized(keyboardLock) {
+            keyboardTranspose = semitones.coerceIn(-12, 12)
+            DebugLog.add("🎹 TRANSPOSE = " + if (keyboardTranspose >= 0) "+$keyboardTranspose" else keyboardTranspose.toString())
+        }
     }
 
     fun onKeyboardNoteOn(midiNote: Int, velocity: Float) {
-        val velocity127 = (velocity * 127f).toInt().coerceIn(0, 127)
-        val outputNote = (midiNote + keyboardTranspose).coerceIn(0, 127)
-        if (midiNote > splitNote) {
-            transposedNotes[midiNote] = outputNote
-            DebugLog.add("🎹 RIGHT IN note=$midiNote → pitch=$outputNote vel=$velocity127")
-            for (channel in 0..2) {
-                if (!rightVoiceEnabled[channel]) continue
-                stopSustainedNote(channel, outputNote)
-                engineNoteOn(channel, outputNote, velocity)
-                midiInputManager.sendNoteOn(channel, outputNote, velocity127)
+        synchronized(keyboardLock) {
+            val velocity127 = (velocity * 127f).toInt().coerceIn(0, 127)
+            val outputNote = (midiNote + keyboardTranspose).coerceIn(0, 127)
+            if (midiNote > splitNote) {
+                DebugLog.add("🎹 RIGHT IN note=$midiNote → pitch=$outputNote vel=$velocity127")
+                startRightNote(midiNote, outputNote, velocity, velocity127)
+                return
             }
-            return
-        }
-        if (acmpEnabled && leftVoiceEnabled) {
-            // ACMP/chord notes are deliberately not sustain-held.
-            DebugLog.add("🎹 LEFT IN note=$midiNote vel=$velocity127 → CHORD")
-            chordDetector.noteOn(midiNote)?.let(::onChordChanged)
-        } else if (leftVoiceEnabled) {
-            transposedNotes[midiNote] = outputNote
-            DebugLog.add("🎹 LEFT IN note=$midiNote → pitch=$outputNote vel=$velocity127 → LEFT VOICE")
-            stopSustainedNote(leftVoiceChannel, outputNote)
-            audioEngine.noteOnChannel(leftVoiceChannel, outputNote, velocity)
-            midiInputManager.sendNoteOn(leftVoiceChannel, outputNote, velocity127)
-            leftVoiceNotes.add(outputNote)
-        } else {
-            transposedNotes[midiNote] = outputNote
-            DebugLog.add("🎹 LEFT IN note=$midiNote → pitch=$outputNote vel=$velocity127 → R1/R2/R3 (ACMP/L OFF)")
-            for (channel in 0..2) {
-                if (!rightVoiceEnabled[channel]) continue
-                stopSustainedNote(channel, outputNote)
-                engineNoteOn(channel, outputNote, velocity)
-                midiInputManager.sendNoteOn(channel, outputNote, velocity127)
+            if (acmpEnabled && leftVoiceEnabled) {
+                // ACMP/chord notes are deliberately not sustain-held.
+                DebugLog.add("🎹 LEFT IN note=$midiNote vel=$velocity127 → CHORD")
+                chordDetector.noteOn(midiNote)?.let(::onChordChanged)
+            } else if (leftVoiceEnabled) {
+                transposedNotes[midiNote] = outputNote
+                DebugLog.add("🎹 LEFT IN note=$midiNote → pitch=$outputNote vel=$velocity127 → LEFT VOICE")
+                stopSustainedNote(leftVoiceChannel, outputNote)
+                audioEngine.noteOnChannel(leftVoiceChannel, outputNote, velocity)
+                midiInputManager.sendNoteOn(leftVoiceChannel, outputNote, velocity127)
+                leftVoiceNotes.add(outputNote)
+            } else {
+                DebugLog.add("🎹 LEFT IN note=$midiNote → pitch=$outputNote vel=$velocity127 → R1/R2/R3 (ACMP/L OFF)")
+                startRightNote(midiNote, outputNote, velocity, velocity127)
             }
         }
     }
 
     fun onKeyboardNoteOff(midiNote: Int) {
-        val outputNote = transposedNotes.remove(midiNote) ?: (midiNote + keyboardTranspose).coerceIn(0, 127)
-        if (midiNote > splitNote) {
-            DebugLog.add("🎹 RIGHT OFF note=$midiNote → pitch=$outputNote → R1/R2/R3 OFF" +
-                if (keyboardSustain) " (held by sustain)" else "")
-            for (channel in 0..2) {
-                if (!rightVoiceEnabled[channel]) continue
-                releaseKeyboardNote(channel, outputNote)
+        synchronized(keyboardLock) {
+            // NOTE_ON owns the part/pitch even after split, transpose or routing changes.
+            // Empty entries retain physical keys whose owners were cleared by RIGHT OFF.
+            if (rightNoteOwners.containsKey(midiNote)) {
+                releaseRightNote(midiNote)
+                return
             }
-            return
-        }
-        if (acmpEnabled && leftVoiceEnabled) {
-            // ACMP owns chord release; sustain never intercepts this path.
-            DebugLog.add("🎹 LEFT OFF note=$midiNote → CHORD")
-            val chord = chordDetector.noteOff(midiNote)
-            if (chord != null) onChordChanged(chord)
-            else DebugLog.add("🎹 Chord release: keep last chord")
-        } else if (leftVoiceEnabled) {
-            DebugLog.add("🎹 LEFT OFF note=$midiNote → pitch=$outputNote → LEFT VOICE OFF" +
-                if (keyboardSustain) " (held by sustain)" else "")
-            if (keyboardSustain) {
-                sustainHeldNotes.add(leftVoiceChannel to outputNote)
+            val outputNote = transposedNotes.remove(midiNote) ?: (midiNote + keyboardTranspose).coerceIn(0, 127)
+            if (midiNote > splitNote) {
+                DebugLog.add("🎹 RIGHT OFF note=$midiNote → pitch=$outputNote → R1/R2/R3 OFF" +
+                    if (keyboardSustain) " (held by sustain)" else "")
+                releaseRightNote(midiNote)
+                return
+            }
+            if (acmpEnabled && leftVoiceEnabled) {
+                // ACMP owns chord release; sustain never intercepts this path.
+                DebugLog.add("🎹 LEFT OFF note=$midiNote → CHORD")
+                val chord = chordDetector.noteOff(midiNote)
+                if (chord != null) onChordChanged(chord)
+                else DebugLog.add("🎹 Chord release: keep last chord")
+            } else if (leftVoiceEnabled) {
+                DebugLog.add("🎹 LEFT OFF note=$midiNote → pitch=$outputNote → LEFT VOICE OFF" +
+                    if (keyboardSustain) " (held by sustain)" else "")
+                if (keyboardSustain) {
+                    sustainHeldNotes.add(leftVoiceChannel to outputNote)
+                } else {
+                    audioEngine.noteOffChannel(leftVoiceChannel, outputNote)
+                    midiInputManager.sendNoteOff(leftVoiceChannel, outputNote)
+                    leftVoiceNotes.remove(outputNote)
+                }
             } else {
-                audioEngine.noteOffChannel(leftVoiceChannel, outputNote)
-                midiInputManager.sendNoteOff(leftVoiceChannel, outputNote)
-                leftVoiceNotes.remove(outputNote)
-            }
-        } else {
-            DebugLog.add("🎹 LEFT OFF note=$midiNote → pitch=$outputNote → R1/R2/R3 OFF (LEFT OFF)" +
-                if (keyboardSustain) " (held by sustain)" else "")
-            for (channel in 0..2) {
-                if (!rightVoiceEnabled[channel]) continue
-                releaseKeyboardNote(channel, outputNote)
+                DebugLog.add("🎹 LEFT OFF note=$midiNote → pitch=$outputNote → R1/R2/R3 OFF (LEFT OFF)" +
+                    if (keyboardSustain) " (held by sustain)" else "")
+                releaseRightNote(midiNote)
             }
         }
     }
 
     fun setAcmpEnabled(enabled: Boolean) {
-        if (acmpEnabled != enabled && enabled) releaseLeftVoiceNotes("ACMP ON")
-        acmpEnabled = enabled
-        pendingChordJob?.cancel()
-        pendingChord = null
-        if (!enabled) {
-            chordDetector.reset()
-            appliedChord = null
-            _state.update { it.copy(currentChordLabel = "", acmpEnabled = false) }
-        } else _state.update { it.copy(acmpEnabled = true) }
-        DebugLog.add(if (enabled) "🎹 ACMP: ON (LEFT = CHORD)" else "🎹 ACMP: OFF")
+        synchronized(keyboardLock) {
+            if (acmpEnabled != enabled && enabled) releaseLeftVoiceNotes("ACMP ON")
+            acmpEnabled = enabled
+            pendingChordJob?.cancel()
+            pendingChord = null
+            if (!enabled) {
+                chordDetector.reset()
+                appliedChord = null
+                _state.update { it.copy(currentChordLabel = "", acmpEnabled = false) }
+            } else _state.update { it.copy(acmpEnabled = true) }
+            DebugLog.add(if (enabled) "🎹 ACMP: ON (LEFT = CHORD)" else "🎹 ACMP: OFF")
+        }
     }
 
     fun setLeftVoiceEnabled(enabled: Boolean) {
-        if (leftVoiceEnabled && !enabled) releaseLeftVoiceNotes("LEFT VOICE OFF")
-        leftVoiceEnabled = enabled
-        _state.update { it.copy(leftVoiceEnabled = enabled) }
-        DebugLog.add(if (enabled) "🎹 LEFT VOICE: ON" else "🎹 LEFT VOICE: OFF (LEFT → RIGHT 1/2/3)")
+        synchronized(keyboardLock) {
+            if (leftVoiceEnabled && !enabled) releaseLeftVoiceNotes("LEFT VOICE OFF")
+            leftVoiceEnabled = enabled
+            _state.update { it.copy(leftVoiceEnabled = enabled) }
+            DebugLog.add(if (enabled) "🎹 LEFT VOICE: ON" else "🎹 LEFT VOICE: OFF (LEFT → RIGHT 1/2/3)")
+        }
     }
 
     private fun releaseLeftVoiceNotes(reason: String) {
@@ -295,18 +320,36 @@ class ArrangerBrain @Inject constructor(
     fun toggleLeftVoice() = setLeftVoiceEnabled(!leftVoiceEnabled)
 
     fun setRightVoiceEnabled(layer: Int, enabled: Boolean) {
-        if (layer !in 0..2) return
-        rightVoiceEnabled[layer] = enabled
-        DebugLog.add("🎹 RIGHT " + (layer + 1) + ": " + if (enabled) "ON" else "OFF")
+        synchronized(keyboardLock) {
+            if (layer !in 0..2) return
+            if (rightVoiceEnabled[layer] == enabled) return
+            rightVoiceEnabled[layer] = enabled
+            if (!enabled) {
+                val owned = rightNoteOwners.values.mapNotNull { it.remove(layer) }.toSet()
+                val held = sustainHeldNotes.filter { it.first == layer }.map { it.second }.toSet()
+                sustainHeldNotes.removeAll { it.first == layer }
+                for (pitch in owned + held) {
+                    // Part OFF bypasses sustain; normal key-up still uses RELEASE.
+                    engineNoteOff(layer, pitch)
+                    midiInputManager.sendNoteOff(layer, pitch)
+                }
+                // Covers release-stage voices as well as held notes, on this part only.
+                audioEngine.stopRightPart(layer)
+                midiInputManager.sendRightPartSoundOff(layer)
+            }
+            DebugLog.add("🎹 RIGHT " + (layer + 1) + ": " + if (enabled) "ON" else "OFF")
+        }
     }
 
     /** E343-compatible default split point, exposed for future UI control. */
     fun setSplitPoint(midiNote: Int) {
-        splitNote = midiNote.coerceIn(24, 96)
-        chordDetector.reset()
-        appliedChord = null
-        _state.update { it.copy(currentChordLabel = "") }
-        DebugLog.add("🎹 Split Point: $splitNote")
+        synchronized(keyboardLock) {
+            splitNote = midiNote.coerceIn(24, 96)
+            chordDetector.reset()
+            appliedChord = null
+            _state.update { it.copy(currentChordLabel = "") }
+            DebugLog.add("🎹 Split Point: $splitNote")
+        }
     }
 
     private fun onChordChanged(chord: DetectedChord) {

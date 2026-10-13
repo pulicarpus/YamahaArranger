@@ -16,8 +16,23 @@ def frozen_style():
                  'app/src/main/java/com/yourapp/yamahaarranger/style',
                  'app/src/main/cpp/style_parser.cpp', 'app/src/main/cpp/style_parser.h',
                  'app/src/main/cpp/smf_reader.cpp', 'app/src/main/cpp/smf_reader.h']
+    review_path=ROOT/'tests/fixtures/right_off_brain_review.json'
+    if review_path.exists():
+        from right_off_style_guard import verify_brain
+        review=json.loads(review_path.read_text())
+        assert review['keyboard_checkpoint']=='313bc115bb9f7a8b6ed6a6bd5da192fda7b38d3f', 'wrong keyboard checkpoint'
+        brain=review['brain_path']
+        before=subprocess.check_output(['git','show',CHECKPOINT+':'+brain],cwd=ROOT)
+        verify_brain(before,(ROOT/brain).read_bytes(),review)
+        for path,digest in review['preserved_files'].items():
+            original=subprocess.check_output(['git','show',review['keyboard_checkpoint']+':'+path],cwd=ROOT)
+            assert hashlib.sha256(original).hexdigest()==digest, 'legacy guard/RELEASE review baseline changed: '+path
+            assert hashlib.sha256((ROOT/path).read_bytes()).hexdigest()==digest, 'legacy guard/RELEASE file changed: '+path
+        protected.remove(brain) # whole-file reviewed hash AND style-region byte checks above
+        run(['python3','tools/test_right_off_style_guard.py'])
+        print('BRAIN keyboard-only reviewed SHA PASS; style paths/RELEASE/legacy guards byte-identical',flush=True)
     run(['git','diff','--exit-code',CHECKPOINT,'--',*protected])
-    print('STYLE_CHECKPOINT byte-identical scheduler/CASM/clock/Fill/Intro/Ending/Brain PASS', flush=True)
+    print('STYLE_CHECKPOINT byte-identical scheduler/CASM/clock/Fill/Intro/Ending and Brain style paths PASS', flush=True)
 
 def jvm(output, fetch):
     deps = ROOT/'build/sff1-jvm/dependencies';deps.mkdir(parents=True,exist_ok=True)

@@ -86,6 +86,7 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_Nati
     if(!g_engine) g_engine=std::make_unique<AudioEngine>();
     return g_engine->sfSetKeyboardReleaseTime(releaseTime) ? JNI_TRUE : JNI_FALSE;
 }
+extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeStopKeyboardPart(JNIEnv*,jobject,jint channel){return g_engine&&g_engine->sfStopKeyboardPart(channel)?JNI_TRUE:JNI_FALSE;}
 extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetKeyboardPreset(JNIEnv*,jobject,jint channel,jlong fontId,jint bank,jint program){
     return g_engine && fontId > 0 && g_engine->sfSetKeyboardPreset(channel,static_cast<uint64_t>(fontId),bank,program) ? JNI_TRUE : JNI_FALSE;
 }

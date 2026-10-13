@@ -110,6 +110,63 @@ int main(int argc,char** argv) {
 #endif
     std::cout<<"VOICE_SIMULTANEOUS fourIndependentSources=true sameSf2DifferentBanks=true nonTargetMidiUnchanged=true PASS\n";
     for(int ch=0;ch<4;++ch)BASS_MIDI_StreamEvent(stream,ch,MIDI_EVENT_SOUNDOFF,0);
+    // Explicit RIGHT OFF: cover held keys and voices already in RELEASE, including
+    // another RIGHT's release tail, LEFT and every ACMP channel sounding together.
+    const std::array<Preset,4> offParts={find("voice-primary.sf2",0,24),find("voice-secondary.sf2",0,24),
+        find("voice-third.sf2",1025,24),find("voice-drum.sf2",0,24)};
+    const std::vector<int> scopedChannels={0,1,2,3,8,9,10,11,12,13,14,15};
+    for(int invalid:{-1,3,8,9,10,15,16})check(!player.stopKeyboardPart(invalid),"RIGHT OFF rejects LEFT/style/invalid channels");
+    for(int target=0;target<3;++target) for(int released=0;released<2;++released) {
+        for(int ch=0;ch<4;++ch) {
+            const auto& p=offParts[ch];check(player.setKeyboardPreset(ch,p.id,p.bank,p.pc),"RIGHT OFF fixture source");
+            player.setChannelMixer(ch,127,64,127,0,0);
+        }
+        check(player.setKeyboardReleaseTime(127),"RIGHT OFF keeps long RELEASE");
+        for(int ch=0;ch<4;++ch)player.noteOn(ch,ch==3?40:60,100/127.f);
+        for(int ch=8;ch<16;++ch){player.setChannelMixer(ch,127,64,127,0,0);player.noteOn(ch,84,80/127.f);}
+        render(player,24000);
+        const int otherTail=(target+1)%3;
+        player.noteOff(otherTail,60);
+        if(released)player.noteOff(target,60);
+        const auto before=render(player,4096);
+        std::array<BASS_MIDI_FONT,16> presetsBefore{};std::array<DWORD,16> releaseBefore{};
+        for(int ch:scopedChannels){check(BASS_MIDI_StreamGetPreset(stream,ch,&presetsBefore[ch]),"RIGHT OFF source before");releaseBefore[ch]=BASS_MIDI_StreamGetEvent(stream,ch,MIDI_EVENT_RELEASE);}
+#ifndef VOICE_RELEASE_REAL_BASS
+        mock_bass::history.clear();
+#endif
+        if(!released)player.noteOff(target,60); // ownership flush before channel-specific stop
+        check(player.stopKeyboardPart(target),"RIGHT OFF channel stop accepted");
+#ifndef VOICE_RELEASE_REAL_BASS
+        for(const auto& event:mock_bass::history)if(std::get<0>(event)==stream) {
+            check(std::get<1>(event)==target,"RIGHT OFF sends no event to another part or ACMP");
+            check(std::get<2>(event)==MIDI_EVENT_NOTE||std::get<2>(event)==MIDI_EVENT_SOUNDOFF,"RIGHT OFF does not change RELEASE/preset/controllers");
+        }
+#endif
+        render(player,512);const auto after=render(player,4096);
+        for(int ch:scopedChannels) {
+            BASS_MIDI_FONT actual{};const auto& expected=presetsBefore[ch];
+            check(BASS_MIDI_StreamGetPreset(stream,ch,&actual)&&actual.font==expected.font&&actual.bank==expected.bank&&actual.preset==expected.preset,"RIGHT OFF preserves every part source");
+            check(BASS_MIDI_StreamGetEvent(stream,ch,MIDI_EVENT_RELEASE)==releaseBefore[ch],"RIGHT OFF preserves every RELEASE controller");
+        }
+#ifdef VOICE_RELEASE_REAL_BASS
+        const int frequencies[]={375,750,1125};
+        const double beforeTarget=tone(before,frequencies[target]),afterTarget=tone(after,frequencies[target]);
+        check(beforeTarget>0.1,"RIGHT OFF target has real held/tail PCM before stop");
+        check(afterTarget<beforeTarget*0.1,"RIGHT OFF silences selected part's held or releasing voice");
+        for(int ch=0;ch<3;++ch)if(ch!=target)
+            check(tone(after,frequencies[ch])>tone(before,frequencies[ch])*0.7,"RIGHT OFF preserves other RIGHT held notes and release tails");
+        check(tone(after,472)>tone(before,472)*0.7,"RIGHT OFF preserves LEFT PCM");
+        check(tone(after,1500)>tone(before,1500)*0.7,"RIGHT OFF preserves combined ACMP PCM");
+        std::cout<<"RIGHT_OFF_PCM part="<<target<<" scenario="<<(released?"key_up_then_OFF_tail":"key_down_then_OFF")
+                 <<" targetToneBefore="<<beforeTarget<<" targetToneAfter="<<afterTarget<<" otherRightLeftAcmpPreserved=true PASS\n";
+#endif
+        player.noteOff(target,60); // late physical key-up cannot stop another channel
+        for(int ch=0;ch<4;++ch){player.noteOff(ch,ch==3?40:60);BASS_MIDI_StreamEvent(stream,ch,MIDI_EVENT_SOUNDOFF,0);}
+        for(int ch=8;ch<16;++ch)player.noteOff(ch,84);
+        render(player,96000);
+    }
+    std::cout<<"RIGHT_OFF_SCOPE threeParts_twoSequences controllerAndSourcePreserved=true PASS\n";
+    check(player.setKeyboardReleaseTime(64),"restore normal RELEASE after RIGHT OFF test matrix");
     const auto beforeProbe=player.keyboardVoiceSnapshot();
 #ifndef VOICE_RELEASE_REAL_BASS
     mock_bass::history.clear();

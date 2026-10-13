@@ -29,6 +29,7 @@ public:
     void sfNoteOnChannel(int channel,int midiNote,float velocity01);
     void sfNoteOnStyleChannel(int channel,int midiNote,float velocity01,const AudioPathOrigin& origin);
     void sfNoteOffChannel(int channel,int midiNote);
+    bool sfStopKeyboardPart(int channel) { return soundFont_.stopKeyboardPart(channel); }
     void sfNoteOffStyleChannel(int channel,int midiNote,const AudioPathOrigin& origin);
     void sfArmChordDiagnostic();
     void sfStopChordDiagnostic();

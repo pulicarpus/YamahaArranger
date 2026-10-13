@@ -9,6 +9,142 @@ import org.junit.Test
 import org.mockito.Mockito.*
 
 class VoiceReleaseContractTest {
+    @Test fun rightOffReleasesOwnedKeyBeforePhysicalKeyUp() {
+        val (engine, bridge) = engine()
+        engine.loadSoundFontPair("m", "d")
+        val brain = ArrangerBrain(engine, ChordDetector(), mock(MidiInputManager::class.java))
+        brain.onKeyboardNoteOn(72, 1f)
+        brain.setRightVoiceEnabled(0, false)
+        verify(bridge).nativeSfNoteOffChannel(0, 72)
+        brain.onKeyboardNoteOff(72)
+        verify(bridge, times(1)).nativeSfNoteOffChannel(0, 72)
+        verify(bridge, never()).nativeAllNotesOff()
+    }
+
+    @Test fun everyRightOffOnlyStopsItsOwnersAndPreservesLeftAndOtherLayers() {
+        for (target in 0..2) {
+            val (engine, bridge) = engine(); engine.loadSoundFontPair("m", "d")
+            val midi = mock(MidiInputManager::class.java)
+            val brain = ArrangerBrain(engine, ChordDetector(), midi)
+            brain.setRightVoiceEnabled(1, true); brain.setRightVoiceEnabled(2, true)
+            brain.setAcmpEnabled(false); brain.setKeyboardReleaseTime(127)
+            brain.onKeyboardNoteOn(72, 1f); brain.onKeyboardNoteOn(40, 1f)
+            clearInvocations(bridge, midi)
+            brain.setRightVoiceEnabled(target, false)
+            verify(bridge).nativeSfNoteOffChannel(target, 72)
+            verify(bridge).nativeStopKeyboardPart(target)
+            verify(midi).sendRightPartSoundOff(target)
+            for (other in (0..3).filter { it != target }) {
+                verify(bridge, never()).nativeSfNoteOffChannel(eq(other), anyInt())
+                verify(bridge, never()).nativeStopKeyboardPart(other)
+            }
+            brain.onKeyboardNoteOff(72)
+            for (channel in 0..2) verify(bridge, times(1)).nativeSfNoteOffChannel(channel, 72)
+            verify(bridge, never()).nativeSfNoteOffChannel(3, 40)
+            verify(bridge, never()).nativeAllNotesOff()
+            verify(bridge, never()).nativeSetKeyboardReleaseTime(anyInt())
+            verify(bridge, never()).nativeSetChannelPreset(anyInt(), anyInt(), anyInt())
+        }
+    }
+
+    @Test fun rightOffStopsAlreadyReleasedTailWithoutSendingOtherNoteOffs() {
+        val (engine, bridge) = engine(); engine.loadSoundFontPair("m", "d")
+        val brain = ArrangerBrain(engine, ChordDetector(), mock(MidiInputManager::class.java))
+        brain.setRightVoiceEnabled(1, true); brain.setKeyboardReleaseTime(127)
+        brain.onKeyboardNoteOn(72, 1f); brain.onKeyboardNoteOff(72)
+        clearInvocations(bridge)
+        brain.setRightVoiceEnabled(1, false)
+        verify(bridge).nativeStopKeyboardPart(1)
+        verify(bridge, never()).nativeSfNoteOffChannel(anyInt(), anyInt())
+        verify(bridge, never()).nativeAllNotesOff()
+        verify(bridge, never()).nativeSetKeyboardReleaseTime(anyInt())
+    }
+
+    @Test fun noteOffUsesOriginalOwnersAndPitchAfterNewLayerAndSplitChanges() {
+        val (engine, bridge) = engine(); engine.loadSoundFontPair("m", "d")
+        val brain = ArrangerBrain(engine, ChordDetector(), mock(MidiInputManager::class.java))
+        brain.setKeyboardTranspose(5); brain.onKeyboardNoteOn(72, 1f)
+        brain.setRightVoiceEnabled(1, true); brain.setKeyboardTranspose(-5); brain.setSplitPoint(80)
+        brain.onKeyboardNoteOff(72)
+        verify(bridge).nativeSfNoteOffChannel(0, 77)
+        verify(bridge, never()).nativeSfNoteOffChannel(1, 77)
+        verify(bridge, never()).nativeSfNoteOffChannel(anyInt(), eq(67))
+    }
+
+    @Test fun rightOffOnBeforeKeyUpDoesNotCreateNewOwnership() {
+        val (engine, bridge) = engine(); engine.loadSoundFontPair("m", "d")
+        val brain = ArrangerBrain(engine, ChordDetector(), mock(MidiInputManager::class.java))
+        brain.onKeyboardNoteOn(72, 1f); brain.setRightVoiceEnabled(0, false)
+        brain.setRightVoiceEnabled(0, true); brain.onKeyboardNoteOff(72)
+        verify(bridge, times(1)).nativeSfNoteOnChannel(0, 72, 1f)
+        verify(bridge, times(1)).nativeSfNoteOffChannel(0, 72)
+        brain.onKeyboardNoteOn(72, 1f); brain.onKeyboardNoteOff(72)
+        verify(bridge, times(2)).nativeSfNoteOffChannel(0, 72)
+    }
+
+    @Test fun rightOffBypassesSustainOnlyForSelectedPart() {
+        val (engine, bridge) = engine(); engine.loadSoundFontPair("m", "d")
+        val brain = ArrangerBrain(engine, ChordDetector(), mock(MidiInputManager::class.java))
+        brain.setRightVoiceEnabled(1, true); brain.setRightVoiceEnabled(2, true)
+        brain.setKeyboardSustain(true); brain.onKeyboardNoteOn(72, 1f); brain.onKeyboardNoteOff(72)
+        brain.setRightVoiceEnabled(0, false)
+        verify(bridge).nativeSfNoteOffChannel(0, 72)
+        verify(bridge, never()).nativeSfNoteOffChannel(1, 72)
+        brain.setKeyboardSustain(false)
+        for (channel in 0..2) verify(bridge, times(1)).nativeSfNoteOffChannel(channel, 72)
+    }
+
+    @Test fun lowerKeyRoutedToRightRetainsOwnersAcrossModeChanges() {
+        val (engine, bridge) = engine(); engine.loadSoundFontPair("m", "d")
+        val brain = ArrangerBrain(engine, ChordDetector(), mock(MidiInputManager::class.java))
+        brain.setLeftVoiceEnabled(false); brain.setRightVoiceEnabled(1, true)
+        brain.onKeyboardNoteOn(40, 1f); brain.setRightVoiceEnabled(0, false)
+        brain.setLeftVoiceEnabled(true); brain.onKeyboardNoteOff(40)
+        verify(bridge, times(1)).nativeSfNoteOffChannel(0, 40)
+        verify(bridge, times(1)).nativeSfNoteOffChannel(1, 40)
+        verify(bridge, never()).nativeSfNoteOffChannel(3, 40)
+    }
+
+    @Test fun partOffCannotOvertakeInFlightNativeNoteOn() {
+        val (engine, bridge) = engine(); engine.loadSoundFontPair("m", "d")
+        val brain = ArrangerBrain(engine, ChordDetector(), mock(MidiInputManager::class.java))
+        val entered = java.util.concurrent.CountDownLatch(1)
+        val allowOn = java.util.concurrent.CountDownLatch(1)
+        val offRequested = java.util.concurrent.CountDownLatch(1)
+        doAnswer { entered.countDown(); assertTrue(allowOn.await(5, java.util.concurrent.TimeUnit.SECONDS)); null }
+            .`when`(bridge).nativeSfNoteOnChannel(0, 72, 1f)
+        val pool = java.util.concurrent.Executors.newFixedThreadPool(2)
+        try {
+            val on = pool.submit { brain.onKeyboardNoteOn(72, 1f) }
+            assertTrue(entered.await(5, java.util.concurrent.TimeUnit.SECONDS))
+            val off = pool.submit { offRequested.countDown(); brain.setRightVoiceEnabled(0, false) }
+            assertTrue(offRequested.await(5, java.util.concurrent.TimeUnit.SECONDS))
+            assertFalse(off.isDone)
+            verify(bridge, never()).nativeStopKeyboardPart(0)
+            allowOn.countDown(); on.get(5, java.util.concurrent.TimeUnit.SECONDS); off.get(5, java.util.concurrent.TimeUnit.SECONDS)
+            val ordered = inOrder(bridge)
+            ordered.verify(bridge).nativeSfNoteOnChannel(0, 72, 1f)
+            ordered.verify(bridge).nativeSfNoteOffChannel(0, 72)
+            ordered.verify(bridge).nativeStopKeyboardPart(0)
+            brain.onKeyboardNoteOn(74, 1f); brain.onKeyboardNoteOff(72)
+            verify(bridge, never()).nativeSfNoteOnChannel(0, 74, 1f)
+            verify(bridge, times(1)).nativeSfNoteOffChannel(0, 72)
+        } finally { allowOn.countDown(); pool.shutdownNow() }
+    }
+
+    @Test fun externalPartStopIsScopedAndNeverSendsCc64OrCc72() {
+        val midi = MidiInputManager(mock(android.content.Context::class.java))
+        val port = mock(android.media.midi.MidiInputPort::class.java)
+        MidiInputManager::class.java.getDeclaredField("inputPort").apply { isAccessible = true }.set(midi, port)
+        midi.sendRightPartSoundOff(0); verifyNoInteractions(port)
+        midi.midiOutEnabled = true
+        for (channel in listOf(-1, 3, 8, 15, 16)) midi.sendRightPartSoundOff(channel)
+        verifyNoInteractions(port)
+        midi.sendRightPartSoundOff(1)
+        verify(port).send(byteArrayOf(0xB1.toByte(), 120, 0), 0, 3)
+        verifyNoMoreInteractions(port)
+    }
+
     @Test fun categoryNavigationPreservesEveryTargetPartIncludingRight2AndRight3() {
         val (engine, bridge) = engine()
         `when`(bridge.nativeSetKeyboardPreset(anyInt(), anyLong(), anyInt(), anyInt())).thenReturn(true)

@@ -36,6 +36,7 @@ class NativeAudioBridge @Inject constructor() {
     external fun nativeSfNoteOffStyleChannel(channel: Int, note: Int, sourceChannel: Int,
         sourceNote: Int, bank: Int, tick: Long, id: Long, chordId: Long, operation: Int)
     external fun nativeSfNoteOffChannel(channel: Int, midiNote: Int)
+    external fun nativeStopKeyboardPart(channel: Int): Boolean
     external fun nativeSetKeyboardPreset(channel: Int, fontId: Long, bank: Int, program: Int): Boolean
     external fun nativeSetChannelPreset(channel: Int, bank: Int, program: Int)
     external fun nativeSetChannelPresetWithName(channel: Int, bank: Int, program: Int, voiceName: String)
