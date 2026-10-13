@@ -7,6 +7,9 @@ package com.yourapp.midi
 class MidiMixerOutput(private val write: (ByteArray) -> Boolean) {
     private val values = Array(16) { intArrayOf(127, 64, 127, 40, 0) }
     private val controllers = intArrayOf(7, 10, 11, 91, 93)
+    // Expression starts at MIDI/BASS unity. Other defaults are not transmitted
+    // until a native mixer write has actually supplied their values.
+    private val known = Array(16) { BooleanArray(5).also { it[2] = true } }
     private val sent = Array(16) { IntArray(128) { -1 } }
     private val notes = Array(16) { IntArray(128) }
     private val pendingOff = BooleanArray(16)
@@ -51,6 +54,7 @@ class MidiMixerOutput(private val write: (ByteArray) -> Boolean) {
             val index = controllers.indexOf(pairs[i])
             require(index >= 0)
             values[channel][index] = pairs[i + 1].coerceIn(0, 127)
+            known[channel][index] = true
         }
         if (active() && channel in channels) apply(channel)
     }
@@ -98,6 +102,7 @@ class MidiMixerOutput(private val write: (ByteArray) -> Boolean) {
         if (ch in mutedChannels || pendingOff[ch]) releaseNotes(ch)
         if (pendingOff[ch] && ch !in mutedChannels) return // Retry offs before restoring audible gain.
         controllers.forEachIndexed { index, cc ->
+            if (!known[ch][index] && !(cc == 7 && ch >= 4 && ch in mutedChannels)) return@forEachIndexed
             val value = when(cc) { 7 -> volume(ch); 11 -> expression(ch); else -> values[ch][index] }
             if (force || sent[ch][cc] != value) {
                 if (write(byteArrayOf((0xB0 or ch).toByte(), cc.toByte(), value.toByte()))) sent[ch][cc] = value

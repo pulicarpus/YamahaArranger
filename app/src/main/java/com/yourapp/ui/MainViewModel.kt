@@ -507,7 +507,6 @@ class MainViewModel @Inject constructor(
         if (newVal) {
             midiInputManager.setMixerStyleChannels(_voiceAssignments.value.map { it.channel }.toSet())
             for (channel in 0..3) {
-                setKeyboardMixerDetail(channel, _keyboardMixerDetails.value[channel])
                 val slot = _rightVoices.value[channel]
                 if (slot.program in 0..127 && slot.bank in 0..16383) {
                     val msb = if (slot.bank >= 128) slot.bank / 128 else slot.bank

@@ -25,6 +25,22 @@ class MidiMixerOutputTest {
         assertFalse(events.any { it.size == 3 && it[0] and 240 == 176 && it[1] in listOf(120,121,123,64) })
     }
 
+    @Test fun reconnectDoesNotInventUntouchedVolumePanOrEffectValues() {
+        val r=Recorder(); r.router.setChannels(setOf(10)); r.router.update(10,intArrayOf(11,80))
+        r.router.setConnected(false); r.events.clear(); r.router.setConnected(true)
+        assertTrue(r.events.all { it.size==3 && it[1]==11 })
+        assertEquals(80,r.cc(10,11)); assertNull(r.cc(10,7)); assertNull(r.cc(0,91))
+    }
+    @Test fun productionOutputToggleReplaysWithoutWritingNativeMixer() {
+        val (midi,events)=manager(); val bridge=mock(NativeAudioBridge::class.java)
+        val engine=AudioEngineManager(bridge, object : SampleProvider { override fun sampleForNote(midiNote: Int): NoteSample? = null })
+        engine.onMixerControllers=midi::setMixerControllers
+        engine.setChannelExpression(1,73); clearInvocations(bridge); events.clear()
+        midi.midiOutEnabled=false; midi.midiOutEnabled=true
+        assertTrue(events.contains(listOf(0xb1,11,73)))
+        verifyNoInteractions(bridge)
+    }
+
     @Test fun fiveControllersReachOnlyTheirTargetPart() {
         for (ch in 0..3) {
             val r = Recorder(); r.router.update(ch, snapshot(91,32,82,30,20))

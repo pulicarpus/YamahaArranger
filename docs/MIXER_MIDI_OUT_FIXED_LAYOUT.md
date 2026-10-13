@@ -44,6 +44,7 @@ The live accompaniment registry comes from existing `StyleMixerChannels` / voice
 - **Gain zero is not mute.** Fader zero, MASTER zero and style CC7/11 zero keep notes alive for later fades, matching the native gain behavior. Only explicit MUTE/SOLO flags terminate currently owned external notes and suppress subsequent NOTE_ON for those parts.
 - MUTE/SOLO sends NOTE_OFF only for actually transmitted notes on affected channels. NOTE_OFF remains routable during mute; unmute sends no automatic NOTE_ON. BASSMIDI retains its existing gain/mute binding. Failed NOTE_OFF is retried before audible external gain is restored.
 - No new global panic, CC120, CC123, reset controllers or CC64 is used for the mixer. The checkpoint's existing per-RIGHT OFF CC120 remains intact.
+- Output switching does not rewrite the native mixer. Reconnect replays only observed mixer fields; nominal CC11 starts at MIDI/BASS unity (127), and untouched CC7/PAN/REV/CHO are not invented or transmitted.
 - MIDI OUT disable releases its tracked external notes before disabling transmission. Enable/reconnect replays current program/controller snapshots and MASTER composition, without replaying held notes. Current effective RELEASE is resent as existing CC72 on RIGHT1/2/3 when a port reconnects.
 - Program changes restore that channel's mixer snapshot after the bank/program messages, protecting against modules that reset controllers on voice changes.
 
@@ -58,7 +59,7 @@ No screenshot attachment was available in the request; the implementation follow
 Mandatory command: `python3 tools/test_voice_release.py --jvm --regressions --fetch-dependencies`.
 Real BASSMIDI PCM command in Actions: `python3 tools/test_voice_release.py --real` after installing the real Linux SDK inputs.
 
-Local contracts PASS: 66 JVM tests (including 20 new MIDI OUT cases), 2,253 native API-recorder checks and the companion lifecycle/routing/bank/accompaniment/percussion/role/liveness regressions. Real PCM and Android build remain gated in Actions.
+Local contracts PASS: 68 JVM tests (including 22 new MIDI OUT cases), 2,253 native API-recorder checks and the companion lifecycle/routing/bank/accompaniment/percussion/role/liveness regressions. Real PCM and Android build remain gated in Actions.
 
 New recorder cases cover five CC destinations for all keyboard parts, native/port correspondence, source automation, Main→Fill→Main restoration, balanced STYLE trim, managed-only MASTER, explicit mute ownership, gain-zero fades, multi-solo/manual-mute restoration, late key-up, repeated note ownership, retry after transport failure, output disable/enable, reconnect, program/controller restoration, removed/unused style channels, 4–7 auxiliary trim and concurrent controller writers.
 
