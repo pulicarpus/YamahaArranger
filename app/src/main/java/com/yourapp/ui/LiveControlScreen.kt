@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -60,7 +61,8 @@ fun LiveControlScreen(state: MainUiState, vm: MainViewModel, onArranger: () -> U
     Surface(color=Color(0xFF080D13),modifier=Modifier.fillMaxSize()) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val g=LiveControlGeometry(maxWidth.value,maxHeight.value)
-            if(!g.supported) {
+            val imeVisible=WindowInsets.ime.getBottom(LocalDensity.current)>0
+            if(!liveInputViewportSupported(maxWidth.value,maxHeight.value,imeVisible)) {
                 Column(Modifier.fillMaxSize().padding(16.dp),verticalArrangement=Arrangement.Center,horizontalAlignment=Alignment.CenterHorizontally) {
                     Text("LIVE requires landscape ≥ 960 × 600 dp",color=Color.White)
                     LiveButton("ARRANGER",onArranger,LiveBlue,Modifier.height(64.dp).width(160.dp))

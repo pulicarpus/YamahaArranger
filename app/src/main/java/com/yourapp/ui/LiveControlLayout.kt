@@ -64,3 +64,7 @@ fun liveRecallMessage(report: RecallReport?): String {
     }
     return if(details.isEmpty()) report.completion.name else details.distinct().joinToString(", ")
 }
+
+/** A landscape input panel stays usable while the software keyboard resizes the window. */
+fun liveInputViewportSupported(widthDp: Float, heightDp: Float, imeVisible: Boolean): Boolean =
+    widthDp >= 960f && (heightDp >= 600f || imeVisible)

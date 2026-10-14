@@ -20,7 +20,8 @@ with tempfile.TemporaryDirectory(prefix='phase4-negative-') as d:
            (WF,lambda s:s.replace('--history --real --fetch-dependencies','--history --fetch-dependencies')),
            ('app/src/main/java/Unapproved.kt',lambda s:'class Unapproved'),
            ('evidence/hidden.kt',lambda s:'class Hidden'),
-           ('docs/unapproved.md',lambda s:'unapproved repository addition')]
+           ('docs/unapproved.md',lambda s:'unapproved repository addition'),
+           ('app/src/main/java/com/yourapp/ui/LiveControlLayout.kt',lambda s:s.replace('val gap = 8f','val gap = 0f'))]
     for path,change in cases:
         p=root/path;existing=p.exists();previous=p.read_text() if existing else ''
         p.parent.mkdir(parents=True,exist_ok=True);p.write_text(change(previous))
@@ -30,4 +31,4 @@ with tempfile.TemporaryDirectory(prefix='phase4-negative-') as d:
         finally:
             if existing:p.write_text(previous)
             else:p.unlink()
-print('PHASE4_NEGATIVE_GUARD 7/7 PASS')
+print('PHASE4_NEGATIVE_GUARD 8/8 PASS')

@@ -100,7 +100,7 @@ jobs:
               'apk_sha256':hashlib.sha256(apk.read_bytes()).hexdigest(),
               'abis':['arm64-v8a','armeabi-v7a'],
               'device_gates':{k:'UNVERIFIED' for k in ['D1','D2','D5','D11']},
-              'phase4_implemented':True, 'phase4_revision':2
+              'phase4_implemented':True, 'phase4_revision':3
           },indent=2)+'\n')
           PYCODE
       - uses: actions/upload-artifact@v4

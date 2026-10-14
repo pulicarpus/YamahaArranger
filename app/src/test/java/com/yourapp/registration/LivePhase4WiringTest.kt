@@ -8,6 +8,12 @@ import java.nio.file.Files
 import com.yourapp.yamahaarranger.audio.KeyboardPart
 
 class LivePhase4WiringTest {
+    @Test fun inputViewportKeepsLandscapeFormAvailableWithKeyboard() {
+        assertTrue(com.yourapp.yamahaarranger.ui.liveInputViewportSupported(1280f,400f,true))
+        assertTrue(com.yourapp.yamahaarranger.ui.liveInputViewportSupported(960f,600f,false))
+        assertFalse(com.yourapp.yamahaarranger.ui.liveInputViewportSupported(1280f,400f,false))
+        assertFalse(com.yourapp.yamahaarranger.ui.liveInputViewportSupported(800f,400f,true))
+    }
     private suspend fun until(check:()->Boolean)=withTimeout(5000) { while(!check()) delay(5) }
     @Test fun saveRestartRecallUsesActualLeftAndExplicitExternalOnly()=runBlocking<Unit> {
         val directory=Files.createTempDirectory("reg-live-restart")
