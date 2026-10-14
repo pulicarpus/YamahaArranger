@@ -1,0 +1,189 @@
+name: BASSMIDI R1 Experimental APK
+on:
+  push:
+    branches: [experiment/bassmidi-r1-policy-c]
+    paths: [.github/workflows/bassmidi-r1-experimental-apk.yml, tests/fixtures/bassmidi_r1/**]
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  experimental:
+    if: github.ref == 'refs/heads/experiment/bassmidi-r1-policy-c'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      SOURCE_SHA: 9f70f41a5543ba51cdc9c51c816ea6d46382e56e
+      BASELINE_SHA: f4f2c613bebd09a3137bdbe0bc60f0895b597979
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: pipeline
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate exact source, protected baseline and isolated workflow delta
+        run: |
+          set -euo pipefail
+          mkdir evidence
+          cat > evidence/verify.py <<'PY'
+          import hashlib,json,os,stat,subprocess,sys
+          from pathlib import Path
+          root=Path('source').resolve()
+          pipeline=Path('pipeline').resolve()
+          def git(where,*args): return subprocess.check_output(['git','-C',str(where),*args])
+          manifest_path=pipeline/'tests/fixtures/bassmidi_r1/manifest.json'
+          assert hashlib.sha256(manifest_path.read_bytes()).hexdigest()=='433c353e6be794f116883443a025225f9de85f58ad84db1da294e57b0c4485b2', 'R1 manifest identity drift'
+          manifest=json.loads(manifest_path.read_text())
+          base=os.environ['BASELINE_SHA'];source=os.environ['SOURCE_SHA']
+          assert manifest['baseline_commit']==base=='f4f2c613bebd09a3137bdbe0bc60f0895b597979'
+          assert manifest['source_commit']==source=='9f70f41a5543ba51cdc9c51c816ea6d46382e56e'
+          assert git(root,'rev-parse','HEAD').decode().strip()==source
+          assert git(root,'rev-parse','HEAD^').decode().strip()==base
+          assert git(root,'rev-parse',base+'^{tree}').decode().strip()==manifest['baseline_tree']=='888af26ee8caf753c7d2916fd801afd5e00e4330'
+          assert git(root,'rev-parse',source+'^{tree}').decode().strip()==manifest['source_tree']=='791571b5b3a9e5fdf637b41e1aeeb6c8750edbd7'
+          assert git(pipeline,'rev-parse','HEAD').decode().strip()==os.environ['GITHUB_SHA']
+          assert git(pipeline,'rev-parse','HEAD^').decode().strip()==source
+          workflow_files={'.github/workflows/bassmidi-r1-experimental-apk.yml','tests/fixtures/bassmidi_r1/full-presets.tsv','tests/fixtures/bassmidi_r1/named_inv.out','tests/fixtures/bassmidi_r1/manifest.json'}
+          assert set(git(pipeline,'diff','--name-only',source,'HEAD').decode().splitlines())==workflow_files
+          assert all(git(pipeline,'diff','--name-status',source,'HEAD','--',p).decode().startswith('A\t') for p in workflow_files)
+          changed=set(git(root,'diff','--name-only',base,source).decode().splitlines())
+          expected={'app/src/main/cpp/voice_resolver.h':'20ffadd6a24feba26c4c08e003cbd563a4fb1531','tools/bassmidi_r1_policy_test.cpp':'0b11d7cd3be84ef4040fadffcf640b850961dd02','docs/BASSMIDI_R1_NAMED_REQUEST_AUDIT_CORRECTION.md':'afbd66dc37c3a0de46fbce0574bcfbd4928d19a4'}
+          assert changed==set(expected)==set(manifest['source_diff_blobs'])
+          for path,oid in expected.items():
+              assert git(root,'rev-parse',source+':'+path).decode().strip()==oid==manifest['source_diff_blobs'][path]
+          assert not git(root,'status','--porcelain','--untracked-files=no')
+          tracked=git(root,'ls-tree','-rz',source).split(b'\0')
+          count=0
+          for row in tracked:
+              if not row: continue
+              attrs,path=row.split(b'\t',1);mode,kind,oid=attrs.decode().split();file=root/path.decode()
+              assert kind=='blob' and mode in ('100644','100755')
+              assert file.is_file() and not file.is_symlink()
+              assert not any(p.is_symlink() for p in file.parents if p!=root and root in p.parents)
+              assert file.read_bytes()==git(root,'cat-file','blob',oid)
+              assert bool(file.stat().st_mode&stat.S_IXUSR)==(mode=='100755')
+              count+=1
+          assert count==484
+          for name,sha in manifest['fixture_sha256'].items():
+              assert hashlib.sha256((pipeline/'tests/fixtures/bassmidi_r1'/name).read_bytes()).hexdigest()==sha
+          phase=sys.argv[1]
+          extras=set(git(root,'ls-files','--others','--exclude-standard').decode().splitlines())
+          extras|=set(git(root,'ls-files','--others','--ignored','--exclude-standard').decode().splitlines())
+          if phase=='after': extras={p for p in extras if not p.startswith(('.gradle/','build/','app/build/','app/.cxx/'))}
+          sys.path.insert(0,str(root/'tools'))
+          from generated_bass_sdk_guard import PATHS,verify_generated_sdk
+          if phase in ('sdk','after'): assert extras==set(PATHS)
+          else: assert not extras
+          sdk=verify_generated_sdk(root,extras)
+          result={'label':'EXPERIMENTAL-UNVERIFIED','baseline_sha':base,'source_sha':source,'workflow_sha':os.environ['GITHUB_SHA'],'protected_source_files':count,'sdk':sdk,'phase':phase,'full_regression_ci':'BLOCKED historical profiles; not claimed PASS','device_audio':'UNVERIFIED'}
+          Path('evidence/integrity-'+phase+'.json').write_text(json.dumps(result,indent=2)+'\n')
+          print(json.dumps(result))
+          PY
+          python3 evidence/verify.py before
+          git -C source show "$BASELINE_SHA:app/src/main/cpp/voice_resolver.h" > evidence/baseline_voice_resolver.h
+      - name: Complete Policy C host contracts and full-pool A/B (including real N10)
+        run: |
+          set -euo pipefail
+          baseline="$(realpath evidence/baseline_voice_resolver.h)"
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror "-DBASSMIDI_R1_BASELINE_HEADER=\"$baseline\"" source/tools/bassmidi_r1_policy_test.cpp -o evidence/r1-host
+          for suite in main nonzero named msb0; do
+            if [ "$suite" = named ]; then
+              evidence/r1-host pipeline/tests/fixtures/bassmidi_r1/full-presets.tsv "$suite" pipeline/tests/fixtures/bassmidi_r1/named_inv.out > "evidence/policy-$suite.log"
+            else
+              evidence/r1-host pipeline/tests/fixtures/bassmidi_r1/full-presets.tsv "$suite" > "evidence/policy-$suite.log"
+            fi
+            tail -n 2 "evidence/policy-$suite.log"
+          done
+          python3 - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          manifest=json.loads(Path('pipeline/tests/fixtures/bassmidi_r1/manifest.json').read_text())
+          for suite,count in manifest['counts'].items():
+              text=Path('evidence/policy-'+suite+'.log').read_text();lines=text.splitlines()
+              assert lines[-1]=='CONTRACT PASS 0'
+              assert any(l.startswith('PASS N10 MSB104 actual baseline invariance and decode unchanged (1280 cases)') for l in lines)
+              rows=[l+'\n' for l in lines if l.startswith('AB\t')]
+              assert len(rows)==count
+              if suite in manifest['golden_ab_sha256']:
+                  assert hashlib.sha256(''.join(rows).encode()).hexdigest()==manifest['golden_ab_sha256'][suite], 'Claude per-case golden mismatch: '+suite
+              else:
+                  assert any(l.startswith('PASS NAMED all 39936 winners match Claude per-case golden; no extra changes') for l in lines)
+          print('R1 COMPLETE HOST GATES PASS; historical full regression remains BLOCKED')
+          PY
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r26d
+          link-to-sdk: true
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+      - name: Install exact Android SDK inputs and verify their identities
+        run: |
+          set -euo pipefail
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install 'cmake;3.22.1' 'build-tools;34.0.0' 'platforms;android-34'
+          mkdir /tmp/r1-bass /tmp/r1-bassmidi
+          curl -fL --retry 3 https://www.un4seen.com/files/bass24-android.zip -o /tmp/r1-bass.zip
+          curl -fL --retry 3 https://www.un4seen.com/files/bassmidi24-android.zip -o /tmp/r1-bassmidi.zip
+          unzip -q /tmp/r1-bass.zip -d /tmp/r1-bass
+          unzip -q /tmp/r1-bassmidi.zip -d /tmp/r1-bassmidi
+          mkdir -p source/app/src/main/cpp/basssdk
+          cp "$(find /tmp/r1-bass -type f -iname bass.h -print -quit)" source/app/src/main/cpp/basssdk/bass.h
+          cp "$(find /tmp/r1-bassmidi -type f -iname bassmidi.h -print -quit)" source/app/src/main/cpp/basssdk/bassmidi.h
+          for abi in arm64-v8a armeabi-v7a; do
+            mkdir -p "source/app/src/main/jniLibs/$abi"
+            cp "$(find /tmp/r1-bass -type f -path "*/$abi/libbass.so" -print -quit)" "source/app/src/main/jniLibs/$abi/libbass.so"
+            cp "$(find /tmp/r1-bassmidi -type f -path "*/$abi/libbassmidi.so" -print -quit)" "source/app/src/main/jniLibs/$abi/libbassmidi.so"
+          done
+          python3 evidence/verify.py sdk
+      - name: Compile diagnostic debug APK (full regression CI remains BLOCKED)
+        working-directory: source
+        run: |
+          set -euo pipefail
+          gradle --no-daemon --max-workers=2 assembleDebug --stacktrace 2>&1 | tee ../evidence/android-build.log
+      - name: Verify source after compilation and APK provenance
+        run: |
+          set -euo pipefail
+          python3 evidence/verify.py after
+          cp source/app/build/outputs/apk/debug/app-debug.apk evidence/YamahaArranger-BASSMIDI-R1-EXPERIMENTAL.apk
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose evidence/YamahaArranger-BASSMIDI-R1-EXPERIMENTAL.apk > evidence/apk-signature.txt
+          "$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging evidence/YamahaArranger-BASSMIDI-R1-EXPERIMENTAL.apk > evidence/apk-badging.txt
+          python3 - <<'PY'
+          import hashlib,json,os,zipfile
+          from pathlib import Path
+          apk=Path('evidence/YamahaArranger-BASSMIDI-R1-EXPERIMENTAL.apk')
+          assert 'application-debuggable' in Path('evidence/apk-badging.txt').read_text()
+          with zipfile.ZipFile(apk) as z:
+              for abi in ['arm64-v8a','armeabi-v7a']:
+                  for lib in ['bass','bassmidi','yamaha_arranger_native']: assert f'lib/{abi}/lib{lib}.so' in z.namelist()
+                  data=z.read(f'lib/{abi}/libyamaha_arranger_native.so')
+                  for symbol in [b'nativePrepareExperimentalDrum',b'nativeExperimentalDrumOn',b'nativeExperimentalDrumOff',b'nativeEnableExperimentalDrum',b'nativeClearExperimentalDrum']: assert symbol not in data
+          report={'label':'EXPERIMENTAL-UNVERIFIED','source_sha':os.environ['SOURCE_SHA'],'baseline_sha':os.environ['BASELINE_SHA'],'workflow_sha':os.environ['GITHUB_SHA'],'run_id':os.environ['GITHUB_RUN_ID'],'apk_sha256':hashlib.sha256(apk.read_bytes()).hexdigest(),'bytes':apk.stat().st_size,'abis':['arm64-v8a','armeabi-v7a'],'policyC_host':'PASS','full_regression_ci':'BLOCKED historical source profiles; not claimed PASS','device_gates':{k:'UNVERIFIED' for k in ['D1','D2','D3','D4','D5','D6','runtime_preset_names','MIDI_OUT_byte_identity','Android_latency']}}
+          Path('evidence/provenance.json').write_text(json.dumps(report,indent=2)+'\n')
+          Path('evidence/README.txt').write_text('EXPERIMENTAL DEVICE TEST ONLY. Full regression CI remains BLOCKED. Sound, Redmi Pad/E343 compatibility, and runtime allowlist names are UNVERIFIED. Not a release or merge candidate.\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BASSMIDI-R1-experimental-evidence-${{ github.run_id }}
+          path: evidence/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: YamahaArranger-BASSMIDI-R1-EXPERIMENTAL-${{ github.run_id }}
+          path: |
+            evidence/YamahaArranger-BASSMIDI-R1-EXPERIMENTAL.apk
+            evidence/provenance.json
+            evidence/README.txt
+          if-no-files-found: error

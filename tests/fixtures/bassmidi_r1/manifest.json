@@ -1,0 +1,28 @@
+{
+  "baseline_commit": "f4f2c613bebd09a3137bdbe0bc60f0895b597979",
+  "baseline_tree": "888af26ee8caf753c7d2916fd801afd5e00e4330",
+  "source_commit": "9f70f41a5543ba51cdc9c51c816ea6d46382e56e",
+  "source_tree": "791571b5b3a9e5fdf637b41e1aeeb6c8750edbd7",
+  "source_diff_blobs": {
+    "app/src/main/cpp/voice_resolver.h": "20ffadd6a24feba26c4c08e003cbd563a4fb1531",
+    "docs/BASSMIDI_R1_NAMED_REQUEST_AUDIT_CORRECTION.md": "afbd66dc37c3a0de46fbce0574bcfbd4928d19a4",
+    "tools/bassmidi_r1_policy_test.cpp": "0b11d7cd3be84ef4040fadffcf640b850961dd02"
+  },
+  "fixture_sha256": {
+    "full-presets.tsv": "143e9b50450c91973477f89f127f671fd41d108d63242debadfe331764293082",
+    "named_inv.out": "dd1116f197e425c6d04282cc4b1c7e6411b5104e5e4ee6c2a3e76d9e483a9823"
+  },
+  "golden_ab_sha256": {
+    "main": "dc0c38bfcd684bf016ff875d1f793a901356de49b03b21a64f82020619c9d724",
+    "nonzero": "5d2c57a35f304d7c89c9a5520d69aab0010b5ac83744b891ec1c0dbd58be8a26",
+    "msb0": "d0b693af94e875e2c8d2ed51b0de6ec91094ec20c2935bf467bdeea5de28e851"
+  },
+  "counts": {
+    "main": 1280,
+    "nonzero": 7680,
+    "named": 39936,
+    "msb0": 81920
+  },
+  "label": "EXPERIMENTAL-UNVERIFIED",
+  "full_regression_ci": "BLOCKED historical profiles; not claimed PASS"
+}
