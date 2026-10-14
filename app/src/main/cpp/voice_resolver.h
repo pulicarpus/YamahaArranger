@@ -94,11 +94,13 @@ struct Request {
     int bank;
     int program;
     std::string name;
+    // Set by decodeRequest only: decoded Yamaha identity, else the MSB0 GM category.
+    Family hint = Family::Unknown;
     Family family() const {
         const auto f = namedFamily(name);
         // Yamaha variation PCs are not GM identity. Missing names in those
         // banks stay unknown instead of manufacturing a potentially wrong family.
-        return f != Family::Unknown ? f : (bank == 0 ? gmFamily(program) : Family::Unknown);
+        return f != Family::Unknown ? f : (bank == 0 ? gmFamily(program) : hint);
     }
 };
 
@@ -117,6 +119,26 @@ struct Candidate {
     }
 };
 
+// Reviewed evidence for Yamaha presets whose names carry no family keyword.
+// PC alone is never evidence: SF2 authors place presets at non-GM programs
+// (Prime "Suling S770" = Flute samples at PC52, the GM Choir slot).
+struct VerifiedNeutral { const char* sf2; int bank; int program; const char* name; Family family; };
+inline constexpr VerifiedNeutral kVerifiedNeutral[] = {
+    {"MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2", 0, 3, "Yamaha Honky Tonk", Family::Piano},
+    {"MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2", 0, 27, "Clean yamaha", Family::Guitar},
+};
+
+// Candidate family for one request. A neutral name gains a family only at its
+// own MSB0 Yamaha slot (same PC) and only when listed above.
+inline Family slotFamily(const Request& request, const Candidate& c) {
+    const auto f = c.family();
+    if (f != Family::Unknown || !c.yamaha || request.bank / 128 != 0 ||
+        c.bank != 0 || c.program != request.program) return f;
+    for (const auto& e : kVerifiedNeutral)
+        if (c.bank == e.bank && c.program == e.program && c.name == e.name && c.sf2 == e.sf2) return e.family;
+    return Family::Unknown;
+}
+
 struct Decision {
     Family family = Family::Unknown;
     bool accepted = false;
@@ -133,20 +155,24 @@ inline Request decodeRequest(const Request& input, const std::vector<Candidate>&
     const bool exact = std::any_of(pool.begin(), pool.end(), [&](const Candidate& c) {
         return c.yamaha && c.melodic && c.program == input.program &&
             c.bank == input.bank && c.bank != 127 && c.bank != 128 &&
-            c.family() != Family::Unknown && c.family() != Family::Percussion;
+            slotFamily(input, c) != Family::Unknown && slotFamily(input, c) != Family::Percussion;
     });
     for (const auto& c : pool) {
         if (!c.yamaha || !c.melodic || c.program != input.program ||
             c.bank == 127 || c.bank == 128) continue;
         const bool isExact = c.bank == input.bank;
         if (!isExact && c.bank != input.bank / 128) continue;
-        const auto f = c.family();
+        const auto f = slotFamily(input, c);
         if (f == Family::Unknown || f == Family::Percussion) continue;
         if (exact && !isExact) continue;
-        if (found != Family::Unknown && f != found) return input;
+        if (found != Family::Unknown && f != found) { found = Family::Unknown; break; }
         found = f; name = c.name;
     }
-    return found == Family::Unknown ? input : Request{input.bank, input.program, name};
+    if (found != Family::Unknown) return Request{input.bank, input.program, name, found};
+    // MSB0 variation without a consistent Yamaha identity keeps the GM category
+    // of its PC. Candidates still need their own (named or verified) family.
+    if (input.bank / 128 == 0) return Request{input.bank, input.program, input.name, gmFamily(input.program)};
+    return input;
 }
 
 inline bool acousticGuitar(const std::string& n) {
@@ -156,7 +182,7 @@ inline bool acousticGuitar(const std::string& n) {
 
 inline Decision evaluate(const Request& request, const Candidate& candidate) {
     Decision d;
-    d.family = candidate.family();
+    d.family = slotFamily(request, candidate);
     const auto wanted = request.family();
     const int msb = request.bank / 128;
     if (!candidate.melodic || candidate.bank == 127 || candidate.bank == 128 ||
