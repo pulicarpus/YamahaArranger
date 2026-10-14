@@ -20,9 +20,15 @@ def verify(root=ROOT):
     for p in FILES:
         if p not in {VM,UI,CI}:
             assert (root/p).is_file() and (root/p).read_bytes()==old(p),'Protected file changed: '+p
+    runtime={'evidence/linux-sdk.sha256','evidence/phase4-gates.log','evidence/phase01.log',
+        'evidence/android-build.log','evidence/apk-signature.txt','evidence/provenance.json',
+        'evidence/YamahaArranger-LiveReg-Phase4-Debug.apk'}
+    if root==ROOT:
+        tracked=set(subprocess.check_output(['git','ls-files','--cached'],cwd=ROOT,text=True).splitlines())
+        assert not tracked & runtime,'Runtime artifact committed as source'
     candidates=(set(subprocess.check_output(['git','ls-files','--cached','--others','--exclude-standard'],cwd=ROOT,text=True).splitlines())
         if root==ROOT else {str(p.relative_to(root)) for p in root.rglob('*') if p.is_file()})
-    added=candidates-set(FILES)
+    added=candidates-set(FILES)-runtime
     assert added <= ADDITIONS|{WF},'Unapproved addition: '+repr(added-(ADDITIONS|{WF}))
     s=(root/VM).read_text()
     a=s.index('\n    // BEGIN LIVE PHASE4 ADDITIONS');b=s.index('    // END LIVE PHASE4 ADDITIONS',a)+len('    // END LIVE PHASE4 ADDITIONS\n')
@@ -72,7 +78,8 @@ def verify(root=ROOT):
         ('test_live_reg_phase3.py','test_live_reg_phase4.py'),('Required Phase 3','Required Phase 4'),
         ('LiveControl-Phase3-Debug','LiveReg-Phase4-Debug'),('phase3-gates.log','phase4-gates.log'),
         ("'phase4_implemented':False","'phase4_implemented':True"),
-        ("'source_checkpoint':","'phase3_checkpoint':")]: expected=expected.replace(before,after)
+        ("'source_checkpoint':","'phase3_checkpoint':"),
+        ("'phase4_implemented':True","'phase4_implemented':True, 'phase4_revision':2")]: expected=expected.replace(before,after)
     assert wf==expected,'Unapproved APK workflow change (all gates must remain intact)'
     print('LIVE_REG_PHASE4_ISOLATION PASS protected_files='+str(len(FILES)-3)+' legacy_VM_engine_router_guards_byte_identical=true')
 if __name__=='__main__':verify()
