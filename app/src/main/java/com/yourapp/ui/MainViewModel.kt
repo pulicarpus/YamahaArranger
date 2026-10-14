@@ -257,10 +257,17 @@ class MainViewModel @Inject constructor(
         liveRegistrationState.value = LiveRegistrationState(banks=banks.map { it.copy(slots=it.slots.toList()) },
             freeze=freeze,message=if(banks.isEmpty()) "NO BANK LOADED" else "READY")
     }
-    fun onLiveBankChange(delta: Int) { liveRegistrationState.update { it.move(delta) } }
+    fun onLiveBankChange(delta: Int) {
+        val library=phase4Library
+        if(library==null) liveRegistrationState.update { it.move(delta) }
+        else { val target=liveRegistrationState.value.move(delta).bank ?: return
+            viewModelScope.launch { library.selectBank(target.id) } }
+    }
     fun onLiveRegRecall(index: Int): Boolean {
+        if(phase4Library?.state?.value?.saving==true) return false
         val snapshot=liveRegistrationState.value
         val bank=snapshot.bank ?: return false
+        if(bank.id in (phase4Library?.state?.value?.readOnly ?: emptySet())) return false
         val slot=snapshot.slot(index) ?: return false
         val token=liveRequestId.incrementAndGet()
         liveRegistrationState.update { it.copy(selectedBankId=bank.id,selectedSlot=index,
@@ -294,6 +301,59 @@ class MainViewModel @Inject constructor(
     }
     fun onLiveFill() { onSectionSelected("Fill ${liveMainLetter.value}") }
     // END LIVE PHASE3 STATE
+
+    // BEGIN LIVE PHASE4 ADDITIONS
+    private var phase4Library: com.yourapp.yamahaarranger.registration.RegistrationLibraryController? = null
+    private val phase4State = MutableStateFlow(com.yourapp.yamahaarranger.registration.RegistrationLibraryState())
+    val liveLibrary: StateFlow<com.yourapp.yamahaarranger.registration.RegistrationLibraryState> = phase4State
+    fun initializeLiveLibrary(directory: java.nio.file.Path) {
+        if(phase4Library!=null) return
+        val library=com.yourapp.yamahaarranger.registration.RegistrationLibraryController(
+            com.yourapp.yamahaarranger.registration.AtomicBankStore(directory))
+        phase4Library=library
+        viewModelScope.launch {
+            library.state.collect { saved ->
+                phase4State.value=saved
+                if(saved.loaded) liveRegistrationState.update { old -> old.copy(banks=saved.banks,
+                    bankIndex=saved.banks.indexOfFirst { it.id==saved.manifest.activeBankId }.coerceAtLeast(0),
+                    freeze=saved.manifest.freeze,message=if(old.recalling) old.message else saved.message) }
+            }
+        }
+        viewModelScope.launch { library.load() }
+        viewModelScope.launch { while(true) { delay(100);library.tick() } }
+    }
+    fun onLiveSaveArm(heldMs: Long) { phase4Library?.arm(heldMs,registrationCoordinator.busy.value) }
+    fun onLiveSaveOptions(mode: com.yourapp.yamahaarranger.registration.OutputMode, tempo: Boolean, transpose: Boolean) {
+        phase4Library?.options(mode,tempo,transpose)
+    }
+    fun onLiveSlotTap(index: Int, name: String) {
+        val library=phase4Library ?: return
+        if(library.state.value.save.armed(System.nanoTime()/1_000_000)) {
+            viewModelScope.launch {
+                library.saveSlot(index,name,{ registrationCoordinator.busy.value }) {
+                    // Wait for any already-started native voice operation, then snapshot actual state.
+                    awaitRegistrationVoicesIdle()
+                    check(!registrationCoordinator.busy.value) { "WAIT: RECALLING" }
+                    registrationPort.snapshot()
+                }
+            }
+        } else onLiveRegRecall(index)
+    }
+    fun onLiveUndoSave() { val library=phase4Library ?: return
+        viewModelScope.launch { library.undoSave(registrationCoordinator.busy.value) } }
+    fun onLiveCreateBank(name: String) { val library=phase4Library ?: return
+        if(!registrationCoordinator.busy.value) viewModelScope.launch { library.createBank(name) } }
+    fun onLiveFreeze(flags: com.yourapp.yamahaarranger.registration.FreezeFlags) { val library=phase4Library ?: return
+        viewModelScope.launch { library.freeze(flags) } }
+    fun onLiveDefaultMode(mode: com.yourapp.yamahaarranger.registration.OutputMode) { val library=phase4Library ?: return
+        viewModelScope.launch { library.defaultMode(mode) } }
+    fun onLiveAddExternal(voice: com.yourapp.yamahaarranger.registration.ExternalVoice) { val library=phase4Library ?: return
+        viewModelScope.launch { library.addExternal(voice) } }
+    fun onLiveExternalSelected(channel: Int, voice: com.yourapp.yamahaarranger.registration.ExternalVoice) {
+        if(registrationCoordinator.busy.value || phase4State.value.saving) return
+        selectExternalVoice(KeyboardPart.fromChannel(channel),voice)
+    }
+    // END LIVE PHASE4 ADDITIONS
 
     // BEGIN REG PHASE2 ADDITIONS
     private val registrationExternal = MutableStateFlow<List<com.yourapp.yamahaarranger.registration.ExternalVoice?>>(List(4) { null })

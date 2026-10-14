@@ -1,4 +1,4 @@
-name: LIVE CONTROL Phase 3 Debug APK
+name: LIVE REG Phase 4 Debug APK
 on:
   push:
     branches: [experiment/live-control-reg]
@@ -20,17 +20,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Verify only the approved workflow differs from Phase 3
+      - name: Verify approved Phase 4 isolation
         run: |
           set -euo pipefail
           mkdir -p evidence
           git merge-base --is-ancestor "$PHASE3_CHECKPOINT" HEAD
-          python3 - <<'PYCODE'
-          import os,subprocess
-          changed=subprocess.check_output(['git','diff','--name-only',os.environ['PHASE3_CHECKPOINT'],'HEAD'],text=True).splitlines()
-          assert set(changed) <= {'.github/workflows/live-reg-debug-apk.yml'}, changed
-          print('Phase 3 source, tests and guards byte-identical PASS')
-          PYCODE
+          python3 tools/test_live_reg_phase4_isolation.py
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -44,10 +39,10 @@ jobs:
           unzip -q /tmp/bass-linux.zip -d /tmp/bass-linux
           unzip -q /tmp/bassmidi-linux.zip -d /tmp/bassmidi-linux
           sha256sum /tmp/bass-linux/libs/x86_64/libbass.so /tmp/bassmidi-linux/libs/x86_64/libbassmidi.so > evidence/linux-sdk.sha256
-      - name: Required Phase 3 and certified historical snapshot gates including real PCM
+      - name: Required Phase 4 and certified historical snapshot gates including real PCM
         run: |
           set -euo pipefail
-          python3 tools/test_live_reg_phase3.py --history --real --fetch-dependencies 2>&1 | tee evidence/phase3-gates.log
+          python3 tools/test_live_reg_phase4.py --history --real --fetch-dependencies 2>&1 | tee evidence/phase4-gates.log
           git diff --exit-code HEAD
       - uses: nttld/setup-ndk@v1
         with:
@@ -87,31 +82,31 @@ jobs:
       - name: Verify signed APK, both ABIs and provenance
         run: |
           set -euo pipefail
-          cp app/build/outputs/apk/debug/app-debug.apk evidence/YamahaArranger-LiveControl-Phase3-Debug.apk
-          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose evidence/YamahaArranger-LiveControl-Phase3-Debug.apk > evidence/apk-signature.txt
+          cp app/build/outputs/apk/debug/app-debug.apk evidence/YamahaArranger-LiveReg-Phase4-Debug.apk
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose evidence/YamahaArranger-LiveReg-Phase4-Debug.apk > evidence/apk-signature.txt
           python3 - <<'PYCODE'
           import hashlib,json,os,zipfile
           from pathlib import Path
-          apk=Path('evidence/YamahaArranger-LiveControl-Phase3-Debug.apk')
+          apk=Path('evidence/YamahaArranger-LiveReg-Phase4-Debug.apk')
           with zipfile.ZipFile(apk) as z:
               for abi in ['arm64-v8a','armeabi-v7a']:
                   for lib in ['bass','bassmidi','yamaha_arranger_native']:
                       assert f'lib/{abi}/lib{lib}.so' in z.namelist(), (abi,lib)
           Path('evidence/provenance.json').write_text(json.dumps({
-              'source_checkpoint':os.environ['PHASE3_CHECKPOINT'],
+              'phase3_checkpoint':os.environ['PHASE3_CHECKPOINT'],
               'build_commit':os.environ['GITHUB_SHA'],
               'branch':os.environ['GITHUB_REF_NAME'],
               'run_id':os.environ['GITHUB_RUN_ID'],
               'apk_sha256':hashlib.sha256(apk.read_bytes()).hexdigest(),
               'abis':['arm64-v8a','armeabi-v7a'],
               'device_gates':{k:'UNVERIFIED' for k in ['D1','D2','D5','D11']},
-              'phase4_implemented':False
+              'phase4_implemented':True
           },indent=2)+'\n')
           PYCODE
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: LiveControl-Phase3-Debug-evidence-${{ github.sha }}
+          name: LiveReg-Phase4-Debug-evidence-${{ github.sha }}
           path: |
             evidence/*.log
             evidence/*.json
@@ -120,6 +115,6 @@ jobs:
           if-no-files-found: warn
       - uses: actions/upload-artifact@v4
         with:
-          name: YamahaArranger-LiveControl-Phase3-Debug
-          path: evidence/YamahaArranger-LiveControl-Phase3-Debug.apk
+          name: YamahaArranger-LiveReg-Phase4-Debug
+          path: evidence/YamahaArranger-LiveReg-Phase4-Debug.apk
           if-no-files-found: error
