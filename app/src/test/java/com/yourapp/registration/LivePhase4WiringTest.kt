@@ -1,6 +1,7 @@
 package com.yourapp.yamahaarranger.registration
 
 import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.withLock
 import org.junit.Assert.*
 import org.junit.Test
 import org.mockito.Mockito.*
@@ -39,6 +40,22 @@ class LivePhase4WiringTest {
             b.bytes.clear();b.router.setConnected(false);b.router.setConnected(true);b.midi.midiOutEnabled=false;b.midi.midiOutEnabled=true
             assertFalse(b.bytes.any { it[0] and 240==192 || (it.size==3 && it[0] and 240==176 && it[1] in listOf(0,32)) })
         } finally { b.close() }
+    }
+    @Test fun saveRejectsInFlightEngineOperationWithoutStaleSnapshot()=runBlocking<Unit> {
+        val r=RecallAdapterTest.Rig();val release=CompletableDeferred<Unit>()
+        try {
+            r.vm.initializeLiveLibrary(Files.createTempDirectory("reg-engine-busy"));until { r.vm.liveLibrary.value.loaded }
+            r.vm.onLiveCreateBank("Bank");until { r.vm.liveLibrary.value.bank!=null }
+            val entered=CompletableDeferred<Unit>()
+            val operation=r.scope.launch { r.engine.readiness.operations.withLock { entered.complete(Unit);release.await() } }
+            entered.await();r.reset();r.vm.onLiveSaveArm(600);r.vm.onLiveSlotTap(0,"Unsafe")
+            until { r.vm.liveLibrary.value.message.contains("WAIT: ENGINE OPERATION") }
+            assertNull(r.vm.liveLibrary.value.bank!!.slots[0]);assertTrue(r.bytes.isEmpty())
+            release.complete(Unit);operation.join()
+            r.vm.onLiveSaveArm(600);r.vm.onLiveSlotTap(0,"Safe")
+            until { r.vm.liveLibrary.value.bank!!.slots[0]!=null }
+            assertEquals("Safe",r.vm.liveLibrary.value.bank!!.slots[0]!!.name)
+        } finally { release.complete(Unit);r.close() }
     }
     @Test fun addingExternalVoiceDoesNotSendButSelectingDoes()=runBlocking<Unit> {
         val r=RecallAdapterTest.Rig()

@@ -86,7 +86,7 @@ fun liveInputViewportSupported(widthDp: Float, heightDp: Float, imeVisible: Bool
         ('LiveControl-Phase3-Debug','LiveReg-Phase4-Debug'),('phase3-gates.log','phase4-gates.log'),
         ("'phase4_implemented':False","'phase4_implemented':True"),
         ("'source_checkpoint':","'phase3_checkpoint':"),
-        ("'phase4_implemented':True","'phase4_implemented':True, 'phase4_revision':3")]: expected=expected.replace(before,after)
+        ("'phase4_implemented':True","'phase4_implemented':True, 'phase4_revision':4")]: expected=expected.replace(before,after)
     assert wf==expected,'Unapproved APK workflow change (all gates must remain intact)'
     print('LIVE_REG_PHASE4_ISOLATION PASS protected_files='+str(len(FILES)-4)+' legacy_VM_engine_router_guards_byte_identical=true')
 if __name__=='__main__':verify()

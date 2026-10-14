@@ -334,6 +334,7 @@ class MainViewModel @Inject constructor(
                     // Wait for any already-started native voice operation, then snapshot actual state.
                     awaitRegistrationVoicesIdle()
                     check(!registrationCoordinator.busy.value) { "WAIT: RECALLING" }
+                    check(!audioEngine.readiness.operations.isLocked) { "WAIT: ENGINE OPERATION" }
                     registrationPort.snapshot()
                 }
             }
