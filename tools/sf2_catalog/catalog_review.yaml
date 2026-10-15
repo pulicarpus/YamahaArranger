@@ -1,0 +1,89 @@
+{
+  "schema": 1,
+  "phase": "U1_PROVISIONAL",
+  "pdta_domain": "sf2-list-pdta-subchunks-v1",
+  "font_provenance": [
+    {
+      "role": "COLOMBO",
+      "file_sha256": "9e4686e4aa7173ffd1baf7ec6f80fcb3fe90880e824cf8c4e1defb5d153d47eb",
+      "expected_pdta_sha256": null
+    },
+    {
+      "role": "PRIME_DRUM",
+      "file_sha256": "a72158c09677c585eec348762a33da49509bf338c5b36d0e787af58cca0b9f8a",
+      "expected_pdta_sha256": null
+    },
+    {
+      "role": "PRIME_MELODY",
+      "file_sha256": "e8c7356159c200d945f13e113595ff06e7955779b0e9361709d9c7cdba164a82",
+      "expected_pdta_sha256": null
+    },
+    {
+      "role": "TYROS4",
+      "file_sha256": "de5b1404630840a2a897e77c6083e2231c5d1523e6571a8afd972a4f684d36ce",
+      "expected_pdta_sha256": null
+    }
+  ],
+  "reviews": [
+    {
+      "file_sha256": "e8c7356159c200d945f13e113595ff06e7955779b0e9361709d9c7cdba164a82",
+      "bank": 0,
+      "pc": 3,
+      "preset_name": "Yamaha Honky Tonk",
+      "family": "PIANO",
+      "evidence": "METADATA_CONSISTENT",
+      "review_basis": "Policy C semantic audit; identity remains UNVERIFIED until PDTA binding reviewed",
+      "yamaha_exact_requested": true
+    },
+    {
+      "file_sha256": "e8c7356159c200d945f13e113595ff06e7955779b0e9361709d9c7cdba164a82",
+      "bank": 0,
+      "pc": 27,
+      "preset_name": "Clean yamaha",
+      "family": "GUITAR",
+      "evidence": "METADATA_CONSISTENT",
+      "review_basis": "Policy C semantic audit; identity remains UNVERIFIED until PDTA binding reviewed",
+      "yamaha_exact_requested": true
+    },
+    {
+      "file_sha256": "e8c7356159c200d945f13e113595ff06e7955779b0e9361709d9c7cdba164a82",
+      "bank": 0,
+      "pc": 52,
+      "preset_name": "Suling S770",
+      "family": "WOODWIND",
+      "evidence": "CONFLICT",
+      "review_basis": "Policy C semantic audit; identity remains UNVERIFIED until PDTA binding reviewed",
+      "yamaha_exact_requested": false
+    },
+    {
+      "file_sha256": "e8c7356159c200d945f13e113595ff06e7955779b0e9361709d9c7cdba164a82",
+      "bank": 0,
+      "pc": 53,
+      "preset_name": "Shakuhachi",
+      "family": "WOODWIND",
+      "evidence": "CONFLICT",
+      "review_basis": "Policy C semantic audit; identity remains UNVERIFIED until PDTA binding reviewed",
+      "yamaha_exact_requested": false
+    },
+    {
+      "file_sha256": "e8c7356159c200d945f13e113595ff06e7955779b0e9361709d9c7cdba164a82",
+      "bank": 0,
+      "pc": 47,
+      "preset_name": "Melodic Tom1",
+      "family": "PERCUSSION",
+      "evidence": "CONFLICT",
+      "review_basis": "Policy C semantic audit; identity remains UNVERIFIED until PDTA binding reviewed",
+      "yamaha_exact_requested": false
+    },
+    {
+      "file_sha256": "e8c7356159c200d945f13e113595ff06e7955779b0e9361709d9c7cdba164a82",
+      "bank": 0,
+      "pc": 84,
+      "preset_name": "SARUNE",
+      "family": "UNKNOWN",
+      "evidence": "CONFLICT",
+      "review_basis": "Policy C semantic audit; identity remains UNVERIFIED until PDTA binding reviewed",
+      "yamaha_exact_requested": false
+    }
+  ]
+}

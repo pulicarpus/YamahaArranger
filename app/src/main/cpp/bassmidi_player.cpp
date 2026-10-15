@@ -800,6 +800,8 @@ void BassMidiPlayer::rebuildDrumPresetCache(
     // the independent, conservative percussion catalog at paused font load.
     drumZoneInventories_[path] = sf2_zones::parse(data);
     if(YAMAHA_COMPATIBLE_PERCUSSION || YAMAHA_ROLE_PCM_METERS)percussionFingerprints_[path]=sf2_fingerprint::sha256(data);
+    // U1 observation only: fingerprint original import bytes, never the normalized font.
+    pdtaFingerprints_[path]=sf2_pdta::fingerprint(data);
     LOGI("DRUM ZONE CACHE valid=%d reason=%s presets=%u path=%s",
          drumZoneInventories_[path].valid ? 1 : 0, drumZoneInventories_[path].reason.c_str(),
          static_cast<unsigned>(drumZoneInventories_[path].presets.size()), path.c_str());
@@ -891,6 +893,8 @@ void BassMidiPlayer::rebuildMelodyPresetCache(const std::string& path) {
 
     melodicZoneInventories_[path] = std::make_shared<const sf2_zones::Inventory>(sf2_zones::parse(data,true));
     if(YAMAHA_COMPATIBLE_PERCUSSION || YAMAHA_ROLE_PCM_METERS)percussionFingerprints_[path]=sf2_fingerprint::sha256(data);
+    // U1 observation only: fingerprint original import bytes, never the normalized font.
+    pdtaFingerprints_[path]=sf2_pdta::fingerprint(data);
     noteZoneRows_.clear(); noteZoneLimit_=false;
     const size_t count = phdrSize / 38;
     for (size_t n = 0; n + 1 < count; ++n) {
@@ -916,6 +920,7 @@ void BassMidiPlayer::invalidateMelodicChannels() {
         state.melodySourceBank = -1;
         state.melodySourceProgram = -1;
         state.melodySourceName.clear();
+        state.resolverReason="font_binding_invalidated";
     }
 }
 
@@ -927,13 +932,13 @@ void BassMidiPlayer::refreshMelodicChannels() {
         state.melodySourceName.clear();
         findMelodicPreset(state.bankMsb * 128 + state.bankLsb, state.program,
                           state.requestedVoiceName, state.melodySourceBank,
-                          state.melodySourceProgram, state.melodySourceName, state.melodySource);
+                          state.melodySourceProgram, state.melodySourceName, state.melodySource, &state.resolverReason);
     }
 }
 
 bool BassMidiPlayer::findMelodicPreset(
     int requestedBank, int requestedProgram, const std::string& voiceName,
-    int& sourceBank, int& sourceProgram, std::string& matchedName, int& sourceFont) const {
+    int& sourceBank, int& sourceProgram, std::string& matchedName, int& sourceFont, std::string* diagnosticReason) const {
     using namespace voice_resolver;
     std::vector<Candidate> candidates;
     auto collect = [&](int source, const std::string& path, const std::vector<MelodicPresetEntry>& cache) {
@@ -990,6 +995,7 @@ bool BassMidiPlayer::findMelodicPreset(
     }
     const int selected = select(request, candidates);
     if (selected < 0) {
+        if(diagnosticReason)*diagnosticReason="no_compatible_candidate";
         sourceFont = -1;
         LOGI("VOICE FINAL REJECT bank=%d pc=%d name='%s' family=%s reason=no_compatible_candidate action=suppress_new_notes",
              requestedBank, requestedProgram, voiceName.c_str(), familyName(request.family()));
@@ -997,6 +1003,7 @@ bool BassMidiPlayer::findMelodicPreset(
     }
     const auto& c = candidates[selected];
     const auto d = evaluate(request, c);
+    if(diagnosticReason)*diagnosticReason=d.reason;
     sourceFont = c.source; sourceBank = c.bank; sourceProgram = c.program; matchedName = c.name;
     LOGI("VOICE FINAL SELECT requested='%s' family=%s source=%d sf2='%s' bank=%d pc=%d name='%s' candidateFamily=%s score=%d reason=%s",
          voiceName.c_str(), familyName(request.family()), sourceFont, c.sf2.c_str(), sourceBank,
@@ -1332,6 +1339,7 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program, const 
     state.melodySourceBank = -1;
     state.melodySourceProgram = -1;
     state.melodySourceName.clear();
+    state.resolverReason.clear();
     state.initialized = true;
 
     if (state.drum) {
@@ -1339,6 +1347,7 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program, const 
         int sourceProgram = program;
         const std::string& path = drumFont_ ? drumPath_ : melodyPath_;
         const bool resolved = findDrumPreset(path, program, sourceBank, sourceProgram);
+        state.resolverReason=!resolved?"no_cached_drum_preset":sourceProgram==program?"legacy_same_pc_first_matching_cache_entry":"legacy_first_cached_kit_fallback";
         LOGI("DRUM PRESET RESOLVE ch=%d requested=%d -> bank=%d prog=%d found=%d",
              channel, program, sourceBank, sourceProgram, resolved ? 1 : 0);
         if (resolved) {
@@ -1354,7 +1363,7 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program, const 
         std::string matchedName;
         int sourceFont = 0;
         const bool resolved = findMelodicPreset(requestedBank14, requestedProgram, state.requestedVoiceName,
-                                               sourceBank, sourceProgram, matchedName, sourceFont);
+                                               sourceBank, sourceProgram, matchedName, sourceFont, &state.resolverReason);
         state.melodySource = sourceFont;
         if (resolved) {
             state.melodySourceBank = sourceBank;
@@ -1597,9 +1606,11 @@ std::string BassMidiPlayer::noteZoneReport() const {
     struct LaneRow {int requestedPc;HSTREAM stream;uint64_t generation,mappedOns,legacyOns,failedOns,overflowOns,chokes;
         bool active;std::vector<RouteRow> routes;};
     std::array<LaneRow,2> lanes;
-    struct NativeRow {PartPresence n;ChannelState state;int requestedBank,requestedPc,rawBank,cc7,cc11;
+    struct NativeRow {PartPresence n;ChannelState state;int requestedBank,requestedPc,rawBank,cc7,cc11,pan,reverb,chorus;
         BASS_MIDI_FONT live{};bool liveOk;std::string name,path;std::shared_ptr<const sf2_zones::Inventory> inventory;};
     std::array<NativeRow,8> native;
+    std::map<std::string,sf2_pdta::Result> pdta;
+    std::map<std::string,std::string> fileFingerprints;
     {
         std::lock_guard<std::mutex> lock(mutex_);
 
@@ -1609,6 +1620,11 @@ std::string BassMidiPlayer::noteZoneReport() const {
 #endif
 // HEADROOM_OBSERVER_END
         snapshot=noteZoneRows_;limited=noteZoneLimit_;meters=rolePcmMeters_;inventories=melodicZoneInventories_;
+        for(const auto& entry:pdtaFingerprints_) {
+            bool loaded=(melodyFont_ && entry.first==melodyPath_) || (drumFont_ && entry.first==drumPath_);
+            for(const auto& f:secondaryMelodies_)loaded=loaded || (f.font && entry.first==f.path);
+            if(loaded) {pdta.insert(entry);const auto it=percussionFingerprints_.find(entry.first);if(it!=percussionFingerprints_.end())fileFingerprints.insert(*it);}
+        }
 // MEASURED_BALANCE_BEGIN
         balance=measuredBalance_;
 // MEASURED_BALANCE_END
@@ -1653,6 +1669,9 @@ std::string BassMidiPlayer::noteZoneReport() const {
             row.live=live;row.liveOk=liveOk;row.name=name?name:"UNAVAILABLE";row.path=path;row.rawBank=rawBank;
             row.cc7=stream_?BASS_MIDI_StreamGetEvent(stream_,ch,MIDI_EVENT_VOLUME):0;
             row.cc11=stream_?BASS_MIDI_StreamGetEvent(stream_,ch,MIDI_EVENT_EXPRESSION):0;
+            row.pan=stream_?BASS_MIDI_StreamGetEvent(stream_,ch,MIDI_EVENT_PAN):-1;
+            row.reverb=stream_?BASS_MIDI_StreamGetEvent(stream_,ch,MIDI_EVENT_REVERB):-1;
+            row.chorus=stream_?BASS_MIDI_StreamGetEvent(stream_,ch,MIDI_EVENT_CHORUS):-1;
             // Shared melodic inventories survive unload; copy only the needed
             // drum preset zones (two channels), never the complete SF2 inventory.
             if(inventory && liveOk && n.lastKey>=0) {
@@ -1728,6 +1747,17 @@ std::string BassMidiPlayer::noteZoneReport() const {
         const auto& row=native[ch-8];const auto& n=row.n;const auto& state=row.state;
         const auto& live=row.live;const bool liveOk=row.liveOk;const char* name=row.name.c_str();const auto& path=row.path;
         sf2_zones::Match eligible{};
+        std::string keysPresent="UNAVAILABLE";
+        if(row.inventory && row.inventory->valid && liveOk) {
+            const auto preset=row.inventory->presets.find({row.rawBank,live.preset});
+            if(preset!=row.inventory->presets.end()) {
+                std::array<bool,128> keys{};
+                for(const auto& zone:preset->second) if(zone.velLow<=zone.velHigh)
+                    for(int key=std::max(0,zone.keyLow);key<=std::min(127,zone.keyHigh);++key)keys[key]=true;
+                keysPresent.clear();for(int key=0;key<128;++key)if(keys[key]) {if(!keysPresent.empty())keysPresent+=",";keysPresent+=std::to_string(key);}
+                if(keysPresent.empty())keysPresent="NONE";
+            }
+        }
         if(row.inventory && liveOk && n.lastKey>=0)eligible=sf2_zones::match(*row.inventory,row.rawBank,live.preset,n.lastKey,n.lastVelocity);
             presence << "NATIVE ch=" << ch << " midiChannel=" << ch+1 << " attempts=" << n.attempts << " BASS_NOTE_ON_SENT=" << n.sent
                 << " familyOrMapRejected=" << n.familyOrMapRejected << " engineUnavailable=" << n.engineUnavailable << " sendFailed=" << n.sendFailed
@@ -1735,15 +1765,26 @@ std::string BassMidiPlayer::noteZoneReport() const {
                 << " requestedBank=" << row.requestedBank << " rawPC=" << row.requestedPc
                 << " effectiveBank=" << state.bankMsb << ':' << state.bankLsb << " effectivePC=" << state.program
                 << " selectedRawBank=" << state.melodySourceBank << " selectedPC=" << state.melodySourceProgram
+                << " resolverReason=" << (state.resolverReason.empty()?"UNOBSERVED":state.resolverReason)
                 << " initialized=" << state.initialized << " admitted=" << (state.drum || state.melodySourceProgram>=0)
                 << " liveAvailable=" << liveOk << " font=" << live.font << " liveBank=" << live.bank << " livePC=" << live.preset
                 << " preset='" << (name?name:"UNAVAILABLE") << "' SF2='" << path << "' CC7="
                 << row.cc7 << " CC11="
                 << row.cc11
+                << " CC10=" << row.pan << " CC91=" << row.reverb << " CC93=" << row.chorus
+                << " keysPresent=" << keysPresent << " coverageScope=eligible_zone_union_not_all_velocities"
                 << " lastKey=" << n.lastKey << " lastVelocity=" << n.lastVelocity << " lastNoteMetadataKnown=" << eligible.known
                 << " lastNoteEligibleZones=" << eligible.zones << " last_note_only_not_all_velocity_proof\n";
     }
     std::ostringstream report;
+    report << "=== SF2 FINGERPRINT MANIFEST v1 ===\n";
+    for(const auto& entry:pdta) {
+        const auto file=fileFingerprints.find(entry.first);
+        report << "SF2_FINGERPRINT pdtaSha256=" << (entry.second.valid?entry.second.sha256:"UNAVAILABLE")
+            << " fileSha256=" << (file!=fileFingerprints.end()?file->second:"UNAVAILABLE")
+            << " pdtaBytes=" << entry.second.bytes << " hashingNs=" << entry.second.elapsedNs
+            << " status=UNVERIFIED catalogUse=OFF reason=" << entry.second.reason << '\n';
+    }
     report << presence.str();
     report << "=== ACTUAL BASS / STRINGS NOTE ZONES ===\nuniqueObservations=" << snapshot.size()
         << " limitReached=" << limited << " cap=512 cached_at_font_load no_PCM_or_voice_sample_ID\n";

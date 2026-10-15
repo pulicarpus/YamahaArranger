@@ -1149,7 +1149,11 @@ class MainViewModel @Inject constructor(
                 appendLine(arrangerBrain.partPresenceReport(style))
                 appendLine(arrangerBrain.chordDiagnosticReport())
                 appendLine(audioEngine.chordDiagnosticReport())
-                appendLine(audioEngine.noteZoneReport())
+                val nativeFidelitySnapshot = audioEngine.noteZoneReport()
+                appendLine(nativeFidelitySnapshot)
+                if (!uiState.value.isPlaying) appendLine(com.yourapp.yamahaarranger.arranger.StyleFidelityReport.export(
+                    style, uiState.value.activeSection, nativeFidelitySnapshot))
+                else appendLine("STYLE FIDELITY U0 unavailable: STOP before diagnostic export")
                 appendLine("=== ALL LOADED DEDICATED DRUM KITS / STYLE SECTION COVERAGE ===")
                 val profiles = style.sections.keys.sorted().map { sectionName ->
                     com.yourapp.yamahaarranger.arranger.DrumStyleAuditProfile.from(style, sectionName)

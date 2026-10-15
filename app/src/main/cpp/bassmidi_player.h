@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 #include "audio_path_diagnostic.h"
+#include "sf2_pdta_fingerprint.h"
 #include "role_pcm_meter.h"
 // MEASURED_BALANCE_BEGIN
 #include "measured_balance_profiles.h"
@@ -104,6 +105,7 @@ private:
         int melodySourceProgram = -1;
         std::string melodySourceName;
         std::string requestedVoiceName;
+        std::string resolverReason; // U0 observation only; never used by selection.
         int program = 0;
         bool drum = false;
         bool initialized = false;
@@ -132,6 +134,7 @@ private:
         std::vector<NormalizedBankMap> banks;
     };
     std::vector<SecondaryMelody> secondaryMelodies_;
+    std::map<std::string,sf2_pdta::Result> pdtaFingerprints_;
     bool ensureEngine();
     bool loadRole(const std::string& path, bool drum);
     bool applyFonts();
@@ -243,7 +246,7 @@ private:
     void rebuildMelodyPresetCache(const std::string& path);
     bool findMelodicPreset(int requestedBank, int requestedProgram,
                            const std::string& voiceName, int& sourceBank, int& sourceProgram,
-                           std::string& matchedName, int& sourceFont) const;
+                           std::string& matchedName, int& sourceFont, std::string* diagnosticReason=nullptr) const;
     bool findDrumPreset(const std::string& path, int requestedProgram,
                         int& sourceBank, int& sourceProgram) const;
     // New bounded, drum-only compatible substitutions. Old Stage 3 remains absent.
