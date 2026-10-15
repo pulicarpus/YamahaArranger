@@ -11,7 +11,7 @@
       "pdta_sha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
       "presets": 892,
       "role": "COLOMBO",
-      "status": "UNVERIFIED"
+      "status": "HOST_PDTA_VERIFIED_DEVICE_PENDING"
     },
     {
       "display_name": "DRUMKIT YAMAHA PSR-SX700 & SX900 PRIME.sf2",
@@ -20,7 +20,7 @@
       "pdta_sha256": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283",
       "presets": 21,
       "role": "PRIME_DRUM",
-      "status": "UNVERIFIED"
+      "status": "HOST_PDTA_VERIFIED_DEVICE_PENDING"
     },
     {
       "display_name": "yamaha tyros 4_just_t4_fixed.sf2",
@@ -29,7 +29,7 @@
       "pdta_sha256": "16bb60deafdf426cdc7e269b6c5f434cd5b7db6e14a83f86d17f54720176217a",
       "presets": 142,
       "role": "TYROS4",
-      "status": "UNVERIFIED"
+      "status": "HOST_PDTA_VERIFIED_DEVICE_PENDING"
     },
     {
       "display_name": "MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2",
@@ -38,21 +38,21 @@
       "pdta_sha256": "cfb096e3c197570554313aaca227f7e207ac64867e9871a025c1b4b2c6e9c136",
       "presets": 93,
       "role": "PRIME_MELODY",
-      "status": "UNVERIFIED"
+      "status": "HOST_PDTA_VERIFIED_DEVICE_PENDING"
     }
   ],
-  "generator": "u01-catalog-v2-audit",
+  "generator": "u01-catalog-v3-verified-pdta",
   "metadata_sha256": {
-    "font_1.txt": "706936917f87a6c689b966c2ec17d6c188a48e729d4c5b341a5780405ad2b51f",
-    "font_2.txt": "6ab59b9fed0f6f14bd03d3142d48ad10d8cf71962ef36674cea9bc738f94b6b7",
-    "font_3.txt": "d81cb197ebaf8e8657137c1fec2abbd75ab79947940050926a600194f00ba860",
-    "font_4.txt": "b2f3be8a18a6da1b4fb6fa35deef5c0af977c09009ce7f2ce3d38165063c3b02"
+    "font_1.txt": "5ad961a02aa9787c8ce5c6dfb879b675d98d74af1e0869c90c6fa9adff5e75de",
+    "font_2.txt": "ae7e23e12e33905ac9d6ba12d44f3554619e5ae58a15f879846c74169e2fb101",
+    "font_3.txt": "32bdbf9f8d0e70e5aa13b21e9443b99a797bc01d9aba3bb7b93da3ab5e402f8f",
+    "font_4.txt": "d337524dc70d9c6c581e3bd1041bdfe50944adbae9eec620ff1a439261ab628e"
   },
   "pdta_domain": "sf2-list-pdta-payload-v2",
   "presets": 1148,
-  "raw_name_status": "PARTIAL; original instrument/sample bytes and uncrosschecked Colombo preset names pending PDTA",
+  "raw_name_status": "ALL_12783_NONTERMINAL_NAMES_RAW_20_BYTES",
   "review_sha256": "364f1f48749de64488ed43d586c7130e2851a3eb1549e56e7bb98b58d86ee8a5",
   "schema": 1,
-  "status": "PROVISIONAL",
+  "status": "HOST_VERIFIED_DEVICE_PENDING",
   "voices": 989
 }

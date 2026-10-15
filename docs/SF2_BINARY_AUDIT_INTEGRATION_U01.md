@@ -1,5 +1,7 @@
 # U0/U1 binary-audit integration — available evidence checkpoint
 
+Historical checkpoint at 975e2a6. Original-byte/name blockers are superseded by [PDTA verification](U01_PDTA_HOST_VERIFICATION.md).
+
 Branch: `experiment/universal-yamaha-u0-u1`. Starting commit: `2b4bd2c64400a2f9451cf4ec18c6065f8159fddf`.
 
 The owner supplied the universal design, SF2_BINARY_AUDIT_CATALOG_CORRECTIONS.md, and SF2_audit_evidence.zip. All were read. The later owner instruction explicitly defers final U1 validation until Claude supplies four original PDTA chunks; only verifiable work continues now. The audit's future resolver, drum and gain recommendations do not authorize activating U2–U8.

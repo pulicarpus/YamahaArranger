@@ -36,14 +36,21 @@ int main(int argc,char**argv){
 def verify(directory):
     review=json.loads((Path(__file__).with_name('catalog_review.yaml')).read_text());load(review)
     directory=Path(directory)
+    from pdta_inventory import read_source
+    inventory=read_source(directory,review)
+    payloads={}
+    if inventory is not None:
+        for f in review['font_provenance']:payloads[f['role']]=inventory[f['file_sha256']]['payload']
     inputs=[(f,directory/(f['role']+'.pdta')) for f in review['font_provenance']]
-    missing=[str(p) for _,p in inputs if not p.is_file()]
+    missing=[str(p) for f,p in inputs if f['role'] not in payloads and not p.is_file()]
     if missing:raise ValueError('original PDTA evidence unavailable: '+', '.join(missing))
     results=[]
     with tempfile.TemporaryDirectory(prefix='u1-golden-') as temp:
         cpp=Path(temp)/'driver.cpp';cpp.write_text(DRIVER);exe=Path(temp)/'verify'
         subprocess.run(['g++','-std=c++17','-O2','-Wall','-Wextra','-Werror','-I'+str(ROOT/'app/src/main/cpp'),str(cpp),'-o',str(exe)],check=True)
         for f,path in inputs:
+            if f['role'] in payloads:
+                path=Path(temp)/(f['role']+'.pdta');path.write_bytes(payloads[f['role']])
             digest,length=subprocess.check_output([str(exe),str(path)],text=True).split()
             if (digest,int(length))!=(f['expected_pdta_sha256'],f['pdta_bytes']):
                 raise ValueError('golden PDTA mismatch: '+f['role'])

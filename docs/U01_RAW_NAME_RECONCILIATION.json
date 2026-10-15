@@ -1,0 +1,247 @@
+{
+  "source": "Original golden PDTA; compared with prior owner metadata export",
+  "zones_compared": 66944,
+  "zone_ranges_and_raw_attenuation": "ALL_IDENTICAL",
+  "name_text_corrections": [
+    {
+      "role": "COLOMBO",
+      "kind": "S",
+      "id": 2883,
+      "legacy_text": "Toby?s Car passing",
+      "raw_text": "Toby's Car passing",
+      "nameHex": "546f62792773204361722070617373696e670000"
+    },
+    {
+      "role": "COLOMBO",
+      "kind": "S",
+      "id": 2923,
+      "legacy_text": "VFX1 36 C?monL",
+      "raw_text": "VFX1 36 C'monL",
+      "nameHex": "564658312033362043276d6f6e4c000000000000"
+    },
+    {
+      "role": "COLOMBO",
+      "kind": "S",
+      "id": 2924,
+      "legacy_text": "VFX1 36 C?monR",
+      "raw_text": "VFX1 36 C'monR",
+      "nameHex": "564658312033362043276d6f6e52000000000000"
+    },
+    {
+      "role": "COLOMBO",
+      "kind": "S",
+      "id": 2935,
+      "legacy_text": "VFX1 42 GSol C?monL",
+      "raw_text": "VFX1 42 GSol C'monL",
+      "nameHex": "564658312034322047536f6c2043276d6f6e4c00"
+    },
+    {
+      "role": "COLOMBO",
+      "kind": "S",
+      "id": 2936,
+      "legacy_text": "VFX1 42 GSol C?monR",
+      "raw_text": "VFX1 42 GSol C'monR",
+      "nameHex": "564658312034322047536f6c2043276d6f6e5200"
+    },
+    {
+      "role": "COLOMBO",
+      "kind": "S",
+      "id": 2951,
+      "legacy_text": "VFX1 50 C?monCrL",
+      "raw_text": "VFX1 50 C'monCrL",
+      "nameHex": "564658312035302043276d6f6e43724c00000000"
+    },
+    {
+      "role": "COLOMBO",
+      "kind": "S",
+      "id": 2952,
+      "legacy_text": "VFX1 50 C?monCrR",
+      "raw_text": "VFX1 50 C'monCrR",
+      "nameHex": "564658312035302043276d6f6e43725200000000"
+    },
+    {
+      "role": "COLOMBO",
+      "kind": "S",
+      "id": 3216,
+      "legacy_text": "ManiYa?s Censor",
+      "raw_text": "ManiYa's Censor",
+      "nameHex": "4d616e69596127732043656e736f720000000000"
+    },
+    {
+      "role": "COLOMBO",
+      "kind": "I",
+      "id": 307,
+      "legacy_text": "HED?s Wurly Piano",
+      "raw_text": "HED's Wurly Piano",
+      "nameHex": "4845442773205775726c79205069616e6f000000"
+    },
+    {
+      "role": "COLOMBO",
+      "kind": "P",
+      "id": 51,
+      "legacy_text": "60?s Synth Strings",
+      "raw_text": "60's Synth Strings",
+      "nameHex": "363027732053796e746820537472696e67730000"
+    },
+    {
+      "role": "COLOMBO",
+      "kind": "P",
+      "id": 176,
+      "legacy_text": "Shigi?s Piano",
+      "raw_text": "Shigi's Piano",
+      "nameHex": "53686967692773205069616e6f00000000000000"
+    },
+    {
+      "role": "COLOMBO",
+      "kind": "P",
+      "id": 205,
+      "legacy_text": "80?s Sci-Fi",
+      "raw_text": "80's Sci-Fi",
+      "nameHex": "38302773205363692d4669000000000000000000"
+    },
+    {
+      "role": "COLOMBO",
+      "kind": "P",
+      "id": 219,
+      "legacy_text": "90?s Jazz Guitar",
+      "raw_text": "90's Jazz Guitar",
+      "nameHex": "39302773204a617a7a2047756974617200000000"
+    },
+    {
+      "role": "COLOMBO",
+      "kind": "P",
+      "id": 431,
+      "legacy_text": "Beatles? Mellotron",
+      "raw_text": "Beatles' Mellotron",
+      "nameHex": "426561746c657327204d656c6c6f74726f6e0000"
+    },
+    {
+      "role": "COLOMBO",
+      "kind": "P",
+      "id": 438,
+      "legacy_text": "60?s Organ",
+      "raw_text": "60's Organ",
+      "nameHex": "36302773204f7267616e00000000000000000000"
+    },
+    {
+      "role": "COLOMBO",
+      "kind": "P",
+      "id": 454,
+      "legacy_text": "Big N? Low",
+      "raw_text": "Big N' Low",
+      "nameHex": "426967204e27204c6f7700000000000000000000"
+    },
+    {
+      "role": "COLOMBO",
+      "kind": "P",
+      "id": 488,
+      "legacy_text": "60?s EP",
+      "raw_text": "60's EP",
+      "nameHex": "3630277320455000000000000000000000000000"
+    },
+    {
+      "role": "COLOMBO",
+      "kind": "P",
+      "id": 508,
+      "legacy_text": "60?s Organ 2",
+      "raw_text": "60's Organ 2",
+      "nameHex": "36302773204f7267616e20320000000000000000"
+    },
+    {
+      "role": "COLOMBO",
+      "kind": "P",
+      "id": 538,
+      "legacy_text": "90?s Polysynth",
+      "raw_text": "90's Polysynth",
+      "nameHex": "3930277320506f6c7973796e7468000000000000"
+    },
+    {
+      "role": "COLOMBO",
+      "kind": "P",
+      "id": 598,
+      "legacy_text": "50?s Sci-Fi",
+      "raw_text": "50's Sci-Fi",
+      "nameHex": "35302773205363692d4669000000000000000000"
+    },
+    {
+      "role": "PRIME_DRUM",
+      "kind": "P",
+      "id": 3,
+      "legacy_text": "CLOW D?ACADEMY",
+      "raw_text": "CLOW D'ACADEMY",
+      "nameHex": "434c4f5720442741434144454d59000000000000"
+    },
+    {
+      "role": "PRIME_DRUM",
+      "kind": "P",
+      "id": 12,
+      "legacy_text": "CLOW D?ACADEMY II",
+      "raw_text": "CLOW D'ACADEMY II",
+      "nameHex": "434c4f5720442741434144454d59204949000000"
+    },
+    {
+      "role": "PRIME_DRUM",
+      "kind": "P",
+      "id": 16,
+      "legacy_text": "D?ROSTA SX700-SX900",
+      "raw_text": "D'ROSTA SX700-SX900",
+      "nameHex": "4427524f5354412053583730302d535839303000"
+    },
+    {
+      "role": "TYROS4",
+      "kind": "S",
+      "id": 1353,
+      "legacy_text": "\u0192\u0160\u0192o\u0081[\u0192X\u0192V\u0192\u201c\u0192o\u0192\u20397",
+      "raw_text": "\u0083\u008a\u0083o\u0081[\u0083X\u0083V\u0083\u0093\u0083o\u0083\u008b7",
+      "nameHex": "838a836f815b835883568393836f838b37000000"
+    },
+    {
+      "role": "TYROS4",
+      "kind": "S",
+      "id": 1354,
+      "legacy_text": "\u0192\u0160\u0192o\u0081[\u0192X\u0192V\u0192\u201c\u0192o\u0192\u20396",
+      "raw_text": "\u0083\u008a\u0083o\u0081[\u0083X\u0083V\u0083\u0093\u0083o\u0083\u008b6",
+      "nameHex": "838a836f815b835883568393836f838b36000000"
+    },
+    {
+      "role": "TYROS4",
+      "kind": "S",
+      "id": 1355,
+      "legacy_text": "\u0192\u0160\u0192o\u0081[\u0192X\u0192V\u0192\u201c\u0192o\u0192\u20395",
+      "raw_text": "\u0083\u008a\u0083o\u0081[\u0083X\u0083V\u0083\u0093\u0083o\u0083\u008b5",
+      "nameHex": "838a836f815b835883568393836f838b35000000"
+    },
+    {
+      "role": "TYROS4",
+      "kind": "S",
+      "id": 1356,
+      "legacy_text": "\u0192\u0160\u0192o\u0081[\u0192X\u0192V\u0192\u201c\u0192o\u0192\u20394",
+      "raw_text": "\u0083\u008a\u0083o\u0081[\u0083X\u0083V\u0083\u0093\u0083o\u0083\u008b4",
+      "nameHex": "838a836f815b835883568393836f838b34000000"
+    },
+    {
+      "role": "TYROS4",
+      "kind": "S",
+      "id": 1357,
+      "legacy_text": "\u0192\u0160\u0192o\u0081[\u0192X\u0192V\u0192\u201c\u0192o\u0192\u20393",
+      "raw_text": "\u0083\u008a\u0083o\u0081[\u0083X\u0083V\u0083\u0093\u0083o\u0083\u008b3",
+      "nameHex": "838a836f815b835883568393836f838b33000000"
+    },
+    {
+      "role": "TYROS4",
+      "kind": "S",
+      "id": 1358,
+      "legacy_text": "\u0192\u0160\u0192o\u0081[\u0192X\u0192V\u0192\u201c\u0192o\u0192\u20392",
+      "raw_text": "\u0083\u008a\u0083o\u0081[\u0083X\u0083V\u0083\u0093\u0083o\u0083\u008b2",
+      "nameHex": "838a836f815b835883568393836f838b32000000"
+    },
+    {
+      "role": "TYROS4",
+      "kind": "S",
+      "id": 1359,
+      "legacy_text": "\u0192\u0160\u0192o\u0081[\u0192X\u0192V\u0192\u201c\u0192o\u0192\u20391",
+      "raw_text": "\u0083\u008a\u0083o\u0081[\u0083X\u0083V\u0083\u0093\u0083o\u0083\u008b1",
+      "nameHex": "838a836f815b835883568393836f838b31000000"
+    }
+  ]
+}

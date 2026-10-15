@@ -1,0 +1,132 @@
+name: Universal Yamaha U0 U1 Diagnostic APK
+on:
+  push:
+    branches: [experiment/universal-yamaha-u0-u1]
+    paths: [.github/workflows/universal-yamaha-u01-diagnostic.yml]
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: u01-diagnostic-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  host:
+    if: github.ref == 'refs/heads/experiment/universal-yamaha-u0-u1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Exact parent, protected baseline, production and metadata-only fixture integrity
+        run: |
+          set -euo pipefail
+          mkdir -p evidence build/sff1-jvm/dependencies
+          python3 tools/verify_u01_build.py --phase before --out evidence/integrity-before.json
+      - name: Fetch and verify pinned JVM test inputs
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib,json,subprocess
+          from pathlib import Path
+          for entry in json.loads(Path('tests/fixtures/sff1_jvm_dependencies.json').read_text())['dependencies']:
+              path=Path('build/sff1-jvm/dependencies')/entry['filename']
+              subprocess.run(['curl','-fsSL','--retry','3',entry['url'],'-o',str(path)],check=True)
+              assert hashlib.sha256(path.read_bytes()).hexdigest()==entry['sha256'],entry['filename']
+          PY
+      - name: Original PDTA goldens, raw names, catalog, RIFF, U0 and full Policy C contracts
+        run: |
+          set -euo pipefail
+          python3 tools/test_u01_host.py --metadata tests/fixtures/sf2_pdta/export.zip --jvm-deps build/sff1-jvm/dependencies --out evidence/host 2>&1 | tee evidence/host.log
+      - name: Unchanged native and JVM regression contracts (historical full CI remains BLOCKED)
+        run: |
+          set -euo pipefail
+          python3 tools/test_u01_regressions.py --suite native --out evidence/native 2>&1 | tee evidence/native.log
+          python3 tools/test_u01_regressions.py --suite jvm --out evidence/jvm 2>&1 | tee evidence/jvm.log
+          python3 tools/verify_u01_build.py --phase before --out evidence/integrity-after-host.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: U01-host-evidence-${{ github.run_id }}
+          path: |
+            evidence/**/*.log
+            evidence/**/*.json
+          if-no-files-found: error
+  android:
+    needs: host
+    if: github.ref == 'refs/heads/experiment/universal-yamaha-u0-u1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r26d
+          link-to-sdk: true
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+      - name: Verify source and install byte-pinned official SDK
+        run: |
+          set -euo pipefail
+          mkdir evidence
+          python3 tools/verify_u01_build.py --phase before --out evidence/integrity-before.json
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install 'cmake;3.22.1' 'build-tools;34.0.0' 'platforms;android-34'
+          python3 tools/install_u01_android_sdk.py > evidence/sdk-identities.json
+          python3 tools/verify_u01_build.py --phase sdk --out evidence/integrity-sdk.json
+      - name: Compile debug APK for both configured ARM ABIs
+        run: |
+          set -euo pipefail
+          gradle --no-daemon --max-workers=2 assembleDebug --stacktrace 2>&1 | tee evidence/android-build.log
+      - name: Verify signed debug APK, both ABIs and source provenance
+        run: |
+          set -euo pipefail
+          python3 tools/verify_u01_build.py --phase sdk --out evidence/integrity-after.json
+          cp app/build/outputs/apk/debug/app-debug.apk evidence/YamahaArranger-U01-DIAGNOSTIC.apk
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose evidence/YamahaArranger-U01-DIAGNOSTIC.apk > evidence/apk-signature.txt
+          "$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging evidence/YamahaArranger-U01-DIAGNOSTIC.apk > evidence/apk-badging.txt
+          python3 - <<'PY'
+          from pathlib import Path
+          assert 'application-debuggable' in Path('evidence/apk-badging.txt').read_text()
+          PY
+          python3 tools/verify_u01_build.py --apk evidence/YamahaArranger-U01-DIAGNOSTIC.apk --out evidence/apk-provenance.json
+          cp docs/U01_PDTA_DEVICE_TEST.md evidence/DEVICE-TEST.txt
+          cp catalog/u01/catalog_manifest.json evidence/catalog_manifest.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: U01-android-evidence-${{ github.run_id }}
+          path: |
+            evidence/*.log
+            evidence/*.json
+            evidence/*.txt
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: YamahaArranger-U01-DIAGNOSTIC-${{ github.sha }}
+          path: |
+            evidence/YamahaArranger-U01-DIAGNOSTIC.apk
+            evidence/apk-provenance.json
+            evidence/DEVICE-TEST.txt
+          if-no-files-found: error

@@ -267,7 +267,7 @@ Presets: 1148; voice: 989; drum: 159.
 - COLOMBO 15/124 Air Raid: UNKNOWN / NAME_ONLY / NONE
 - COLOMBO 15/125 Helicopter Hover: UNKNOWN / NAME_ONLY / NONE
 - COLOMBO 16/12 Balafon: UNKNOWN / NAME_ONLY / NONE
-- COLOMBO 16/16 60?s Organ: ORGAN / NAME_ONLY / NONE
+- COLOMBO 16/16 60's Organ: ORGAN / NAME_ONLY / NONE
 - COLOMBO 16/18 Slow Rotor Organ: ORGAN / NAME_ONLY / NONE
 - COLOMBO 16/25 Mandolin: UNKNOWN / NAME_ONLY / NONE
 - COLOMBO 16/31 Ac. Guitar Harmonics: GUITAR / NAME_ONLY / NONE
@@ -309,7 +309,7 @@ Presets: 1148; voice: 989; drum: 159.
 - COLOMBO 27/97 Prologue: UNKNOWN / NAME_ONLY / NONE
 - COLOMBO 32/12 Sine Marimba: CHROMATIC / NAME_ONLY / NONE
 - COLOMBO 32/104 Detuned Sitar: UNKNOWN / NAME_ONLY / NONE
-- COLOMBO 37/16 60?s Organ 2: ORGAN / NAME_ONLY / NONE
+- COLOMBO 37/16 60's Organ 2: ORGAN / NAME_ONLY / NONE
 - COLOMBO 40/5 DX Phase: UNKNOWN / NAME_ONLY / NONE
 - COLOMBO 40/16 Glassy Organ: ORGAN / NAME_ONLY / NONE
 - COLOMBO 40/19 Notredam Pipe Organ: ORGAN / CONFLICT / NONE
@@ -330,7 +330,7 @@ Presets: 1148; voice: 989; drum: 159.
 - COLOMBO 42/30 WOAHtortion: UNKNOWN / NAME_ONLY / NONE
 - COLOMBO 45/5 VX Electric Piano: PIANO / NAME_ONLY / NONE
 - COLOMBO 62/90 Click Pad 2: PAD / CONFLICT / NONE
-- COLOMBO 63/90 90?s Polysynth: SYNTH / CONFLICT / NONE
+- COLOMBO 63/90 90's Polysynth: SYNTH / CONFLICT / NONE
 - COLOMBO 64/0 Cut Noise (XG): UNKNOWN / NAME_ONLY / NONE
 - COLOMBO 64/5 Pick Scrape (XG): UNKNOWN / NAME_ONLY / NONE
 - COLOMBO 64/7 Pulse Clavi XG: UNKNOWN / NAME_ONLY / NONE
@@ -719,11 +719,10 @@ Presets: 1148; voice: 989; drum: 159.
 
 ## Binary audit integration
 
-Golden PDTA references: LIST payload INCLUDING pdta fourcc. Original bytes/device validation pending.
+Golden PDTA: LIST payload INCLUDING pdta fourcc. Original-byte host validation PASS; device validation pending.
 Colombo 127=XG, 128=GS; Tyros 128=GS. Prime Drum=CUSTOM with separate keyMapStandard.
 Prime sample-name evidence weight=0, derived from audited ambiguity ratio >10%.
-Raw instrument/sample nameHex remains null pending PDTA; legacy text is retained, never relabeled raw.
-crosscheck.py caps preset mismatches at 5. Colombo reaches that cap; 887 unlisted Colombo preset names remain unverified, with nameHex=null.
+All P/I/S names retain full raw 20-byte fields; all 1,148 presets, 1,211 instruments and 10,424 samples are reconciled to golden PDTA.
 Attenuation is inherited PG48+IG48, not a measurement of BASSMIDI clamping.
 Model levels A/B do not include controllers/envelopes/modulators and never change playback.
 

@@ -42,6 +42,8 @@ def main():
     print('U0/U1 ISOLATION PASS: six diagnostic-only production paths; all other production bytes identical',flush=True)
     print(run(['python3',ROOT/'tools/sf2_catalog/verify_u01_boundary.py']).strip(),flush=True)
     print(run(['python3',ROOT/'tests/test_golden_pdta_tool.py'],out/'golden-tool.log').strip(),flush=True)
+    print(run(['python3',ROOT/'tests/test_pdta_inventory.py'],out/'pdta-inventory.log').strip(),flush=True)
+    print(run(['python3',ROOT/'tools/sf2_catalog/verify_golden_pdta.py','--pdta-dir',Path(a.metadata).resolve()],out/'original-golden.json').strip(),flush=True)
     run(['g++','-std=c++17','-O1','-g','-fsanitize=address,undefined','-fno-omit-frame-pointer','-Wall','-Wextra','-Werror','-I',ROOT/'app/src/main/cpp',ROOT/'tests/u01_pdta_test.cpp','-o',out/'pdta-test'])
     print(run([out/'pdta-test'],out/'pdta.log').strip(),flush=True)
     print(run(['python3',ROOT/'tools/sf2_catalog/test_catalog.py','--metadata',Path(a.metadata).resolve()],out/'catalog.log').strip(),flush=True)
@@ -97,6 +99,6 @@ def main():
         return text.splitlines()[-2]
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
         for result in executor.map(suite,['main','nonzero','named','msb0']):print(result,flush=True)
-    print('U0/U1 AVAILABLE-EVIDENCE HOST PASS; original golden PDTA recomputation and device gates PENDING',flush=True)
+    print('U0/U1 HOST PASS; all four original PDTA goldens verified; device gates remain PENDING',flush=True)
 
 if __name__=='__main__':main()

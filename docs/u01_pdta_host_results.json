@@ -1,0 +1,83 @@
+{
+  "catalog": {
+    "android_hashing": "UNVERIFIED",
+    "catalog_json_bytes": 4580995,
+    "catalog_use": "OFF",
+    "deterministic_files": 7,
+    "drums": 159,
+    "host_load_median_ms": 24.259814,
+    "presets": 1148,
+    "status": "PASS",
+    "voices": 989
+  },
+  "catalogUse": "OFF",
+  "device": "UNVERIFIED",
+  "full_historical_CI": "BLOCKED_UNCHANGED",
+  "host": "PASS",
+  "log_sha256": {
+    "host.log": "f824841dd201f231a8896909274c4633cdd81cef318123d064313de5e97ef87d",
+    "jvm.log": "707a4085f8b24e2747cf7379289b56266e3e6a01276eb573cf5d564ebcbee247",
+    "native.log": "5fa010abc28ac43bd05cd55b673a962055c19af321c9bef4cc28adecc5979e63"
+  },
+  "names": {
+    "instruments": 1211,
+    "presets": 1148,
+    "raw_fields": 12783,
+    "raw_nameHex_bytes": 20,
+    "recovered_legacy_text": {
+      "I": 1,
+      "P": 14,
+      "S": 15
+    },
+    "samples": 10424,
+    "verified_terminals": 12
+  },
+  "original_pdta": [
+    {
+      "bytes": 446466,
+      "pdta_sha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "role": "COLOMBO",
+      "status": "HOST_ORIGINAL_PDTA_PASS"
+    },
+    {
+      "bytes": 197194,
+      "pdta_sha256": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283",
+      "role": "PRIME_DRUM",
+      "status": "HOST_ORIGINAL_PDTA_PASS"
+    },
+    {
+      "bytes": 208430,
+      "pdta_sha256": "cfb096e3c197570554313aaca227f7e207ac64867e9871a025c1b4b2c6e9c136",
+      "role": "PRIME_MELODY",
+      "status": "HOST_ORIGINAL_PDTA_PASS"
+    },
+    {
+      "bytes": 260470,
+      "pdta_sha256": "16bb60deafdf426cdc7e269b6c5f434cd5b7db6e14a83f86d17f54720176217a",
+      "role": "TYROS4",
+      "status": "HOST_ORIGINAL_PDTA_PASS"
+    }
+  ],
+  "production": "BYTE_IDENTICAL_TO_975e2a6",
+  "starting_commit": "975e2a6599b14f49e7e4229f615737d30c5144ab",
+  "tests": {
+    "AB_main": "1280 cases; opened204 swaps8",
+    "AB_msb0": "81920 cases; opened25900 swaps8",
+    "AB_named": "39936 cases; opened102 swaps20",
+    "AB_nonzero": "7680 cases; no changes",
+    "closed": 0,
+    "golden_tool": 2,
+    "inventory": 3,
+    "keyboard_midi_release_junit": 78,
+    "native_mapping": "IDENTICAL",
+    "native_mapping_rows": 63,
+    "native_regression": "PASS",
+    "policyC_P1_P8_N1_N14_R1": "PASS_REAL_N10",
+    "scanner_junit": 10,
+    "unexpected": 0
+  },
+  "zones": {
+    "ranges_and_attenuation": "IDENTICAL_TO_PRIOR_METADATA",
+    "verified": 66944
+  }
+}

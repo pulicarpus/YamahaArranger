@@ -19,7 +19,7 @@ def main():
         assert {f['role'] for f in manifest['fonts']}=={'COLOMBO','TYROS4','PRIME_MELODY','PRIME_DRUM'}
         assert all(p.read_bytes()==(two/p.name).read_bytes() for p in one.iterdir())
         entries=json.loads((one/'catalog.json').read_text())
-        assert all(not e['runtimeEligible'] and e['identity_status']=='UNVERIFIED' and len(e['pdta_sha256'])==64 for e in entries)
+        assert all(not e['runtimeEligible'] and e['identity_status']=='HOST_PDTA_VERIFIED_DEVICE_PENDING' and len(e['pdta_sha256'])==64 for e in entries)
         for pc,name in [(52,'Suling S770'),(53,'Shakuhachi'),(47,'Melodic Tom1'),(84,'SARUNE')]:
             e=next(e for e in entries if e['font_role']=='PRIME_MELODY' and e['pc']==pc and e['preset_name']==name)
             assert e['evidence']=='CONFLICT'
@@ -46,11 +46,11 @@ def main():
         assert honky['flags']==['LEVEL_OUTLIER'] and (honky['levelEstimateA_dB'],honky['levelEstimateB_dB'])==(-43.4,-26.6)
         import gzip
         names=json.loads(gzip.decompress((one/'catalog_names.json.gz').read_bytes()))
-        assert all(n['nameHex'] is None for n in names if n['kind'] in ('I','S'))
-        assert len([e for e in entries if "'" in e['preset_name']])==8
+        assert len(names)==12783 and all(n['status']=='RAW_20_BYTES' and len(n['nameHex'])==40 for n in names)
+        assert len([e for e in entries if "'" in e['preset_name']])==14
         for e in entries:
-            if e['nameHex'] is not None:assert bytes.fromhex(e['nameHex']).decode('latin1')==e['preset_name']
-        assert sum(e['nameHex'] is None for e in entries)==887
+            if e['nameHex'] is not None:assert bytes.fromhex(e['nameHex']).split(b'\0',1)[0].decode('latin1')==e['preset_name']
+        assert all(e['nameHex'] is not None and len(e['nameHex'])==40 for e in entries)
         # Sample names from Prime are retained as data, with ZERO family influence.
         # Mutate every Prime sample name, not the instrument/preset names or PC.
         changed_samples=root/'changed-samples';changed_samples.mkdir()
@@ -58,7 +58,7 @@ def main():
             text=raw.decode()
             if any(f['role'].startswith('PRIME') and f['metadata_file_sha256'] in text for f in manifest['fonts']):
                 import re
-                text=re.sub(r"(?m)^(S id=\d+ name=)'[^']*'",r"\1'Grand Piano'",text)
+                text='\n'.join(re.sub(r'nameHex=[0-9a-f]+', 'nameHex='+b'Grand Piano'.ljust(20,b'\0').hex(),line) if line.startswith('S ') else line for line in text.split('\n'))
             (changed_samples/filename).write_text(text)
         changed_out=root/'changed-out';build(changed_samples,review,changed_out)
         altered=json.loads((changed_out/'catalog.json').read_text())
@@ -75,11 +75,18 @@ def main():
             (changed_pc/filename).write_text(text)
         pc_out=root/'pc-out';build(changed_pc,review,pc_out)
         assert semantic(json.loads((pc_out/'catalog.json').read_text()))==semantic(entries)
-        renamed=root/'renamed';renamed.mkdir()
-        for index,raw in enumerate(metadata_inputs(a.metadata).values()):
-            header,rest=raw.split(b'\n',1)
-            header=__import__('re').sub(rb"file='[^']*'", b"file='UNRELATED_NAME.sf2'",header,count=1)
-            (renamed/f'font_{99-index}.txt').write_bytes(header+b'\n'+rest)
+        # Rename all PDTA archive members and claimed source filenames. Identity stays hash-based.
+        import zipfile,io
+        renamed=root/'renamed.zip'
+        with zipfile.ZipFile(a.metadata) as z:members={Path(n).name:z.read(n) for n in z.namelist() if not n.endswith('/')}
+        exported=json.loads(members['pdta_manifest.json']);renames={}
+        for index,f in enumerate(exported['files']):
+            f['source_sf2']='UNRELATED_'+str(index)+'.sf2'
+            for key in ['pdta_file','names_file','zones_attenuation_file']:
+                old=f[key];f[key]='renamed_'+old;renames[old]=f[key]
+        members['pdta_manifest.json']=json.dumps(exported).encode()
+        with zipfile.ZipFile(renamed,'w') as z:
+            for name,data in members.items():z.writestr('unrelated-directory/'+renames.get(name,name),data)
         renamed_out=root/'renamed-out';renamed_manifest=build(renamed,review,renamed_out)
         assert {f['role'] for f in renamed_manifest['fonts']}=={'COLOMBO','TYROS4','PRIME_MELODY','PRIME_DRUM'}
         assert json.loads((renamed_out/'catalog.json').read_text())==entries

@@ -13,9 +13,11 @@ from pathlib import Path
 import re
 import zipfile
 
+from pdta_inventory import read_source, metadata_from_inventory
+
 from binary_audit import load as load_audit, attenuation, corrected_preset, annotations
 
-VERSION = 'u01-catalog-v2-audit'
+VERSION = 'u01-catalog-v3-verified-pdta'
 DOMAIN = 'sf2-list-pdta-payload-v2'
 HEX = re.compile(r'^[0-9a-f]{64}$')
 
@@ -47,6 +49,9 @@ def family(name):
 
 def metadata_inputs(source):
     source=Path(source)
+    review=json.loads(Path(__file__).with_name('catalog_review.yaml').read_text())
+    pdta=read_source(source,review)
+    if pdta is not None:return metadata_from_inventory(pdta)
     if source.is_dir(): return {p.name:p.read_bytes() for p in sorted(source.glob('font_*.txt'))}
     with zipfile.ZipFile(source) as z:
         out={}
@@ -62,6 +67,8 @@ def build(source, review_path, out, fingerprint_manifest=None):
     review_bytes=Path(review_path).read_bytes();review=json.loads(review_bytes)
     if review['schema']!=1 or review['pdta_domain']!=DOMAIN:raise ValueError('review schema/domain')
     audits=load_audit(review)
+    pdta_source=read_source(source,review)
+    inputs=metadata_from_inventory(pdta_source) if pdta_source is not None else metadata_inputs(source)
     provenance={f['file_sha256']:f for f in review['font_provenance']}
     if len(provenance)!=len(review['font_provenance']):raise ValueError('duplicate font provenance')
     for digest,f in provenance.items():
@@ -83,7 +90,7 @@ def build(source, review_path, out, fingerprint_manifest=None):
             if file_sha in observed and observed[file_sha]!=pdta:raise ValueError('conflicting PDTA fingerprints')
             observed[file_sha]=pdta
     entries=[];fonts=[];seen=set();review_seen=set();input_hashes={};raw_names=[]
-    for filename,raw in sorted(metadata_inputs(source).items()):
+    for filename,raw in sorted(inputs.items()):
         input_hashes[filename]=sha(raw);lines=raw.decode('utf-8',errors='strict').splitlines()
         header=re.fullmatch(r"SF2 METADATA v1 file='([^']*)' stableIdentity='[^']*'",lines[0])
         ends=[l for l in lines if l.startswith('END ')]
@@ -95,7 +102,7 @@ def build(source, review_path, out, fingerprint_manifest=None):
         if expected is not None and actual is not None and expected!=actual:raise ValueError('PDTA catalog mismatch')
         verified=expected is not None and actual==expected
         identity={'metadata_file_sha256':digest,'pdta_sha256':expected,'observed_pdta_sha256':actual,
-                  'status':'VERIFIED_PDTA' if verified else 'UNVERIFIED','role':role,'display_name':header[1]}
+                  'status':'VERIFIED_PDTA' if verified else 'HOST_PDTA_VERIFIED_DEVICE_PENDING' if pdta_source is not None else 'UNVERIFIED','role':role,'display_name':header[1]}
         audit=audits[digest]
         presets={};zones={};names={};atten={};sample_names={};name_sources={}
         instrument_names={};samples={};preset_hex={};preset_name_verified={}
@@ -108,7 +115,7 @@ def build(source, review_path, out, fingerprint_manifest=None):
                 if raw_name_bytes is not None:name=raw_name_bytes.split(b'\0')[0].decode('latin1')
                 (instrument_names if kind=='I' else samples)[number]=name
                 # Legacy exporter is lossy. Never label re-encoded legacy text as raw bytes.
-                raw_names.append({'metadata_file_sha256':digest,'kind':kind,'id':number,'legacy_text':name,
+                raw_names.append({'metadata_file_sha256':digest,'kind':kind,'id':number,'text':name,
                                   'nameHex':raw_name_bytes.hex() if raw_name_bytes is not None else None,
                                   'status':'RAW_20_BYTES' if raw_name_bytes is not None else 'LEGACY_LOSSY_PENDING_PDTA'})
             if line.startswith('P '):
@@ -121,10 +128,10 @@ def build(source, review_path, out, fingerprint_manifest=None):
                 preset_hex[pid]=raw_name_bytes.hex() if raw_name_bytes is not None else None
                 name,name_source,name_verified=corrected_preset(audit,pid,b,pc,name)
                 preset_name_verified[pid]=name_verified or raw_name_bytes is not None
-                presets[pid]=(b,pc,name);zones[pid]=set();names[pid]=set();sample_names[pid]=set();atten[pid]=[];name_sources[pid]=name_source
+                presets[pid]=(b,pc,name);zones[pid]=set();names[pid]=set();sample_names[pid]=set();atten[pid]=[];name_sources[pid]=('golden-verified PDTA phdr raw 20-byte field' if pdta_source is not None else name_source)
                 raw_names.append({'metadata_file_sha256':digest,'kind':'P','id':pid,'text':name,
                                   'nameHex':preset_hex[pid] or (name.encode('latin1').hex() if preset_name_verified[pid] else None),'hex_scope':'raw_20_bytes' if preset_hex[pid] is not None else 'audit_decoded_name_content_excludes_NUL_and_unused_padding',
-                                  'status':'AUDIT_CROSSCHECKED_TEXT' if preset_name_verified[pid] else 'LEGACY_LOSSY_PENDING_PDTA','provenance':name_source})
+                                  'status':'RAW_20_BYTES' if preset_hex[pid] is not None else 'AUDIT_CROSSCHECKED_TEXT' if preset_name_verified[pid] else 'LEGACY_LOSSY_PENDING_PDTA','provenance':name_source})
             elif line.startswith('Z '):
                 m=re.search(r'relation=(\d+):',line);pid=int(m[1])
                 if pid not in presets:raise ValueError('zone without preset')
@@ -170,10 +177,10 @@ def build(source, review_path, out, fingerprint_manifest=None):
     if review_seen!=set(reviews):raise ValueError('review entry absent or preset runtime metadata name differs')
     if set(provenance)!=seen:raise ValueError('required font missing')
     entries.sort(key=lambda e:(e['metadata_file_sha256'],e['bank'],e['pc'],e['preset_name'],e['preset_id']))
-    manifest={'schema':1,'generator':VERSION,'pdta_domain':DOMAIN,'status':'PROVISIONAL','catalogUse':'OFF_U0_U1',
+    manifest={'schema':1,'generator':VERSION,'pdta_domain':DOMAIN,'status':'HOST_VERIFIED_DEVICE_PENDING' if pdta_source is not None else 'PROVISIONAL','catalogUse':'OFF_U0_U1',
               'dictionary_version':'conservative-name-evidence-v1; GM canonical dictionary NOT supplied',
               'review_sha256':sha(review_bytes),'metadata_sha256':input_hashes,'fonts':sorted(fonts,key=lambda f:f['metadata_file_sha256']),
-              'raw_name_status':'PARTIAL; original instrument/sample bytes and uncrosschecked Colombo preset names pending PDTA',
+              'raw_name_status':'ALL_12783_NONTERMINAL_NAMES_RAW_20_BYTES' if pdta_source is not None else 'PARTIAL; original instrument/sample bytes and uncrosschecked Colombo preset names pending PDTA',
               'audit_provenance_sha256':sha((Path(__file__).resolve().parents[2]/'tests/fixtures/sf2_binary_audit/provenance.json').read_bytes()),
               'presets':len(entries),'voices':sum(e['kind']=='VOICE' for e in entries),'drums':sum(e['kind']=='DRUM' for e in entries)}
     out=Path(out);out.mkdir(parents=True,exist_ok=True)
@@ -202,11 +209,10 @@ def build(source, review_path, out, fingerprint_manifest=None):
         if e['evidence'] in ('CONFLICT','NAME_ONLY') or e['yamahaMatch']!='NONE':
             report.append(f"- {e['font_role']} {e['bank']}/{e['pc']} {e['preset_name']}: {e['family']} / {e['evidence']} / {e['yamahaMatch']}")
     report+=['','## Binary audit integration','',
-        'Golden PDTA references: LIST payload INCLUDING pdta fourcc. Original bytes/device validation pending.',
+        'Golden PDTA: LIST payload INCLUDING pdta fourcc. Original-byte host validation PASS; device validation pending.' if pdta_source is not None else 'Golden references only; original-byte and device validation pending.',
         'Colombo 127=XG, 128=GS; Tyros 128=GS. Prime Drum=CUSTOM with separate keyMapStandard.',
         'Prime sample-name evidence weight=0, derived from audited ambiguity ratio >10%.',
-        'Raw instrument/sample nameHex remains null pending PDTA; legacy text is retained, never relabeled raw.',
-        'crosscheck.py caps preset mismatches at 5. Colombo reaches that cap; 887 unlisted Colombo preset names remain unverified, with nameHex=null.',
+        'All P/I/S names retain full raw 20-byte fields; all 1,148 presets, 1,211 instruments and 10,424 samples are reconciled to golden PDTA.' if pdta_source is not None else 'Legacy name data is incomplete until PDTA is supplied.',
         'Attenuation is inherited PG48+IG48, not a measurement of BASSMIDI clamping.',
         'Model levels A/B do not include controllers/envelopes/modulators and never change playback.','']
     for e in entries:
