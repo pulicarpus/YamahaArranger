@@ -101,6 +101,10 @@ fun Sf2StyleInspectorDialog(
                         Text("Diagnostic view • no changes to arranger playback", color = InspectorDim, fontSize = 9.sp)
                     }
                     val context = LocalContext.current
+                    if ((context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) OutlinedButton(enabled = !exportBusy && !state.isPlaying, onClick = {
+                        val id = viewModel.markPcmSession()
+                        Toast.makeText(context, if(id>0) "PCM SESSION $id marked" else "PCM SESSION unavailable", Toast.LENGTH_LONG).show()
+                    }) { Text("MARK PCM SESSION") }
                     OutlinedButton(enabled = !exportBusy, onClick = {
                         exportBusy = true
                         exportScope.launch {
@@ -494,7 +498,7 @@ private fun saveInspectorReport(context: Context, state: MainUiState, kitAudit: 
         }
 
         appendLine()
-        appendLine("=== STYLE ===")
+        appendLine("=== STYLE === legacy_ui_map_not_engine_binding")
         appendLine("Style: ${state.styleName}")
         appendLine("Active section: ${state.activeSection}")
         appendLine("Tempo: ${state.tempoBpm}")
@@ -505,7 +509,7 @@ private fun saveInspectorReport(context: Context, state: MainUiState, kitAudit: 
         }
 
         appendLine()
-        appendLine("=== RESOLVER ===")
+        appendLine("=== RESOLVER === legacy_ui_map_not_engine_binding")
         state.voiceAssignments.forEach { v ->
             val exact = state.sf2Presets.firstOrNull { it.bank == v.bank && it.program == v.program }
             val sameProgram = state.sf2Presets.firstOrNull { it.program == v.program }

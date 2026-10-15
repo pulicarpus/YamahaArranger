@@ -339,6 +339,8 @@ class AudioEngineManager @Inject constructor(
     fun shadowDrumSnapshot(): String = bridge.nativeShadowDrumSnapshot()
 
     fun diagnosticDrumWav(bank: Int, pc: Int, key: Int, velocity: Int): ByteArray = bridge.nativeDiagnosticDrumWav(bank, pc, key, velocity)
+    fun markPcmSession(): Long = PcmSessionControls.snapshot { bridge.nativeMarkPcmSession(it.muteMask,it.knownMask,it.changes,it.lastChangeNs) }
+    fun pcmSessionReport(): String = PcmSessionControls.snapshot { bridge.nativePcmSessionReport(it.muteMask,it.knownMask,it.changes,it.lastChangeNs) }
     fun noteZoneReport(): String = bridge.nativeGetNoteZoneReport()
     fun drumKitCoverage(histogram: IntArray): String = bridge.nativeGetDrumKitCoverage(histogram)
     fun drumCompatibilityReport(histogram: IntArray): String = bridge.nativeGetDrumCompatibilityReport(histogram)

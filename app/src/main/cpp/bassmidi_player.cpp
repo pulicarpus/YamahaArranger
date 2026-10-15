@@ -1192,6 +1192,7 @@ void BassMidiPlayer::logAudioPath(int channel, int key, int velocity, bool sent,
 
 void BassMidiPlayer::noteOn(int channel, int key, float velocity, const AudioPathOrigin& origin) {
     f12::SynthLock lock(mutex_,f12::NoteOn);
+    ++pcmSessionNotes_.attempts[std::clamp(channel,0,15)];
     if (!ensureEngine()) {
         logAudioPath(std::clamp(channel, 0, 15), std::clamp(key, 0, 127),
                      std::clamp(static_cast<int>(std::lround(velocity * 127.0f)), 1, 127),
@@ -1225,6 +1226,7 @@ void BassMidiPlayer::noteOn(int channel, int key, float velocity, const AudioPat
 
     bool compatibleSent=false;
     if (percussionOn(channel,key,vel,origin,compatibleSent)) {
+        pcmSessionNotes_.sent[channel]+=compatibleSent;
         return; // exactly one NOTE_ON path; no production-channel program/font mutation
     }
 
@@ -1233,6 +1235,7 @@ void BassMidiPlayer::noteOn(int channel, int key, float velocity, const AudioPat
     // on every note was one of the diagnostic build's major correctness bugs.
     const bool sent = send(channel, MIDI_EVENT_NOTE,
                            static_cast<DWORD>(key | (vel << 8)));
+    pcmSessionNotes_.sent[channel]+=sent;
     if (channel < 4) {
         auto& evidence=keyboardEvidence_[channel];
         ++evidence.ons;evidence.sent+=sent;evidence.key=key;evidence.velocity=vel;
@@ -1578,6 +1581,42 @@ std::vector<unsigned char> BassMidiPlayer::diagnosticDrumWav(int bank,int pc,int
     }
     LOGI("DRUM AUDITION bank=%d PC=%d key=%d velocity=%d liveVerified=1 peak=%.6f rms=%.6f durationMs=2000 evidence=isolated_decode_not_style_mix",bank,pc,key,velocity,peak,std::sqrt(energy/samples));
     return wav;
+}
+
+uint64_t BassMidiPlayer::markPcmSession(pcm_session::Controls controls) {
+    std::lock_guard<std::mutex> lock(mutex_);
+#if YAMAHA_PCM_HEADROOM
+    auto counts=pcmSessionNotes_;
+    for(unsigned ch=0;ch<16;++ch)counts.styleVelocity[ch]=styleVelocityEvidence_[ch].count;
+    const auto ns=std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    pcmSession_.mark(pcmSamples_/2,ns,fontMappingGeneration_,headroom_.totals,counts,controls);
+    for(unsigned ch=0;ch<16;++ch){
+        pcmSession_.reverb[ch]=stream_?int(BASS_MIDI_StreamGetEvent(stream_,ch,MIDI_EVENT_REVERB)):-1;
+        pcmSession_.chorus[ch]=stream_?int(BASS_MIDI_StreamGetEvent(stream_,ch,MIDI_EVENT_CHORUS)):-1;
+    }
+    return pcmSession_.id;
+#else
+    (void)controls;return 0;
+#endif
+}
+
+std::string BassMidiPlayer::pcmSessionReport(pcm_session::Controls controls) const {
+#if YAMAHA_PCM_HEADROOM
+    pcm_session::Meter session;pcm_headroom::Block totals;pcm_session::Counters counts;
+    std::array<int,16> reverb,chorus;int rate;uint64_t generation,ns;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        session=pcmSession_;totals=headroom_.totals;counts=pcmSessionNotes_;rate=sampleRate_;generation=fontMappingGeneration_;
+        for(unsigned ch=0;ch<16;++ch){counts.styleVelocity[ch]=styleVelocityEvidence_[ch].count;
+            reverb[ch]=stream_?int(BASS_MIDI_StreamGetEvent(stream_,ch,MIDI_EVENT_REVERB)):-1;
+            chorus[ch]=stream_?int(BASS_MIDI_StreamGetEvent(stream_,ch,MIDI_EVENT_CHORUS)):-1;
+        }
+        ns=std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    }
+    return session.report(totals,counts,controls,reverb,chorus,rate,generation,ns);
+#else
+    (void)controls;return "PCM_SESSION status=UNAVAILABLE debug_HEADROOM_required\n";
+#endif
 }
 
 std::string BassMidiPlayer::noteZoneReport() const {
@@ -2120,6 +2159,7 @@ void BassMidiPlayer::render(float* out, int numFrames) {
 // HEADROOM_OBSERVER_BEGIN
 #if YAMAHA_PCM_HEADROOM
     headroom_.finish(out,numFrames*2);
+    pcmSession_.observe(headroom_.current.mix,headroom_.current.frame,fontMappingGeneration_);
 #endif
 // HEADROOM_OBSERVER_END
 

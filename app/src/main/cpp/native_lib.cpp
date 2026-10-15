@@ -250,3 +250,11 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_Nativ
     const std::string report=g_engine?g_engine->sfShadowDrumSnapshot():"GEN value=0\n";
     return env->NewStringUTF(report.c_str());
 }
+
+extern "C" JNIEXPORT jlong JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeMarkPcmSession(JNIEnv*,jobject,jint mask,jint known,jlong changes,jlong last){
+    return g_engine?g_engine->markPcmSession({mask,known,static_cast<uint64_t>(changes),static_cast<uint64_t>(last)}):0;
+}
+extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativePcmSessionReport(JNIEnv* env,jobject,jint mask,jint known,jlong changes,jlong last){
+    const auto text=g_engine?g_engine->pcmSessionReport({mask,known,static_cast<uint64_t>(changes),static_cast<uint64_t>(last)}):std::string("PCM_SESSION status=UNAVAILABLE engine_not_started\n");
+    return env->NewStringUTF(text.c_str());
+}

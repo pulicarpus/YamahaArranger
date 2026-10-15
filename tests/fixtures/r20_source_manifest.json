@@ -1,0 +1,17 @@
+{
+  "base": "163f769bf056f0dd0593f78ab20fbbe700dcb56f",
+  "production_sha256": {
+    "app/src/main/cpp/audio_engine.h": "90161a50414a15be98871f06c0b2fe2e000a64d0ad17df214ffa4ec2ad29deab",
+    "app/src/main/cpp/bassmidi_player.cpp": "6487c8993d7b312a7c6cab2f2d7d4de87b3da981692228f2562864bfb638d1b4",
+    "app/src/main/cpp/bassmidi_player.h": "f29abc300568c069e3cdace11b5fff6f8c2222f37d1f913073bb274c0d2aff66",
+    "app/src/main/cpp/native_lib.cpp": "0d7cc19ed7d49abc494f4e975f53f4b1982de2f4f939f7a6ca5e9f89d91a2de5",
+    "app/src/main/cpp/pcm_session.h": "0d4df5dded4422bdce5294c80e016b3c6f041f4b8dc0a6bad7ac930b44a94e8c",
+    "app/src/main/java/com/yourapp/ui/MainViewModel.kt": "481d722dde41e87eca9e27af0ec4a47830b207e50c57e89a9f76cb5713f325ec",
+    "app/src/main/java/com/yourapp/ui/Sf2StyleInspectorScreen.kt": "8886e16888571e97c870350e1d6ad29ee4550b5560b936f3fcedebfdc32890e1",
+    "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt": "1124f9ab51e909631a7e16d3b4d51b0c7e497705a05f8f765d2fe8033b506bdf",
+    "app/src/main/java/com/yourapp/yamahaarranger/audio/AudioEngineManager.kt": "18ca9675869696bba525bc3bcd013624159df4fe2b6195b2beac7eb0d2c46196",
+    "app/src/main/java/com/yourapp/yamahaarranger/audio/NativeAudioBridge.kt": "40fdc8cb3923768a3907774e5b9676e3d4ed1fdd516992fbf8ad9d6f7f97d1c2",
+    "app/src/main/java/com/yourapp/yamahaarranger/audio/PcmSessionControls.kt": "e4761b8880a55159d39bfecbe4bdfd3c693b6113e805e7de99f5b91171ca1c21"
+  },
+  "scope": "R2-0 observation only; approved native/UI/JNI delta"
+}

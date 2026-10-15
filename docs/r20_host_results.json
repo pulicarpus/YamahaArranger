@@ -1,0 +1,49 @@
+{
+  "LIVE_REG_current_phase4_jvm": 85,
+  "PCM_MIDI_mapping": "IDENTICAL",
+  "PCM_MIDI_mapping_rows": 78,
+  "PCM_bytes_compared": 4096,
+  "PolicyC": "ALL_FOUR_FULL_POOL_GOLDENS_PASS_REAL_N10",
+  "base": "163f769bf056f0dd0593f78ab20fbbe700dcb56f",
+  "catalogUse": "OFF",
+  "device_G5_lt_1_percent": "UNVERIFIED",
+  "full_historical_CI": "BLOCKED_UNCHANGED",
+  "host": "PASS",
+  "keyboard_release_midi_jvm": 78,
+  "log_sha256": {
+    "host-final.log": "3eb8e5fd077a859f2f6e3c6d4ec5b214312e24a27a63980fd7d4a9f56f305bb0",
+    "jvm-final.log": "d0e06f27ff059110bd49fea463afa54fa5496e5d34f55c33bf29131e8457befa",
+    "live-reg.log": "23b0f3ccaaf9f5a8b527c4c11af1e297245d6dd58e0a880231bf2d7866b7ecdd",
+    "native.log": "c6e3f1fa6fb952c2ae167341c55e5db45acab53a2a66f79ff082c82a644a1c22",
+    "policy.log": "344dd181ccd8482daafe3f6d069ece081788c8f6c7262c7ee537fd70ea686cb2"
+  },
+  "mark_export_added_GetChannel": 0,
+  "mark_export_added_events": 0,
+  "mute_state_jvm": 2,
+  "native_contracts": "PASS_UNCHANGED",
+  "overhead": {
+    "baseline_ns": [
+      890247108,
+      904126171,
+      927333567,
+      891889978,
+      924014815,
+      902549816,
+      897481112
+    ],
+    "candidate_ns": [
+      904777149,
+      953921355,
+      906099834,
+      889848269,
+      898126070,
+      897893553,
+      915402072
+    ],
+    "device_G5": "UNVERIFIED",
+    "gate_lt_1_percent": true,
+    "median_overhead_percent": 0.24678227844212586,
+    "scope": "HOST_MOCK_DECODE_NOT_ANDROID_CALLBACK"
+  },
+  "reset_peak_clipping_RMS_worstFrame": "PASS"
+}

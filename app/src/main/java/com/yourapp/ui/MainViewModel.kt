@@ -489,8 +489,10 @@ class MainViewModel @Inject constructor(
     private val _keyboardMixerDetails = MutableStateFlow(List(4) { KeyboardMixerDetail() })
     val keyboardMixerDetails: StateFlow<List<KeyboardMixerDetail>> = _keyboardMixerDetails
     private fun keyboardVolume(channel: Int) = listOf(_right1Volume, _right2Volume, _right3Volume, _leftVolume)[channel]
-    private fun sendKeyboardGain(channel: Int) = audioEngine.setChannelExpression(channel,
-        _mixerConsole.value.keyboardGain(channel, keyboardVolume(channel).value))
+    private fun sendKeyboardGain(channel: Int) {
+        com.yourapp.yamahaarranger.audio.PcmSessionControls.observeMute(channel,_mixerConsole.value.muted(channel))
+        audioEngine.setChannelExpression(channel,_mixerConsole.value.keyboardGain(channel, keyboardVolume(channel).value))
+    }
     private fun syncMixerMidiMute() {
         val focus = _mixerConsole.value
         midiInputManager.setMixerMutedChannels((0..3).filter { focus.muted(it) }.toSet() +
@@ -1142,10 +1144,22 @@ class MainViewModel @Inject constructor(
 
     suspend fun compactPartPresenceReport(): String = arrangerBrain.compactPartPresenceReport()
 
+    private var pcmSessionUiMark = "PCM_SESSION_UI status=UNMARKED"
+    fun markPcmSession(): Long {
+        if (uiState.value.isPlaying) return 0
+        val id = audioEngine.markPcmSession()
+        if (id > 0) pcmSessionUiMark = "PCM_SESSION_UI id=$id markTransport=STOP markSection=${uiState.value.activeSection}"
+        return id
+    }
+
     suspend fun drumKitAuditReport(): String {
-        val style = drumAuditStyle ?: return "DRUM KIT AUDIT unavailable: load a style first\n"
+        val style = drumAuditStyle ?: return "counters=process_lifetime; use PCM_SESSION for per-test deltas\n" +
+            audioEngine.pcmSessionReport() + pcmSessionUiMark + "\nDRUM KIT AUDIT unavailable: load a style first\n"
         return withContext(Dispatchers.Default) {
             buildString {
+                appendLine("counters=process_lifetime; use PCM_SESSION for per-test deltas")
+                appendLine(audioEngine.pcmSessionReport())
+                appendLine(pcmSessionUiMark)
                 appendLine(arrangerBrain.partPresenceReport(style))
                 appendLine(arrangerBrain.chordDiagnosticReport())
                 appendLine(audioEngine.chordDiagnosticReport())

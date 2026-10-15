@@ -11,6 +11,7 @@
 #include "measured_balance_profiles.h"
 // HEADROOM_OBSERVER_BEGIN
 #include "pcm_headroom.h"
+#include "pcm_session.h"
 // HEADROOM_OBSERVER_END
 
 // MEASURED_BALANCE_END
@@ -66,6 +67,8 @@ public:
     std::string shadowDrumSnapshot() const;
     std::vector<unsigned char> diagnosticDrumWav(int bank,int pc,int key,int velocity);
     std::string noteZoneReport() const;
+    uint64_t markPcmSession(pcm_session::Controls controls);
+    std::string pcmSessionReport(pcm_session::Controls controls) const;
     std::string drumKitCoverage(const std::vector<drum_audit::Hit>& hits) const;
     std::string drumCompatibilityReport(const std::vector<drum_compat::Demand>& demand, const std::vector<std::pair<int,int>>& comparisonKits = {}) const;
 private:
@@ -145,6 +148,7 @@ private:
         int lastKey=-1, lastVelocity=-1;
     };
     std::array<PartPresence,16> partPresence_{};
+    pcm_session::Counters pcmSessionNotes_;
     // Passive measurements: no voice isolation, no calibration or gain writes.
     struct VelocityEvidence {uint64_t count=0,sum=0,squares=0;int minimum=128,maximum=0;};
     std::array<VelocityEvidence,16> styleVelocityEvidence_{};
@@ -159,6 +163,7 @@ private:
 // HEADROOM_OBSERVER_BEGIN
 #if YAMAHA_PCM_HEADROOM
     pcm_headroom::Meter headroom_;
+    pcm_session::Meter pcmSession_;
 #endif
 // HEADROOM_OBSERVER_END
     double pcmEnergy_=0;float pcmPeak_=0;

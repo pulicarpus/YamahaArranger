@@ -209,7 +209,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
 
 
     fun setLockedChannels(channels:Set<Int>){lockedChannels=channels;com.yourapp.yamahaarranger.ui.DebugLog.add("🔒 Locked channels updated: $channels")}
-    fun setChannelOverride(channel:Int, override:StyleChannelOverride){channelOverrides[channel]=override; appliedChannelStates.remove(channel);com.yourapp.yamahaarranger.ui.DebugLog.add("🎚 STYLE CH$channel: vol=${override.volume} prog=${override.program ?: "AUTO"} bank=${override.bank ?: "AUTO"} tr=${override.transpose} mute=${override.muted}")}
+    fun setChannelOverride(channel:Int, override:StyleChannelOverride){com.yourapp.yamahaarranger.audio.PcmSessionControls.observeMute(channel,override.muted);channelOverrides[channel]=override; appliedChannelStates.remove(channel);com.yourapp.yamahaarranger.ui.DebugLog.add("🎚 STYLE CH$channel: vol=${override.volume} prog=${override.program ?: "AUTO"} bank=${override.bank ?: "AUTO"} tr=${override.transpose} mute=${override.muted}")}
     fun channelOverride(channel:Int):StyleChannelOverride = channelOverrides[channel] ?: StyleChannelOverride()
     fun setChannelVolume(channel:Int, volume:Int){
         if(channel !in 4..15) return

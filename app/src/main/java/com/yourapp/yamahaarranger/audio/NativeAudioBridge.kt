@@ -50,6 +50,8 @@ class NativeAudioBridge @Inject constructor() {
     external fun nativeDiagnosticKeyboardReleaseWav(channel: Int, key: Int, velocity: Int): ByteArray
     external fun nativeKeyboardReleaseProbeReport(): String
     external fun nativeDiagnosticDrumWav(bank: Int, pc: Int, key: Int, velocity: Int): ByteArray
+    external fun nativeMarkPcmSession(muteMask: Int, knownMask: Int, changes: Long, lastChangeNs: Long): Long
+    external fun nativePcmSessionReport(muteMask: Int, knownMask: Int, changes: Long, lastChangeNs: Long): String
     external fun nativeGetNoteZoneReport(): String
     external fun nativeGetDrumKitCoverage(histogram: IntArray): String
     external fun nativeGetDrumCompatibilityReport(histogram: IntArray): String
