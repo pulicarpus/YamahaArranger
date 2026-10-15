@@ -1,6 +1,6 @@
 # R2-2 Shadow DrumKit resolver
 
-Parent: dc746b7cabfafe365e5e15366f8172f35c7a89af. Branch: experiment/bassmidi-r2-2-shadow-drumkit. No merge to main or changes to LIVE/REG branches.
+Baseline: dc746b7cabfafe365e5e15366f8172f35c7a89af. Initial implementation 1bd97e96b4e7d8e414a40a9265a62f817dbc5e08 is its direct child; the G2 history revision has exactly that initial commit as parent. Branch: experiment/bassmidi-r2-2-shadow-drumkit. No merge to main or changes to LIVE/REG branches.
 
 The implementation preserves raw MSB/LSB/PC before the legacy drum-bank rewrite in section setup and dynamic PC. Presence of each bank component must be evidenced by source CC0/32. Missing components, name guesses, unsupported LSB and unverified custom overrides are unresolved. Source setup is labeled SINT_OR_TICK0_SETUP because the inherited parsed model does not distinguish injected SInt from ordinary tick-zero MIDI setup. SFF2 detection remains inherited UNVERIFIED; raw format is not invented.
 
@@ -10,15 +10,23 @@ The read-only derived asset contains 223 identities, exact nameHex and eligible 
 
 The native side caches resolved drum metadata and a separate selection generation in the existing preset setup path. The getter takes the existing mutex and reads the cache only. It is explicitly cached selection evidence, not independent engine binding readback. Unknown/changed font fingerprint cannot be identified from a filename. Export compares this cache to fingerprint-based catalog identity and retains the exact legacy resolverReason.
 
+An append-only observation history retains the latest 1024 events, including repeats, with eventSequence and an explicit historyOmitted counter. G2 device evidence requires dropped=0 and historyOmitted=0. An initial current-row map overwrote repeated requests; the G2 revision fixes that observation loss without changing decisions or playback.
+
 The Inspector provides STOP-only SHADOW ON/OFF, a read-only report refresh, and SAVE REPORT includes DRUM_KIT_SHADOW. Playback, Policy C allowlist, mixer, FX, gain, SF2 loader, CASM execution, transport, RELEASE, RIGHT OFF, LIVE, REG and MIDI OUT implementations remain unchanged. Existing historical guards/workflows/assertions are not edited. New tooling verifies the exact R2-0 parent/tree, all approved production hashes, unchanged old tooling/catalog, original SDK identities and APK assets/ABIs.
 
 ## Evidence and limits
 
 - G1 host: exact baseline dc746b7 vs getter OFF vs ON, 4096 nonzero decoded PCM bytes equal and 85 MIDI/mapping trace rows equal. JVM sequencer ON/OFF compares complete command arguments including diagnostic IDs with equal fixture initial state, invoking unmodified setup/playOnce bodies with a fixed already-due clock anchor. An earlier real-time completion-callback harness timed out intermittently, including with shadow OFF; that harness is not used to certify scheduling. Existing timing/LIVE regressions remain separate and unchanged. Native getter adds no events or channel taps. Render/NOTE_ON production source restores exactly after observation blocks are removed.
-- G2 host: setup and dynamic PC each produce one row; preserved 127:0:0 and 127:0:8; actual cached identity/reason recorded. Real Inspector/native binding agreement remains a device check.
+- G2 host: setup, repeated identical setup/cache hit and dynamic PC each produce one independently numbered history row; preserved 127:0:0 and 127:0:8; actual cached identity/reason recorded. Real Inspector/native binding agreement remains a device check.
 - G3 host: same decisions on three fresh JVM processes; exact digest recorded in host results, no timing field included in decision identity.
 - G4 host: SFF1/SFF2 labeled request fixtures, GS120/128, explicit GM channel10, MSB126, name-only/missing-bank/unknown LSB, coverage rejection and explicit custom identity. These are resolver-input fixtures, not a new SFF2 parser certification.
 - G5 audit-range host: all 24 supplied kits.txt candidate rows and eight Main A–D ideal decisions agree. Each key's coverage is proven constant across its entire reported min/max velocity interval before applying exact reported hit counts. Missing velocities are not invented. This proves the supplied table, not byte replay of the absent original ROSITA.STY. S1/S2 original file hashes and session counters are retained in inspector_evidence.json; raw large Inspector reports stay outside the repository.
 - G6 host: strict p99<2000us assertion on cold decisions and new processes; a failed contended initial implementation was optimized with per-key/per-PC indexing. Device callback/underrun equivalence is UNVERIFIED. Tests do not certify Android timing or improved sound.
 
 R2-2 activation/audio quality is not tested or claimed. Full historical regression CI remains BLOCKED by inherited source-profile compatibility. This experiment is for device diagnostics only; a release/promotion GO requires device evidence and the remaining original-style checks.
+
+## Packaging gate correction
+
+The initial Android compile succeeded for both ABIs, but the exact APK-asset guard rejected the archive because assets/r22/kits.tsv.gz was absent. No APK artifact was published. The official sdk-common 31.5.2 source used by AGP 8.5.2 proves the cause: AssetItem#create removes the .gz extension, and MergedAssetWriter decompresses its contents. The standalone official AAPT2 8.5.2 link probe packages .gz unchanged, locating the transformation in the asset merger rather than AAPT2 link. Source URL and hashes are recorded in packaging_audit.json.
+
+The compressed catalog now uses the opaque filename kits.tsv.bin with the exact same 93411 gzip bytes. It is still decoded by GZIPInputStream and checked against the original decompressed catalog SHA256. The merger copies this filename unchanged. No Gradle option, playback loader, metadata value, or hash assertion is loosened. APK validation prints the packaged asset inventory and requires both kits.tsv.bin and kit_identity.json to match repository bytes exactly. Packaging is only certified if the corrected CI passes that check.

@@ -18,7 +18,7 @@ object DrumKitShadowRuntime {
     val active:Boolean get()=enabled && context!=null
     private val dropped=AtomicLong();private val submitted=AtomicLong();private val completed=AtomicLong()
     private val rows=linkedMapOf<String,String>();private val timings=ArrayDeque<Long>()
-    private var agreements=0L;private var comparisons=0L
+    private var agreements=0L;private var comparisons=0L;private var historyOmitted=0L
     private val worker=ThreadPoolExecutor(1,1,0L,TimeUnit.MILLISECONDS,ArrayBlockingQueue<Runnable>(256),{ r->Thread(r,"R22-shadow-metadata").apply { isDaemon=true } },{ _,_->dropped.incrementAndGet() })
     fun setEnabled(value:Boolean){enabled=value}
     fun prepare(style:ParsedStyle,bytes:ByteArray,input:InputStream) {
@@ -37,13 +37,13 @@ object DrumKitShadowRuntime {
             profiles["$name:$ch"]=if(ambiguous)emptyList() else bins.toList().sortedWith(compareBy({it.first.first},{it.first.second})).map { DrumKitShadowResolver.Hit(it.first.first,it.first.second,it.second) }
         }
         context=Context(DrumKitShadowResolver.sha256(bytes),style.dialectIdentity.dialect.name,profiles,resolver)
-        synchronized(rows){rows.clear();timings.clear();agreements=0;comparisons=0};submitted.set(0);completed.set(0);dropped.set(0)
+        synchronized(rows){rows.clear();timings.clear();agreements=0;comparisons=0;historyOmitted=0};submitted.set(0);completed.set(0);dropped.set(0)
     }
     fun observe(section:StyleSectionModel,ch:Int,msb:Int?,lsb:Int?,pc:Int?,source:String,actual:String){
         if(!enabled)return
         val c=context?:return
         val request=DrumKitShadowResolver.Request(c.hash,c.format,section.name,ch,msb,lsb,pc,source)
-        submitted.incrementAndGet()
+        val eventSequence=submitted.incrementAndGet()
         worker.execute {
             try {
                 val start=System.nanoTime();val hits=c.profiles["${section.name}:$ch"].orEmpty();val d=c.resolver.evaluate(request,hits);val elapsed=System.nanoTime()-start
@@ -52,17 +52,17 @@ object DrumKitShadowRuntime {
                 val agree=actualKit!=null && d.ideal!=null && actualKit.id==d.ideal.kit.id
                 fun candidate(k:DrumKitShadowResolver.Kit,cov:DrumKitShadowResolver.Coverage)="${k.font}:${k.bank}:${k.pc}:'${k.name}' id=${k.id} cov=${cov.covered}/${cov.total} missingKeys=${cov.missingKeys} missingVel=${cov.missingVelocities} stackMax=${cov.stackMax} zonesMax=${cov.zonesMax} negAtt=${cov.negativeZones} velocityOverlap=${cov.velocityOverlap} attenuationRawCb=${cov.attenuationMinCb}..${cov.attenuationMaxCb} reverbRaw=${cov.reverb} chorusRaw=${cov.chorus} fxZones=${cov.fxZones} exclusive=${cov.exclusiveClass}"
                 val row=buildString {
-                    appendLine("DRUM_KIT_SHADOW drumSelectionGeneration=${a.firstOrNull()} style=${c.hash} fmt=${c.format} section='${section.name}' ch=$ch src=$source req=$msb:$lsb:$pc ns=${d.namespace}")
+                    appendLine("DRUM_KIT_SHADOW eventSequence=$eventSequence drumSelectionGeneration=${a.firstOrNull()} style=${c.hash} fmt=${c.format} section='${section.name}' ch=$ch src=$source req=$msb:$lsb:$pc ns=${d.namespace}")
                     appendLine("actual=${if(actualKit!=null && ac!=null)candidate(actualKit,ac)else "UNOBSERVED fingerprint_or_identity_not_verified"} actualReason=${a.getOrNull(4)} actualEvidence=cached_native_selection_not_independent_engine_binding")
                     appendLine("shadow=${d.ideal?.let { candidate(it.kit,it.coverage) }?:"unresolved"} shadowReason=${d.reason}")
                     d.alternatives.forEachIndexed { i,alt->appendLine("alt${i+1}=${candidate(alt.kit,alt.coverage)} reason=${alt.reason}") }
                     appendLine("agree=${if(actualKit==null)"UNVERIFIED" else if(agree)"1" else "0"} evalUs=${elapsed/1000} thread=${Thread.currentThread().name} profile=raw_section_key_velocity_not_CASM_transformed audioPolicy=legacy catalogUse=OFF_FOR_PLAYBACK")
                 }
-                synchronized(rows){if(context===c){rows["${section.name}:$ch:$source:$msb:$lsb:$pc"]=row;if(rows.size>1024)rows.remove(rows.keys.first());if(actualKit!=null){comparisons++;if(agree)agreements++};timings.addLast(elapsed);if(timings.size>4096)timings.removeFirst()}}
+                synchronized(rows){if(context===c){rows[eventSequence.toString()]=row;if(rows.size>1024){rows.remove(rows.keys.first());historyOmitted++};if(actualKit!=null){comparisons++;if(agree)agreements++};timings.addLast(elapsed);if(timings.size>4096)timings.removeFirst()}}
             }catch(e:Exception){synchronized(rows){rows["error"]="DRUM_KIT_SHADOW status=ERROR type=${e.javaClass.simpleName}"}}
             finally{if(context===c)completed.incrementAndGet()}
         }
     }
     fun report():String=synchronized(rows){val times=timings.sorted();val p99=if(times.isEmpty())null else times[((times.size-1)*99)/100]/1000
-        "=== DRUM KIT SHADOW R2-2 ===\nenabled=$enabled catalogUse=OFF_FOR_PLAYBACK submitted=${submitted.get()} completed=${completed.get()} dropped=${dropped.get()} agreement=$agreements/$comparisons p99Us=$p99 formatEvidence=baseline_detector_SFF2_UNVERIFIED no_PCM_or_loudness_claim\n"+rows.values.joinToString("\n")}
+        "=== DRUM KIT SHADOW R2-2 ===\nenabled=$enabled catalogUse=OFF_FOR_PLAYBACK submitted=${submitted.get()} completed=${completed.get()} dropped=${dropped.get()} historyOmitted=$historyOmitted agreement=$agreements/$comparisons p99Us=$p99 formatEvidence=baseline_detector_SFF2_UNVERIFIED no_PCM_or_loudness_claim\n"+rows.values.joinToString("\n")}
 }

@@ -6,8 +6,8 @@ from generate_r22_catalog import generate
 class CatalogTests(unittest.TestCase):
  def test_original_four_pdta_and_determinism(self):
   source=ROOT/'tests/fixtures/sf2_pdta/export.zip';a,am=generate(source);b,bm=generate(source);self.assertEqual(a,b);self.assertEqual(am,bm)
-  asset=ROOT/'app/src/main/assets/r22';self.assertEqual(gzip.decompress((asset/'kits.tsv.gz').read_bytes()),a);self.assertEqual(json.loads((asset/'kit_identity.json').read_text()),am)
-  self.assertEqual(gzip.compress(a,mtime=0),(asset/'kits.tsv.gz').read_bytes())
+  asset=ROOT/'app/src/main/assets/r22';self.assertFalse((asset/'kits.tsv.bin').name.endswith('.gz'));self.assertTrue((asset/'kits.tsv.bin').read_bytes().startswith(b'\x1f\x8b')); self.assertEqual(gzip.decompress((asset/'kits.tsv.bin').read_bytes()),a);self.assertEqual(json.loads((asset/'kit_identity.json').read_text()),am)
+  self.assertEqual(gzip.compress(a,mtime=0),(asset/'kits.tsv.bin').read_bytes())
   self.assertEqual(am['catalogUse'],'OFF_PLAYBACK_SHADOW_READ_ONLY')
   for kit in am['kits']:
    self.assertEqual(len(bytes.fromhex(kit['nameHex'])),20)

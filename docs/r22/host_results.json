@@ -7,7 +7,7 @@
     "scope": "same_mock_decoder_not_device",
     "traceRows": 85
   },
-  "G2": "PASS_SYNTHETIC_SETUP_DYNAMIC_RAW_REQUEST_AND_JVM_COMMAND_IDENTITY",
+  "G2": "PASS_SETUP_REPEATED_CACHE_HIT_DYNAMIC_PC_3_EVENT_SEQUENCES_NO_HISTORY_OMISSION_AND_EXACT_COMMAND_IDENTITY",
   "G3": {
     "allIdentical": true,
     "digest": "a9c5be4fa03d42ac663aa399c1c0e9b66dcaf6af4783287f6320208aa2eae681",
@@ -17,9 +17,9 @@
   "G5": "PASS_24_SUPPLIED_AUDIT_CANDIDATE_ROWS_RANGE_INVARIANT_COVERAGE_NOT_ORIGINAL_STYLE_BYTE_REPLAY",
   "G6": {
     "coldP99Us": [
-      248.925,
-      193.171,
-      223.838
+      239.621,
+      261.373,
+      276.006
     ],
     "device": "UNVERIFIED",
     "thresholdUs": 2000
@@ -33,6 +33,7 @@
     "source": "4 original U1 golden PDTA exports",
     "uncompressedBytes": 1266038
   },
+  "packaging": "OPAQUE_GZIP_ASSET_NAME; AGP_MERGER_ROOT_CAUSE_PROVEN; EXACT_APK_BYTES_REQUIRED",
   "policyC": {
     "N10": "REAL_ASSERTION_PASS",
     "main1280": "204 opened;8 swaps;0 closed;0 unexpected",

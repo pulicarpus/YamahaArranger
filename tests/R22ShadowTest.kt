@@ -2,7 +2,7 @@ import com.yourapp.yamahaarranger.arranger.DrumKitShadowResolver as R
 import java.io.File
 
 fun main(args:Array<String>) {
-    val root=File(args[0]);val kits=R.load(File(root,"app/src/main/assets/r22/kits.tsv.gz").inputStream(),"bec1368f783f847e1b3d433dd46a085968aa1118a9d19b4161bb34c08db4bff1")
+    val root=File(args[0]);val kits=R.load(File(root,"app/src/main/assets/r22/kits.tsv.bin").inputStream(),"bec1368f783f847e1b3d433dd46a085968aa1118a9d19b4161bb34c08db4bff1")
     val resolver=R.Resolver(kits);var checks=0
     fun check(v:Boolean,label:String){require(v){label};checks++}
     val font=mapOf("COL" to "COLOMBO","TYR" to "TYROS4","PRM" to "PRIME_DRUM")

@@ -20,7 +20,7 @@ class R22IntegrationTest {
     }
     private fun prepare(section:StyleSectionModel){
         val style=ParsedStyle("Synthetic-SInt-equivalent.STY",480,mapOf("MainA" to section))
-        DrumKitShadowRuntime.prepare(style,byteArrayOf(1,2,3),File("app/src/main/assets/r22/kits.tsv.gz").inputStream())
+        DrumKitShadowRuntime.prepare(style,byteArrayOf(1,2,3),File("app/src/main/assets/r22/kits.tsv.bin").inputStream())
     }
     private fun runShadow(on:Boolean):Pair<List<String>,String> = runBlocking {
         // Equal fixture initial state: preserve raw trace IDs/sample flags instead of normalizing output.
@@ -46,12 +46,13 @@ class R22IntegrationTest {
         // bodies directly; this test certifies command identity, not wall-clock timing.
         val apply=StyleSequencer::class.java.getDeclaredMethod("applyVoicesFromCasm",StyleSectionModel::class.java).apply { isAccessible=true }
         apply.invoke(sequencer,section)
+        apply.invoke(sequencer,section) // Same request/cache hit must emit its own observation.
         val playOnce=StyleSequencer::class.java.declaredMethods.single { it.name=="playOnce" }.apply { isAccessible=true }
         kotlin.coroutines.intrinsics.suspendCoroutineUninterceptedOrReturn<Any?> { continuation ->
             playOnce.invoke(sequencer,section,480,0L,0L,continuation)
         }
         sequencer.stop()
-        if(on)try { withTimeout(3000){while(!DrumKitShadowRuntime.report().contains("submitted=2 completed=2 dropped=0"))delay(5)} } catch(e:TimeoutCancellationException) { throw AssertionError("shadow completion timeout "+DrumKitShadowRuntime.report(),e) }
+        if(on)try { withTimeout(3000){while(!DrumKitShadowRuntime.report().contains("submitted=3 completed=3 dropped=0 historyOmitted=0"))delay(5)} } catch(e:TimeoutCancellationException) { throw AssertionError("shadow completion timeout "+DrumKitShadowRuntime.report(),e) }
         val report=DrumKitShadowRuntime.report()
         val trace=(mockingDetails(bridge).invocations.filter { it.method.name!="nativeDrumChannelSelection" }.map { "N:${it.method.name}:${it.arguments.toList()}" }+
             mockingDetails(midi).invocations.map { "M:${it.method.name}:${it.arguments.toList()}" })
@@ -65,7 +66,8 @@ class R22IntegrationTest {
         assertTrue(on.second.contains("src=DYNAMIC_PC req=127:0:8 ns=YAMAHA_XG"))
         assertTrue(on.second.contains("PRIME_DRUM:128:8:'Kendang Alex'"))
         assertTrue(on.second.contains("COLOMBO:127:8:'XG Room'"))
-        assertEquals(2,Regex("DRUM_KIT_SHADOW drumSelectionGeneration=").findAll(on.second).count())
+        assertEquals(3,Regex("DRUM_KIT_SHADOW eventSequence=\\d+ drumSelectionGeneration=").findAll(on.second).count())
+        for(sequence in 1..3)assertTrue(on.second.contains("DRUM_KIT_SHADOW eventSequence=$sequence "))
         assertFalse(on.second.contains("thread=Oboe"));assertTrue(on.second.contains("thread=R22-shadow-metadata"))
     }
 }

@@ -1,0 +1,17 @@
+{
+  "agp": "8.5.2",
+  "apkValidation": "Exact repository byte comparison for kits.tsv.bin and kit_identity.json required",
+  "classes": {
+    "com/android/ide/common/resources/AssetItem.java": "72e584f341f2dd29a0ec3e25a666eedc17f291e973dec701a795bff1ae49768b",
+    "com/android/ide/common/resources/MergedAssetWriter.java": "5dc3aa3c20ba45941b9e1a336a12885576612aef7ef24b0e443d800bef90a91e"
+  },
+  "failedRun": "https://github.com/pulicarpus/YamahaArranger/actions/runs/38774234327",
+  "fix": "Identical gzip payload renamed kits.tsv.bin; GZIPInputStream and raw SHA verification unchanged",
+  "gzipBytes": 93411,
+  "initialCompile": "BUILD SUCCESSFUL both ABIs in 2m12s; artifact gate correctly rejected missing .gz path",
+  "rootCause": "AssetItem strips .gz extension; MergedAssetWriter decompresses it before APK packaging",
+  "sdkCommon": "31.5.2",
+  "sourceJarSha256": "97db0123eb683ef7564935f68009481b05a8762d3367a07ba946475f8892e9da",
+  "sourceUrl": "https://dl.google.com/dl/android/maven2/com/android/tools/sdk-common/31.5.2/sdk-common-31.5.2-sources.jar",
+  "standaloneAapt2Probe": "8.5.2-11315950 directly packages .gz unchanged; differentiates merger behavior from AAPT2 link"
+}
