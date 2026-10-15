@@ -1,0 +1,2331 @@
+{
+ "melodic": [
+  {
+   "group": "Clean Gtr 0/27",
+   "font": "PRM",
+   "preset": "Clean yamaha",
+   "keys": [
+    55,
+    60,
+    64,
+    67
+   ],
+   "vel": 91,
+   "level_db_per_key": [
+    -18.6,
+    -18.6,
+    -18.6,
+    -18.6
+   ],
+   "mean_db": -18.6,
+   "zones_per_key": [
+    3,
+    3,
+    3,
+    3
+   ],
+   "example_zones": [
+    {
+     "raw_cB": 300,
+     "sample": "YOGI2018",
+     "inst": "Guitar S750",
+     "att_db": 12.0,
+     "rms_db": -11.4,
+     "peak_db": -0.0,
+     "zone_db": -23.4,
+     "centroid": 1314,
+     "dur": 14.35,
+     "looped": true,
+     "filterFc_abscent": 13500
+    },
+    {
+     "raw_cB": 300,
+     "sample": "YOGI2018",
+     "inst": "Guitar S750",
+     "att_db": 12.0,
+     "rms_db": -11.4,
+     "peak_db": -0.0,
+     "zone_db": -23.4,
+     "centroid": 1314,
+     "dur": 14.35,
+     "looped": true,
+     "filterFc_abscent": 13500
+    },
+    {
+     "raw_cB": 300,
+     "sample": "YOGI2018",
+     "inst": "Guitar S750",
+     "att_db": 12.0,
+     "rms_db": -11.4,
+     "peak_db": -0.0,
+     "zone_db": -23.4,
+     "centroid": 1314,
+     "dur": 14.35,
+     "looped": true,
+     "filterFc_abscent": 13500
+    }
+   ]
+  },
+  {
+   "group": "Clean Gtr 0/27",
+   "font": "TYR",
+   "preset": "t4 clean",
+   "keys": [
+    55,
+    60,
+    64,
+    67
+   ],
+   "vel": 91,
+   "level_db_per_key": [
+    -14.7,
+    -16.6,
+    -17.7,
+    -17.7
+   ],
+   "mean_db": -16.7,
+   "zones_per_key": [
+    2,
+    2,
+    2,
+    2
+   ],
+   "example_zones": [
+    {
+     "raw_cB": 0,
+     "sample": "clean12 L",
+     "inst": "t4 clean0",
+     "att_db": 0.0,
+     "rms_db": -19.5,
+     "peak_db": -7.0,
+     "zone_db": -19.5,
+     "centroid": 1147,
+     "dur": 5.73,
+     "looped": true,
+     "filterFc_abscent": 13500
+    },
+    {
+     "raw_cB": 0,
+     "sample": "clean12 R",
+     "inst": "t4 clean1",
+     "att_db": 0.0,
+     "rms_db": -19.8,
+     "peak_db": -7.1,
+     "zone_db": -19.8,
+     "centroid": 1076,
+     "dur": 5.73,
+     "looped": true,
+     "filterFc_abscent": 13500
+    }
+   ]
+  },
+  {
+   "group": "Clean Gtr 0/27",
+   "font": "COL",
+   "preset": "Clean Guitar",
+   "keys": [
+    55,
+    60,
+    64,
+    67
+   ],
+   "vel": 91,
+   "level_db_per_key": [
+    -16.2,
+    -19.5,
+    -20.4,
+    -20.2
+   ],
+   "mean_db": -19.1,
+   "zones_per_key": [
+    1,
+    1,
+    1,
+    1
+   ],
+   "example_zones": [
+    {
+     "raw_cB": 150,
+     "sample": "Clean F50D",
+     "inst": "027 FluidCleanGuitar",
+     "att_db": 6.0,
+     "rms_db": -13.5,
+     "peak_db": -1.5,
+     "zone_db": -19.5,
+     "centroid": 2356,
+     "dur": 1.65,
+     "looped": true,
+     "filterFc_abscent": 13500
+    }
+   ]
+  },
+  {
+   "group": "Honky Tonk 0/3",
+   "font": "PRM",
+   "preset": "Yamaha Honky Tonk",
+   "keys": [
+    67,
+    72,
+    76
+   ],
+   "vel": 89,
+   "level_db_per_key": [
+    -25.2,
+    -26.5,
+    -28.2
+   ],
+   "mean_db": -26.6,
+   "zones_per_key": [
+    2,
+    2,
+    2
+   ],
+   "example_zones": [
+    {
+     "raw_cB": 280,
+     "sample": "# GD BOS B4 15",
+     "inst": "HONKY TONK1",
+     "att_db": 11.2,
+     "rms_db": -18.3,
+     "peak_db": -2.3,
+     "zone_db": -29.5,
+     "centroid": 2370,
+     "dur": 1.52,
+     "looped": true,
+     "filterFc_abscent": 13500
+    },
+    {
+     "raw_cB": 280,
+     "sample": "# GD BOS B4 15",
+     "inst": "HONKY TONK1",
+     "att_db": 11.2,
+     "rms_db": -18.3,
+     "peak_db": -2.3,
+     "zone_db": -29.5,
+     "centroid": 2370,
+     "dur": 1.52,
+     "looped": true,
+     "filterFc_abscent": 13500
+    }
+   ]
+  },
+  {
+   "group": "Honky Tonk 0/3",
+   "font": "TYR",
+   "preset": "Honky Tonk",
+   "keys": [
+    67,
+    72,
+    76
+   ],
+   "vel": 89,
+   "level_db_per_key": [
+    -8.5,
+    -12.6,
+    -14.2
+   ],
+   "mean_db": -11.8,
+   "zones_per_key": [
+    4,
+    4,
+    4
+   ],
+   "example_zones": [
+    {
+     "raw_cB": 70,
+     "sample": "DP C4",
+     "inst": "Honky Tonk0",
+     "att_db": 2.8,
+     "rms_db": -16.4,
+     "peak_db": -1.6,
+     "zone_db": -19.2,
+     "centroid": 1614,
+     "dur": 5.94,
+     "looped": true,
+     "filterFc_abscent": 12587
+    },
+    {
+     "raw_cB": 70,
+     "sample": "DP C4 2",
+     "inst": "Honky Tonk1",
+     "att_db": 2.8,
+     "rms_db": -15.4,
+     "peak_db": -0.2,
+     "zone_db": -18.2,
+     "centroid": 1643,
+     "dur": 5.94,
+     "looped": true,
+     "filterFc_abscent": 12587
+    },
+    {
+     "raw_cB": 70,
+     "sample": "DP C4",
+     "inst": "Honky Tonk2",
+     "att_db": 2.8,
+     "rms_db": -16.4,
+     "peak_db": -1.6,
+     "zone_db": -19.2,
+     "centroid": 1614,
+     "dur": 5.94,
+     "looped": true,
+     "filterFc_abscent": 12587
+    },
+    {
+     "raw_cB": 70,
+     "sample": "DP C4 2",
+     "inst": "Honky Tonk3",
+     "att_db": 2.8,
+     "rms_db": -15.4,
+     "peak_db": -0.2,
+     "zone_db": -18.2,
+     "centroid": 1643,
+     "dur": 5.94,
+     "looped": true,
+     "filterFc_abscent": 12587
+    }
+   ]
+  },
+  {
+   "group": "Honky Tonk 0/3",
+   "font": "COL",
+   "preset": "Tack Piano",
+   "keys": [
+    67,
+    72,
+    76
+   ],
+   "vel": 89,
+   "level_db_per_key": [
+    -16.6,
+    -17.2,
+    -17.4
+   ],
+   "mean_db": -17.1,
+   "zones_per_key": [
+    2,
+    2,
+    2
+   ],
+   "example_zones": [
+    {
+     "raw_cB": 125,
+     "sample": "Orphsichord 070L",
+     "inst": "006 Harpsichord",
+     "att_db": 5.0,
+     "rms_db": -14.2,
+     "peak_db": -0.3,
+     "zone_db": -19.2,
+     "centroid": 3892,
+     "dur": 3.15,
+     "looped": true,
+     "filterFc_abscent": 13500
+    },
+    {
+     "raw_cB": 22,
+     "sample": "64-Voice Piano 9",
+     "inst": "001 BrightPnoV115127",
+     "att_db": 0.8800000000000001,
+     "rms_db": -20.5,
+     "peak_db": -5.6,
+     "zone_db": -21.4,
+     "centroid": 1871,
+     "dur": 2.62,
+     "looped": true,
+     "filterFc_abscent": 13500
+    }
+   ]
+  },
+  {
+   "group": "Bass 0/33",
+   "font": "PRM",
+   "preset": "BASS PSR",
+   "keys": [
+    31,
+    36,
+    43
+   ],
+   "vel": 125,
+   "level_db_per_key": [
+    -7.7,
+    -7.7,
+    -13.2
+   ],
+   "mean_db": -9.5,
+   "zones_per_key": [
+    2,
+    2,
+    2
+   ],
+   "example_zones": [
+    {
+     "raw_cB": 0,
+     "sample": "YOGI2018",
+     "inst": "BASS PSR",
+     "att_db": 0.0,
+     "rms_db": -10.7,
+     "peak_db": -0.0,
+     "zone_db": -10.7,
+     "centroid": 286,
+     "dur": 2.07,
+     "looped": true,
+     "filterFc_abscent": 13500
+    },
+    {
+     "raw_cB": 0,
+     "sample": "YOGI2018",
+     "inst": "BASS PSR",
+     "att_db": 0.0,
+     "rms_db": -10.7,
+     "peak_db": -0.0,
+     "zone_db": -10.7,
+     "centroid": 286,
+     "dur": 2.07,
+     "looped": true,
+     "filterFc_abscent": 13500
+    }
+   ]
+  },
+  {
+   "group": "Bass 0/33",
+   "font": "TYR",
+   "preset": "FINGER BASS",
+   "keys": [
+    31,
+    36,
+    43
+   ],
+   "vel": 125,
+   "level_db_per_key": [
+    -13.1,
+    -14.7,
+    -15.0
+   ],
+   "mean_db": -14.3,
+   "zones_per_key": [
+    2,
+    2,
+    2
+   ],
+   "example_zones": [
+    {
+     "raw_cB": -26,
+     "sample": "replace 2.wav 21",
+     "inst": "FINGER BASS0",
+     "att_db": 0.0,
+     "rms_db": -17.8,
+     "peak_db": -8.3,
+     "zone_db": -17.8,
+     "centroid": 226,
+     "dur": 8.83,
+     "looped": true,
+     "filterFc_abscent": 13500
+    },
+    {
+     "raw_cB": -26,
+     "sample": "replace 2.wav1",
+     "inst": "FINGER BASS1",
+     "att_db": 0.0,
+     "rms_db": -17.6,
+     "peak_db": -8.1,
+     "zone_db": -17.6,
+     "centroid": 226,
+     "dur": 8.83,
+     "looped": true,
+     "filterFc_abscent": 13500
+    }
+   ]
+  },
+  {
+   "group": "Bass 0/33",
+   "font": "COL",
+   "preset": "Finger Bass",
+   "keys": [
+    31,
+    36,
+    43
+   ],
+   "vel": 125,
+   "level_db_per_key": [
+    -15.1,
+    -12.4,
+    -11.0
+   ],
+   "mean_db": -12.8,
+   "zones_per_key": [
+    2,
+    2,
+    2
+   ],
+   "example_zones": [
+    {
+     "raw_cB": 975,
+     "sample": "033 Bass Release D?",
+     "inst": "03X BsRelease",
+     "att_db": 39.0,
+     "rms_db": -18.2,
+     "peak_db": -0.1,
+     "zone_db": -57.2,
+     "centroid": 1096,
+     "dur": 0.68,
+     "looped": true,
+     "filterFc_abscent": 13500
+    },
+    {
+     "raw_cB": 100,
+     "sample": "FBOrpheus_HI 38",
+     "inst": "FngrBass00",
+     "att_db": 4.0,
+     "rms_db": -8.4,
+     "peak_db": -0.0,
+     "zone_db": -12.4,
+     "centroid": 356,
+     "dur": 0.4,
+     "looped": true,
+     "filterFc_abscent": 13500
+    }
+   ]
+  },
+  {
+   "group": "Strings 0/48",
+   "font": "PRM",
+   "preset": "String Yamaha",
+   "keys": [
+    60,
+    64,
+    67
+   ],
+   "vel": 67,
+   "level_db_per_key": [
+    -7.8,
+    -9.5,
+    -10.0
+   ],
+   "mean_db": -9.1,
+   "zones_per_key": [
+    2,
+    2,
+    2
+   ],
+   "example_zones": [
+    {
+     "raw_cB": 0,
+     "sample": "10 Es 1(L)",
+     "inst": "LiveStrings PSR-200",
+     "att_db": 0.0,
+     "rms_db": -12.8,
+     "peak_db": -1.3,
+     "zone_db": -12.8,
+     "centroid": 1908,
+     "dur": 2.0,
+     "looped": true,
+     "filterFc_abscent": 13500
+    },
+    {
+     "raw_cB": 0,
+     "sample": "10 Es 1(R)",
+     "inst": "LiveStrings PSR-200",
+     "att_db": 0.0,
+     "rms_db": -12.3,
+     "peak_db": -2.3,
+     "zone_db": -12.3,
+     "centroid": 2297,
+     "dur": 2.0,
+     "looped": false,
+     "filterFc_abscent": 13500
+    }
+   ]
+  },
+  {
+   "group": "Strings 0/48",
+   "font": "TYR",
+   "preset": "t4 strings marcato",
+   "keys": [
+    60,
+    64,
+    67
+   ],
+   "vel": 67,
+   "level_db_per_key": [
+    -15.3,
+    -16.1,
+    -16.0
+   ],
+   "mean_db": -15.8,
+   "zones_per_key": [
+    2,
+    2,
+    2
+   ],
+   "example_zones": [
+    {
+     "raw_cB": 0,
+     "sample": "strings10 R",
+     "inst": "t4 strings marcato0",
+     "att_db": 0.0,
+     "rms_db": -19.6,
+     "peak_db": -9.5,
+     "zone_db": -19.6,
+     "centroid": 2270,
+     "dur": 2.87,
+     "looped": true,
+     "filterFc_abscent": 13500
+    },
+    {
+     "raw_cB": 0,
+     "sample": "strings10 L",
+     "inst": "t4 strings marcato1",
+     "att_db": 0.0,
+     "rms_db": -18.7,
+     "peak_db": -9.3,
+     "zone_db": -18.7,
+     "centroid": 2304,
+     "dur": 2.87,
+     "looped": true,
+     "filterFc_abscent": 13500
+    }
+   ]
+  },
+  {
+   "group": "Strings 0/48",
+   "font": "COL",
+   "preset": "String Ensemble",
+   "keys": [
+    60,
+    64,
+    67
+   ],
+   "vel": 67,
+   "level_db_per_key": [
+    -14.9,
+    -14.9,
+    -15.4
+   ],
+   "mean_db": -15.1,
+   "zones_per_key": [
+    3,
+    3,
+    3
+   ],
+   "example_zones": [
+    {
+     "raw_cB": 150,
+     "sample": "PC88M Strings 057",
+     "inst": "Strings Ensemble 10",
+     "att_db": 6.0,
+     "rms_db": -10.7,
+     "peak_db": -0.0,
+     "zone_db": -16.7,
+     "centroid": 2645,
+     "dur": 2.04,
+     "looped": true,
+     "filterFc_abscent": 13500
+    },
+    {
+     "raw_cB": 125,
+     "sample": "Strings C4 R",
+     "inst": "Strings Ensemble 12",
+     "att_db": 5.0,
+     "rms_db": -17.5,
+     "peak_db": -7.9,
+     "zone_db": -22.5,
+     "centroid": 2247,
+     "dur": 2.64,
+     "looped": true,
+     "filterFc_abscent": 12473
+    },
+    {
+     "raw_cB": 125,
+     "sample": "Strings C4 L",
+     "inst": "Strings Ensemble 13",
+     "att_db": 5.0,
+     "rms_db": -17.5,
+     "peak_db": -8.3,
+     "zone_db": -22.5,
+     "centroid": 2270,
+     "dur": 2.64,
+     "looped": true,
+     "filterFc_abscent": 12473
+    }
+   ]
+  },
+  {
+   "group": "Synth Voice 0/54",
+   "font": "TYR",
+   "preset": "Synth Voice",
+   "keys": [
+    60,
+    64,
+    67
+   ],
+   "vel": 57,
+   "level_db_per_key": [
+    -13.5,
+    -13.5,
+    -13.6
+   ],
+   "mean_db": -13.6,
+   "zones_per_key": [
+    2,
+    2,
+    2
+   ],
+   "example_zones": [
+    {
+     "raw_cB": 126,
+     "sample": "SynthVz C 5(L)",
+     "inst": "Synth Voice16",
+     "att_db": 5.040000000000001,
+     "rms_db": -11.8,
+     "peak_db": -2.5,
+     "zone_db": -16.8,
+     "centroid": 3205,
+     "dur": 1.35,
+     "looped": true,
+     "filterFc_abscent": 13500
+    },
+    {
+     "raw_cB": 126,
+     "sample": "SynthVz C 5(R)",
+     "inst": "Synth Voice17",
+     "att_db": 5.040000000000001,
+     "rms_db": -11.3,
+     "peak_db": -2.1,
+     "zone_db": -16.3,
+     "centroid": 3186,
+     "dur": 1.35,
+     "looped": true,
+     "filterFc_abscent": 13500
+    }
+   ]
+  },
+  {
+   "group": "Synth Voice 0/54",
+   "font": "COL",
+   "preset": "Synth Voice",
+   "keys": [
+    60,
+    64,
+    67
+   ],
+   "vel": 57,
+   "level_db_per_key": [
+    -12.9,
+    -12.9,
+    -12.9
+   ],
+   "mean_db": -12.9,
+   "zones_per_key": [
+    1,
+    1,
+    1
+   ],
+   "example_zones": [
+    {
+     "raw_cB": 100,
+     "sample": "Syn Vox Gb3",
+     "inst": "SynLD6Vox01",
+     "att_db": 4.0,
+     "rms_db": -8.9,
+     "peak_db": -0.8,
+     "zone_db": -12.9,
+     "centroid": 5763,
+     "dur": 0.23,
+     "looped": true,
+     "filterFc_abscent": 10797
+    }
+   ]
+  },
+  {
+   "group": "Choir 0/52",
+   "font": "TYR",
+   "preset": "tyros 4 choir",
+   "keys": [
+    55,
+    60,
+    64
+   ],
+   "vel": 66,
+   "level_db_per_key": [
+    -18.1,
+    -23.2,
+    -19.6
+   ],
+   "mean_db": -20.3,
+   "zones_per_key": [
+    2,
+    2,
+    2
+   ],
+   "example_zones": [
+    {
+     "raw_cB": -52,
+     "sample": "choir08 L",
+     "inst": "tyros 4 choir0",
+     "att_db": 0.0,
+     "rms_db": -25.7,
+     "peak_db": -14.4,
+     "zone_db": -25.7,
+     "centroid": 2063,
+     "dur": 5.75,
+     "looped": true,
+     "filterFc_abscent": 13500
+    },
+    {
+     "raw_cB": -52,
+     "sample": "choir08 R",
+     "inst": "tyros 4 choir1",
+     "att_db": 0.0,
+     "rms_db": -26.7,
+     "peak_db": -15.1,
+     "zone_db": -26.7,
+     "centroid": 2263,
+     "dur": 5.75,
+     "looped": true,
+     "filterFc_abscent": 13500
+    }
+   ]
+  },
+  {
+   "group": "Choir 0/52",
+   "font": "COL",
+   "preset": "Choir Aahs",
+   "keys": [
+    55,
+    60,
+    64
+   ],
+   "vel": 66,
+   "level_db_per_key": [
+    -18.6,
+    -17.1,
+    -17.1
+   ],
+   "mean_db": -17.6,
+   "zones_per_key": [
+    1,
+    1,
+    1
+   ],
+   "example_zones": [
+    {
+     "raw_cB": 150,
+     "sample": "JV30 ChoirAahs 060",
+     "inst": "052 ChoirAahs",
+     "att_db": 6.0,
+     "rms_db": -11.1,
+     "peak_db": -1.3,
+     "zone_db": -17.1,
+     "centroid": 2944,
+     "dur": 1.71,
+     "looped": true,
+     "filterFc_abscent": 13500
+    }
+   ]
+  },
+  {
+   "group": "Choir 0/52",
+   "font": "PRM",
+   "preset": "Suling S770",
+   "keys": [
+    55,
+    60,
+    64
+   ],
+   "vel": 66,
+   "level_db_per_key": [
+    -15.8,
+    -15.8,
+    -15.1
+   ],
+   "mean_db": -15.5,
+   "zones_per_key": [
+    1,
+    1,
+    1
+   ],
+   "example_zones": [
+    {
+     "raw_cB": 0,
+     "sample": "Flute-C#4",
+     "inst": "Flute",
+     "att_db": 0.0,
+     "rms_db": -15.8,
+     "peak_db": -6.1,
+     "zone_db": -15.8,
+     "centroid": 1476,
+     "dur": 0.94,
+     "looped": true,
+     "filterFc_abscent": 13500
+    }
+   ]
+  },
+  {
+   "group": "Pad picked by label 0/89",
+   "font": "TYR",
+   "preset": "woarm pad",
+   "keys": [
+    60,
+    64,
+    67
+   ],
+   "vel": 67,
+   "level_db_per_key": [
+    -22.7,
+    -22.7,
+    -22.7
+   ],
+   "mean_db": -22.7,
+   "zones_per_key": [
+    2,
+    2,
+    2
+   ],
+   "example_zones": [
+    {
+     "raw_cB": 0,
+     "sample": "wp02 R",
+     "inst": "woarm pad0",
+     "att_db": 0.0,
+     "rms_db": -26.2,
+     "peak_db": -15.2,
+     "zone_db": -26.2,
+     "centroid": 1155,
+     "dur": 5.11,
+     "looped": true,
+     "filterFc_abscent": 13500
+    },
+    {
+     "raw_cB": 0,
+     "sample": "wp02 L",
+     "inst": "woarm pad1",
+     "att_db": 0.0,
+     "rms_db": -25.2,
+     "peak_db": -12.1,
+     "zone_db": -25.2,
+     "centroid": 943,
+     "dur": 5.11,
+     "looped": true,
+     "filterFc_abscent": 13500
+    }
+   ]
+  },
+  {
+   "group": "Pad picked by label 0/89",
+   "font": "COL",
+   "preset": "Pad 2 [Warm]",
+   "keys": [
+    60,
+    64,
+    67
+   ],
+   "vel": 67,
+   "level_db_per_key": [
+    -10.2,
+    -10.2,
+    -13.1
+   ],
+   "mean_db": -11.2,
+   "zones_per_key": [
+    2,
+    2,
+    2
+   ],
+   "example_zones": [
+    {
+     "raw_cB": 100,
+     "sample": "SynStrJP8 060L",
+     "inst": "SynPAD2Warm",
+     "att_db": 4.0,
+     "rms_db": -9.3,
+     "peak_db": -1.2,
+     "zone_db": -13.3,
+     "centroid": 1462,
+     "dur": 1.06,
+     "looped": true,
+     "filterFc_abscent": 7935
+    },
+    {
+     "raw_cB": 100,
+     "sample": "SynStrJP8 060R",
+     "inst": "SynPAD2Warm",
+     "att_db": 4.0,
+     "rms_db": -9.1,
+     "peak_db": -1.2,
+     "zone_db": -13.1,
+     "centroid": 1455,
+     "dur": 0.93,
+     "looped": true,
+     "filterFc_abscent": 7935
+    }
+   ]
+  }
+ ],
+ "drum": [
+  {
+   "font": "DRM",
+   "bank": 128,
+   "pc": 0,
+   "kit": "STANDAR PSR-SX",
+   "keys": {
+    "33": {
+     "level_db": -12.3,
+     "centroid": 769,
+     "dur": 0.37,
+     "zones": 2,
+     "samples": [
+      "SATRIOMUSIK SF2-42",
+      "SATRIOMUSIK SF2-42"
+     ]
+    },
+    "34": {
+     "level_db": -9.5,
+     "centroid": 4122,
+     "dur": 0.76,
+     "zones": 2,
+     "samples": [
+      "SATRIOMUSIK SF2-83",
+      "SATRIOMUSIK SF2-82"
+     ]
+    },
+    "35": {
+     "level_db": -12.3,
+     "centroid": 769,
+     "dur": 0.37,
+     "zones": 2,
+     "samples": [
+      "SATRIOMUSIK SF2-42",
+      "SATRIOMUSIK SF2-42"
+     ]
+    },
+    "36": {
+     "level_db": -9.3,
+     "centroid": 1900,
+     "dur": 1.38,
+     "zones": 14,
+     "samples": [
+      "SATRIOMUSIK SF2-13",
+      "SATRIOMUSIK SF2-53",
+      "SATRIOMUSIK SF2-13"
+     ]
+    },
+    "37": {
+     "level_db": -21.6,
+     "centroid": 6175,
+     "dur": 1.45,
+     "zones": 2,
+     "samples": [
+      "SATRIOMUSIK SF2-71",
+      "SATRIOMUSIK SF2-73"
+     ]
+    },
+    "42": {
+     "level_db": -19.5,
+     "centroid": 10110,
+     "dur": 0.41,
+     "zones": 2,
+     "samples": [
+      "SATRIOMUSIK SF2-15",
+      "SATRIOMUSIK SF2-78"
+     ]
+    },
+    "46": {
+     "level_db": -13.1,
+     "centroid": 8684,
+     "dur": 3.85,
+     "zones": 2,
+     "samples": [
+      "SATRIOMUSIK SF2-17",
+      "SATRIOMUSIK SF2-80"
+     ]
+    },
+    "53": {
+     "level_db": -20.0,
+     "centroid": 6516,
+     "dur": 9.08,
+     "zones": 2,
+     "samples": [
+      "SATRIOMUSIK SF2-73",
+      "SATRIOMUSIK SF2-73"
+     ]
+    },
+    "54": {
+     "level_db": -15.2,
+     "centroid": 10269,
+     "dur": 0.37,
+     "zones": 3,
+     "samples": [
+      "SATRIOMUSIK SF2-08",
+      "SATRIOMUSIK SF2-08",
+      "SATRIOMUSIK SF2-08"
+     ]
+    },
+    "60": {
+     "level_db": -19.7,
+     "centroid": 2054,
+     "dur": 0.62,
+     "zones": 2,
+     "samples": [
+      "SATRIOMUSIK SF2-78",
+      "SATRIOMUSIK SF2-43"
+     ]
+    },
+    "62": {
+     "level_db": -20.1,
+     "centroid": 1862,
+     "dur": 0.49,
+     "zones": 2,
+     "samples": [
+      "SATRIOMUSIK SF2-15",
+      "SATRIOMUSIK SF2-13"
+     ]
+    },
+    "64": {
+     "level_db": -9.1,
+     "centroid": 632,
+     "dur": 0.63,
+     "zones": 2,
+     "samples": [
+      "SATRIOMUSIK SF2-17",
+      "SATRIOMUSIK SF2-15"
+     ]
+    }
+   }
+  },
+  {
+   "font": "DRM",
+   "bank": 128,
+   "pc": 1,
+   "kit": "STANDAR DRUM 2",
+   "keys": {
+    "33": {
+     "level_db": -12.3,
+     "centroid": 769,
+     "dur": 0.37,
+     "zones": 2,
+     "samples": [
+      "SATRIOMUSIK SF2-42",
+      "SATRIOMUSIK SF2-42"
+     ]
+    },
+    "34": {
+     "level_db": -9.5,
+     "centroid": 4122,
+     "dur": 0.76,
+     "zones": 2,
+     "samples": [
+      "SATRIOMUSIK SF2-82",
+      "SATRIOMUSIK SF2-83"
+     ]
+    },
+    "35": {
+     "level_db": -12.3,
+     "centroid": 769,
+     "dur": 0.37,
+     "zones": 2,
+     "samples": [
+      "SATRIOMUSIK SF2-42",
+      "SATRIOMUSIK SF2-42"
+     ]
+    },
+    "36": {
+     "level_db": -9.3,
+     "centroid": 1900,
+     "dur": 1.38,
+     "zones": 14,
+     "samples": [
+      "SATRIOMUSIK SF2-42",
+      "SATRIOMUSIK SF2-42",
+      "SATRIOMUSIK SF2-13"
+     ]
+    },
+    "37": {
+     "level_db": -21.6,
+     "centroid": 6175,
+     "dur": 1.45,
+     "zones": 2,
+     "samples": [
+      "SATRIOMUSIK SF2-71",
+      "SATRIOMUSIK SF2-73"
+     ]
+    },
+    "42": {
+     "level_db": -19.5,
+     "centroid": 10110,
+     "dur": 0.41,
+     "zones": 2,
+     "samples": [
+      "SATRIOMUSIK SF2-15",
+      "SATRIOMUSIK SF2-78"
+     ]
+    },
+    "46": {
+     "level_db": -13.1,
+     "centroid": 8684,
+     "dur": 3.85,
+     "zones": 2,
+     "samples": [
+      "SATRIOMUSIK SF2-17",
+      "SATRIOMUSIK SF2-80"
+     ]
+    },
+    "53": {
+     "level_db": -18.0,
+     "centroid": 6516,
+     "dur": 9.08,
+     "zones": 2,
+     "samples": [
+      "SATRIOMUSIK SF2-73",
+      "SATRIOMUSIK SF2-73"
+     ]
+    },
+    "54": {
+     "level_db": -15.2,
+     "centroid": 10269,
+     "dur": 0.37,
+     "zones": 3,
+     "samples": [
+      "SATRIOMUSIK SF2-08",
+      "SATRIOMUSIK SF2-08",
+      "SATRIOMUSIK SF2-08"
+     ]
+    },
+    "60": {
+     "level_db": -19.7,
+     "centroid": 2054,
+     "dur": 0.62,
+     "zones": 2,
+     "samples": [
+      "SATRIOMUSIK SF2-78",
+      "SATRIOMUSIK SF2-43"
+     ]
+    },
+    "62": {
+     "level_db": -20.1,
+     "centroid": 1862,
+     "dur": 0.49,
+     "zones": 2,
+     "samples": [
+      "SATRIOMUSIK SF2-15",
+      "SATRIOMUSIK SF2-13"
+     ]
+    },
+    "64": {
+     "level_db": -9.1,
+     "centroid": 632,
+     "dur": 0.63,
+     "zones": 2,
+     "samples": [
+      "SATRIOMUSIK SF2-17",
+      "SATRIOMUSIK SF2-15"
+     ]
+    }
+   }
+  },
+  {
+   "font": "DRM",
+   "bank": 128,
+   "pc": 2,
+   "kit": "STANDAR DRUM 3",
+   "keys": {
+    "33": {
+     "level_db": -3.1,
+     "centroid": 406,
+     "dur": 0.15,
+     "zones": 2,
+     "samples": [
+      "SATRIOMUSIK SF2-03",
+      "SATRIOMUSIK SF2-04"
+     ]
+    },
+    "34": {
+     "level_db": -9.6,
+     "centroid": 2836,
+     "dur": 0.45,
+     "zones": 2,
+     "samples": [
+      "SATRIOMUSIK SF2-60",
+      "SATRIOMUSIK SF2-61"
+     ]
+    },
+    "35": {
+     "level_db": -3.1,
+     "centroid": 406,
+     "dur": 0.15,
+     "zones": 2,
+     "samples": [
+      "SATRIOMUSIK SF2-04",
+      "SATRIOMUSIK SF2-03"
+     ]
+    },
+    "36": {
+     "level_db": -3.1,
+     "centroid": 406,
+     "dur": 0.15,
+     "zones": 2,
+     "samples": [
+      "SATRIOMUSIK SF2-03",
+      "SATRIOMUSIK SF2-04"
+     ]
+    },
+    "37": {
+     "level_db": -21.6,
+     "centroid": 6175,
+     "dur": 1.45,
+     "zones": 2,
+     "samples": [
+      "SATRIOMUSIK SF2-55",
+      "SATRIOMUSIK SF2-99"
+     ]
+    },
+    "42": {
+     "level_db": -23.3,
+     "centroid": 11606,
+     "dur": 0.43,
+     "zones": 2,
+     "samples": [
+      "SATRIOMUSIK SF2-00",
+      "SATRIOMUSIK SF2-00"
+     ]
+    },
+    "46": {
+     "level_db": -19.6,
+     "centroid": 11181,
+     "dur": 1.71,
+     "zones": 2,
+     "samples": [
+      "SATRIOMUSIK SF2-02",
+      "SATRIOMUSIK SF2-02"
+     ]
+    },
+    "53": {
+     "level_db": -20.0,
+     "centroid": 6516,
+     "dur": 9.08,
+     "zones": 2,
+     "samples": [
+      "SATRIOMUSIK SF2-73",
+      "SATRIOMUSIK SF2-73"
+     ]
+    },
+    "54": {
+     "level_db": -11.7,
+     "centroid": 10810,
+     "dur": 1.79,
+     "zones": 8,
+     "samples": [
+      "SATRIOMUSIK SF2-46",
+      "SATRIOMUSIK SF2-46",
+      "SATRIOMUSIK SF2-46"
+     ]
+    },
+    "60": {
+     "level_db": -19.7,
+     "centroid": 2054,
+     "dur": 0.62,
+     "zones": 2,
+     "samples": [
+      "SATRIOMUSIK SF2-43",
+      "SATRIOMUSIK SF2-78"
+     ]
+    },
+    "62": {
+     "level_db": -20.1,
+     "centroid": 1862,
+     "dur": 0.49,
+     "zones": 2,
+     "samples": [
+      "SATRIOMUSIK SF2-15",
+      "SATRIOMUSIK SF2-13"
+     ]
+    },
+    "64": {
+     "level_db": -9.1,
+     "centroid": 632,
+     "dur": 0.63,
+     "zones": 2,
+     "samples": [
+      "SATRIOMUSIK SF2-17",
+      "SATRIOMUSIK SF2-15"
+     ]
+    }
+   }
+  },
+  {
+   "font": "DRM",
+   "bank": 128,
+   "pc": 8,
+   "kit": "Kendang Alex",
+   "keys": {
+    "33": null,
+    "34": null,
+    "35": null,
+    "36": {
+     "level_db": -15.4,
+     "centroid": 661,
+     "dur": 0.95,
+     "zones": 4,
+     "samples": [
+      "004242",
+      "004243",
+      "004242"
+     ]
+    },
+    "37": {
+     "level_db": -10.0,
+     "centroid": 397,
+     "dur": 1.1,
+     "zones": 4,
+     "samples": [
+      "004244",
+      "004245",
+      "004244"
+     ]
+    },
+    "42": {
+     "level_db": -29.7,
+     "centroid": 9759,
+     "dur": 1.15,
+     "zones": 4,
+     "samples": [
+      "004254",
+      "004255",
+      "004254"
+     ]
+    },
+    "46": {
+     "level_db": -26.1,
+     "centroid": 8391,
+     "dur": 1.2,
+     "zones": 4,
+     "samples": [
+      "004262",
+      "004263",
+      "004262"
+     ]
+    },
+    "53": {
+     "level_db": -15.5,
+     "centroid": 1427,
+     "dur": 1.05,
+     "zones": 4,
+     "samples": [
+      "004276",
+      "004277",
+      "004276"
+     ]
+    },
+    "54": {
+     "level_db": -22.8,
+     "centroid": 2824,
+     "dur": 1.15,
+     "zones": 4,
+     "samples": [
+      "004278",
+      "004279",
+      "004278"
+     ]
+    },
+    "60": {
+     "level_db": -19.4,
+     "centroid": 2079,
+     "dur": 1.1,
+     "zones": 4,
+     "samples": [
+      "004290",
+      "004291",
+      "004290"
+     ]
+    },
+    "62": {
+     "level_db": -18.8,
+     "centroid": 1359,
+     "dur": 1.15,
+     "zones": 4,
+     "samples": [
+      "004231",
+      "004228",
+      "004231"
+     ]
+    },
+    "64": {
+     "level_db": -24.4,
+     "centroid": 3387,
+     "dur": 1.15,
+     "zones": 4,
+     "samples": [
+      "004225",
+      "004224",
+      "004225"
+     ]
+    }
+   }
+  },
+  {
+   "font": "DRM",
+   "bank": 128,
+   "pc": 16,
+   "kit": "ALEX KEPRI",
+   "keys": {
+    "33": null,
+    "34": null,
+    "35": null,
+    "36": {
+     "level_db": -17.5,
+     "centroid": 813,
+     "dur": 1.4,
+     "zones": 4,
+     "samples": [
+      "SATRIOMUSIK SF2-78",
+      "SATRIOMUSIK SF2-79",
+      "SATRIOMUSIK SF2-78"
+     ]
+    },
+    "37": {
+     "level_db": -12.7,
+     "centroid": 192,
+     "dur": 1.11,
+     "zones": 4,
+     "samples": [
+      "SATRIOMUSIK SF2-86",
+      "SATRIOMUSIK SF2-87",
+      "SATRIOMUSIK SF2-86"
+     ]
+    },
+    "42": {
+     "level_db": -12.0,
+     "centroid": 4565,
+     "dur": 1.35,
+     "zones": 4,
+     "samples": [
+      "SATRIOMUSIK SF2-28",
+      "SATRIOMUSIK SF2-29",
+      "SATRIOMUSIK SF2-28"
+     ]
+    },
+    "46": {
+     "level_db": -24.1,
+     "centroid": 6601,
+     "dur": 1.65,
+     "zones": 4,
+     "samples": [
+      "SATRIOMUSIK SF2-60",
+      "SATRIOMUSIK SF2-61",
+      "SATRIOMUSIK SF2-60"
+     ]
+    },
+    "53": {
+     "level_db": -10.8,
+     "centroid": 3051,
+     "dur": 1.2,
+     "zones": 4,
+     "samples": [
+      "SATRIOMUSIK SF2-08",
+      "SATRIOMUSIK SF2-09",
+      "SATRIOMUSIK SF2-08"
+     ]
+    },
+    "54": {
+     "level_db": -14.3,
+     "centroid": 6988,
+     "dur": 1.1,
+     "zones": 4,
+     "samples": [
+      "SATRIOMUSIK SF2-14",
+      "SATRIOMUSIK SF2-15",
+      "SATRIOMUSIK SF2-14"
+     ]
+    },
+    "60": {
+     "level_db": -28.7,
+     "centroid": 9431,
+     "dur": 1.15,
+     "zones": 4,
+     "samples": [
+      "SATRIOMUSIK SF2-60",
+      "SATRIOMUSIK SF2-61",
+      "SATRIOMUSIK SF2-60"
+     ]
+    },
+    "62": {
+     "level_db": -25.1,
+     "centroid": 9406,
+     "dur": 1.05,
+     "zones": 4,
+     "samples": [
+      "SATRIOMUSIK SF2-78",
+      "SATRIOMUSIK SF2-79",
+      "SATRIOMUSIK SF2-78"
+     ]
+    },
+    "64": {
+     "level_db": -8.4,
+     "centroid": 167,
+     "dur": 1.05,
+     "zones": 4,
+     "samples": [
+      "SATRIOMUSIK SF2-97",
+      "SATRIOMUSIK SF2-98",
+      "SATRIOMUSIK SF2-97"
+     ]
+    }
+   }
+  },
+  {
+   "font": "COL",
+   "bank": 127,
+   "pc": 0,
+   "kit": "XG Standard 1",
+   "keys": {
+    "33": {
+     "level_db": -16.7,
+     "centroid": 1713,
+     "dur": 0.84,
+     "zones": 4,
+     "samples": [
+      "Deadly Kick10",
+      "Deadly Kick11",
+      "YSubK7-L"
+     ]
+    },
+    "34": {
+     "level_db": -17.3,
+     "centroid": 7615,
+     "dur": 0.58,
+     "zones": 2,
+     "samples": [
+      "Rock Snare (1)L",
+      "JV 1080 StanSnare1"
+     ]
+    },
+    "35": {
+     "level_db": -16.4,
+     "centroid": 973,
+     "dur": 0.84,
+     "zones": 5,
+     "samples": [
+      "Deadly Kick 20",
+      "[88] Room Kick1",
+      "Deadly Kick 21"
+     ]
+    },
+    "36": {
+     "level_db": -16.5,
+     "centroid": 1722,
+     "dur": 0.86,
+     "zones": 5,
+     "samples": [
+      "Deadly Kick10",
+      "[88] Room Kick1",
+      "Deadly Kick11"
+     ]
+    },
+    "37": {
+     "level_db": -20.7,
+     "centroid": 7202,
+     "dur": 0.16,
+     "zones": 1,
+     "samples": [
+      "Rimshotstd"
+     ]
+    },
+    "42": {
+     "level_db": -25.2,
+     "centroid": 12252,
+     "dur": 0.71,
+     "zones": 2,
+     "samples": [
+      "HiHat Closed(R)",
+      "HiHat Closed(L)"
+     ]
+    },
+    "46": {
+     "level_db": -24.1,
+     "centroid": 10541,
+     "dur": 3.17,
+     "zones": 2,
+     "samples": [
+      "HiHat Half-OpenL",
+      "HiHat Half-OpenR"
+     ]
+    },
+    "53": {
+     "level_db": -23.0,
+     "centroid": 5509,
+     "dur": 3.29,
+     "zones": 2,
+     "samples": [
+      "BellRide(L)",
+      "BellRide(R)"
+     ]
+    },
+    "54": {
+     "level_db": -20.8,
+     "centroid": 9418,
+     "dur": 3.05,
+     "zones": 1,
+     "samples": [
+      "TambourineOPH"
+     ]
+    },
+    "60": {
+     "level_db": -23.8,
+     "centroid": 2446,
+     "dur": 0.31,
+     "zones": 1,
+     "samples": [
+      "Bongo Rim(L)"
+     ]
+    },
+    "62": {
+     "level_db": -22.5,
+     "centroid": 1494,
+     "dur": 0.2,
+     "zones": 1,
+     "samples": [
+      "Closed Slap(L)"
+     ]
+    },
+    "64": {
+     "level_db": -21.5,
+     "centroid": 757,
+     "dur": 0.64,
+     "zones": 1,
+     "samples": [
+      "Low Tumba(L)"
+     ]
+    }
+   }
+  },
+  {
+   "font": "COL",
+   "bank": 127,
+   "pc": 8,
+   "kit": "XG Room",
+   "keys": {
+    "33": {
+     "level_db": -15.1,
+     "centroid": 1757,
+     "dur": 0.6,
+     "zones": 2,
+     "samples": [
+      "Deadly Kick 21",
+      "Deadly Kick11"
+     ]
+    },
+    "34": {
+     "level_db": -17.3,
+     "centroid": 7615,
+     "dur": 0.58,
+     "zones": 2,
+     "samples": [
+      "Rock Snare (1)L",
+      "JV 1080 StanSnare1"
+     ]
+    },
+    "35": {
+     "level_db": -10.9,
+     "centroid": 1793,
+     "dur": 0.84,
+     "zones": 10,
+     "samples": [
+      "DjentKICKML",
+      "DjentKICKMR",
+      "Deadly Kick Treb1L"
+     ]
+    },
+    "36": {
+     "level_db": -10.9,
+     "centroid": 2578,
+     "dur": 0.86,
+     "zones": 10,
+     "samples": [
+      "DjentKICKML",
+      "DjentKICKMR",
+      "Deadly Kick Treb2L"
+     ]
+    },
+    "37": {
+     "level_db": -20.7,
+     "centroid": 7202,
+     "dur": 0.16,
+     "zones": 1,
+     "samples": [
+      "Rimshotstd"
+     ]
+    },
+    "42": {
+     "level_db": -25.2,
+     "centroid": 12252,
+     "dur": 0.71,
+     "zones": 2,
+     "samples": [
+      "HiHat Closed(R)",
+      "HiHat Closed(L)"
+     ]
+    },
+    "46": {
+     "level_db": -24.1,
+     "centroid": 10541,
+     "dur": 3.17,
+     "zones": 2,
+     "samples": [
+      "HiHat Half-OpenL",
+      "HiHat Half-OpenR"
+     ]
+    },
+    "53": {
+     "level_db": -23.0,
+     "centroid": 5509,
+     "dur": 3.29,
+     "zones": 2,
+     "samples": [
+      "BellRide(L)",
+      "BellRide(R)"
+     ]
+    },
+    "54": {
+     "level_db": -20.8,
+     "centroid": 9418,
+     "dur": 3.05,
+     "zones": 1,
+     "samples": [
+      "TambourineOPH"
+     ]
+    },
+    "60": {
+     "level_db": -23.8,
+     "centroid": 2446,
+     "dur": 0.31,
+     "zones": 1,
+     "samples": [
+      "Bongo Rim(L)"
+     ]
+    },
+    "62": {
+     "level_db": -22.5,
+     "centroid": 1494,
+     "dur": 0.2,
+     "zones": 1,
+     "samples": [
+      "Closed Slap(L)"
+     ]
+    },
+    "64": {
+     "level_db": -21.5,
+     "centroid": 757,
+     "dur": 0.64,
+     "zones": 1,
+     "samples": [
+      "Low Tumba(L)"
+     ]
+    }
+   }
+  },
+  {
+   "font": "COL",
+   "bank": 127,
+   "pc": 16,
+   "kit": "XG Rock",
+   "keys": {
+    "33": {
+     "level_db": -13.1,
+     "centroid": 1696,
+     "dur": 0.84,
+     "zones": 4,
+     "samples": [
+      "Power Kick SC",
+      "YAMAHA POWER",
+      "YSubK7-L"
+     ]
+    },
+    "34": {
+     "level_db": -17.3,
+     "centroid": 7615,
+     "dur": 0.58,
+     "zones": 2,
+     "samples": [
+      "Rock Snare (1)L",
+      "JV 1080 StanSnare1"
+     ]
+    },
+    "35": {
+     "level_db": -11.6,
+     "centroid": 1077,
+     "dur": 0.22,
+     "zones": 1,
+     "samples": [
+      "YAMAHA ROOM"
+     ]
+    },
+    "36": {
+     "level_db": -14.5,
+     "centroid": 3195,
+     "dur": 0.4,
+     "zones": 1,
+     "samples": [
+      "YAMAHA POWER"
+     ]
+    },
+    "37": {
+     "level_db": -20.7,
+     "centroid": 7202,
+     "dur": 0.16,
+     "zones": 1,
+     "samples": [
+      "Rimshotstd"
+     ]
+    },
+    "42": {
+     "level_db": -25.2,
+     "centroid": 12252,
+     "dur": 0.71,
+     "zones": 2,
+     "samples": [
+      "HiHat Closed(R)",
+      "HiHat Closed(L)"
+     ]
+    },
+    "46": {
+     "level_db": -24.1,
+     "centroid": 10541,
+     "dur": 3.17,
+     "zones": 2,
+     "samples": [
+      "HiHat Half-OpenL",
+      "HiHat Half-OpenR"
+     ]
+    },
+    "53": {
+     "level_db": -23.0,
+     "centroid": 5509,
+     "dur": 3.29,
+     "zones": 2,
+     "samples": [
+      "BellRide(L)",
+      "BellRide(R)"
+     ]
+    },
+    "54": {
+     "level_db": -20.8,
+     "centroid": 9418,
+     "dur": 3.05,
+     "zones": 1,
+     "samples": [
+      "TambourineOPH"
+     ]
+    },
+    "60": {
+     "level_db": -23.8,
+     "centroid": 2446,
+     "dur": 0.31,
+     "zones": 1,
+     "samples": [
+      "Bongo Rim(L)"
+     ]
+    },
+    "62": {
+     "level_db": -22.5,
+     "centroid": 1494,
+     "dur": 0.2,
+     "zones": 1,
+     "samples": [
+      "Closed Slap(L)"
+     ]
+    },
+    "64": {
+     "level_db": -21.5,
+     "centroid": 757,
+     "dur": 0.64,
+     "zones": 1,
+     "samples": [
+      "Low Tumba(L)"
+     ]
+    }
+   }
+  },
+  {
+   "font": "TYR",
+   "bank": 128,
+   "pc": 0,
+   "kit": "tyros 4 standard",
+   "keys": {
+    "33": {
+     "level_db": -28.1,
+     "centroid": 5172,
+     "dur": 0.59,
+     "zones": 2,
+     "samples": [
+      "094",
+      "095"
+     ]
+    },
+    "34": {
+     "level_db": -22.0,
+     "centroid": 7723,
+     "dur": 0.71,
+     "zones": 2,
+     "samples": [
+      "145",
+      "144"
+     ]
+    },
+    "35": {
+     "level_db": -10.0,
+     "centroid": 1407,
+     "dur": 0.39,
+     "zones": 2,
+     "samples": [
+      "sbombito.wav",
+      "sbombito.wav1"
+     ]
+    },
+    "36": {
+     "level_db": -11.5,
+     "centroid": 684,
+     "dur": 0.6,
+     "zones": 2,
+     "samples": [
+      "sbombito2.wav1",
+      "sbombito2.wav"
+     ]
+    },
+    "37": {
+     "level_db": -21.9,
+     "centroid": 5097,
+     "dur": 0.18,
+     "zones": 2,
+     "samples": [
+      "saro.wav",
+      "saro.wav1"
+     ]
+    },
+    "42": {
+     "level_db": -19.5,
+     "centroid": 12267,
+     "dur": 0.19,
+     "zones": 2,
+     "samples": [
+      "scharles.wav1",
+      "scharles.wav"
+     ]
+    },
+    "46": {
+     "level_db": -18.0,
+     "centroid": 11394,
+     "dur": 2.05,
+     "zones": 2,
+     "samples": [
+      "s14.wav1",
+      "s14.wav"
+     ]
+    },
+    "53": {
+     "level_db": -29.8,
+     "centroid": 7546,
+     "dur": 2.23,
+     "zones": 2,
+     "samples": [
+      "s18.wav",
+      "s18.wav1"
+     ]
+    },
+    "54": {
+     "level_db": -20.6,
+     "centroid": 11049,
+     "dur": 0.36,
+     "zones": 2,
+     "samples": [
+      "302",
+      "301"
+     ]
+    },
+    "60": {
+     "level_db": -29.0,
+     "centroid": 3229,
+     "dur": 0.62,
+     "zones": 2,
+     "samples": [
+      "34 R2",
+      "34 R1"
+     ]
+    },
+    "62": {
+     "level_db": -27.5,
+     "centroid": 3213,
+     "dur": 0.88,
+     "zones": 2,
+     "samples": [
+      "conga slap R2",
+      "conga slap R1"
+     ]
+    },
+    "64": {
+     "level_db": -17.1,
+     "centroid": 2254,
+     "dur": 0.77,
+     "zones": 2,
+     "samples": [
+      "conga low R2",
+      "conga low R1"
+     ]
+    }
+   }
+  },
+  {
+   "font": "TYR",
+   "bank": 128,
+   "pc": 8,
+   "kit": "room kit",
+   "keys": {
+    "33": {
+     "level_db": -28.1,
+     "centroid": 5172,
+     "dur": 0.59,
+     "zones": 2,
+     "samples": [
+      "097",
+      "096"
+     ]
+    },
+    "34": {
+     "level_db": -22.0,
+     "centroid": 7723,
+     "dur": 0.71,
+     "zones": 2,
+     "samples": [
+      "146",
+      "147"
+     ]
+    },
+    "35": {
+     "level_db": -12.0,
+     "centroid": 1524,
+     "dur": 0.51,
+     "zones": 2,
+     "samples": [
+      "room kit 01.wav",
+      "room kit 01.wav1"
+     ]
+    },
+    "36": {
+     "level_db": -11.1,
+     "centroid": 1435,
+     "dur": 1.25,
+     "zones": 2,
+     "samples": [
+      "room kit 02.wav1",
+      "room kit 02.wav"
+     ]
+    },
+    "37": {
+     "level_db": -23.1,
+     "centroid": 6629,
+     "dur": 0.16,
+     "zones": 2,
+     "samples": [
+      "room kit 05.wav",
+      "room kit 05.wav1"
+     ]
+    },
+    "42": {
+     "level_db": -28.1,
+     "centroid": 12834,
+     "dur": 0.14,
+     "zones": 2,
+     "samples": [
+      "room kit 06.wav1",
+      "room kit 06.wav"
+     ]
+    },
+    "46": {
+     "level_db": -22.8,
+     "centroid": 11008,
+     "dur": 2.15,
+     "zones": 2,
+     "samples": [
+      "room kit 08.wav1",
+      "room kit 08.wav"
+     ]
+    },
+    "53": {
+     "level_db": -32.8,
+     "centroid": 9311,
+     "dur": 2.15,
+     "zones": 2,
+     "samples": [
+      "room kit 12.wav",
+      "room kit 12.wav1"
+     ]
+    },
+    "54": {
+     "level_db": -20.6,
+     "centroid": 11049,
+     "dur": 0.36,
+     "zones": 2,
+     "samples": [
+      "303",
+      "304"
+     ]
+    },
+    "60": {
+     "level_db": -29.0,
+     "centroid": 3229,
+     "dur": 0.62,
+     "zones": 2,
+     "samples": [
+      "34 R3",
+      "34 R4"
+     ]
+    },
+    "62": {
+     "level_db": -27.5,
+     "centroid": 3213,
+     "dur": 0.88,
+     "zones": 2,
+     "samples": [
+      "conga slap R3",
+      "conga slap R4"
+     ]
+    },
+    "64": {
+     "level_db": -17.1,
+     "centroid": 2254,
+     "dur": 0.77,
+     "zones": 2,
+     "samples": [
+      "conga low R3",
+      "conga low R4"
+     ]
+    }
+   }
+  },
+  {
+   "font": "TYR",
+   "bank": 128,
+   "pc": 16,
+   "kit": "power kit",
+   "keys": {
+    "33": {
+     "level_db": -28.1,
+     "centroid": 5172,
+     "dur": 0.59,
+     "zones": 2,
+     "samples": [
+      "096",
+      "097"
+     ]
+    },
+    "34": {
+     "level_db": -22.0,
+     "centroid": 7723,
+     "dur": 0.71,
+     "zones": 2,
+     "samples": [
+      "147",
+      "146"
+     ]
+    },
+    "35": {
+     "level_db": -12.7,
+     "centroid": 773,
+     "dur": 0.14,
+     "zones": 2,
+     "samples": [
+      "electric kit 01.wav",
+      "electric kit 01.wav1"
+     ]
+    },
+    "36": {
+     "level_db": -12.6,
+     "centroid": 634,
+     "dur": 0.43,
+     "zones": 2,
+     "samples": [
+      "KIK01.wav",
+      "KIK01.wav1"
+     ]
+    },
+    "37": {
+     "level_db": -29.6,
+     "centroid": 6135,
+     "dur": 0.17,
+     "zones": 2,
+     "samples": [
+      "electric kit 05.wav",
+      "electric kit 05.wav1"
+     ]
+    },
+    "42": {
+     "level_db": -19.5,
+     "centroid": 12267,
+     "dur": 0.19,
+     "zones": 2,
+     "samples": [
+      "scharles.wav2",
+      "scharles.wav3"
+     ]
+    },
+    "46": {
+     "level_db": -18.0,
+     "centroid": 11394,
+     "dur": 2.05,
+     "zones": 2,
+     "samples": [
+      "s14.wav2",
+      "s14.wav3"
+     ]
+    },
+    "53": {
+     "level_db": -23.8,
+     "centroid": 8483,
+     "dur": 1.73,
+     "zones": 2,
+     "samples": [
+      "28 L3",
+      "28 L4"
+     ]
+    },
+    "54": {
+     "level_db": -20.6,
+     "centroid": 11049,
+     "dur": 0.36,
+     "zones": 2,
+     "samples": [
+      "304",
+      "303"
+     ]
+    },
+    "60": {
+     "level_db": -29.0,
+     "centroid": 3229,
+     "dur": 0.62,
+     "zones": 2,
+     "samples": [
+      "34 R4",
+      "34 R3"
+     ]
+    },
+    "62": {
+     "level_db": -27.5,
+     "centroid": 3213,
+     "dur": 0.88,
+     "zones": 2,
+     "samples": [
+      "conga slap R4",
+      "conga slap R3"
+     ]
+    },
+    "64": {
+     "level_db": -17.1,
+     "centroid": 2254,
+     "dur": 0.77,
+     "zones": 2,
+     "samples": [
+      "conga low R4",
+      "conga low R3"
+     ]
+    }
+   }
+  }
+ ]
+}

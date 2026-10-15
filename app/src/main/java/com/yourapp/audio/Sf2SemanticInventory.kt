@@ -81,7 +81,7 @@ object Sf2SemanticInventory {
             // Raw instrument bags preserve unused/unreferenced instruments as well as globals.
             val instruments = (0 until inst.size / 22 - 1).map { i ->
                 val first = u16(inst, i * 22 + 20); val last = u16(inst, (i + 1) * 22 + 20)
-                fullLine("I id=$i name='${label(text(inst, i * 22, 20))}' bags=$first:$last")
+                fullLine("I id=$i name='${quotedName(text(inst, i * 22, 20))}' bags=$first:$last nameHex=${nameHex(inst, i * 22)}")
                 var global = Gen()
                 val local = mutableListOf<Pair<Int, Gen>>()
                 for (bag in first until last) {
@@ -97,7 +97,7 @@ object Sf2SemanticInventory {
                 require(pc in 0..127) { "invalid_raw_pc" }
                 val preset = text(ph, p * 38, 20)
                 val first = u16(ph, p * 38 + 24); val last = u16(ph, (p + 1) * 38 + 24)
-                fullLine("P id=$p bank=$bank rawPC=$pc displayPC=${pc + 1} name='${label(preset)}' bags=$first:$last")
+                fullLine("P id=$p bank=$bank rawPC=$pc displayPC=${pc + 1} name='${quotedName(preset)}' bags=$first:$last nameHex=${nameHex(ph, p * 38)}")
                 var global = Gen()
                 for (pb in first until last) {
                     val raw = bag(tables, "p", pb)
@@ -206,9 +206,9 @@ object Sf2SemanticInventory {
     }
     private fun sampleRow(sh: ByteArray, s: Int): String {
         val o = s * 46
-        return "S id=$s name='${label(text(sh,o,20))}' frames=${u32(sh,o+20)}:${u32(sh,o+24)} " +
+        return "S id=$s name='${quotedName(text(sh,o,20))}' frames=${u32(sh,o+20)}:${u32(sh,o+24)} " +
             "loops=${u32(sh,o+28)}:${u32(sh,o+32)} rate=${u32(sh,o+36)} originalKey=${u8(sh,o+40)} correction=${sh[o+41].toInt()} " +
-            "link=${u16(sh,o+42)} type=${u16(sh,o+44)}"
+            "link=${u16(sh,o+42)} type=${u16(sh,o+44)} nameHex=${nameHex(sh,o)}"
     }
     private class Reader(val input: InputStream) {
         var position = 0L
@@ -267,6 +267,16 @@ object Sf2SemanticInventory {
     private fun text(b: ByteArray, o: Int, n: Int): String {
         val end = (o until o+n).firstOrNull { b[it] == 0.toByte() } ?: (o+n)
         return String(b,o,end-o,charset("windows-1252"))
+    }
+    // Full 20-byte SF2 name field, including NUL and unused padding. Export only.
+    private fun nameHex(bytes: ByteArray, offset: Int) = bytes.copyOfRange(offset, offset + 20)
+        .joinToString("") { "%02x".format(it.toInt() and 255) }
+    private fun quotedName(value: String) = buildString {
+        for (c in value) when (c) {
+            '\\' -> append("\\\\")
+            '\'' -> append("\\'")
+            else -> if (c < ' ' || c == '\u007f') append("\\u%04x".format(c.code)) else append(c)
+        }
     }
     private fun label(s: String, max: Int = 80) = s.take(max).map { if (it < ' ' || it == '\'') '?' else it }.joinToString("")
 

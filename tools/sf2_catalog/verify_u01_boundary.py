@@ -32,6 +32,19 @@ def verify():
                 else appendLine("STYLE FIDELITY U0 unavailable: STOP before diagnostic export")'''
     assert after.count(replacement)==1
     assert after.replace(replacement,'                appendLine(audioEngine.noteZoneReport())')==before,'non-export ViewModel change'
+    # Additional production file is an explicitly invoked metadata exporter only.
+    path='app/src/main/java/com/yourapp/audio/Sf2SemanticInventory.kt'
+    a=(ROOT/path).read_text(); b=old(path)
+    a=a.replace("${quotedName(text(inst, i * 22, 20))}","${label(text(inst, i * 22, 20))}")
+    a=a.replace(" bags=$first:$last nameHex=${nameHex(inst, i * 22)}", " bags=$first:$last")
+    a=a.replace("${quotedName(preset)}", "${label(preset)}")
+    a=a.replace(" bags=$first:$last nameHex=${nameHex(ph, p * 38)}", " bags=$first:$last")
+    a=a.replace("${quotedName(text(sh,o,20))}","${label(text(sh,o,20))}")
+    a=a.replace(" type=${u16(sh,o+44)} nameHex=${nameHex(sh,o)}", " type=${u16(sh,o+44)}")
+    start=a.index('    // Full 20-byte SF2 name field, including NUL and unused padding. Export only.')
+    end=a.index('    private fun label(',start)
+    a=a[:start]+a[end:]
+    assert a==b,'metadata exporter gained non-formatting changes'
     for path in ['app/src/main/cpp/voice_resolver.h','app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt',
                  'app/src/main/java/com/yourapp/midi/MidiMixerOutput.kt','app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt']:
         assert (ROOT/path).read_text()==old(path),'protected source changed: '+path

@@ -1,27 +1,39 @@
 {
   "schema": 1,
-  "phase": "U1_PROVISIONAL",
-  "pdta_domain": "sf2-list-pdta-subchunks-v1",
+  "phase": "U1_AUDIT_INTEGRATED_DEVICE_UNVERIFIED",
+  "pdta_domain": "sf2-list-pdta-payload-v2",
   "font_provenance": [
     {
       "role": "COLOMBO",
       "file_sha256": "9e4686e4aa7173ffd1baf7ec6f80fcb3fe90880e824cf8c4e1defb5d153d47eb",
-      "expected_pdta_sha256": null
+      "expected_pdta_sha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "pdta_bytes": 446466,
+      "audit_filename": "ColomboGMGS2_BM.sf2",
+      "provenance": "tests/fixtures/sf2_binary_audit/structure.json"
     },
     {
       "role": "PRIME_DRUM",
       "file_sha256": "a72158c09677c585eec348762a33da49509bf338c5b36d0e787af58cca0b9f8a",
-      "expected_pdta_sha256": null
+      "expected_pdta_sha256": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283",
+      "pdta_bytes": 197194,
+      "audit_filename": "DRUMKIT YAMAHA PSR-SX700 & SX900 PRIME.sf2",
+      "provenance": "tests/fixtures/sf2_binary_audit/structure.json"
     },
     {
       "role": "PRIME_MELODY",
       "file_sha256": "e8c7356159c200d945f13e113595ff06e7955779b0e9361709d9c7cdba164a82",
-      "expected_pdta_sha256": null
+      "expected_pdta_sha256": "cfb096e3c197570554313aaca227f7e207ac64867e9871a025c1b4b2c6e9c136",
+      "pdta_bytes": 208430,
+      "audit_filename": "MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2",
+      "provenance": "tests/fixtures/sf2_binary_audit/structure.json"
     },
     {
       "role": "TYROS4",
       "file_sha256": "de5b1404630840a2a897e77c6083e2231c5d1523e6571a8afd972a4f684d36ce",
-      "expected_pdta_sha256": null
+      "expected_pdta_sha256": "16bb60deafdf426cdc7e269b6c5f434cd5b7db6e14a83f86d17f54720176217a",
+      "pdta_bytes": 260470,
+      "audit_filename": "yamaha tyros 4_just_t4_fixed.sf2",
+      "provenance": "tests/fixtures/sf2_binary_audit/structure.json"
     }
   ],
   "reviews": [

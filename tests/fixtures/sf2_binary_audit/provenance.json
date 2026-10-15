@@ -1,0 +1,15 @@
+{
+  "archive_sha256": "fe797c6d07ffbda3de5d4ed90ebbf2568ad716aa44ff88039f0b528b2442a5f5",
+  "contains_sf2_or_audio": false,
+  "files": {
+    "SF2_BINARY_AUDIT_CATALOG_CORRECTIONS.md": "7be692699a508a259ad0c82a3b27b08ad8a194aa0ecf486040b2f494529196d2",
+    "crosscheck.json": "40799c98ad8132b8ce69886af22284e126c87b73dae4cf9c7eec1e8339a36931",
+    "crosscheck.py": "d6bd8025c87c021013f889482cf9fbe80fbfaf02825b7493a388888e36f5a59d",
+    "levels_clamp.json": "8bd853ea7b1bf960c6d2ad96a951423a5c4c15f9e86e11f2f194a25e6c8eb5c7",
+    "levels_emu04.json": "5811f25846c10510f84f18d9d899286c05ac6bcd7ee2f5db47671f47446fe573",
+    "negative_attenuation.txt": "7486f4b24447660df83bda081748dc891ab0ecd0bcb73cd0c77939b308798866",
+    "structure.json": "4133e8ca707c95feaa6b78357ade525b9b464a866fac2a19313524d43efa975c"
+  },
+  "original_pdta_bytes_available": false,
+  "source": "User-supplied SF2_audit_evidence.zip; Claude read-only binary audit"
+}

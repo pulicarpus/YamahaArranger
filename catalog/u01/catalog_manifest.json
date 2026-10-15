@@ -1,4 +1,5 @@
 {
+  "audit_provenance_sha256": "8e747ca0b738305af4e4141be564cd1e23b4ef9bd15caed244dcb7051259e863",
   "catalogUse": "OFF_U0_U1",
   "dictionary_version": "conservative-name-evidence-v1; GM canonical dictionary NOT supplied",
   "drums": 159,
@@ -7,7 +8,7 @@
       "display_name": "ColomboGMGS2_BM.sf2",
       "metadata_file_sha256": "9e4686e4aa7173ffd1baf7ec6f80fcb3fe90880e824cf8c4e1defb5d153d47eb",
       "observed_pdta_sha256": null,
-      "pdta_sha256": null,
+      "pdta_sha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
       "presets": 892,
       "role": "COLOMBO",
       "status": "UNVERIFIED"
@@ -16,7 +17,7 @@
       "display_name": "DRUMKIT YAMAHA PSR-SX700 & SX900 PRIME.sf2",
       "metadata_file_sha256": "a72158c09677c585eec348762a33da49509bf338c5b36d0e787af58cca0b9f8a",
       "observed_pdta_sha256": null,
-      "pdta_sha256": null,
+      "pdta_sha256": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283",
       "presets": 21,
       "role": "PRIME_DRUM",
       "status": "UNVERIFIED"
@@ -25,7 +26,7 @@
       "display_name": "yamaha tyros 4_just_t4_fixed.sf2",
       "metadata_file_sha256": "de5b1404630840a2a897e77c6083e2231c5d1523e6571a8afd972a4f684d36ce",
       "observed_pdta_sha256": null,
-      "pdta_sha256": null,
+      "pdta_sha256": "16bb60deafdf426cdc7e269b6c5f434cd5b7db6e14a83f86d17f54720176217a",
       "presets": 142,
       "role": "TYROS4",
       "status": "UNVERIFIED"
@@ -34,22 +35,23 @@
       "display_name": "MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2",
       "metadata_file_sha256": "e8c7356159c200d945f13e113595ff06e7955779b0e9361709d9c7cdba164a82",
       "observed_pdta_sha256": null,
-      "pdta_sha256": null,
+      "pdta_sha256": "cfb096e3c197570554313aaca227f7e207ac64867e9871a025c1b4b2c6e9c136",
       "presets": 93,
       "role": "PRIME_MELODY",
       "status": "UNVERIFIED"
     }
   ],
-  "generator": "u01-catalog-v1",
+  "generator": "u01-catalog-v2-audit",
   "metadata_sha256": {
     "font_1.txt": "706936917f87a6c689b966c2ec17d6c188a48e729d4c5b341a5780405ad2b51f",
     "font_2.txt": "6ab59b9fed0f6f14bd03d3142d48ad10d8cf71962ef36674cea9bc738f94b6b7",
     "font_3.txt": "d81cb197ebaf8e8657137c1fec2abbd75ab79947940050926a600194f00ba860",
     "font_4.txt": "b2f3be8a18a6da1b4fb6fa35deef5c0af977c09009ce7f2ce3d38165063c3b02"
   },
-  "pdta_domain": "sf2-list-pdta-subchunks-v1",
+  "pdta_domain": "sf2-list-pdta-payload-v2",
   "presets": 1148,
-  "review_sha256": "b5dbbff7e3837c8d8e3496d65c7d98c3e3d9d3ddb550d35244c5116694f5dada",
+  "raw_name_status": "PARTIAL; original instrument/sample bytes and uncrosschecked Colombo preset names pending PDTA",
+  "review_sha256": "364f1f48749de64488ed43d586c7130e2851a3eb1549e56e7bb98b58d86ee8a5",
   "schema": 1,
   "status": "PROVISIONAL",
   "voices": 989

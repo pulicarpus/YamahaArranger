@@ -1,5 +1,7 @@
 # U0/U1 diagnostic implementation
 
+Historical checkpoint at 2b4bd2c. Fingerprint domain/catalog status below is superseded by [binary-audit integration](SF2_BINARY_AUDIT_INTEGRATION_U01.md).
+
 Branch: `experiment/universal-yamaha-u0-u1`.
 Parent: `c3f3b0a67f4d4acc2310f687abb248be1cae6643`.
 Reference: owner's UNIVERSAL_YAMAHA_VOICE_DRUM_ENGINE_DESIGN.md and explicit two-stage provisional catalog request.

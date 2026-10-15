@@ -9,7 +9,7 @@ static Bytes tables(){Bytes b;const char* ids[]={"phdr","pbag","pmod","pgen","in
 static Bytes sf2(Bytes payload,const Bytes& samples={1,2,3}){Bytes list{'p','d','t','a'};add(list,payload);Bytes body{'s','f','b','k'};Bytes sdta{'s','d','t','a'};add(sdta,chunk("smpl",samples));add(body,chunk("LIST",sdta));add(body,chunk("LIST",list));return chunk("RIFF",body);}
 int main(){
     const auto payload=tables(),valid=sf2(payload);auto result=sf2_pdta::fingerprint(valid);
-    assert(result.valid && result.sha256==sf2_fingerprint::sha256(payload));
+    assert(result.valid && result.sha256==sf2_fingerprint::sha256(Bytes(valid.end()-static_cast<std::ptrdiff_t>(payload.size()+4),valid.end())) && result.bytes==payload.size()+4);
     assert(sf2_pdta::fingerprint(sf2(payload,{9,8,7,6})).sha256==result.sha256);
     auto changed=payload;changed[8]^=1;assert(sf2_pdta::fingerprint(sf2(changed)).sha256!=result.sha256);
     for(size_t n=0;n<valid.size();++n){Bytes b(valid.begin(),valid.begin()+n);assert(!sf2_pdta::fingerprint(b).valid);}

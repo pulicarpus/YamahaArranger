@@ -27,7 +27,7 @@ def run(args,log=None):
 def main():
     p=argparse.ArgumentParser();p.add_argument('--metadata',required=True);p.add_argument('--jvm-deps',required=True);p.add_argument('--out',required=True)
     a=p.parse_args();out=Path(a.out).resolve();out.mkdir(parents=True,exist_ok=True)
-    allowed={'app/src/main/cpp/bassmidi_player.cpp','app/src/main/cpp/bassmidi_player.h','app/src/main/cpp/sf2_pdta_fingerprint.h','app/src/main/java/com/yourapp/ui/MainViewModel.kt','app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleFidelityReport.kt'}
+    allowed={'app/src/main/cpp/bassmidi_player.cpp','app/src/main/cpp/bassmidi_player.h','app/src/main/cpp/sf2_pdta_fingerprint.h','app/src/main/java/com/yourapp/ui/MainViewModel.kt','app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleFidelityReport.kt','app/src/main/java/com/yourapp/audio/Sf2SemanticInventory.kt'}
     original={}
     for line in run(['git','ls-tree','-r',BASE,'--','app/src/main']).splitlines():
         attrs,path=line.split('\t',1);original[path]=attrs.split()[2]
@@ -39,13 +39,14 @@ def main():
         if path not in physical or oid!=original.get(path):changed.add(path)
     assert changed==allowed,('production scope drift',changed)
     assert (ROOT/'app/src/main/cpp/voice_resolver.h').read_bytes()==subprocess.check_output(['git','show',BASE+':app/src/main/cpp/voice_resolver.h'],cwd=ROOT)
-    print('U0/U1 ISOLATION PASS: five diagnostic-only production paths; all other production bytes identical',flush=True)
+    print('U0/U1 ISOLATION PASS: six diagnostic-only production paths; all other production bytes identical',flush=True)
     print(run(['python3',ROOT/'tools/sf2_catalog/verify_u01_boundary.py']).strip(),flush=True)
+    print(run(['python3',ROOT/'tests/test_golden_pdta_tool.py'],out/'golden-tool.log').strip(),flush=True)
     run(['g++','-std=c++17','-O1','-g','-fsanitize=address,undefined','-fno-omit-frame-pointer','-Wall','-Wextra','-Werror','-I',ROOT/'app/src/main/cpp',ROOT/'tests/u01_pdta_test.cpp','-o',out/'pdta-test'])
     print(run([out/'pdta-test'],out/'pdta.log').strip(),flush=True)
     print(run(['python3',ROOT/'tools/sf2_catalog/test_catalog.py','--metadata',Path(a.metadata).resolve()],out/'catalog.log').strip(),flush=True)
     run(['python3',ROOT/'tools/sf2_catalog/build_catalog.py','--metadata',Path(a.metadata).resolve(),'--out',out/'generated'],out/'generator.log')
-    for name in ['catalog_manifest.json','voice_catalog_generated.h','drum_catalog_generated.h','catalog_report.md','catalog.json.gz']:
+    for name in ['catalog_manifest.json','voice_catalog_generated.h','drum_catalog_generated.h','catalog_report.md','catalog.json.gz','catalog_names.json.gz']:
         assert (out/'generated'/name).read_bytes()==(ROOT/'catalog/u01'/name).read_bytes(), 'generated catalog drift: '+name
     smoke=out/'catalog-smoke.cpp';smoke.write_text('#include "'+str(out/'generated/voice_catalog_generated.h')+'"\n#include "'+str(out/'generated/drum_catalog_generated.h')+'"\nint main(){return u01_voice::count+u01_drum::count==1148?0:1;}\n')
     run(['g++','-std=c++17','-Wall','-Wextra','-Werror',smoke,'-o',out/'catalog-smoke']);run([out/'catalog-smoke'])
@@ -57,6 +58,10 @@ def main():
     sources=[ROOT/'app/src/main/java/com/yourapp/style/StyleModel.kt',ROOT/'app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleFidelityReport.kt',ROOT/'tests/StyleFidelityReportTest.kt']
     run(['java','-Xmx1g','-cp',cp,'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler','-no-stdlib','-no-reflect','-jvm-target','17','-classpath',cp,'-d',out/'u0.jar',*sources])
     print(run(['java','-cp',str(out/'u0.jar')+os.pathsep+cp,'com.yourapp.yamahaarranger.arranger.StyleFidelityReportTestKt'],out/'kotlin.log').strip(),flush=True)
+    inventory=[ROOT/'app/src/main/java/com/yourapp/audio/Sf2SemanticInventory.kt',ROOT/'app/src/test/java/com/yourapp/audio/Sf2SemanticInventoryTest.kt']
+    run(['java','-Xmx1g','-cp',cp,'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler','-no-stdlib','-no-reflect','-jvm-target','17','-classpath',cp,'-d',out/'inventory.jar',*inventory])
+    print(run(['java','-cp',str(out/'inventory.jar')+os.pathsep+cp,'org.junit.runner.JUnitCore','com.yourapp.audio.Sf2SemanticInventoryTest'],out/'inventory.log').strip(),flush=True)
+
     # Compile original and modified production native code with the SAME recorder driver.
     # The baseline is an immutable archive, not a normalization of current source.
     with tempfile.TemporaryDirectory(prefix='u01-baseline-') as directory:
@@ -92,6 +97,6 @@ def main():
         return text.splitlines()[-2]
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
         for result in executor.map(suite,['main','nonzero','named','msb0']):print(result,flush=True)
-    print('U0/U1 HOST PASS; device PDTA fingerprints / Redmi Pad <300 ms gate remain UNVERIFIED',flush=True)
+    print('U0/U1 AVAILABLE-EVIDENCE HOST PASS; original golden PDTA recomputation and device gates PENDING',flush=True)
 
 if __name__=='__main__':main()

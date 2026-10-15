@@ -38,6 +38,28 @@ class Sf2SemanticInventoryTest {
             return name("RIFF",4) + d(payload.size) + payload
         }
     }
+    @Test fun rawPresetInstrumentAndSampleNamesRoundTripWithApostrophes() {
+        val bytes = fixture()
+        fun replaceName(old: String, replacement: String) {
+            val target = name(old,20)
+            val at = bytes.indices.first { i -> i + 20 <= bytes.size && bytes.copyOfRange(i,i+20).contentEquals(target) }
+            name(replacement,20).copyInto(bytes,at)
+        }
+        replaceName("Opaque Kit", "CLOW D'ACADEMY")
+        replaceName("Percussion", "Player's Kit")
+        replaceName("Pedal Hi-Hat", "Hat's Sample")
+        val lines = mutableListOf<String>()
+        val scan = Sf2SemanticInventory.scan(ByteArrayInputStream(bytes),"test") { lines.add(it); Unit }
+        assertTrue(scan.reason,scan.complete)
+        for ((prefix,expected) in listOf("P id=0 " to "CLOW D'ACADEMY", "I id=0 " to "Player's Kit", "S id=0 " to "Hat's Sample")) {
+            val row = lines.first { it.startsWith(prefix) }
+            val hex = row.substringAfter("nameHex=").substringBefore(' ')
+            assertEquals(40,hex.length)
+            val decoded = hex.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+            assertArrayEquals(name(expected,20),decoded)
+            assertTrue(row.contains(expected.replace("'", "\\'")))
+        }
+    }
     @Test fun allPresetsAndOffKeySemanticLeadsAreScannedWithoutDeclaringIdentity() {
         val scan = Sf2SemanticInventory.scan(ByteArrayInputStream(fixture()), "test.sf2")
         assertTrue(scan.reason,scan.complete); assertEquals(2,scan.presets); assertEquals(2,scan.instruments); assertEquals(3,scan.samples)

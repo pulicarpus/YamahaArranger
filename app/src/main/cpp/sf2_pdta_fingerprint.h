@@ -4,8 +4,8 @@
 #include <cstring>
 #include <set>
 
-// v1 domain: the exact bytes inside LIST/pdta AFTER its four-byte list type,
-// including subchunk headers and their padding; excludes LIST header/type/pad.
+// Audit v2 domain: exact LIST payload INCLUDING its four-byte pdta list type.
+// Includes child headers/padding; excludes outer LIST header and outer padding.
 // Not a hash of text metadata, sample PCM, a normalized copy, or a filename.
 namespace sf2_pdta {
 struct Result {
@@ -39,7 +39,7 @@ inline Result fingerprint(const std::vector<unsigned char>& data) {
         at=body+n+(n&1);
     }
     if(!begin)return finish("missing_pdta");
-    if(end-begin>32*1024*1024)return finish("pdta_size_limit");
+    if(end-begin+4>32*1024*1024)return finish("pdta_size_limit");
     const char* ids[]={"phdr","pbag","pmod","pgen","inst","ibag","imod","igen","shdr"};
     const size_t widths[]={38,4,10,4,22,4,10,4,46};
     size_t at=begin;
@@ -50,8 +50,8 @@ inline Result fingerprint(const std::vector<unsigned char>& data) {
         at=body+n+(n&1);
     }
     if(at!=end)return finish("unexpected_pdta_table");
-    const std::vector<unsigned char> payload(data.begin()+static_cast<std::ptrdiff_t>(begin),data.begin()+static_cast<std::ptrdiff_t>(end));
+    const std::vector<unsigned char> payload(data.begin()+static_cast<std::ptrdiff_t>(begin-4),data.begin()+static_cast<std::ptrdiff_t>(end));
     r.sha256=sf2_fingerprint::sha256(payload);r.bytes=payload.size();r.valid=true;
-    return finish("validated_raw_pdta_v1");
+    return finish("validated_list_pdta_payload_v2");
 }
 }

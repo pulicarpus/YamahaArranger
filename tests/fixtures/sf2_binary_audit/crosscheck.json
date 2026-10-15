@@ -1,0 +1,152 @@
+{
+ "ColomboGMGS2_BM.sf2": {
+  "presets_match": false,
+  "preset_mismatches": [
+   [
+    [
+     51,
+     0,
+     51,
+     "60's Synth Strings"
+    ],
+    [
+     51,
+     0,
+     51,
+     "60?s Synth Strings"
+    ]
+   ],
+   [
+    [
+     176,
+     2,
+     0,
+     "Shigi's Piano"
+    ],
+    [
+     176,
+     2,
+     0,
+     "Shigi?s Piano"
+    ]
+   ],
+   [
+    [
+     205,
+     2,
+     103,
+     "80's Sci-Fi"
+    ],
+    [
+     205,
+     2,
+     103,
+     "80?s Sci-Fi"
+    ]
+   ],
+   [
+    [
+     219,
+     3,
+     26,
+     "90's Jazz Guitar"
+    ],
+    [
+     219,
+     3,
+     26,
+     "90?s Jazz Guitar"
+    ]
+   ],
+   [
+    [
+     431,
+     15,
+     71,
+     "Beatles' Mellotron"
+    ],
+    [
+     431,
+     15,
+     71,
+     "Beatles? Mellotron"
+    ]
+   ]
+  ],
+  "sample_names": 3264,
+  "names_with_multiple_distinct_data": 20,
+  "satriomusik_names": 0,
+  "satriomusik_names_with_multiple_data": 0,
+  "identical_data_under_different_names": 2
+ },
+ "DRUMKIT YAMAHA PSR-SX700 & SX900 PRIME.sf2": {
+  "presets_match": false,
+  "preset_mismatches": [
+   [
+    [
+     3,
+     128,
+     28,
+     "CLOW D'ACADEMY"
+    ],
+    [
+     3,
+     128,
+     28,
+     "CLOW D?ACADEMY"
+    ]
+   ],
+   [
+    [
+     12,
+     128,
+     32,
+     "CLOW D'ACADEMY II"
+    ],
+    [
+     12,
+     128,
+     32,
+     "CLOW D?ACADEMY II"
+    ]
+   ],
+   [
+    [
+     16,
+     128,
+     46,
+     "D'ROSTA SX700-SX900"
+    ],
+    [
+     16,
+     128,
+     46,
+     "D?ROSTA SX700-SX900"
+    ]
+   ]
+  ],
+  "sample_names": 1206,
+  "names_with_multiple_distinct_data": 396,
+  "satriomusik_names": 100,
+  "satriomusik_names_with_multiple_data": 95,
+  "identical_data_under_different_names": 424
+ },
+ "MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2": {
+  "presets_match": true,
+  "preset_mismatches": [],
+  "sample_names": 1188,
+  "names_with_multiple_distinct_data": 300,
+  "satriomusik_names": 100,
+  "satriomusik_names_with_multiple_data": 100,
+  "identical_data_under_different_names": 164
+ },
+ "yamaha tyros 4_just_t4_fixed.sf2": {
+  "presets_match": true,
+  "preset_mismatches": [],
+  "sample_names": 2555,
+  "names_with_multiple_distinct_data": 2,
+  "satriomusik_names": 0,
+  "satriomusik_names_with_multiple_data": 0,
+  "identical_data_under_different_names": 179
+ }
+}

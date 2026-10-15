@@ -1,0 +1,57 @@
+{
+  "apk": "NOT_BUILT_WAITING_ORIGINAL_PDTA",
+  "catalog": {
+    "android_hashing": "UNVERIFIED",
+    "catalog_json_bytes": 4587467,
+    "catalog_use": "OFF",
+    "deterministic_files": 7,
+    "drums": 159,
+    "host_load_median_ms": 24.340733,
+    "presets": 1148,
+    "status": "PASS",
+    "voices": 989
+  },
+  "full_historical_ci": "BLOCKED_UNCHANGED",
+  "golden_verifier_tool_tests": 2,
+  "keyboard_midi_release_junit": 78,
+  "log_sha256": {
+    "catalog-final.log": "e2c56e0175e94215853b40ac1e481d9c6ebfcf1e772f9a16b6e51b9e32af9f17",
+    "golden-tool-test.log": "3160346a5ea1fdbd5e528cd5e7bd4d1a8175db6659099bbbadfa19254b109298",
+    "host.log": "cc91812bbaed2518236bd372cb1c6fc890765ae59ac76bc6327a1e58c3813b6e",
+    "jvm-regression.log": "eb1ee7d3e6b69d44e265db536ecb5b3ecfe9f937a9ad36857d147313f88cf346",
+    "native-regression.log": "f774cfee523dadefbdf5f29d1a25eb4d409f60a7bff7062b4c354ec80e2f67f5"
+  },
+  "metadata_scanner_junit": 10,
+  "native_mapping": "IDENTICAL",
+  "native_mapping_diff_rows": 63,
+  "native_regression": "PASS_MOCK_HOST_ONLY",
+  "original_four_golden_recomputation": "PENDING_MISSING_ORIGINAL_BYTES",
+  "policyC": {
+    "P1_P8_N1_N14_R1": "PASS_REAL_N10",
+    "closed": 0,
+    "main": {
+      "cases": 1280,
+      "opened": 204,
+      "swaps": 8
+    },
+    "msb0": {
+      "cases": 81920,
+      "opened": 25900,
+      "swaps": 8
+    },
+    "named": {
+      "cases": 39936,
+      "opened": 102,
+      "swaps": 20
+    },
+    "nonzero": {
+      "cases": 7680,
+      "opened": 0,
+      "swaps": 0
+    },
+    "unexpected": 0
+  },
+  "runtime_catalog": "OFF",
+  "starting_commit": "2b4bd2c64400a2f9451cf4ec18c6065f8159fddf",
+  "status": "AVAILABLE_EVIDENCE_HOST_PASS_FINAL_U1_PENDING"
+}
