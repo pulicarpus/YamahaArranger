@@ -258,3 +258,8 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_Nativ
     const auto text=g_engine?g_engine->pcmSessionReport({mask,known,static_cast<uint64_t>(changes),static_cast<uint64_t>(last)}):std::string("PCM_SESSION status=UNAVAILABLE engine_not_started\n");
     return env->NewStringUTF(text.c_str());
 }
+
+extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeDrumChannelSelection(JNIEnv* env,jobject,jint channel){
+    const auto text=g_engine?g_engine->drumChannelSelection(channel):std::string("UNOBSERVED");
+    return env->NewStringUTF(text.c_str());
+}

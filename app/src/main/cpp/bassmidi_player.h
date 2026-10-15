@@ -68,6 +68,7 @@ public:
     std::vector<unsigned char> diagnosticDrumWav(int bank,int pc,int key,int velocity);
     std::string noteZoneReport() const;
     uint64_t markPcmSession(pcm_session::Controls controls);
+    std::string drumChannelSelection(int channel) const; // R22 cached metadata only
     std::string pcmSessionReport(pcm_session::Controls controls) const;
     std::string drumKitCoverage(const std::vector<drum_audit::Hit>& hits) const;
     std::string drumCompatibilityReport(const std::vector<drum_compat::Demand>& demand, const std::vector<std::pair<int,int>>& comparisonKits = {}) const;
@@ -285,6 +286,10 @@ private:
     int interpolation_ = 2;
     int voices_ = 1000;
     float soundFontVolume_ = 0.90f;
+    // R22 observations are never read by selection or rendering.
+    struct DrumSelectionObservation { uint64_t generation=0; int bank=-1,pc=-1; std::string path,pdta,name,reason; };
+    uint64_t drumSelectionGeneration_=0;
+    std::array<DrumSelectionObservation,16> drumSelections_{};
     std::array<ChannelState, 16> channels_{};
     std::vector<DrumPresetEntry> melodyDrumPresetCache_;
     std::vector<DrumPresetEntry> drumDrumPresetCache_;

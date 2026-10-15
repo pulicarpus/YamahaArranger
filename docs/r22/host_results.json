@@ -1,0 +1,56 @@
+{
+  "G1": {
+    "comparison": "dc746b7 vs shadow getter OFF vs ON",
+    "gate": "G1_HOST_PASS",
+    "pcmBytes": 4096,
+    "pcmSha256": "6548bd9f23f13391abd139f9cebed92d1aa1a2838d7bcb161dda897f0d9106b4",
+    "scope": "same_mock_decoder_not_device",
+    "traceRows": 85
+  },
+  "G2": "PASS_SYNTHETIC_SETUP_DYNAMIC_RAW_REQUEST_AND_JVM_COMMAND_IDENTITY",
+  "G3": {
+    "allIdentical": true,
+    "digest": "a9c5be4fa03d42ac663aa399c1c0e9b66dcaf6af4783287f6320208aa2eae681",
+    "runs": 3
+  },
+  "G4": "PASS_RESOLVER_INPUT_SFF1_SFF2_GS_GM_CUSTOM_UNKNOWN_CORPUS",
+  "G5": "PASS_24_SUPPLIED_AUDIT_CANDIDATE_ROWS_RANGE_INVARIANT_COVERAGE_NOT_ORIGINAL_STYLE_BYTE_REPLAY",
+  "G6": {
+    "coldP99Us": [
+      248.925,
+      193.171,
+      223.838
+    ],
+    "device": "UNVERIFIED",
+    "thresholdUs": 2000
+  },
+  "baseline": "dc746b7cabfafe365e5e15366f8172f35c7a89af",
+  "branch": "experiment/bassmidi-r2-2-shadow-drumkit",
+  "catalog": {
+    "deterministic": true,
+    "identities": 223,
+    "sha256": "bec1368f783f847e1b3d433dd46a085968aa1118a9d19b4161bb34c08db4bff1",
+    "source": "4 original U1 golden PDTA exports",
+    "uncompressedBytes": 1266038
+  },
+  "policyC": {
+    "N10": "REAL_ASSERTION_PASS",
+    "main1280": "204 opened;8 swaps;0 closed;0 unexpected",
+    "msb081920": "25900 opened;8 swaps;0 closed;0 unexpected",
+    "named39936": "102 opened;20 swaps;0 closed;0 unexpected",
+    "nonzero7680": "unchanged"
+  },
+  "regressions": {
+    "jvm": 78,
+    "liveReg": 85,
+    "mute": 2,
+    "native": "PASS original full native block"
+  },
+  "remaining": [
+    "Original ROSITA.STY byte replay pending upload",
+    "SFF2 positive dialect detection inherited UNVERIFIED",
+    "Device G1/G2/G5/G6 pending",
+    "Full historical source-profile CI BLOCKED",
+    "No audio improvement or resolver activation claim"
+  ]
+}

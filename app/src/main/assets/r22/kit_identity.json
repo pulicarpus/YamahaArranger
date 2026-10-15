@@ -1,0 +1,2239 @@
+{
+  "catalogUse": "OFF_PLAYBACK_SHADOW_READ_ONLY",
+  "identityVersion": "r22-kit-identity-v1",
+  "kits": [
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:0:d945328120b4ea5dd7167a0863c2b80da1021a7aca0e4ddc44250be23a3c8eeb",
+      "nameHex": "5847205346582031000000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 0,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:1:44d2196daa9bc59b36829b475745314f3a4d16316263f2d8ade25c2b1857e84d",
+      "nameHex": "5847205346582032000000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 1,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:2:32e13fa6b1e5928f69a369084b9cfb4108e4cf239e58bbb98cb88f35a169dfc9",
+      "nameHex": "4753205374616e64617264205343353500000000",
+      "namespace": "CUSTOM",
+      "pc": 2,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:3:80591a2aa0fd1bfb94f3d226267893c3869c71abef97cc8287d289b69cd6abf8",
+      "nameHex": "4753205374616e64617264204d542d3332000000",
+      "namespace": "CUSTOM",
+      "pc": 3,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:4:c64e44afad59aee386c09dcc40c38e4b63c9bffd6bef78112d309e9a8466fed0",
+      "nameHex": "4753205374616e64617264203100000000000000",
+      "namespace": "CUSTOM",
+      "pc": 4,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:5:6fdab46d18824c8b4cde3454fa7e80eb4dcbfd9ca0e4129154680c25d526f855",
+      "nameHex": "4753205374616e64617264203200000000000000",
+      "namespace": "CUSTOM",
+      "pc": 5,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:6:aea4ff9cbc07c33a49faac964e616bff9cd18986462585aa6909384a50687565",
+      "nameHex": "4753204865617679000000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 6,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:7:7d473b8ee46ecd0b6161ca0815e576f0285d5b82c5f35b903336816981e42d9d",
+      "nameHex": "4753204c69766500000000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 7,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:8:9160101d0baae336c67f416ecce1a98a9ca5970074879e73e4f1350d1686bc8b",
+      "nameHex": "475320526f6f6d00000000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 8,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:9:ece2b9b64737851f8a6fddf1d5667d7e670879b4a636e1708b4098fd2dda8ca2",
+      "nameHex": "475320486970686f700000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 9,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:10:bb79bc594ba8f6f0bc4b3f7cb8e6b1e1f6291ee70b92e7c687088864593d5e27",
+      "nameHex": "4753204a756e676c650000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 10,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:11:24ba522f4e19fe40b2bb46f2c8c7451013c603ae4e357e7668c77315fea071d2",
+      "nameHex": "4753205472617000000000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 11,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:12:78a01e528ef8661f25caaf1056c88808568bd2b33eaf30510e5a558e85baa42e",
+      "nameHex": "47532046756e6b00000000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 12,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:13:ecd4631efaf6247e2536c61ad3cf52bdaf29e8c864386db045049fd08ad4e2a1",
+      "nameHex": "475320486f757365000000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 13,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:14:d88a4885cc6e1d8ed0fd44545df310565275fa52b8b9f9caab26921d22374606",
+      "nameHex": "475320506f700000000000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 14,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:15:2557c7b369b3f87ff8438eacde2937428e1e03c75313b8f8684104517633141a",
+      "nameHex": "4753204d6574616c000000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 15,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:16:ce80e42cdc2f9f49c5c5111daaaaacaa3e97747585bfe20ef798a0b837766db0",
+      "nameHex": "475320506f776572203100000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 16,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:17:b51971fd43cb599b22bc7fa7d9b656c41d5877cf411582530b51668d7b69981b",
+      "nameHex": "475320506f776572203200000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 17,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:18:6250984c0ffae7c1f227ca4c17bb4266b47a131ec31a4e83c88ccd83c6c945e8",
+      "nameHex": "475320506f776572203300000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 18,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:19:f9caef45da4007d3a9a1ba20b71fe922e31c54796b90f2694f329a6a31da51c0",
+      "nameHex": "475320506f776572203400000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 19,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:20:fcbbcdb994bf0c359cb22b73c2feadec434817e8b67ffaf88b393ed9c3899473",
+      "nameHex": "475320536c616d21000000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 20,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:21:e40474c4e603b95fb13e3f4403cbdc58323d487911c46344faa7cf1130967ac3",
+      "nameHex": "47532053747564696f0000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 21,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:22:302588a63dbe884da98c81ed4bc2847699e530046bbb2264e1ba64fe68c5fcbe",
+      "nameHex": "475320446a656e74000000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 22,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:23:c5e33188ba0ee08b441057226e2003c856092252802fe28eeb96934c46f39d42",
+      "nameHex": "4753204469727479000000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 23,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:24:a4cd5985b0056618ce6c63ef09a53b692f134e684023e4eb71e6b0060621809d",
+      "nameHex": "475320456c656374726f00000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 24,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:25:981c209f8e152b303ac00cec27aee265d4a26591d348fff24f9a83cac9b7fe5d",
+      "nameHex": "47532054522d3830380000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 25,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:26:05629f266386f3e9fbcb28bd25fe80d1d5a42edb3e1116457e2a4cb189d8a756",
+      "nameHex": "47532044616e6365000000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 26,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:27:d63c8b37bb92a1dbbf15f55f368ce6d8cc8f6b65c2f4bb8bff7356865d807035",
+      "nameHex": "47532043522d3738000000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 27,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:28:137aead273d91660e4d36ca07a226656a1a693190f93da11e6969160d70d86d7",
+      "nameHex": "47532054522d3630360000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 28,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:29:6eeefa91fd02ecd48c21817bcafdece694f215a565721713c4d0fb84d970a5d6",
+      "nameHex": "47532054522d3730370000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 29,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:30:8786417058a7bfcb6518861970400972421e397e3d70fa7a5daaf52f158eeed7",
+      "nameHex": "47532054522d3930390000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 30,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:31:e422518eaa3e3a5991a2d56227675f3e16c593f68286492d10f698f986ac29b0",
+      "nameHex": "4753204a756e6b00000000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 31,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:32:cab90b8c6c5e790b461a0397b2a6e60074645c4a86bc2a3fbcbeb419517941a9",
+      "nameHex": "4753204a617a7a20310000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 32,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:33:b75406db298f02f6ab8e1925739ba1824ff4a1ca311268ae6b0490e2f75e4bde",
+      "nameHex": "4753204a617a7a20320000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 33,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:34:8991afb0a3ea18b4b2baac02f19c6687dceceb987c1d64dc24cb7a47d36e83cd",
+      "nameHex": "4753204a617a7a20330000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 34,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:35:a78583d103faf1e1f5b4b94a6f13338ed0482a742cb8fb0f8e34e72a41cfaebb",
+      "nameHex": "4753205265676761650000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 35,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:36:2095a3e679da4d74ac211bf6e77ccf16121bb04e6a7b2f6d700680d310e46cd0",
+      "nameHex": "526163636f6e74612042656174626f7820313236",
+      "namespace": "CUSTOM",
+      "pc": 36,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:37:d74faba97ab89c2ce3d120686227912b39a45dbb760f497c66d38329389635aa",
+      "nameHex": "475320446a656e74204c69746500000000000000",
+      "namespace": "CUSTOM",
+      "pc": 37,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:40:318aecc862fe1e3612aed0fce8ff8dc4e57252916b62535ae1c5eedefd840d74",
+      "nameHex": "4753204272757368000000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 40,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:41:4a6f93fe026d79bf62941ae4a3ef966f43bb1eb909dfabcba28ed73633eede35",
+      "nameHex": "475320537769726c730000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 41,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:48:6501a747c7b2e04a959a5ed35b852614778f3b35784d8e78470eed732d506263",
+      "nameHex": "4753204f72636865737472616c00000000000000",
+      "namespace": "CUSTOM",
+      "pc": 48,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:49:13092b28f3e936f16d1925eb89e57ccbcd1e5b283b0aa3b7432ac46703bb2e74",
+      "nameHex": "4574686e6963202853432d383850726f29000000",
+      "namespace": "CUSTOM",
+      "pc": 49,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:50:e0a1a887167f5ade3aca33858dcd816a5ddbbc5f610baf93644ac9c13ca3d4f2",
+      "nameHex": "4765746162657261203132360000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 50,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:51:62ce4ecb7de0e8c94b7776eb45ae89c017059f2e4fee2290514ba886c443f386",
+      "nameHex": "526162616e2b5564656b6b692031323600000000",
+      "namespace": "CUSTOM",
+      "pc": 51,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:52:04eab90b142ce5c4600881be6a9dcee5f6944504009dc19e95fbb26513afce2d",
+      "nameHex": "41736961202853432d3838323029000000000000",
+      "namespace": "CUSTOM",
+      "pc": 52,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:53:d4da743009409f22117c1c100654005c46a0afe654486001536cc48cd5bacbde",
+      "nameHex": "44686f6c6b692031323600000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 53,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:54:f22e32f32b15c218067b32ca019c653a2780aa0ec23b2067514689abe7a2ce64",
+      "nameHex": "4465766f6c204265726120313236000000000000",
+      "namespace": "CUSTOM",
+      "pc": 54,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:56:6327d644e2b6213017d4935189e28ddab10aa40a278f585d718b96cf3f24d171",
+      "nameHex": "5346583120563100000000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 56,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:57:cd45fc80afe2abaf1edbca2baf42149d4a423899529689a167ae1cfa172330d4",
+      "nameHex": "5346583120563200000000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 57,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:58:ea86852d4c3a569e6d8c937334168ac2bca96c3908d4b22b7eeb1c99892984bb",
+      "nameHex": "5346583120563300000000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 58,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:59:6d100546bde2bebdc80886b89bbc611d49f8c100938b15024c4394c76d5990e2",
+      "nameHex": "5459524f5320566f63616c204566666563747321",
+      "namespace": "CUSTOM",
+      "pc": 59,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:60:448b089d272c85d56d2ffa5988c612d55258c7878eaa2eee666f21e7846c391a",
+      "nameHex": "53465832205b38385d0000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 60,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:61:3bf22006af278f6f22619571648e29dc16af9c316d67933693f47437114fcf80",
+      "nameHex": "476172616765204472756d732031323600000000",
+      "namespace": "CUSTOM",
+      "pc": 61,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:62:47d045ba829844b2ec2ee73fd7150cb3a8896b49b263a63b08add8f165aa105a",
+      "nameHex": "475320526567676165746f6e0000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 62,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:63:2f6ce832b52445f9b83143418f68a2d3aa78d2ab6c691de95a6e7f04f8939910",
+      "nameHex": "4753204469676974616c00000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 63,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:64:274be63e3d17a8755338f7c55664331992871710fb8505b1b2283d06ba5dac30",
+      "nameHex": "47532053696d6d6f6e7300000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 64,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:65:85939114fff68a27d11104988e7f227ad4ef975a4b4324985c54f19b1170bf2d",
+      "nameHex": "47532041746f6d69630000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 65,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:66:d78284d81d505afda44da1ee95574aa68960c0763f1e8a682067289314520336",
+      "nameHex": "475320534e455300000000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 66,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:68:de6318e9c144479c07a494421d4de0d6c48c8dae677562bbf21d2ca21d575c2d",
+      "nameHex": "4753204c696e6e00000000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 68,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:72:3560d8fcce66604b0cdcf0a20ea437a39b5730170a075ace6d4b5c83282e3af4",
+      "nameHex": "4753204c65676163790000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 72,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:73:324686fbf81aceb02f9734bb8c766839176925fb48009246e09a37445edfff16",
+      "nameHex": "475320416c7465726e6174697665000000000000",
+      "namespace": "CUSTOM",
+      "pc": 73,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:125:ddecabbead51184f0a8d22d68d5575abaad30a6203e8f73a96cfdabfb9abaaa0",
+      "nameHex": "4d656d65204b6974203132360000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 125,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:126:127:859ae68da0719c5c62e1709ac6397d83e073cabe26cc594188ffda98c3104f12",
+      "nameHex": "436f6c6f6d626f20434d2d36342f333200000000",
+      "namespace": "CUSTOM",
+      "pc": 127,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:0:3f8530064f6dfc547fc76681be97ec45878645992a052baaf834dbb5b9613591",
+      "nameHex": "5847205374616e64617264203100000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 0,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:1:113b68d4182ecb2828062ec4fa69050b15851b22601bbda9b21c83946761fe28",
+      "nameHex": "5847205374616e64617264203200000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 1,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:2:bd44d4e18e6f9e1b30e608b5693df9ee58c5b240ff9ecae8d687fe76c2d2031d",
+      "nameHex": "5847205374616e64617264205343353500000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 2,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:3:51644a3d8dbfd4e1f553207a78917e3093329672ccb7e7a2bd0d04f0ca86b7ca",
+      "nameHex": "5847205374616e64617264204d542d3332000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 3,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:4:d92eeedebda60b006fe3b26da7465e7b411493a4355ffc1d7ae76bdf864885f1",
+      "nameHex": "5847204865617679000000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 4,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:5:13f5b8333ca33b7dc3ad2119dd982ba9eb4f75b8569e64ae8074e7d4bd7f0c84",
+      "nameHex": "5847204c69766500000000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 5,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:8:528dbe4d9775e586b5888ecacb32bd3115a700f339045008bc9ca5574c94c063",
+      "nameHex": "584720526f6f6d00000000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 8,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:9:37209f157c6701267ab6437fef30b81bb84f78c5ad885467ef8af5175e0ea88b",
+      "nameHex": "584720486970686f700000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 9,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:10:0b07a229aa47d04e575f24e23906f93c03487d98a8a63a487c9001fe8a635841",
+      "nameHex": "5847204a756e676c650000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 10,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:11:55f2b06603142a9bf83c285001b68787322274b18319ff90fadb32715486f6b6",
+      "nameHex": "5847205472617000000000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 11,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:12:d949e2101688ff0eaa8ebe1f1d7d9e2c9fae0c533c40165b44ddf114a98e53b8",
+      "nameHex": "58472046756e6b00000000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 12,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:13:e5ccbe817bdf425c7ec66a039e5aa9b21d43d3b93df39471e733d8ab217b7d22",
+      "nameHex": "584720486f757365000000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 13,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:14:ad144e5f34e4bd13519a50f00d53d8ce0a787228c5cdd51e9f2092de5d16b5e9",
+      "nameHex": "584720506f700000000000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 14,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:15:d962051d0055155bfa3b5a43995f6c80358ce7bd78406b9f181654293085ea29",
+      "nameHex": "5847204d6574616c000000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 15,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:16:5ed5ed6a36add705fd4a7dc3a7b667fdae3a9f70e375068e7d5e308b24e26e9d",
+      "nameHex": "584720526f636b00000000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 16,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:17:b2efbf63759a6171e57a8d41ae1d07754122f9dbb92463e2beb2e6320b427199",
+      "nameHex": "584720506f776572203100000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 17,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:18:7c04e74037de74aa1bd84fe920ba335b476668cb4d4a75296f67066563400789",
+      "nameHex": "584720506f776572203200000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 18,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:19:42de9fec1fe3b0955bdbc58e8f8f8ca1ed1a9c4741d824a7ad1815d38e57c36f",
+      "nameHex": "584720506f776572203300000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 19,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:20:6fdc11dc9f784cbc3b7537558a32aefbc1ee57d237c9f8a67534dd0eef7e7128",
+      "nameHex": "584720536c616d21000000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 20,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:21:97778deb01054cdb4b9292ecf0635857cd1f038701322f18cf9cb6a586f067db",
+      "nameHex": "58472053747564696f0000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 21,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:22:249912760ce0d75d0cbdfbcaa80d562b19846aa7f86a4aa223a83b21d5cbf2cb",
+      "nameHex": "584720446a656e74000000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 22,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:23:6871ba45a66366538d5ceedbe4b24af7cbce834058489fa7fc1c974f2cff8cd4",
+      "nameHex": "5847204469727479000000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 23,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:24:1344ecccf46c86754f534ad6857cb645f55d383e19ff4827d0d0b32cc5a8e9aa",
+      "nameHex": "584720456c656374726f00000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 24,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:25:4c88572511dbaad0282af844f4d1cb0331116caa9de3ab05264bebaa548382fd",
+      "nameHex": "58472054522d3830380000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 25,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:26:271e7c4549f98041d24c6004715e753e7a150e6be2c3104eb7de8dd139ac5341",
+      "nameHex": "58472044616e6365000000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 26,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:27:f1643006f1fcc5a6cfcbac99cb57709b8d231b6aa58620dd2b492da1f48fe03e",
+      "nameHex": "58472043522d3738000000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 27,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:28:e8c1f560957591b23517eb5c40617a92d4b187e99393db29260eff2ca8182ffe",
+      "nameHex": "58472054522d3630362028416e616c6f67290000",
+      "namespace": "YAMAHA_XG",
+      "pc": 28,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:29:a44a1f3e1c7d06c7e254b5cc2e86028fc079c16cf5a78f587e55b6f22fca8f7e",
+      "nameHex": "58472054522d3730370000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 29,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:30:86b563b4acd3eb968b51ea282a3e8c7af9577db144b28b06c2f0432fc41d5ed4",
+      "nameHex": "58472054522d3930390000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 30,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:31:07595169c81c81d5cee3e6492e3b8d5d83480f33e346005be0be82eb1de47252",
+      "nameHex": "5847204a756e6b00000000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 31,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:32:5739269a7d24698eebc888c5ff711e7df7a95742a740b7b6ace27fbc5b702e11",
+      "nameHex": "5847204a617a7a20310000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 32,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:33:4d79af6621e4f7d2e435147accbc8f473f55aac2c03421f39b36addd75491162",
+      "nameHex": "5847204a617a7a20320000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 33,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:34:a1498a4a1b9ffbccc47118183b8b34b3dd37c8210279536680925ceb85d64eb7",
+      "nameHex": "5847204a617a7a20330000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 34,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:35:d88bd091d944be996f54233b4e3db9c0b936c711ff1985752ca0685e174feff5",
+      "nameHex": "5847205265676761650000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 35,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:36:71d84315126c26076d0219ac32c594a6c9aa24f77069dbea8baa74fed177fb1a",
+      "nameHex": "526163636f6e74612042656174626f7820313237",
+      "namespace": "YAMAHA_XG",
+      "pc": 36,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:37:849c6108bb877eb46f4b4eb132695462e33b164dbb8e4892d8495f1c5ba76bce",
+      "nameHex": "584720446a656e74204c69746500000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 37,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:40:e48e28b2637cc3bf7806013cfcf960bf31bb5a215d42f5bb9b4d7cb572e4cfdf",
+      "nameHex": "5847204272757368000000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 40,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:41:90f35a88e629dfae13e898d6d2b45e191d65f2acfff521d9f20d59336cf4a565",
+      "nameHex": "584720537769726c730000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 41,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:48:301dbbf8b56678cacd378749496819ddbd6647c4e8e797736f4509e5870d60b2",
+      "nameHex": "584720436c6173736963616c0000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 48,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:49:13092b28f3e936f16d1925eb89e57ccbcd1e5b283b0aa3b7432ac46703bb2e74",
+      "nameHex": "4574686e6963202853432d383850726f29000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 49,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:50:3fe3321635da0db8acfd17231b81928cf4b354c5796c507bf049fb5516cde018",
+      "nameHex": "4765746162657261203132370000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 50,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:51:a2de8c756305390e2bce7d0fa93b092c064b2a5dfb4a732c4eb6a6a86445abd0",
+      "nameHex": "526162616e2b5564656b6b692031323700000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 51,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:52:04eab90b142ce5c4600881be6a9dcee5f6944504009dc19e95fbb26513afce2d",
+      "nameHex": "41736961202853432d3838323029000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 52,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:53:58bc18134a1b12ac059ceb74c16eb74098f519b28d2c1c5cb9622a49aa6ea951",
+      "nameHex": "44686f6c6b692031323700000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 53,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:54:ba88a696d92fff96bb2c7bab939211ca7f15f0b348fca7eef73827465695a729",
+      "nameHex": "4465766f6c204265726120313237000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 54,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:56:cd45fc80afe2abaf1edbca2baf42149d4a423899529689a167ae1cfa172330d4",
+      "nameHex": "5346583120563200000000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 56,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:57:ea86852d4c3a569e6d8c937334168ac2bca96c3908d4b22b7eeb1c99892984bb",
+      "nameHex": "5346583120563300000000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 57,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:58:6d100546bde2bebdc80886b89bbc611d49f8c100938b15024c4394c76d5990e2",
+      "nameHex": "5459524f5320566f63616c204566666563747321",
+      "namespace": "YAMAHA_XG",
+      "pc": 58,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:60:448b089d272c85d56d2ffa5988c612d55258c7878eaa2eee666f21e7846c391a",
+      "nameHex": "53465832205b38385d0000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 60,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:61:054002335157254c45f75c95b74c27c5b2aeb7750ea880ed3e3db1296ceeceac",
+      "nameHex": "476172616765204472756d732031323700000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 61,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:62:bf745b43fc17d12e6a57f479ea4b1833da096689b106eddc3be0f3ae82b505c3",
+      "nameHex": "584720526567676165746f6e0000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 62,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:63:40a2e6b1e45291f0d1706093105adf3a3f7ac5946638f8fea20e0a15623dbf68",
+      "nameHex": "5847204469676974616c00000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 63,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:64:a38c3610790cb6abaae2ec254f399f058d91f0e9f1115703c70965de645df37a",
+      "nameHex": "58472053696d6d6f6e7300000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 64,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:65:190c8f79371bebc79469c869a65212a660ec42b69cd5de5e5393c09e3e014cc0",
+      "nameHex": "58472041746f6d69630000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 65,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:66:7d7ac39b75523b2a86e9e1ee023a8b9155d63373b31e11a30d05735aba524d13",
+      "nameHex": "534e455320313237000000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 66,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:68:d0a47e497373b6eb20b65bb853a8e4e0aae3387afc64bea07394a7ddbf11b1ff",
+      "nameHex": "5847204c696e6e00000000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 68,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:72:77f0bfc450fa41b8107f67ca23c0e8b76b7ed488fd55831a20ba1da77400ca65",
+      "nameHex": "5847204c65676163790000000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 72,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:73:10a72365c7cc77b5f00d4e7cb77115504f826dfd92ba326191ad899df6ebfb3e",
+      "nameHex": "584720416c7465726e6174697665000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 73,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:123:73bf68621e9258f3cdd508a3e2d1b0eb1f078d1c17d0602729ea66a050560497",
+      "nameHex": "444a58204b697420313237000000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 123,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:125:12b2ec76b016a05e719e393c673a0bd5d1e231a92de1a24dcfde436bdeae33d6",
+      "nameHex": "4d656d65204b6974203132370000000000000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 125,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 127,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:127:127:859ae68da0719c5c62e1709ac6397d83e073cabe26cc594188ffda98c3104f12",
+      "nameHex": "436f6c6f6d626f20434d2d36342f333200000000",
+      "namespace": "YAMAHA_XG",
+      "pc": 127,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:0:5c2e9f4ce78cfef792ff52fe627a7dcfa15205074877e43ea42af117acedd2c1",
+      "nameHex": "5374616e64617264203100000000000000000000",
+      "namespace": "GS",
+      "pc": 0,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:1:49d85c24d90cf6094351fe1cd58a24792dafc05340e602fd34f4a5b49bdf9913",
+      "nameHex": "5374616e64617264203200000000000000000000",
+      "namespace": "GS",
+      "pc": 1,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:2:8bb0af8bafdeba3504374bb9874fe5b9c9df5fa198ce32fae93fad15cd03179a",
+      "nameHex": "5374616e64617264205343353500000000000000",
+      "namespace": "GS",
+      "pc": 2,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:3:e4a891b17341ca6c96e47b02d943247dc7013ad10180bf937a59ebebf484fcad",
+      "nameHex": "5374616e64617264204d542d3332000000000000",
+      "namespace": "GS",
+      "pc": 3,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:4:10a217e0778571502338d483ac68d7b9f1a0adec36c2dd2c9753517c684cd9c0",
+      "nameHex": "4865617679000000000000000000000000000000",
+      "namespace": "GS",
+      "pc": 4,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:5:205aace2d376ad68f6a4183656fd9a7d523c7a32b89663d898b1cc7711a26cb5",
+      "nameHex": "4c69766500000000000000000000000000000000",
+      "namespace": "GS",
+      "pc": 5,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:8:c71d7384a4d77ada555440ac92e3e65f6fd85ca2f879c0e0d54a5f2e394fe2f9",
+      "nameHex": "526f6f6d00000000000000000000000000000000",
+      "namespace": "GS",
+      "pc": 8,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:9:690d886882c8f12ca8036cc9153bc9e2fc2add0f6d6711cbdddf5dc3e9ead8b6",
+      "nameHex": "486970686f700000000000000000000000000000",
+      "namespace": "GS",
+      "pc": 9,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:10:e13288b8db85ca8ec1ffae8e153e2d4d2a279b55eb5129e991e0627822fbfc4b",
+      "nameHex": "4a756e676c650000000000000000000000000000",
+      "namespace": "GS",
+      "pc": 10,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:11:9f965d5abde98e75f45dd61c9126e28c67f6c6c1702d1e1cedef2d426d545554",
+      "nameHex": "5472617000000000000000000000000000000000",
+      "namespace": "GS",
+      "pc": 11,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:12:2616ae5080ad77c221a66c0462e6706aac74524758d64753b8c0a622093ce275",
+      "nameHex": "46756e6b00000000000000000000000000000000",
+      "namespace": "GS",
+      "pc": 12,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:13:32b68291d892a35ac1d3cde57f952b441bf03be1586854ab8af6bbcaa30f3b58",
+      "nameHex": "486f757365000000000000000000000000000000",
+      "namespace": "GS",
+      "pc": 13,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:14:78bb454994e04e1a96867370aa98b1b041ef1a7399bba84464fb572c8a150aa9",
+      "nameHex": "506f700000000000000000000000000000000000",
+      "namespace": "GS",
+      "pc": 14,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:15:87c3f350b32f2cb11652cc96e86824439ab888db255cc393424d1e7c3990bb77",
+      "nameHex": "4d6574616c000000000000000000000000000000",
+      "namespace": "GS",
+      "pc": 15,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:16:60c4e7bcac43a1db3f6a4a412504b3d6fb58b5dc468c32621a22ed43ef122f6f",
+      "nameHex": "506f776572203100000000000000000000000000",
+      "namespace": "GS",
+      "pc": 16,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:17:085286233c75e8a1871e959a4a0454b1e8256a0ed953c2b8d2d2875b8d64f156",
+      "nameHex": "506f776572203200000000000000000000000000",
+      "namespace": "GS",
+      "pc": 17,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:18:b80514a1f5cb6aa68fbefc92a79682c292d2c213511a2b9c1d1051893208a299",
+      "nameHex": "506f776572203300000000000000000000000000",
+      "namespace": "GS",
+      "pc": 18,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:19:b54c54387246d6b7b0ef8a35ddd7b8699909bce2b3e431a8745aaf48481dfd66",
+      "nameHex": "506f776572203400000000000000000000000000",
+      "namespace": "GS",
+      "pc": 19,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:20:a1e932a31720522c04e385b71467f133d5d4eedbe272601e0bddd1d47a41001e",
+      "nameHex": "536c616d21000000000000000000000000000000",
+      "namespace": "GS",
+      "pc": 20,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:21:9236a5a499f5ecd4e4816fdbc86eab4ec8db820239adebe6c0c07caafab2a8ac",
+      "nameHex": "53747564696f0000000000000000000000000000",
+      "namespace": "GS",
+      "pc": 21,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:22:61cfbadc250534f719675a7bc678b439f3aea77b250470b68df8ec9b6b71bd66",
+      "nameHex": "446a656e74000000000000000000000000000000",
+      "namespace": "GS",
+      "pc": 22,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:23:7369a44c7cff2849984ef1ddbcd7421baca85f8ecc6b733ed0af441595ce2ab7",
+      "nameHex": "4469727479000000000000000000000000000000",
+      "namespace": "GS",
+      "pc": 23,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:24:bca9fee0a46f27fed08346bdb8fe82e1308e139c5510637e7f0b1e493b2aaa07",
+      "nameHex": "456c656374726f00000000000000000000000000",
+      "namespace": "GS",
+      "pc": 24,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:25:99c302f0e4dad6aefd55419b40ee42fe063a9b8c83383f86412be8f35643b445",
+      "nameHex": "54522d3830380000000000000000000000000000",
+      "namespace": "GS",
+      "pc": 25,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:26:cd1a46f2147d1458260a188ee440d457418d7bded0c7477a96c9f84c13f284e1",
+      "nameHex": "44616e6365000000000000000000000000000000",
+      "namespace": "GS",
+      "pc": 26,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:27:a8185a6e098d5e28472673f4dfb61b774428210d0223a101b15e83948048b5a4",
+      "nameHex": "43522d3738000000000000000000000000000000",
+      "namespace": "GS",
+      "pc": 27,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:28:99c623546d8285ca76c674c4c251c8a440c9834d3a938f9ca7eba741b9cd1329",
+      "nameHex": "54522d3630360000000000000000000000000000",
+      "namespace": "GS",
+      "pc": 28,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:29:434725761f82e730ff19cf7ea456994dec547af4615abe8cbdafdaefac7f9578",
+      "nameHex": "54522d3730370000000000000000000000000000",
+      "namespace": "GS",
+      "pc": 29,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:30:3e32274c695e5220eb1ca132b3ed0149bd6ca58fa6bd64767673516a238fad3c",
+      "nameHex": "54522d3930390000000000000000000000000000",
+      "namespace": "GS",
+      "pc": 30,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:31:c4d861b15e3a1a50808b343ad09eaf95e20d165cb2cd50b74117e31a6474078b",
+      "nameHex": "4a756e6b00000000000000000000000000000000",
+      "namespace": "GS",
+      "pc": 31,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:32:a0510c5401bf820b71c16a63ae48aab1a8a8496d28723f1d4515a2127141fdd1",
+      "nameHex": "4a617a7a20310000000000000000000000000000",
+      "namespace": "GS",
+      "pc": 32,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:33:1c4b7a2f1cd43486e3f8d7b6b35d06dc4ede801ec9351ab78150e837b7df0cfd",
+      "nameHex": "4a617a7a20320000000000000000000000000000",
+      "namespace": "GS",
+      "pc": 33,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:34:13921a087d4e8dbf4953e5571a8d94d3a96d61dceb5009af5092bb1d857f6c2c",
+      "nameHex": "4a617a7a20330000000000000000000000000000",
+      "namespace": "GS",
+      "pc": 34,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:35:ae6b4ec40d0e0e8f90e4cfea613a5cddc9771c61f176f2f006f6d62e8cc2ed7f",
+      "nameHex": "5265676761650000000000000000000000000000",
+      "namespace": "GS",
+      "pc": 35,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:36:81ce2bf3daf587bb91edefc565d65840bf42dac41851f4695e193c192ba7522e",
+      "nameHex": "526163636f6e74612042656174626f7800000000",
+      "namespace": "GS",
+      "pc": 36,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:37:f1c38799832ca5a7f22287d5fc34d1ab13366ba13b4cfac97d149fc3b975a1bd",
+      "nameHex": "446a656e74204c69746500000000000000000000",
+      "namespace": "GS",
+      "pc": 37,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:40:34b1861dd0c1a61e647621c65f78a8307e0d90417e03abadec989e1a3abb55f5",
+      "nameHex": "4272757368000000000000000000000000000000",
+      "namespace": "GS",
+      "pc": 40,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:41:da10556761d09d4db9bbacbb7404af13aac86edafe21b416ad2b9790d9a98bac",
+      "nameHex": "537769726c730000000000000000000000000000",
+      "namespace": "GS",
+      "pc": 41,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:48:85cf5d7cbdb99f8fccfbab987f2c90a12d0536ada0410fd8c25ecd778a7ee6c4",
+      "nameHex": "4f72636865737472616c00000000000000000000",
+      "namespace": "GS",
+      "pc": 48,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:49:13092b28f3e936f16d1925eb89e57ccbcd1e5b283b0aa3b7432ac46703bb2e74",
+      "nameHex": "4574686e6963202853432d383850726f29000000",
+      "namespace": "GS",
+      "pc": 49,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:50:06a7815cdd4bab431436961c3263100455b8ee6dde0ad9fd4d323ce3d1cb5e93",
+      "nameHex": "4765746162657261000000000000000000000000",
+      "namespace": "GS",
+      "pc": 50,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:51:297ca9709e2424e5228d9b74d6203bcfeb835eaf558e3e44b1fc8b3cdc389081",
+      "nameHex": "526162616e2b5564656b6b690000000000000000",
+      "namespace": "GS",
+      "pc": 51,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:52:04eab90b142ce5c4600881be6a9dcee5f6944504009dc19e95fbb26513afce2d",
+      "nameHex": "41736961202853432d3838323029000000000000",
+      "namespace": "GS",
+      "pc": 52,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:53:1a0b88f1a4e62bd7912b62aa341035970d0fb5e1cb8b864c3231b897a1b551d9",
+      "nameHex": "44686f6c6b690000000000000000000000000000",
+      "namespace": "GS",
+      "pc": 53,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:54:df2e1e5560637ce0e796c70214af838e68fe8e627646a93b2e368e9b908717b1",
+      "nameHex": "4465766f6c204265726100000000000000000000",
+      "namespace": "GS",
+      "pc": 54,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:56:6327d644e2b6213017d4935189e28ddab10aa40a278f585d718b96cf3f24d171",
+      "nameHex": "5346583120563100000000000000000000000000",
+      "namespace": "GS",
+      "pc": 56,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:57:cd45fc80afe2abaf1edbca2baf42149d4a423899529689a167ae1cfa172330d4",
+      "nameHex": "5346583120563200000000000000000000000000",
+      "namespace": "GS",
+      "pc": 57,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:58:ea86852d4c3a569e6d8c937334168ac2bca96c3908d4b22b7eeb1c99892984bb",
+      "nameHex": "5346583120563300000000000000000000000000",
+      "namespace": "GS",
+      "pc": 58,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:59:6d100546bde2bebdc80886b89bbc611d49f8c100938b15024c4394c76d5990e2",
+      "nameHex": "5459524f5320566f63616c204566666563747321",
+      "namespace": "GS",
+      "pc": 59,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:60:448b089d272c85d56d2ffa5988c612d55258c7878eaa2eee666f21e7846c391a",
+      "nameHex": "53465832205b38385d0000000000000000000000",
+      "namespace": "GS",
+      "pc": 60,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:61:4d8397e101ced26becb2d3d1a1418cde28cff4db80b2d70c1afa75eaf3110dfd",
+      "nameHex": "476172616765204472756d730000000000000000",
+      "namespace": "GS",
+      "pc": 61,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:62:e2acd7356afb2dfbb6385f0ecc39c1f5b004ebdcfd804875e205b8314d4db46d",
+      "nameHex": "526567676165746f6e0000000000000000000000",
+      "namespace": "GS",
+      "pc": 62,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:63:d6e8c21a2e35a83050c22e4dd69e43614457cf268873d82cdde713072b7379d6",
+      "nameHex": "4469676974616c00000000000000000000000000",
+      "namespace": "GS",
+      "pc": 63,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:64:4b0e8016f4f75dc8e943bae8cc2477221fa409214c8e2d38f3600019c24a0c14",
+      "nameHex": "53696d6d6f6e7300000000000000000000000000",
+      "namespace": "GS",
+      "pc": 64,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:65:ba3d37340e344c30eeb59e009e1d7632a21bd6201bdb48f8c718cbe536849c99",
+      "nameHex": "41746f6d69630000000000000000000000000000",
+      "namespace": "GS",
+      "pc": 65,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:66:bb5da2a2c1f38574f5a3a2300398d8d505732b49b3e30ed4009bdc77532571f3",
+      "nameHex": "534e455300000000000000000000000000000000",
+      "namespace": "GS",
+      "pc": 66,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:68:177c9976e5f35590a0137776bbbb3020eeeadc372cdbc4805ebce7f4da423d48",
+      "nameHex": "4c696e6e00000000000000000000000000000000",
+      "namespace": "GS",
+      "pc": 68,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:72:2d8a3feda2c3cfe7bb1a69ec37b7d5ad53322f3ec82d43c47efe065af46ce37d",
+      "nameHex": "4c65676163790000000000000000000000000000",
+      "namespace": "GS",
+      "pc": 72,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:73:bda0da12040677202c1cb20822941d554a8741cb15bb5b8808e9203a01a19c9a",
+      "nameHex": "416c7465726e6174697665000000000000000000",
+      "namespace": "GS",
+      "pc": 73,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:80:14e07559bd5772ef804878e3687b154e748c7666c7d78ed148a1652b82ca9adb",
+      "nameHex": "5374616e64617264204e43000000000000000000",
+      "namespace": "GS",
+      "pc": 80,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:123:ca24e93a7f969aee8a3594645f657c5aa9b875d360f1754f655cda2e47910e86",
+      "nameHex": "444a58204b697400000000000000000000000000",
+      "namespace": "GS",
+      "pc": 123,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:125:af0ff808b6ae3f1c729abb6ad80becba70861cd020ffab02b998007a898f17fd",
+      "nameHex": "4d656d65204b6974000000000000000000000000",
+      "namespace": "GS",
+      "pc": 125,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "COLOMBO",
+      "id": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506:128:127:859ae68da0719c5c62e1709ac6397d83e073cabe26cc594188ffda98c3104f12",
+      "nameHex": "436f6c6f6d626f20434d2d36342f333200000000",
+      "namespace": "GS",
+      "pc": 127,
+      "pdtaSha256": "ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "PRIME_DRUM",
+      "id": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283:128:0:37ec31cfa6cbbd3a69215c3feb456afd04cdde435a067e6fcc2ac2d1eec4a94d",
+      "nameHex": "5354414e444152205053522d5358000000000000",
+      "namespace": "CUSTOM",
+      "pc": 0,
+      "pdtaSha256": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "PRIME_DRUM",
+      "id": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283:128:1:f6becfe087c8b50287dff42f1447f82f063fcb8d6fd953119581c4b0182dac93",
+      "nameHex": "5354414e444152204452554d2032000000000000",
+      "namespace": "CUSTOM",
+      "pc": 1,
+      "pdtaSha256": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "PRIME_DRUM",
+      "id": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283:128:2:e0083df06ae37aba5c06efa097b43cae11bf21e71f6d3e338d2037cc09bc5bbc",
+      "nameHex": "5354414e444152204452554d2033000000000000",
+      "namespace": "CUSTOM",
+      "pc": 2,
+      "pdtaSha256": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "PRIME_DRUM",
+      "id": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283:128:28:8cfe9f23a6a0a53994531ca2ece5522d56c775a893c7b8bd4df82805a94234eb",
+      "nameHex": "434c4f5720442741434144454d59000000000000",
+      "namespace": "CUSTOM",
+      "pc": 28,
+      "pdtaSha256": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "PRIME_DRUM",
+      "id": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283:128:16:a28ab71cfb64057b6f3c7481f689193ee7e48340531d515f3b35ee6aaeb06a5a",
+      "nameHex": "414c4558204b4550524900000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 16,
+      "pdtaSha256": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "PRIME_DRUM",
+      "id": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283:128:4:086865dc1f7be6bb0f01434ea8cca0ed37cb7e41952f4cc5024db7a0706bd732",
+      "nameHex": "4448555420505352205358205345524945530000",
+      "namespace": "CUSTOM",
+      "pc": 4,
+      "pdtaSha256": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "PRIME_DRUM",
+      "id": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283:128:7:80d62d17d84cae45e7b999d3e1a761314c2b5162b34c29266f354fcddca60c32",
+      "nameHex": "436c6f776f722050616c6c617061000000000000",
+      "namespace": "CUSTOM",
+      "pc": 7,
+      "pdtaSha256": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "PRIME_DRUM",
+      "id": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283:128:8:fe643b418be021bf3e79e8f91b2ff227426545ee4686778dd653c32e8e67dd4a",
+      "nameHex": "4b656e64616e6720416c65780000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 8,
+      "pdtaSha256": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "PRIME_DRUM",
+      "id": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283:128:10:a982bd090dfa2f6129a60827c1d66d49c540893e063ded22f6dad31a62ef70d8",
+      "nameHex": "4144454c4c41205053522d535800000000000000",
+      "namespace": "CUSTOM",
+      "pc": 10,
+      "pdtaSha256": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "PRIME_DRUM",
+      "id": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283:128:11:013fd133aca58d1be1833c229a6377c0b8b53bc9f8938697ded24ac4fff0d1ad",
+      "nameHex": "545249415a2032303138205053522d5358000000",
+      "namespace": "CUSTOM",
+      "pc": 11,
+      "pdtaSha256": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "PRIME_DRUM",
+      "id": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283:128:23:0c3e6703977759e2f419e6e48e569a34d27d246be8954105a79ece0d66cbdea7",
+      "nameHex": "4455542053455241000000000000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 23,
+      "pdtaSha256": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "PRIME_DRUM",
+      "id": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283:128:24:310d752614b72e7fbe4695d3253e95046434ff790da28e0080d10850618d0048",
+      "nameHex": "52454d4958205053522d53580000000000000000",
+      "namespace": "CUSTOM",
+      "pc": 24,
+      "pdtaSha256": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "PRIME_DRUM",
+      "id": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283:128:32:2204c512f756ce48328815d243321c6f26152403a1427d7182f8f836fc05c433",
+      "nameHex": "434c4f5720442741434144454d59204949000000",
+      "namespace": "CUSTOM",
+      "pc": 32,
+      "pdtaSha256": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "PRIME_DRUM",
+      "id": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283:128:36:86cc5ac799e390f60809ba83facf61a17ce10bdb6a04039c0b4f4aa483350df7",
+      "nameHex": "4b454e44414e4720444849444900000000000000",
+      "namespace": "CUSTOM",
+      "pc": 36,
+      "pdtaSha256": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "PRIME_DRUM",
+      "id": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283:128:39:a2635bb39e94186ad4cc64daec81430762a7cb887a6edf24389afdf9dbe6ed2b",
+      "nameHex": "4b5249534e41205053522d535839303000000000",
+      "namespace": "CUSTOM",
+      "pc": 39,
+      "pdtaSha256": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "PRIME_DRUM",
+      "id": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283:128:40:63d415c3505f3a7334b5cdb103bbf493f799991c83517629b764fe8fe4dfaf3e",
+      "nameHex": "434c4f574f52205053522d535800000000000000",
+      "namespace": "CUSTOM",
+      "pc": 40,
+      "pdtaSha256": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "PRIME_DRUM",
+      "id": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283:128:46:0ba6d7e819ad1789a34d8e48023ab0d495b1e6654539d958c1417eb37f0063c4",
+      "nameHex": "4427524f5354412053583730302d535839303000",
+      "namespace": "CUSTOM",
+      "pc": 46,
+      "pdtaSha256": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "PRIME_DRUM",
+      "id": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283:128:41:872d85fbc942d7e14a5449348c7e7248844845efa1085e8b24807526708a52bc",
+      "nameHex": "434c4f57204b454d50554c205053522d53580000",
+      "namespace": "CUSTOM",
+      "pc": 41,
+      "pdtaSha256": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "PRIME_DRUM",
+      "id": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283:128:45:1785f0dd09e616d7ca1c463d7acc8266eb0595c9f1ff66aa5cd6851c4ba77bbd",
+      "nameHex": "434c4f57204b454d50554c205053522d53582032",
+      "namespace": "CUSTOM",
+      "pc": 45,
+      "pdtaSha256": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "PRIME_DRUM",
+      "id": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283:128:6:6cd856e26b01d25b15d35bb70ee7db20985799f76932e241c21b2b4fb17e92f6",
+      "nameHex": "5441424c4120474d204241524154410000000000",
+      "namespace": "CUSTOM",
+      "pc": 6,
+      "pdtaSha256": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "PRIME_DRUM",
+      "id": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283:128:13:a4608969046345b12c317d89714033c7784f051d3ca539e79ecb05cff4ae49c3",
+      "nameHex": "455850203a20444a2046554e4b4f542031000000",
+      "namespace": "CUSTOM",
+      "pc": 13,
+      "pdtaSha256": "338385762217a9ecd9ecb8707fa71202a115da4eaad81441c27d714acbf61283",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "PRIME_MELODY",
+      "id": "cfb096e3c197570554313aaca227f7e207ac64867e9871a025c1b4b2c6e9c136:126:35:1b7694374b0b2db125a2afe7bdb39d3ec4a1c5036eecaf6dbd69b57800f737d6",
+      "nameHex": "455850203a204152414249432050413930300000",
+      "namespace": "CUSTOM",
+      "pc": 35,
+      "pdtaSha256": "cfb096e3c197570554313aaca227f7e207ac64867e9871a025c1b4b2c6e9c136",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 126,
+      "font": "PRIME_MELODY",
+      "id": "cfb096e3c197570554313aaca227f7e207ac64867e9871a025c1b4b2c6e9c136:126:40:a3aae57cbbfe53bf02d3afd23f45eba05ab09c7ef516fe07a71b85860eef039c",
+      "nameHex": "455850203a20435542414e4b4954000000000000",
+      "namespace": "CUSTOM",
+      "pc": 40,
+      "pdtaSha256": "cfb096e3c197570554313aaca227f7e207ac64867e9871a025c1b4b2c6e9c136",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "TYROS4",
+      "id": "16bb60deafdf426cdc7e269b6c5f434cd5b7db6e14a83f86d17f54720176217a:128:0:8b3a6fc03f078017bcfc540cbb89eed1f37e27f31e50e40120e35bcbbf801368",
+      "nameHex": "7479726f732034207374616e6461726400000000",
+      "namespace": "GS",
+      "pc": 0,
+      "pdtaSha256": "16bb60deafdf426cdc7e269b6c5f434cd5b7db6e14a83f86d17f54720176217a",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "TYROS4",
+      "id": "16bb60deafdf426cdc7e269b6c5f434cd5b7db6e14a83f86d17f54720176217a:128:8:460529ba901f43c5153d5cb0cd89248afc5b01a43d024cf851fd7aed76c870ee",
+      "nameHex": "726f6f6d206b6974000000000000000000000000",
+      "namespace": "GS",
+      "pc": 8,
+      "pdtaSha256": "16bb60deafdf426cdc7e269b6c5f434cd5b7db6e14a83f86d17f54720176217a",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "TYROS4",
+      "id": "16bb60deafdf426cdc7e269b6c5f434cd5b7db6e14a83f86d17f54720176217a:128:16:16d1a863bc67aa3b9e2945c19b134afd91bc0773cdc2dfb761d6fd0414410f35",
+      "nameHex": "706f776572206b69740000000000000000000000",
+      "namespace": "GS",
+      "pc": 16,
+      "pdtaSha256": "16bb60deafdf426cdc7e269b6c5f434cd5b7db6e14a83f86d17f54720176217a",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "TYROS4",
+      "id": "16bb60deafdf426cdc7e269b6c5f434cd5b7db6e14a83f86d17f54720176217a:128:17:f76aaf8d1ac990b8b54b1316deee6c43aa19b8c75ac597ebf21d28fff60dc1b0",
+      "nameHex": "726f636b206b6974000000000000000000000000",
+      "namespace": "GS",
+      "pc": 17,
+      "pdtaSha256": "16bb60deafdf426cdc7e269b6c5f434cd5b7db6e14a83f86d17f54720176217a",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "TYROS4",
+      "id": "16bb60deafdf426cdc7e269b6c5f434cd5b7db6e14a83f86d17f54720176217a:128:24:7ac6db6fd6570106bd6bc9c3ec92c29ef52fb7c3be2630dbb2dfd8f40d2ab33e",
+      "nameHex": "454c454354524f4e4943204b4954000000000000",
+      "namespace": "GS",
+      "pc": 24,
+      "pdtaSha256": "16bb60deafdf426cdc7e269b6c5f434cd5b7db6e14a83f86d17f54720176217a",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "TYROS4",
+      "id": "16bb60deafdf426cdc7e269b6c5f434cd5b7db6e14a83f86d17f54720176217a:128:25:204ad3b2ae50785cac83b3a315fd59f3e6dd3121202d5043c00c74f2831486c4",
+      "nameHex": "383038206b697400000000000000000000000000",
+      "namespace": "GS",
+      "pc": 25,
+      "pdtaSha256": "16bb60deafdf426cdc7e269b6c5f434cd5b7db6e14a83f86d17f54720176217a",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "TYROS4",
+      "id": "16bb60deafdf426cdc7e269b6c5f434cd5b7db6e14a83f86d17f54720176217a:128:27:c7ce76815f1784858d12c1f210777e4ad912a5987da2b1356283fcf35c84f8f1",
+      "nameHex": "64616e6365206b69740000000000000000000000",
+      "namespace": "GS",
+      "pc": 27,
+      "pdtaSha256": "16bb60deafdf426cdc7e269b6c5f434cd5b7db6e14a83f86d17f54720176217a",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "TYROS4",
+      "id": "16bb60deafdf426cdc7e269b6c5f434cd5b7db6e14a83f86d17f54720176217a:128:32:03a4bfcb054b279db6e23bba5d25aeb525f4deba87e0d4b2101d4ad3cf96fc43",
+      "nameHex": "6a617a7a206b6974000000000000000000000000",
+      "namespace": "GS",
+      "pc": 32,
+      "pdtaSha256": "16bb60deafdf426cdc7e269b6c5f434cd5b7db6e14a83f86d17f54720176217a",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "TYROS4",
+      "id": "16bb60deafdf426cdc7e269b6c5f434cd5b7db6e14a83f86d17f54720176217a:128:40:853cf9925fbaf0fb77bb3b235dea0896b549e88aeb4f4707cf060800d73613ae",
+      "nameHex": "7479726f7320342062727573686b697400000000",
+      "namespace": "GS",
+      "pc": 40,
+      "pdtaSha256": "16bb60deafdf426cdc7e269b6c5f434cd5b7db6e14a83f86d17f54720176217a",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "TYROS4",
+      "id": "16bb60deafdf426cdc7e269b6c5f434cd5b7db6e14a83f86d17f54720176217a:128:48:7f6e99707e029668cd3070c208f8b1ad59a95f31bff5d9cc3c15015e61b5a57a",
+      "nameHex": "53796d70686f6e795f4753000000000000000000",
+      "namespace": "GS",
+      "pc": 48,
+      "pdtaSha256": "16bb60deafdf426cdc7e269b6c5f434cd5b7db6e14a83f86d17f54720176217a",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "TYROS4",
+      "id": "16bb60deafdf426cdc7e269b6c5f434cd5b7db6e14a83f86d17f54720176217a:128:56:e13f06c19992fa2cf419c238ec4d49b7991ee2ad2d2d78c844b3514ad0c1104c",
+      "nameHex": "7479726f73203420732065666665637473000000",
+      "namespace": "GS",
+      "pc": 56,
+      "pdtaSha256": "16bb60deafdf426cdc7e269b6c5f434cd5b7db6e14a83f86d17f54720176217a",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "TYROS4",
+      "id": "16bb60deafdf426cdc7e269b6c5f434cd5b7db6e14a83f86d17f54720176217a:128:57:ec7601d6d1a27b00691d5b51b4d3ef4e5aad5a6250fccd797a767224e8f43b46",
+      "nameHex": "766f63616c206566666563747300000000000000",
+      "namespace": "GS",
+      "pc": 57,
+      "pdtaSha256": "16bb60deafdf426cdc7e269b6c5f434cd5b7db6e14a83f86d17f54720176217a",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    },
+    {
+      "bank": 128,
+      "font": "TYROS4",
+      "id": "16bb60deafdf426cdc7e269b6c5f434cd5b7db6e14a83f86d17f54720176217a:128:64:eeb99a085c9cfa0864358fd9d227891da64db478d9a9abb642f78668fd7487c6",
+      "nameHex": "7479726f73203420636d2d363400000000000000",
+      "namespace": "GS",
+      "pc": 64,
+      "pdtaSha256": "16bb60deafdf426cdc7e269b6c5f434cd5b7db6e14a83f86d17f54720176217a",
+      "provenance": "U1 verified original PDTA + SF2_BINARY_AUDIT_CATALOG_CORRECTIONS; R2_2 audit \u00a76.3"
+    }
+  ],
+  "pdtaDomain": "sf2-list-pdta-payload-v2",
+  "schema": 1,
+  "tsvSha256": "bec1368f783f847e1b3d433dd46a085968aa1118a9d19b4161bb34c08db4bff1"
+}

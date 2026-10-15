@@ -9,6 +9,9 @@ import android.media.MediaPlayer
 import java.io.File
 import androidx.compose.runtime.DisposableEffect
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -72,6 +75,8 @@ fun Sf2StyleInspectorDialog(
     var managedAudition by remember { mutableStateOf(false) }
     if (managedAudition) ManagedSf2AuditionDialog(viewModel) { managedAudition = false }
     var tab by remember { mutableStateOf(0) }
+    var r22Report by remember { mutableStateOf("") }
+    var r22Enabled by remember { mutableStateOf(com.yourapp.yamahaarranger.arranger.DrumKitShadowRuntime.enabled) }
     var query by remember { mutableStateOf("") }
     val exportScope = rememberCoroutineScope()
     var exportBusy by remember { mutableStateOf(false) }
@@ -130,6 +135,11 @@ fun Sf2StyleInspectorDialog(
                     OutlinedButton(enabled = !exportBusy, onClick = viewModel::armChordDiagnostic) { Text("CAPTURE CHORD (60s)") }
                     OutlinedButton(enabled = !exportBusy, onClick = viewModel::stopChordDiagnostic) { Text("END CAPTURE") }
                 }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedButton(enabled = !state.isPlaying, onClick = { r22Enabled=!r22Enabled;viewModel.setR22ShadowEnabled(r22Enabled) }) { Text("R2-2 SHADOW ${if(r22Enabled) "ON" else "OFF"}") }
+                    OutlinedButton(onClick = { r22Report=viewModel.r22ShadowReport() }) { Text("DRUM KIT SHADOW") }
+                }
+                if(r22Report.isNotEmpty()) Text(r22Report.take(6000), color=InspectorDim, fontSize=9.sp, modifier=Modifier.heightIn(max=140.dp).verticalScroll(rememberScrollState()))
                 Text("Play C → F → G → C, END CAPTURE, STOP, then SAVE CHORD (max 48 KiB).", color = InspectorDim, fontSize = 10.sp)
 
                 val chordContext = LocalContext.current

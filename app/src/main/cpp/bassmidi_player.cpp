@@ -575,6 +575,7 @@ void BassMidiPlayer::unload() {
     for (auto& selection : keyboardPresets_) selection.verified = false;
     publishedFontMaps_.clear();
     for (auto& ch : channels_) ch = ChannelState{};
+    drumSelections_={}; ++drumSelectionGeneration_; // R22 observation invalidation only
     audioDiagnostics_ = {};
     drumZoneInventories_.clear();
     melodicZoneInventories_.clear(); noteZoneRows_.clear(); noteZoneLimit_=false;
@@ -1351,6 +1352,20 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program, const 
         const std::string& path = drumFont_ ? drumPath_ : melodyPath_;
         const bool resolved = findDrumPreset(path, program, sourceBank, sourceProgram);
         state.resolverReason=!resolved?"no_cached_drum_preset":sourceProgram==program?"legacy_same_pc_first_matching_cache_entry":"legacy_first_cached_kit_fallback";
+        // R22_SELECTION_OBSERVER_BEGIN
+        auto& observation=drumSelections_[channel];
+        if(observation.bank!=sourceBank || observation.pc!=sourceProgram || observation.path!=path || observation.reason!=state.resolverReason)
+            observation.generation=++drumSelectionGeneration_;
+        observation.bank=resolved?sourceBank:-1;observation.pc=resolved?sourceProgram:-1;
+        observation.path=path;observation.reason=state.resolverReason;observation.name.clear();observation.pdta.clear();
+        const auto fingerprint=pdtaFingerprints_.find(path);
+        if(fingerprint!=pdtaFingerprints_.end() && fingerprint->second.valid)observation.pdta=fingerprint->second.sha256;
+        const auto inventory=drumZoneInventories_.find(path);
+        if(inventory!=drumZoneInventories_.end()) {
+            const auto name=inventory->second.presetNames.find({sourceBank,sourceProgram});
+            if(name!=inventory->second.presetNames.end())observation.name=name->second;
+        }
+        // R22_SELECTION_OBSERVER_END
         LOGI("DRUM PRESET RESOLVE ch=%d requested=%d -> bank=%d prog=%d found=%d",
              channel, program, sourceBank, sourceProgram, resolved ? 1 : 0);
         if (resolved) {
@@ -2850,3 +2865,14 @@ std::string BassMidiPlayer::shadowDrumSnapshot() const {
         <<" source="<<hex(r.source)<<" handle="<<r.handle<<" bank="<<r.bank<<" pc="<<r.pc<<" verified="<<r.verified<<" effectivePC="<<r.effective<<"\n";
     return out.str();
 }
+
+// R22_SELECTION_GETTER_BEGIN
+std::string BassMidiPlayer::drumChannelSelection(int channel) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if(channel<0 || channel>=16)return "UNOBSERVED";
+    const auto& o=drumSelections_[channel];
+    std::ostringstream out;
+    out<<o.generation<<'\t'<<o.pdta<<'\t'<<o.bank<<'\t'<<o.pc<<'\t'<<o.reason;
+    return out.str(); // cache identity, not an independent BASS binding readback
+}
+// R22_SELECTION_GETTER_END

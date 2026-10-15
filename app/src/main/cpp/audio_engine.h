@@ -48,6 +48,7 @@ public:
     std::string sfKeyboardVoiceSnapshot() const { return soundFont_.keyboardVoiceSnapshot(); }
     std::vector<unsigned char> sfDiagnosticKeyboardReleaseWav(int ch,int key,int velocity) { return soundFont_.diagnosticKeyboardReleaseWav(ch,key,velocity); }
     std::string sfKeyboardReleaseProbeReport() const { return soundFont_.keyboardReleaseProbeReport(); }
+    std::string drumChannelSelection(int ch)const{return soundFont_.drumChannelSelection(ch);}
     std::string sfShadowDrumSnapshot() const { return soundFont_.shadowDrumSnapshot(); }
     std::vector<unsigned char> sfDiagnosticDrumWav(int bank,int pc,int key,int velocity);
     std::string sfNoteZoneReport() const;

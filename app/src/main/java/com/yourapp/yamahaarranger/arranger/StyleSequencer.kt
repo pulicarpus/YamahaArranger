@@ -761,6 +761,15 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                     93 -> state.chorusSend = e.velocity
                 }
             }
+            // R22_RAW_SETUP_BEGIN
+            val r22SourceChannel=sourcePart.casmPolicies.ifEmpty { listOfNotNull(sourcePart.casm) }.filter { it.destinationChannel==destination }.map { it.sourceChannel }.distinct().singleOrNull()
+            val r22Msb=sourcePart.events.lastOrNull { it.channel==r22SourceChannel && it.tick==0 && it.isControlChange && it.note==0 }?.velocity
+            val r22Lsb=sourcePart.events.lastOrNull { it.channel==r22SourceChannel && it.tick==0 && it.isControlChange && it.note==32 }?.velocity
+            val r22Source=if(override?.program!=null) "OVERRIDE_WITHOUT_VERIFIED_KIT_IDENTITY" else if(explicit!=null) "SINT_OR_TICK0_SETUP" else "NAME_GUESS"
+            // R22_RAW_SETUP_END
+            // R22_OBSERVE_MUTED_BEGIN
+            if(drum && override?.muted==true && DrumKitShadowRuntime.active) DrumKitShadowRuntime.observe(section,destination,r22Msb,r22Lsb,prog,r22Source+"_MUTED_NO_PRESET_APPLIED",audioEngine.drumChannelSelection(destination))
+            // R22_OBSERVE_MUTED_END
             if (override?.muted == true) { applied += destination; return@forEach }
             val styleBank = sourcePart.bankMsb.coerceIn(0,127) * 128 + sourcePart.bankLsb.coerceIn(0,127)
             val audioBank = if (drum) 128 else styleBank
@@ -796,6 +805,9 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             } else {
                 com.yourapp.yamahaarranger.ui.DebugLog.add("🎚 CASM AUDIO CACHE HIT dst$destination pc=$prog bank=$audioBank")
             }
+            // R22_OBSERVE_SETUP_BEGIN
+            if(drum && DrumKitShadowRuntime.active) DrumKitShadowRuntime.observe(section,destination,r22Msb,r22Lsb,prog,r22Source,audioEngine.drumChannelSelection(destination))
+            // R22_OBSERVE_SETUP_END
             midiInputManager.sendProgramChange(destination, prog, midiMsb, midiLsb)
             applied += destination
             val source = if (override?.program != null) "STYLE OVERRIDE" else if (explicit != null) "actual MIDI setup" else "fallback name"
@@ -1110,6 +1122,11 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                         val program = s.event.note.coerceIn(0, 127)
                         chordTrace.record { "DYNAMIC_PROGRAM chordId=${chordTrace.chordId()} section='${section.name}' part='${s.part.name}' src=${s.event.channel} dst=$destination requestBank=$bank requestPC=$program tick=$absoluteTick" }
                         audioEngine.setChannelProgram(destination, program, bank)
+                        // R22_OBSERVE_DYNAMIC_BEGIN
+                        if(drum && DrumKitShadowRuntime.active) DrumKitShadowRuntime.observe(section,destination,
+                            (styleBank ushr 7).takeIf { s.part.events.any { e->e.channel==s.event.channel && e.tick<=s.tick && e.isControlChange && e.note==0 } },
+                            (styleBank and 127).takeIf { s.part.events.any { e->e.channel==s.event.channel && e.tick<=s.tick && e.isControlChange && e.note==32 } },program,"DYNAMIC_PC",audioEngine.drumChannelSelection(destination))
+                        // R22_OBSERVE_DYNAMIC_END
                         midiInputManager.sendProgramChange(destination, program, msb, lsb)
                         com.yourapp.yamahaarranger.ui.DebugLog.add(
                             "DYNAMIC PC src" + s.event.channel + " -> dst" + destination +

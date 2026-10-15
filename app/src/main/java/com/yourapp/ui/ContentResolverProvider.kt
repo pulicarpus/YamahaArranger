@@ -21,6 +21,8 @@ data class StyleFolder(val uri: Uri, val name: String, val styleCount: Int)
 class ContentResolverProvider @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
+    fun r22CatalogInput(): java.io.InputStream = context.assets.open("r22/kits.tsv.gz")
+
     private val sf2RootDir: File
         get() = File(Environment.getExternalStorageDirectory(), "YamahaArranger/SF2")
 

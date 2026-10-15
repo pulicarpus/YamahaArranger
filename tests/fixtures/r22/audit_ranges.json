@@ -1,0 +1,899 @@
+{
+  "provenance": "kits.txt exact per-key hit counts and min/max only; not original event velocities",
+  "rows": [
+    {
+      "section": "MainA",
+      "channel": 8,
+      "requestPc": 0,
+      "kind": "PRM-actual",
+      "font": "PRM",
+      "bank": 128,
+      "pc": 0,
+      "name": "STANDAR PSR-SX",
+      "covered": 6,
+      "total": 6,
+      "keys": [
+        {
+          "key": 34,
+          "count": 2,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 53,
+          "count": 4,
+          "lo": 127,
+          "hi": 127
+        }
+      ]
+    },
+    {
+      "section": "MainA",
+      "channel": 8,
+      "requestPc": 0,
+      "kind": "COL-XG",
+      "font": "COL",
+      "bank": 127,
+      "pc": 0,
+      "name": "XG Standard 1",
+      "covered": 6,
+      "total": 6,
+      "keys": [
+        {
+          "key": 34,
+          "count": 2,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 53,
+          "count": 4,
+          "lo": 127,
+          "hi": 127
+        }
+      ]
+    },
+    {
+      "section": "MainA",
+      "channel": 8,
+      "requestPc": 0,
+      "kind": "TYR-GS",
+      "font": "TYR",
+      "bank": 128,
+      "pc": 0,
+      "name": "tyros 4 standard",
+      "covered": 6,
+      "total": 6,
+      "keys": [
+        {
+          "key": 34,
+          "count": 2,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 53,
+          "count": 4,
+          "lo": 127,
+          "hi": 127
+        }
+      ]
+    },
+    {
+      "section": "MainA",
+      "channel": 9,
+      "requestPc": 8,
+      "kind": "PRM-actual",
+      "font": "PRM",
+      "bank": 128,
+      "pc": 8,
+      "name": "Kendang Alex",
+      "covered": 34,
+      "total": 42,
+      "keys": [
+        {
+          "key": 33,
+          "count": 8,
+          "lo": 108,
+          "hi": 127
+        },
+        {
+          "key": 37,
+          "count": 8,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 42,
+          "count": 18,
+          "lo": 50,
+          "hi": 92
+        },
+        {
+          "key": 60,
+          "count": 4,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 62,
+          "count": 4,
+          "lo": 127,
+          "hi": 127
+        }
+      ]
+    },
+    {
+      "section": "MainA",
+      "channel": 9,
+      "requestPc": 8,
+      "kind": "COL-XG",
+      "font": "COL",
+      "bank": 127,
+      "pc": 8,
+      "name": "XG Room",
+      "covered": 42,
+      "total": 42,
+      "keys": [
+        {
+          "key": 33,
+          "count": 8,
+          "lo": 108,
+          "hi": 127
+        },
+        {
+          "key": 37,
+          "count": 8,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 42,
+          "count": 18,
+          "lo": 50,
+          "hi": 92
+        },
+        {
+          "key": 60,
+          "count": 4,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 62,
+          "count": 4,
+          "lo": 127,
+          "hi": 127
+        }
+      ]
+    },
+    {
+      "section": "MainA",
+      "channel": 9,
+      "requestPc": 8,
+      "kind": "TYR-GS",
+      "font": "TYR",
+      "bank": 128,
+      "pc": 8,
+      "name": "room kit",
+      "covered": 42,
+      "total": 42,
+      "keys": [
+        {
+          "key": 33,
+          "count": 8,
+          "lo": 108,
+          "hi": 127
+        },
+        {
+          "key": 37,
+          "count": 8,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 42,
+          "count": 18,
+          "lo": 50,
+          "hi": 92
+        },
+        {
+          "key": 60,
+          "count": 4,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 62,
+          "count": 4,
+          "lo": 127,
+          "hi": 127
+        }
+      ]
+    },
+    {
+      "section": "MainB",
+      "channel": 8,
+      "requestPc": 16,
+      "kind": "PRM-actual",
+      "font": "PRM",
+      "bank": 128,
+      "pc": 16,
+      "name": "ALEX KEPRI",
+      "covered": 8,
+      "total": 10,
+      "keys": [
+        {
+          "key": 34,
+          "count": 2,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 53,
+          "count": 8,
+          "lo": 127,
+          "hi": 127
+        }
+      ]
+    },
+    {
+      "section": "MainB",
+      "channel": 8,
+      "requestPc": 16,
+      "kind": "COL-XG",
+      "font": "COL",
+      "bank": 127,
+      "pc": 16,
+      "name": "XG Rock",
+      "covered": 10,
+      "total": 10,
+      "keys": [
+        {
+          "key": 34,
+          "count": 2,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 53,
+          "count": 8,
+          "lo": 127,
+          "hi": 127
+        }
+      ]
+    },
+    {
+      "section": "MainB",
+      "channel": 8,
+      "requestPc": 16,
+      "kind": "TYR-GS",
+      "font": "TYR",
+      "bank": 128,
+      "pc": 16,
+      "name": "power kit",
+      "covered": 10,
+      "total": 10,
+      "keys": [
+        {
+          "key": 34,
+          "count": 2,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 53,
+          "count": 8,
+          "lo": 127,
+          "hi": 127
+        }
+      ]
+    },
+    {
+      "section": "MainB",
+      "channel": 9,
+      "requestPc": 0,
+      "kind": "PRM-actual",
+      "font": "PRM",
+      "bank": 128,
+      "pc": 0,
+      "name": "STANDAR PSR-SX",
+      "covered": 40,
+      "total": 40,
+      "keys": [
+        {
+          "key": 33,
+          "count": 6,
+          "lo": 72,
+          "hi": 84
+        },
+        {
+          "key": 37,
+          "count": 2,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 42,
+          "count": 16,
+          "lo": 53,
+          "hi": 72
+        },
+        {
+          "key": 46,
+          "count": 2,
+          "lo": 49,
+          "hi": 66
+        },
+        {
+          "key": 54,
+          "count": 2,
+          "lo": 90,
+          "hi": 94
+        },
+        {
+          "key": 60,
+          "count": 4,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 62,
+          "count": 8,
+          "lo": 127,
+          "hi": 127
+        }
+      ]
+    },
+    {
+      "section": "MainB",
+      "channel": 9,
+      "requestPc": 0,
+      "kind": "COL-XG",
+      "font": "COL",
+      "bank": 127,
+      "pc": 0,
+      "name": "XG Standard 1",
+      "covered": 40,
+      "total": 40,
+      "keys": [
+        {
+          "key": 33,
+          "count": 6,
+          "lo": 72,
+          "hi": 84
+        },
+        {
+          "key": 37,
+          "count": 2,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 42,
+          "count": 16,
+          "lo": 53,
+          "hi": 72
+        },
+        {
+          "key": 46,
+          "count": 2,
+          "lo": 49,
+          "hi": 66
+        },
+        {
+          "key": 54,
+          "count": 2,
+          "lo": 90,
+          "hi": 94
+        },
+        {
+          "key": 60,
+          "count": 4,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 62,
+          "count": 8,
+          "lo": 127,
+          "hi": 127
+        }
+      ]
+    },
+    {
+      "section": "MainB",
+      "channel": 9,
+      "requestPc": 0,
+      "kind": "TYR-GS",
+      "font": "TYR",
+      "bank": 128,
+      "pc": 0,
+      "name": "tyros 4 standard",
+      "covered": 40,
+      "total": 40,
+      "keys": [
+        {
+          "key": 33,
+          "count": 6,
+          "lo": 72,
+          "hi": 84
+        },
+        {
+          "key": 37,
+          "count": 2,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 42,
+          "count": 16,
+          "lo": 53,
+          "hi": 72
+        },
+        {
+          "key": 46,
+          "count": 2,
+          "lo": 49,
+          "hi": 66
+        },
+        {
+          "key": 54,
+          "count": 2,
+          "lo": 90,
+          "hi": 94
+        },
+        {
+          "key": 60,
+          "count": 4,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 62,
+          "count": 8,
+          "lo": 127,
+          "hi": 127
+        }
+      ]
+    },
+    {
+      "section": "MainC",
+      "channel": 8,
+      "requestPc": 0,
+      "kind": "PRM-actual",
+      "font": "PRM",
+      "bank": 128,
+      "pc": 0,
+      "name": "STANDAR PSR-SX",
+      "covered": 10,
+      "total": 10,
+      "keys": [
+        {
+          "key": 34,
+          "count": 2,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 53,
+          "count": 8,
+          "lo": 127,
+          "hi": 127
+        }
+      ]
+    },
+    {
+      "section": "MainC",
+      "channel": 8,
+      "requestPc": 0,
+      "kind": "COL-XG",
+      "font": "COL",
+      "bank": 127,
+      "pc": 0,
+      "name": "XG Standard 1",
+      "covered": 10,
+      "total": 10,
+      "keys": [
+        {
+          "key": 34,
+          "count": 2,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 53,
+          "count": 8,
+          "lo": 127,
+          "hi": 127
+        }
+      ]
+    },
+    {
+      "section": "MainC",
+      "channel": 8,
+      "requestPc": 0,
+      "kind": "TYR-GS",
+      "font": "TYR",
+      "bank": 128,
+      "pc": 0,
+      "name": "tyros 4 standard",
+      "covered": 10,
+      "total": 10,
+      "keys": [
+        {
+          "key": 34,
+          "count": 2,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 53,
+          "count": 8,
+          "lo": 127,
+          "hi": 127
+        }
+      ]
+    },
+    {
+      "section": "MainC",
+      "channel": 9,
+      "requestPc": 0,
+      "kind": "PRM-actual",
+      "font": "PRM",
+      "bank": 128,
+      "pc": 0,
+      "name": "STANDAR PSR-SX",
+      "covered": 40,
+      "total": 40,
+      "keys": [
+        {
+          "key": 33,
+          "count": 6,
+          "lo": 124,
+          "hi": 127
+        },
+        {
+          "key": 37,
+          "count": 4,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 42,
+          "count": 18,
+          "lo": 65,
+          "hi": 127
+        },
+        {
+          "key": 43,
+          "count": 4,
+          "lo": 88,
+          "hi": 97
+        },
+        {
+          "key": 62,
+          "count": 8,
+          "lo": 127,
+          "hi": 127
+        }
+      ]
+    },
+    {
+      "section": "MainC",
+      "channel": 9,
+      "requestPc": 0,
+      "kind": "COL-XG",
+      "font": "COL",
+      "bank": 127,
+      "pc": 0,
+      "name": "XG Standard 1",
+      "covered": 40,
+      "total": 40,
+      "keys": [
+        {
+          "key": 33,
+          "count": 6,
+          "lo": 124,
+          "hi": 127
+        },
+        {
+          "key": 37,
+          "count": 4,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 42,
+          "count": 18,
+          "lo": 65,
+          "hi": 127
+        },
+        {
+          "key": 43,
+          "count": 4,
+          "lo": 88,
+          "hi": 97
+        },
+        {
+          "key": 62,
+          "count": 8,
+          "lo": 127,
+          "hi": 127
+        }
+      ]
+    },
+    {
+      "section": "MainC",
+      "channel": 9,
+      "requestPc": 0,
+      "kind": "TYR-GS",
+      "font": "TYR",
+      "bank": 128,
+      "pc": 0,
+      "name": "tyros 4 standard",
+      "covered": 40,
+      "total": 40,
+      "keys": [
+        {
+          "key": 33,
+          "count": 6,
+          "lo": 124,
+          "hi": 127
+        },
+        {
+          "key": 37,
+          "count": 4,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 42,
+          "count": 18,
+          "lo": 65,
+          "hi": 127
+        },
+        {
+          "key": 43,
+          "count": 4,
+          "lo": 88,
+          "hi": 97
+        },
+        {
+          "key": 62,
+          "count": 8,
+          "lo": 127,
+          "hi": 127
+        }
+      ]
+    },
+    {
+      "section": "MainD",
+      "channel": 8,
+      "requestPc": 0,
+      "kind": "PRM-actual",
+      "font": "PRM",
+      "bank": 128,
+      "pc": 0,
+      "name": "STANDAR PSR-SX",
+      "covered": 10,
+      "total": 10,
+      "keys": [
+        {
+          "key": 34,
+          "count": 2,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 53,
+          "count": 8,
+          "lo": 127,
+          "hi": 127
+        }
+      ]
+    },
+    {
+      "section": "MainD",
+      "channel": 8,
+      "requestPc": 0,
+      "kind": "COL-XG",
+      "font": "COL",
+      "bank": 127,
+      "pc": 0,
+      "name": "XG Standard 1",
+      "covered": 10,
+      "total": 10,
+      "keys": [
+        {
+          "key": 34,
+          "count": 2,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 53,
+          "count": 8,
+          "lo": 127,
+          "hi": 127
+        }
+      ]
+    },
+    {
+      "section": "MainD",
+      "channel": 8,
+      "requestPc": 0,
+      "kind": "TYR-GS",
+      "font": "TYR",
+      "bank": 128,
+      "pc": 0,
+      "name": "tyros 4 standard",
+      "covered": 10,
+      "total": 10,
+      "keys": [
+        {
+          "key": 34,
+          "count": 2,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 53,
+          "count": 8,
+          "lo": 127,
+          "hi": 127
+        }
+      ]
+    },
+    {
+      "section": "MainD",
+      "channel": 9,
+      "requestPc": 0,
+      "kind": "PRM-actual",
+      "font": "PRM",
+      "bank": 128,
+      "pc": 0,
+      "name": "STANDAR PSR-SX",
+      "covered": 47,
+      "total": 47,
+      "keys": [
+        {
+          "key": 36,
+          "count": 6,
+          "lo": 83,
+          "hi": 94
+        },
+        {
+          "key": 37,
+          "count": 4,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 42,
+          "count": 19,
+          "lo": 74,
+          "hi": 127
+        },
+        {
+          "key": 60,
+          "count": 4,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 62,
+          "count": 8,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 64,
+          "count": 6,
+          "lo": 119,
+          "hi": 127
+        }
+      ]
+    },
+    {
+      "section": "MainD",
+      "channel": 9,
+      "requestPc": 0,
+      "kind": "COL-XG",
+      "font": "COL",
+      "bank": 127,
+      "pc": 0,
+      "name": "XG Standard 1",
+      "covered": 47,
+      "total": 47,
+      "keys": [
+        {
+          "key": 36,
+          "count": 6,
+          "lo": 83,
+          "hi": 94
+        },
+        {
+          "key": 37,
+          "count": 4,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 42,
+          "count": 19,
+          "lo": 74,
+          "hi": 127
+        },
+        {
+          "key": 60,
+          "count": 4,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 62,
+          "count": 8,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 64,
+          "count": 6,
+          "lo": 119,
+          "hi": 127
+        }
+      ]
+    },
+    {
+      "section": "MainD",
+      "channel": 9,
+      "requestPc": 0,
+      "kind": "TYR-GS",
+      "font": "TYR",
+      "bank": 128,
+      "pc": 0,
+      "name": "tyros 4 standard",
+      "covered": 47,
+      "total": 47,
+      "keys": [
+        {
+          "key": 36,
+          "count": 6,
+          "lo": 83,
+          "hi": 94
+        },
+        {
+          "key": 37,
+          "count": 4,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 42,
+          "count": 19,
+          "lo": 74,
+          "hi": 127
+        },
+        {
+          "key": 60,
+          "count": 4,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 62,
+          "count": 8,
+          "lo": 127,
+          "hi": 127
+        },
+        {
+          "key": 64,
+          "count": 6,
+          "lo": 119,
+          "hi": 127
+        }
+      ]
+    }
+  ]
+}

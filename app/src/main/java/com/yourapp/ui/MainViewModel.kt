@@ -1145,6 +1145,8 @@ class MainViewModel @Inject constructor(
     suspend fun compactPartPresenceReport(): String = arrangerBrain.compactPartPresenceReport()
 
     private var pcmSessionUiMark = "PCM_SESSION_UI status=UNMARKED"
+    fun setR22ShadowEnabled(value:Boolean) { if(!uiState.value.isPlaying) com.yourapp.yamahaarranger.arranger.DrumKitShadowRuntime.setEnabled(value) }
+    fun r22ShadowReport():String = com.yourapp.yamahaarranger.arranger.DrumKitShadowRuntime.report()
     fun markPcmSession(): Long {
         if (uiState.value.isPlaying) return 0
         val id = audioEngine.markPcmSession()
@@ -1160,6 +1162,7 @@ class MainViewModel @Inject constructor(
                 appendLine("counters=process_lifetime; use PCM_SESSION for per-test deltas")
                 appendLine(audioEngine.pcmSessionReport())
                 appendLine(pcmSessionUiMark)
+                appendLine(com.yourapp.yamahaarranger.arranger.DrumKitShadowRuntime.report())
                 appendLine(arrangerBrain.partPresenceReport(style))
                 appendLine(arrangerBrain.chordDiagnosticReport())
                 appendLine(audioEngine.chordDiagnosticReport())
@@ -1205,6 +1208,9 @@ class MainViewModel @Inject constructor(
                 if (parsed == null) { DebugLog.add("❌ Parse fail: $fileName"); return@launch }
                 audioEngine.readiness.operations.withLock {
                     if (!audioEngine.readiness.current(request)) return@withLock
+                    // R22 preparation: read-only metadata, completed before any playback.
+                    try { com.yourapp.yamahaarranger.arranger.DrumKitShadowRuntime.prepare(parsed,bytes,contentResolver.r22CatalogInput()) }
+                    catch(error:Exception) { DebugLog.add("R22 metadata unavailable: ${error.javaClass.simpleName}") }
                     drumAuditStyle = parsed
                     arrangerBrain.loadStyle(parsed)
                     _voiceAssignments.value = voiceSlotsFromStyle(parsed)

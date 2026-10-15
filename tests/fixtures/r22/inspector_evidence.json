@@ -1,0 +1,50 @@
+{
+  "S1": {
+    "bytes": 7213745,
+    "file": "YamahaArranger_Inspector_20261015_230525.txt",
+    "muteChangesSinceMark": 0,
+    "noteOnSentDelta": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      36,
+      215,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "sha256": "a4d50f5fce11513e7a78ed655935fc0017ef1e0babc69f367e63a3e4b3e0d9e3"
+  },
+  "S2": {
+    "bytes": 7306798,
+    "file": "YamahaArranger_Inspector_20261015_230632.txt",
+    "muteChangesSinceMark": 0,
+    "noteOnSentDelta": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      35,
+      66,
+      66,
+      18,
+      60,
+      0
+    ],
+    "sha256": "32d0b150f041a63312bfddab3df9d551352920bd0d5ce9d3b9857d2808c5e91f"
+  }
+}

@@ -1,0 +1,141 @@
+
+== Main A ch8 PC0 | PRM-actual: PRM 128/0 STANDAR PSR-SX | coveredHits 6/6
+   key 34 hits=  2 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(-100, -100) peakUB(k=1.0)=2.0   (k=0.4)=2.0   rev=[0] cho=[0] dur=0.76 ['sf2-05:SATRIOMUSIK SF2-82']
+   key 53 hits=  4 vel=127-127 miss=-      zones= 2 sameStack=2 att_cB=(50, 50) peakUB(k=1.0)=1.12  (k=0.4)=1.59  rev=[70] cho=[0] dur=9.08 ['sf2-11:SATRIOMUSIK SF2-73']
+
+== Main A ch8 PC0 | COL-XG: COL 127/0 XG Standard 1 | coveredHits 6/6
+   key 34 hits=  2 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(25, 25) peakUB(k=1.0)=1.5   (k=0.4)=1.78  rev=[0] cho=[0] dur=0.58 ['DK-XGStan:JV 1080 StanSnare1']
+   key 53 hits=  4 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(163, 163) peakUB(k=1.0)=0.31  (k=0.4)=0.94  rev=[0] cho=[0] dur=3.29 ['DK-CrsRidCommon:BellRide(L)']
+
+== Main A ch8 PC0 | TYR-GS: TYR 128/0 tyros 4 standard | coveredHits 6/6
+   key 34 hits=  2 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(0, 0) peakUB(k=1.0)=1.06  (k=0.4)=1.06  rev=[0] cho=[0] dur=0.71 ['tyros 4 standard0:145']
+   key 53 hits=  4 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(0, 0) peakUB(k=1.0)=0.56  (k=0.4)=0.56  rev=[0] cho=[0] dur=2.23 ['tyros 4 standard0:s18.wav']
+
+== Main A ch9 PC8 | PRM-actual: PRM 128/8 Kendang Alex | coveredHits 34/42
+   key 33 hits=  8 vel=108-127 miss=[108, 119, 127] zones= 0 sameStack=0 att_cB=(None, None) peakUB(k=1.0)=0     (k=0.4)=0     rev=[] cho=[] dur=0 []
+   key 37 hits=  8 vel=127-127 miss=-      zones= 4 sameStack=2 att_cB=(-750, -750) peakUB(k=1.0)=4.0   (k=0.4)=4.0   rev=[0] cho=[0] dur=1.1 ['Kendang Alex:004244']
+   key 42 hits= 18 vel=50-92   miss=-      zones= 4 sameStack=2 att_cB=(-750, -750) peakUB(k=1.0)=0.71  (k=0.4)=0.71  rev=[0] cho=[0] dur=1.15 ['Kendang Alex:004254']
+   key 60 hits=  4 vel=127-127 miss=-      zones= 4 sameStack=2 att_cB=(-750, -750) peakUB(k=1.0)=4.0   (k=0.4)=4.0   rev=[0] cho=[0] dur=1.1 ['Kendang Alex:004290']
+   key 62 hits=  4 vel=127-127 miss=-      zones= 4 sameStack=2 att_cB=(-750, -750) peakUB(k=1.0)=2.48  (k=0.4)=2.48  rev=[0] cho=[0] dur=1.15 ['Kendang Alex:004228']
+
+== Main A ch9 PC8 | COL-XG: COL 127/8 XG Room | coveredHits 42/42
+   key 33 hits=  8 vel=108-127 miss=-      zones= 2 sameStack=1 att_cB=(50, 125) peakUB(k=1.0)=0.8   (k=0.4)=1.36  rev=[0] cho=[0] dur=0.6 ['DK-XGRoom:Deadly Kick 21']
+   key 37 hits=  8 vel=127-127 miss=-      zones= 1 sameStack=1 att_cB=(100, 100) peakUB(k=1.0)=0.32  (k=0.4)=0.63  rev=[0] cho=[0] dur=0.16 ['DK-PercussionXG:Rimshotstd']
+   key 42 hits= 18 vel=50-92   miss=-      zones= 2 sameStack=1 att_cB=(215, 215) peakUB(k=1.0)=0.17  (k=0.4)=0.74  rev=[0] cho=[0] dur=0.71 ['DK-CommonHihats:HiHat Closed(L)']
+   key 60 hits=  4 vel=127-127 miss=-      zones= 1 sameStack=1 att_cB=(125, 125) peakUB(k=1.0)=0.24  (k=0.4)=0.56  rev=[0] cho=[0] dur=0.31 ['DK-PercussionXG:Bongo Rim(L)']
+   key 62 hits=  4 vel=127-127 miss=-      zones= 1 sameStack=1 att_cB=(125, 125) peakUB(k=1.0)=0.24  (k=0.4)=0.56  rev=[0] cho=[0] dur=0.2 ['DK-PercussionXG:Closed Slap(L)']
+
+== Main A ch9 PC8 | TYR-GS: TYR 128/8 room kit | coveredHits 42/42
+   key 33 hits=  8 vel=108-127 miss=-      zones= 2 sameStack=1 att_cB=(0, 0) peakUB(k=1.0)=1.25  (k=0.4)=1.25  rev=[0] cho=[0] dur=0.59 ['room kit0:097']
+   key 37 hits=  8 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(0, 0) peakUB(k=1.0)=0.98  (k=0.4)=0.98  rev=[0] cho=[0] dur=0.16 ['room kit0:room kit 05.wav']
+   key 42 hits= 18 vel=50-92   miss=-      zones= 2 sameStack=1 att_cB=(0, 0) peakUB(k=1.0)=0.28  (k=0.4)=0.28  rev=[0] cho=[0] dur=0.14 ['room kit0:room kit 06.wav1']
+   key 60 hits=  4 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(0, 0) peakUB(k=1.0)=0.6   (k=0.4)=0.6   rev=[0] cho=[0] dur=0.62 ['room kit0:34 R3']
+   key 62 hits=  4 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(0, 0) peakUB(k=1.0)=1.46  (k=0.4)=1.46  rev=[0] cho=[0] dur=0.88 ['room kit0:conga slap R3']
+
+== Main B ch8 PC16 | PRM-actual: PRM 128/16 ALEX KEPRI | coveredHits 8/10
+   key 34 hits=  2 vel=127-127 miss=[127]  zones= 0 sameStack=0 att_cB=(None, None) peakUB(k=1.0)=0     (k=0.4)=0     rev=[] cho=[] dur=0 []
+   key 53 hits=  8 vel=127-127 miss=-      zones= 4 sameStack=2 att_cB=(0, 0) peakUB(k=1.0)=3.86  (k=0.4)=3.86  rev=[50] cho=[0] dur=1.2 ['sf2-37:SATRIOMUSIK SF2-08']
+
+== Main B ch8 PC16 | COL-XG: COL 127/16 XG Rock | coveredHits 10/10
+   key 34 hits=  2 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(25, 25) peakUB(k=1.0)=1.5   (k=0.4)=1.78  rev=[0] cho=[0] dur=0.58 ['DK-XGRock:JV 1080 StanSnare1']
+   key 53 hits=  8 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(163, 163) peakUB(k=1.0)=0.31  (k=0.4)=0.94  rev=[0] cho=[0] dur=3.29 ['DK-CrsRidCommon:BellRide(L)']
+
+== Main B ch8 PC16 | TYR-GS: TYR 128/16 power kit | coveredHits 10/10
+   key 34 hits=  2 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(0, 0) peakUB(k=1.0)=1.06  (k=0.4)=1.06  rev=[0] cho=[0] dur=0.71 ['power kit0:147']
+   key 53 hits=  8 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(0, 0) peakUB(k=1.0)=0.91  (k=0.4)=0.91  rev=[0] cho=[0] dur=1.73 ['power kit0:28 L3']
+
+== Main B ch9 PC0 | PRM-actual: PRM 128/0 STANDAR PSR-SX | coveredHits 40/40
+   key 33 hits=  6 vel=72-84   miss=-      zones= 2 sameStack=2 att_cB=(-1440, -1440) peakUB(k=1.0)=2.0   (k=0.4)=2.0   rev=[0] cho=[0] dur=0.37 ['sf2-12:SATRIOMUSIK SF2-42']
+   key 37 hits=  2 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(-100, -100) peakUB(k=1.0)=2.0   (k=0.4)=2.0   rev=[0] cho=[0] dur=1.45 ['sf2-05:SATRIOMUSIK SF2-71']
+   key 42 hits= 16 vel=53-72   miss=-      zones= 2 sameStack=1 att_cB=(-30, -30) peakUB(k=1.0)=1.93  (k=0.4)=1.93  rev=[70] cho=[0, 300] dur=0.41 ['sf2-05:SATRIOMUSIK SF2-15']
+   key 46 hits=  2 vel=49-66   miss=-      zones= 2 sameStack=1 att_cB=(-50, -50) peakUB(k=1.0)=2.0   (k=0.4)=2.0   rev=[70] cho=[0, 300] dur=3.85 ['sf2-05:SATRIOMUSIK SF2-17']
+   key 54 hits=  2 vel=90-94   miss=-      zones= 3 sameStack=3 att_cB=(-100, -100) peakUB(k=1.0)=3.0   (k=0.4)=3.0   rev=[200, 220] cho=[0] dur=0.37 ['sf2-05:SATRIOMUSIK SF2-08']
+   key 60 hits=  4 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(-60, -60) peakUB(k=1.0)=2.0   (k=0.4)=2.0   rev=[0] cho=[0] dur=0.62 ['sf2-05:SATRIOMUSIK SF2-43']
+   key 62 hits=  8 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(-50, -50) peakUB(k=1.0)=2.0   (k=0.4)=2.0   rev=[0] cho=[0] dur=0.49 ['sf2-05:SATRIOMUSIK SF2-13']
+
+== Main B ch9 PC0 | COL-XG: COL 127/0 XG Standard 1 | coveredHits 40/40
+   key 33 hits=  6 vel=72-84   miss=-      zones= 4 sameStack=1 att_cB=(150, 225) peakUB(k=1.0)=0.51  (k=0.4)=1.71  rev=[0] cho=[0] dur=0.84 ['DK-SubKick:YSubK7-L']
+   key 37 hits=  2 vel=127-127 miss=-      zones= 1 sameStack=1 att_cB=(100, 100) peakUB(k=1.0)=0.32  (k=0.4)=0.63  rev=[0] cho=[0] dur=0.16 ['DK-PercussionXG:Rimshotstd']
+   key 42 hits= 16 vel=53-72   miss=-      zones= 2 sameStack=1 att_cB=(215, 215) peakUB(k=1.0)=0.17  (k=0.4)=0.74  rev=[0] cho=[0] dur=0.71 ['DK-CommonHihats:HiHat Closed(L)']
+   key 46 hits=  2 vel=49-66   miss=-      zones= 2 sameStack=1 att_cB=(215, 215) peakUB(k=1.0)=0.17  (k=0.4)=0.74  rev=[0] cho=[0] dur=3.17 ['DK-CommonHihats:HiHat Half-OpenL']
+   key 54 hits=  2 vel=90-94   miss=-      zones= 1 sameStack=1 att_cB=(75, 75) peakUB(k=1.0)=0.4   (k=0.4)=0.66  rev=[0] cho=[0] dur=1.04 ['DK-PercussionXG:TambourineOPL']
+   key 60 hits=  4 vel=127-127 miss=-      zones= 1 sameStack=1 att_cB=(125, 125) peakUB(k=1.0)=0.24  (k=0.4)=0.56  rev=[0] cho=[0] dur=0.31 ['DK-PercussionXG:Bongo Rim(L)']
+   key 62 hits=  8 vel=127-127 miss=-      zones= 1 sameStack=1 att_cB=(125, 125) peakUB(k=1.0)=0.24  (k=0.4)=0.56  rev=[0] cho=[0] dur=0.2 ['DK-PercussionXG:Closed Slap(L)']
+
+== Main B ch9 PC0 | TYR-GS: TYR 128/0 tyros 4 standard | coveredHits 40/40
+   key 33 hits=  6 vel=72-84   miss=-      zones= 2 sameStack=1 att_cB=(0, 0) peakUB(k=1.0)=1.25  (k=0.4)=1.25  rev=[0] cho=[0] dur=0.59 ['tyros 4 standard0:094']
+   key 37 hits=  2 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(0, 0) peakUB(k=1.0)=1.29  (k=0.4)=1.29  rev=[0] cho=[0] dur=0.18 ['tyros 4 standard0:saro.wav']
+   key 42 hits= 16 vel=53-72   miss=-      zones= 2 sameStack=1 att_cB=(0, 0) peakUB(k=1.0)=0.9   (k=0.4)=0.9   rev=[0] cho=[0] dur=0.19 ['tyros 4 standard0:scharles.wav1']
+   key 46 hits=  2 vel=49-66   miss=-      zones= 2 sameStack=1 att_cB=(0, 0) peakUB(k=1.0)=1.13  (k=0.4)=1.13  rev=[0] cho=[0] dur=2.05 ['tyros 4 standard0:s14.wav1']
+   key 54 hits=  2 vel=90-94   miss=-      zones= 2 sameStack=1 att_cB=(0, 0) peakUB(k=1.0)=1.24  (k=0.4)=1.24  rev=[0] cho=[0] dur=0.36 ['tyros 4 standard0:302']
+   key 60 hits=  4 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(0, 0) peakUB(k=1.0)=0.6   (k=0.4)=0.6   rev=[0] cho=[0] dur=0.62 ['tyros 4 standard0:34 R2']
+   key 62 hits=  8 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(0, 0) peakUB(k=1.0)=1.46  (k=0.4)=1.46  rev=[0] cho=[0] dur=0.88 ['tyros 4 standard0:conga slap R2']
+
+== Main C ch8 PC0 | PRM-actual: PRM 128/0 STANDAR PSR-SX | coveredHits 10/10
+   key 34 hits=  2 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(-100, -100) peakUB(k=1.0)=2.0   (k=0.4)=2.0   rev=[0] cho=[0] dur=0.76 ['sf2-05:SATRIOMUSIK SF2-82']
+   key 53 hits=  8 vel=127-127 miss=-      zones= 2 sameStack=2 att_cB=(50, 50) peakUB(k=1.0)=1.12  (k=0.4)=1.59  rev=[70] cho=[0] dur=9.08 ['sf2-11:SATRIOMUSIK SF2-73']
+
+== Main C ch8 PC0 | COL-XG: COL 127/0 XG Standard 1 | coveredHits 10/10
+   key 34 hits=  2 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(25, 25) peakUB(k=1.0)=1.5   (k=0.4)=1.78  rev=[0] cho=[0] dur=0.58 ['DK-XGStan:JV 1080 StanSnare1']
+   key 53 hits=  8 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(163, 163) peakUB(k=1.0)=0.31  (k=0.4)=0.94  rev=[0] cho=[0] dur=3.29 ['DK-CrsRidCommon:BellRide(L)']
+
+== Main C ch8 PC0 | TYR-GS: TYR 128/0 tyros 4 standard | coveredHits 10/10
+   key 34 hits=  2 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(0, 0) peakUB(k=1.0)=1.06  (k=0.4)=1.06  rev=[0] cho=[0] dur=0.71 ['tyros 4 standard0:145']
+   key 53 hits=  8 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(0, 0) peakUB(k=1.0)=0.56  (k=0.4)=0.56  rev=[0] cho=[0] dur=2.23 ['tyros 4 standard0:s18.wav']
+
+== Main C ch9 PC0 | PRM-actual: PRM 128/0 STANDAR PSR-SX | coveredHits 40/40
+   key 33 hits=  6 vel=124-127 miss=-      zones= 2 sameStack=2 att_cB=(-1440, -1440) peakUB(k=1.0)=2.0   (k=0.4)=2.0   rev=[0] cho=[0] dur=0.37 ['sf2-12:SATRIOMUSIK SF2-42']
+   key 37 hits=  4 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(-100, -100) peakUB(k=1.0)=2.0   (k=0.4)=2.0   rev=[0] cho=[0] dur=1.45 ['sf2-05:SATRIOMUSIK SF2-71']
+   key 42 hits= 18 vel=65-127  miss=-      zones= 2 sameStack=1 att_cB=(-30, -30) peakUB(k=1.0)=1.93  (k=0.4)=1.93  rev=[70] cho=[0, 300] dur=0.41 ['sf2-05:SATRIOMUSIK SF2-15']
+   key 43 hits=  4 vel=88-97   miss=-      zones= 2 sameStack=1 att_cB=(-50, -50) peakUB(k=1.0)=2.0   (k=0.4)=2.0   rev=[70] cho=[0, 300] dur=1.74 ['sf2-05:SATRIOMUSIK SF2-14']
+   key 62 hits=  8 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(-50, -50) peakUB(k=1.0)=2.0   (k=0.4)=2.0   rev=[0] cho=[0] dur=0.49 ['sf2-05:SATRIOMUSIK SF2-13']
+
+== Main C ch9 PC0 | COL-XG: COL 127/0 XG Standard 1 | coveredHits 40/40
+   key 33 hits=  6 vel=124-127 miss=-      zones= 4 sameStack=1 att_cB=(150, 225) peakUB(k=1.0)=0.51  (k=0.4)=1.71  rev=[0] cho=[0] dur=0.84 ['DK-SubKick:YSubK7-L']
+   key 37 hits=  4 vel=127-127 miss=-      zones= 1 sameStack=1 att_cB=(100, 100) peakUB(k=1.0)=0.32  (k=0.4)=0.63  rev=[0] cho=[0] dur=0.16 ['DK-PercussionXG:Rimshotstd']
+   key 42 hits= 18 vel=65-127  miss=-      zones= 2 sameStack=1 att_cB=(215, 215) peakUB(k=1.0)=0.17  (k=0.4)=0.74  rev=[0] cho=[0] dur=0.71 ['DK-CommonHihats:HiHat Closed(L)']
+   key 43 hits=  4 vel=88-97   miss=-      zones= 2 sameStack=1 att_cB=(0, 0) peakUB(k=1.0)=1.5   (k=0.4)=1.5   rev=[0] cho=[0] dur=1.69 ['DK-StanToms:VC Tom G2L']
+   key 62 hits=  8 vel=127-127 miss=-      zones= 1 sameStack=1 att_cB=(125, 125) peakUB(k=1.0)=0.24  (k=0.4)=0.56  rev=[0] cho=[0] dur=0.2 ['DK-PercussionXG:Closed Slap(L)']
+
+== Main C ch9 PC0 | TYR-GS: TYR 128/0 tyros 4 standard | coveredHits 40/40
+   key 33 hits=  6 vel=124-127 miss=-      zones= 2 sameStack=1 att_cB=(0, 0) peakUB(k=1.0)=1.25  (k=0.4)=1.25  rev=[0] cho=[0] dur=0.59 ['tyros 4 standard0:094']
+   key 37 hits=  4 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(0, 0) peakUB(k=1.0)=1.29  (k=0.4)=1.29  rev=[0] cho=[0] dur=0.18 ['tyros 4 standard0:saro.wav']
+   key 42 hits= 18 vel=65-127  miss=-      zones= 2 sameStack=1 att_cB=(0, 0) peakUB(k=1.0)=0.9   (k=0.4)=0.9   rev=[0] cho=[0] dur=0.19 ['tyros 4 standard0:scharles.wav1']
+   key 43 hits=  4 vel=88-97   miss=-      zones= 2 sameStack=1 att_cB=(0, 0) peakUB(k=1.0)=1.55  (k=0.4)=1.55  rev=[0] cho=[0] dur=2.76 ['tyros 4 standard0:s07.wav']
+   key 62 hits=  8 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(0, 0) peakUB(k=1.0)=1.46  (k=0.4)=1.46  rev=[0] cho=[0] dur=0.88 ['tyros 4 standard0:conga slap R2']
+
+== Main D ch8 PC0 | PRM-actual: PRM 128/0 STANDAR PSR-SX | coveredHits 10/10
+   key 34 hits=  2 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(-100, -100) peakUB(k=1.0)=2.0   (k=0.4)=2.0   rev=[0] cho=[0] dur=0.76 ['sf2-05:SATRIOMUSIK SF2-82']
+   key 53 hits=  8 vel=127-127 miss=-      zones= 2 sameStack=2 att_cB=(50, 50) peakUB(k=1.0)=1.12  (k=0.4)=1.59  rev=[70] cho=[0] dur=9.08 ['sf2-11:SATRIOMUSIK SF2-73']
+
+== Main D ch8 PC0 | COL-XG: COL 127/0 XG Standard 1 | coveredHits 10/10
+   key 34 hits=  2 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(25, 25) peakUB(k=1.0)=1.5   (k=0.4)=1.78  rev=[0] cho=[0] dur=0.58 ['DK-XGStan:JV 1080 StanSnare1']
+   key 53 hits=  8 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(163, 163) peakUB(k=1.0)=0.31  (k=0.4)=0.94  rev=[0] cho=[0] dur=3.29 ['DK-CrsRidCommon:BellRide(L)']
+
+== Main D ch8 PC0 | TYR-GS: TYR 128/0 tyros 4 standard | coveredHits 10/10
+   key 34 hits=  2 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(0, 0) peakUB(k=1.0)=1.06  (k=0.4)=1.06  rev=[0] cho=[0] dur=0.71 ['tyros 4 standard0:145']
+   key 53 hits=  8 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(0, 0) peakUB(k=1.0)=0.56  (k=0.4)=0.56  rev=[0] cho=[0] dur=2.23 ['tyros 4 standard0:s18.wav']
+
+== Main D ch9 PC0 | PRM-actual: PRM 128/0 STANDAR PSR-SX | coveredHits 47/47
+   key 36 hits=  6 vel=83-94   miss=-      zones=14 sameStack=8 att_cB=(-1440, -1140) peakUB(k=1.0)=14.0  (k=0.4)=14.0  rev=[0] cho=[0] dur=1.43 ['sf2-11:SATRIOMUSIK SF2-18']
+   key 37 hits=  4 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(-100, -100) peakUB(k=1.0)=2.0   (k=0.4)=2.0   rev=[0] cho=[0] dur=1.45 ['sf2-05:SATRIOMUSIK SF2-71']
+   key 42 hits= 19 vel=74-127  miss=-      zones= 2 sameStack=1 att_cB=(-30, -30) peakUB(k=1.0)=1.93  (k=0.4)=1.93  rev=[70] cho=[0, 300] dur=0.41 ['sf2-05:SATRIOMUSIK SF2-15']
+   key 60 hits=  4 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(-60, -60) peakUB(k=1.0)=2.0   (k=0.4)=2.0   rev=[0] cho=[0] dur=0.62 ['sf2-05:SATRIOMUSIK SF2-43']
+   key 62 hits=  8 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(-50, -50) peakUB(k=1.0)=2.0   (k=0.4)=2.0   rev=[0] cho=[0] dur=0.49 ['sf2-05:SATRIOMUSIK SF2-13']
+   key 64 hits=  6 vel=119-127 miss=-      zones= 2 sameStack=1 att_cB=(-20, -20) peakUB(k=1.0)=2.0   (k=0.4)=2.0   rev=[0] cho=[0] dur=0.63 ['sf2-05:SATRIOMUSIK SF2-15']
+
+== Main D ch9 PC0 | COL-XG: COL 127/0 XG Standard 1 | coveredHits 47/47
+   key 36 hits=  6 vel=83-94   miss=-      zones= 5 sameStack=1 att_cB=(225, 243) peakUB(k=1.0)=0.36  (k=0.4)=1.75  rev=[0] cho=[0] dur=0.86 ['DK-Stan00:Deadly Kick10']
+   key 37 hits=  4 vel=127-127 miss=-      zones= 1 sameStack=1 att_cB=(100, 100) peakUB(k=1.0)=0.32  (k=0.4)=0.63  rev=[0] cho=[0] dur=0.16 ['DK-PercussionXG:Rimshotstd']
+   key 42 hits= 19 vel=74-127  miss=-      zones= 2 sameStack=1 att_cB=(215, 215) peakUB(k=1.0)=0.17  (k=0.4)=0.74  rev=[0] cho=[0] dur=0.71 ['DK-CommonHihats:HiHat Closed(L)']
+   key 60 hits=  4 vel=127-127 miss=-      zones= 1 sameStack=1 att_cB=(125, 125) peakUB(k=1.0)=0.24  (k=0.4)=0.56  rev=[0] cho=[0] dur=0.31 ['DK-PercussionXG:Bongo Rim(L)']
+   key 62 hits=  8 vel=127-127 miss=-      zones= 1 sameStack=1 att_cB=(125, 125) peakUB(k=1.0)=0.24  (k=0.4)=0.56  rev=[0] cho=[0] dur=0.2 ['DK-PercussionXG:Closed Slap(L)']
+   key 64 hits=  6 vel=119-127 miss=-      zones= 1 sameStack=1 att_cB=(125, 125) peakUB(k=1.0)=0.24  (k=0.4)=0.56  rev=[0] cho=[0] dur=0.64 ['DK-PercussionXG:Low Tumba(L)']
+
+== Main D ch9 PC0 | TYR-GS: TYR 128/0 tyros 4 standard | coveredHits 47/47
+   key 36 hits=  6 vel=83-94   miss=-      zones= 2 sameStack=1 att_cB=(0, 0) peakUB(k=1.0)=2.0   (k=0.4)=2.0   rev=[0] cho=[0] dur=0.6 ['tyros 4 standard0:sbombito2.wav1']
+   key 37 hits=  4 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(0, 0) peakUB(k=1.0)=1.29  (k=0.4)=1.29  rev=[0] cho=[0] dur=0.18 ['tyros 4 standard0:saro.wav']
+   key 42 hits= 19 vel=74-127  miss=-      zones= 2 sameStack=1 att_cB=(0, 0) peakUB(k=1.0)=0.9   (k=0.4)=0.9   rev=[0] cho=[0] dur=0.19 ['tyros 4 standard0:scharles.wav1']
+   key 60 hits=  4 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(0, 0) peakUB(k=1.0)=0.6   (k=0.4)=0.6   rev=[0] cho=[0] dur=0.62 ['tyros 4 standard0:34 R2']
+   key 62 hits=  8 vel=127-127 miss=-      zones= 2 sameStack=1 att_cB=(0, 0) peakUB(k=1.0)=1.46  (k=0.4)=1.46  rev=[0] cho=[0] dur=0.88 ['tyros 4 standard0:conga slap R2']
+   key 64 hits=  6 vel=119-127 miss=-      zones= 2 sameStack=1 att_cB=(0, 0) peakUB(k=1.0)=0.85  (k=0.4)=0.85  rev=[0] cho=[0] dur=0.77 ['tyros 4 standard0:conga low R2']

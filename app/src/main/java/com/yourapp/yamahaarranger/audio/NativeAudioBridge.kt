@@ -10,6 +10,7 @@ class NativeAudioBridge @Inject constructor() {
         init { System.loadLibrary("yamaha_arranger_native") }
     }
 
+    external fun nativeDrumChannelSelection(channel: Int): String
     external fun nativeShadowDrumSnapshot(): String
     external fun nativeInitLogger()
     external fun nativeStart(): Boolean
