@@ -282,6 +282,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     fun voicePin(channel:Int):com.yourapp.yamahaarranger.style.StyleVoicePin? = voicePins[channel]
     /** Re-install every pin after an SF2 reload (native font ids change). */
     fun reapplyVoicePins():Map<Int,Boolean> = lifecycle { voicePins.mapValues { (ch,pin) -> audioEngine.pinStyleChannel(ch,pin) } }
+    /** After an SF2 reload every native channel is reset: re-apply all style voices at the next section. */
+    fun invalidateAppliedVoices() = lifecycle { appliedChannelStates.clear(); lastAppliedSection="" }
     /** A new style starts with no pins; its own saved pins are restored afterwards. */
     fun clearVoicePins() = lifecycle {
         voicePins.keys.toList().forEach { audioEngine.unpinStyleChannel(it); appliedChannelStates.remove(it) }

@@ -247,7 +247,6 @@ fun SxMainScreen(
             returnLabel = if (navigation.mixerReturn == LivePage.LIVE) "LIVE" else "ARRANGER",
             onMixer = viewModel::setStyleChannelMixer,
             onMute = viewModel::toggleStyleChannelMute,
-            onVoice = viewModel::setChannelVoice,
         )
     }
 
@@ -323,7 +322,7 @@ fun SxMainScreen(
 }
 
 @Composable
-private fun SxMixerPage(state: MainUiState, vm: MainViewModel, voices: List<VoiceSlot>, presets: List<AudioEngineManager.SfPreset>, onDismiss: () -> Unit, returnLabel: String = "ARRANGER", onMixer: (Int, Int, Int, Int, Int, Int) -> Unit, onMute: (Int) -> Unit, onVoice: (Int, Int, Int) -> Unit) {
+private fun SxMixerPage(state: MainUiState, vm: MainViewModel, voices: List<VoiceSlot>, presets: List<AudioEngineManager.SfPreset>, onDismiss: () -> Unit, returnLabel: String = "ARRANGER", onMixer: (Int, Int, Int, Int, Int, Int) -> Unit, onMute: (Int) -> Unit) {
     var voicePickerSlot by remember { mutableStateOf<VoiceSlot?>(null) }
     var keyboardPicker by remember { mutableStateOf<Int?>(null) }
     var detailChannel by remember { mutableStateOf<Int?>(null) }
@@ -334,6 +333,9 @@ private fun SxMixerPage(state: MainUiState, vm: MainViewModel, voices: List<Voic
     val keyboardVolumes = listOf(state.right1Volume, state.right2Volume, state.right3Volume, state.leftVolume)
     val keyboardVolumeCallbacks: List<(Int) -> Unit> = listOf(vm::onRight1VolumeChange, vm::onRight2VolumeChange, vm::onRight3VolumeChange, vm::onLeftVolumeChange)
     LaunchedEffect(voices.map { it.channel }) { vm.reconcileMixerChannels() }
+    // CPV: engine binding per style channel, refreshed when the section or a voice changes.
+    var bindings by remember { mutableStateOf<Map<Int, com.yourapp.yamahaarranger.audio.ChannelBinding>>(emptyMap()) }
+    LaunchedEffect(state.activeSection, voices) { bindings = vm.channelBindings() }
     DisposableEffect(vm) { onDispose { vm.clearMixerSolo() } }
     val hostContext = LocalContext.current
     val activity = generateSequence(hostContext) { (it as? android.content.ContextWrapper)?.baseContext }
@@ -381,10 +383,18 @@ private fun SxMixerPage(state: MainUiState, vm: MainViewModel, voices: List<Voic
                         }
                     } else Row(Modifier.weight(1f).fillMaxHeight().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         voices.forEach { slot ->
-                            SxConsoleStrip(slot.label.substringAfter(") ", slot.label), slot.sf2Name ?: slot.displayName(),
+                            val badge = when {
+                                slot.overrideStatus == "ACTIVE" -> "OVR"
+                                slot.overrideStatus == "STALE" -> "STALE"
+                                slot.overrideStatus == "UNVERIFIED" -> "OVR?"
+                                bindings[slot.channel]?.status == "UNRESOLVED" -> "UNRES"
+                                else -> null
+                            }
+                            SxConsoleStrip(slot.label.substringAfter(") ", slot.label), slot.overridePin?.presetName ?: slot.sf2Name ?: slot.displayName(),
                                 slot.styleVolume, focus.muted(slot.channel, slot.styleMuted), slot.channel in focus.solo,
                                 slot.stylePan, { vm.setStyleChannelVolume(slot.channel, it) },
-                                { onMute(slot.channel) }, { vm.toggleMixerSolo(slot.channel) }, { detailChannel = slot.channel }, stripWidth = stripWidth)
+                                { onMute(slot.channel) }, { vm.toggleMixerSolo(slot.channel) }, { detailChannel = slot.channel }, stripWidth = stripWidth,
+                                badge = badge)
                         }
                     }
                 }
@@ -413,7 +423,12 @@ private fun SxMixerPage(state: MainUiState, vm: MainViewModel, voices: List<Voic
                         SxMixRow("REV", d.reverb, { vm.setKeyboardMixerDetail(ch, d.copy(reverb = it)) })
                         SxMixRow("CHO", d.chorus, { vm.setKeyboardMixerDetail(ch, d.copy(chorus = it)) })
                     } else if (slot != null) {
-                        TextButton(onClick = { detailChannel = null; voicePickerSlot = slot }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("VOICE: ${slot.displayName()}") }
+                        TextButton(onClick = { detailChannel = null; voicePickerSlot = slot }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                            Text("VOICE: " + (slot.overridePin?.let { "${it.presetName} [${slot.overrideStatus}]" } ?: slot.displayName()))
+                        }
+                        val binding = bindings[ch]
+                        Text("ENGINE: " + (binding?.let { "${it.status} ${it.source} ${it.summary()}" } ?: "-"),
+                            color = if (binding?.resolved == true) SxGreen else SxDim, fontSize = 10.sp)
                         SxMixRow("PAN", slot.stylePan, { onMixer(ch, slot.styleVolume, it, slot.styleExpression, slot.styleReverb, slot.styleChorus) })
                         SxMixRow("EXP", slot.styleExpression, { onMixer(ch, slot.styleVolume, slot.stylePan, it, slot.styleReverb, slot.styleChorus) })
                         SxMixRow("REV", slot.styleReverb, { onMixer(ch, slot.styleVolume, slot.stylePan, slot.styleExpression, it, slot.styleChorus) })
@@ -422,9 +437,18 @@ private fun SxMixerPage(state: MainUiState, vm: MainViewModel, voices: List<Voic
                 }
             }, confirmButton = { TextButton(onClick = { detailChannel = null }) { Text("CLOSE") } })
     }
-    voicePickerSlot?.let { slot ->
-        VoicePickerDialog(slot = slot, presets = presets, onDismiss = { voicePickerSlot = null },
-            onSelect = { program, bank -> onVoice(slot.channel, program, bank); voicePickerSlot = null })
+    voicePickerSlot?.let { pickerSlot ->
+        val slot = voices.firstOrNull { it.channel == pickerSlot.channel } ?: pickerSlot
+        StyleVoicePickerDialog(slot = slot, presets = presets, onRefresh = vm::refreshLoadedPresets,
+            onDismiss = { voicePickerSlot = null },
+            onSelect = { preset ->
+                vm.pickStyleChannelVoice(slot.channel, preset) { ok ->
+                    bindings = vm.channelBindings()
+                    if (ok) voicePickerSlot = null
+                    else selectionError = "Preset not verified: ${preset.soundFontName} ${preset.bank}:${preset.program}. Saved as override; channel reports UNVERIFIED."
+                }
+            },
+            onReset = { vm.resetStyleChannelVoice(slot.channel); voicePickerSlot = null })
     }
     keyboardPicker?.let { ch ->
         state.rightVoices.getOrNull(ch)?.let { slot ->
@@ -444,7 +468,7 @@ private fun SxMixerPage(state: MainUiState, vm: MainViewModel, voices: List<Voic
 @Composable
 private fun SxConsoleStrip(name: String, voice: String, volume: Int, muted: Boolean, solo: Boolean, pan: Int,
     onVolume: (Int) -> Unit, onMute: () -> Unit, onSolo: () -> Unit, onDetail: () -> Unit,
-    accent: Color = SxGreen, stripWidth: Dp = 56.dp) {
+    accent: Color = SxGreen, stripWidth: Dp = 56.dp, badge: String? = null) {
     Surface(color = SxPanel, shape = RoundedCornerShape(6.dp), border = androidx.compose.foundation.BorderStroke(1.dp, accent.copy(alpha = 0.24f)), modifier = Modifier.width(stripWidth).fillMaxHeight()) {
         Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
             TextButton(onClick = onDetail, modifier = Modifier.fillMaxWidth().height(48.dp)
@@ -455,6 +479,8 @@ private fun SxConsoleStrip(name: String, voice: String, volume: Int, muted: Bool
             SxConsoleSwitch("SOLO", solo, onSolo, Modifier.fillMaxWidth().semantics { contentDescription = "$name solo" }, accent)
             Text(volume.toString(), color = if (muted) SxDim else accent, fontSize = 13.sp)
             SxVerticalFader(name, volume, onVolume, Modifier.weight(1f).fillMaxWidth(), accent)
+            if (badge != null) Text(badge, color = if (badge == "OVR") SxGreen else Color(0xFFFFB347), fontSize = 9.sp,
+                fontWeight = FontWeight.Bold, maxLines = 1)
             Text(compactMixerLabel(name), color = accent, fontWeight = FontWeight.Bold, fontSize = 10.sp,
                 maxLines = 1, modifier = Modifier.height(32.dp).padding(top = 4.dp))
         }

@@ -116,8 +116,13 @@ data class VoiceSlot(
     val channel: Int, val label: String, val program: Int, val bank: Int = 0,
     val locked: Boolean = false, val styleVolume: Int = 127, val styleMuted: Boolean = false,
     val stylePan: Int = 64, val styleExpression: Int = 127,
-    val styleReverb: Int = 40, val styleChorus: Int = 0, val sf2Name: String? = null
+    val styleReverb: Int = 40, val styleChorus: Int = 0, val sf2Name: String? = null,
+    /** CPV manual voice saved for this style, if any. */
+    val overridePin: com.yourapp.yamahaarranger.style.StyleVoicePin? = null,
+    /** ACTIVE, UNVERIFIED (readback failed) or STALE (saved preset not loaded); null without override. */
+    val overrideStatus: String? = null
 ) {
+    val hasOverride: Boolean get() = overridePin != null
     fun displayName(): String {
         val raw = sf2Name?.trim().orEmpty()
         if (raw.isNotEmpty()) {
@@ -950,6 +955,83 @@ class MainViewModel @Inject constructor(
         DebugLog.add(if (muted) "🔇 STYLE CH$channel muted" else "🔊 STYLE CH$channel unmuted")
     }
 
+    // ---- CPV per-style manual voice overrides ----
+    private val overrideStore by lazy { com.yourapp.yamahaarranger.style.StyleOverrideStore(contentResolver.styleOverrideDirectory()) }
+    private var currentStyleSha: String? = null
+    private var currentStyleFileName: String = ""
+    private var currentOverrides: com.yourapp.yamahaarranger.style.StyleOverrideRecord? = null
+    private var overridesWritable = true
+
+    /** Apply the saved whole-style pins that match the loaded presets; others are marked STALE. */
+    private fun restoreStyleOverrides() {
+        val record = currentOverrides
+        val checks = if (record == null) emptyList() else com.yourapp.yamahaarranger.style.StyleOverridePins.check(record) { sf2, bank, pc ->
+            audioEngine.findLoadedPreset(com.yourapp.yamahaarranger.style.StyleVoicePin(sf2, bank, pc, "", false))?.name
+        }
+        val status = checks.associate { c ->
+            val applied = c.valid && arrangerBrain.setStyleVoicePin(c.channel, c.pin)
+            if (!c.valid) arrangerBrain.setStyleVoicePin(c.channel, null)
+            c.channel to (c.pin to (if (!c.valid) "STALE" else if (applied) "ACTIVE" else "UNVERIFIED"))
+        }
+        checks.forEach { DebugLog.add("CPV restore ch=${it.channel} ${it.pin.soundFontName} ${it.pin.bank}:${it.pin.program} '${it.pin.presetName}' ${it.reason}") }
+        _voiceAssignments.value = _voiceAssignments.value.map { slot ->
+            val entry = status[slot.channel]
+            slot.copy(overridePin = entry?.first, overrideStatus = entry?.second)
+        }
+    }
+
+    /** After an SF2 (re)load the native font ids change: re-check and re-install pins. */
+    private fun reapplyStyleVoicePins() {
+        arrangerBrain.invalidateAppliedVoices()
+        if (currentOverrides != null) restoreStyleOverrides()
+    }
+
+    /** Pick a Colombo/Tyros preset for a style channel; saved for this style immediately. */
+    fun pickStyleChannelVoice(channel: Int, preset: AudioEngineManager.SfPreset, onResult: (Boolean) -> Unit = {}) {
+        val sha = currentStyleSha ?: return onResult(false)
+        val pin = com.yourapp.yamahaarranger.style.StyleVoicePin(preset.soundFontName, preset.bank, preset.program, preset.name, preset.isDrum)
+        viewModelScope.launch {
+            val ok = withContext(Dispatchers.Default) { arrangerBrain.setStyleVoicePin(channel, pin) }
+            _voiceAssignments.value = _voiceAssignments.value.map {
+                if (it.channel == channel) it.copy(overridePin = pin, overrideStatus = if (ok) "ACTIVE" else "UNVERIFIED") else it
+            }
+            persistOverride(sha, channel, pin)
+            onResult(ok)
+        }
+    }
+
+    /** Load the cached native preset snapshot for the Mixer picker. */
+    fun refreshLoadedPresets() {
+        viewModelScope.launch(Dispatchers.Default) { _sf2Presets.value = audioEngine.loadedSoundFontPresets() }
+    }
+
+    /** Remove the manual voice; the style's own request plays again. */
+    fun resetStyleChannelVoice(channel: Int) {
+        val sha = currentStyleSha ?: return
+        viewModelScope.launch {
+            withContext(Dispatchers.Default) { arrangerBrain.setStyleVoicePin(channel, null) }
+            _voiceAssignments.value = _voiceAssignments.value.map {
+                if (it.channel == channel) it.copy(overridePin = null, overrideStatus = null) else it
+            }
+            persistOverride(sha, channel, null)
+        }
+    }
+
+    private suspend fun persistOverride(sha: String, channel: Int, pin: com.yourapp.yamahaarranger.style.StyleVoicePin?) {
+        if (!overridesWritable) { DebugLog.add("CPV overrides not saved: stored file is newer or damaged (kept read-only)"); return }
+        val base = currentOverrides ?: com.yourapp.yamahaarranger.style.StyleOverrideRecord(sha, currentStyleFileName, emptyList())
+        val next = base.withAllSectionPin(channel, pin).copy(styleFileName = currentStyleFileName, savedAt = System.currentTimeMillis())
+        currentOverrides = next
+        try {
+            withContext(Dispatchers.IO) {
+                if (next.overrides.isEmpty()) overrideStore.delete(sha) else overrideStore.write(next)
+            }
+            DebugLog.add("CPV overrides saved style=$currentStyleFileName entries=${next.overrides.size}")
+        } catch (error: Exception) {
+            DebugLog.add("❌ CPV overrides save failed: ${error.javaClass.simpleName}")
+        }
+    }
+
     fun setStyleChannelVoice(channel: Int, program: Int, bank: Int) {
         val slot = _voiceAssignments.value.firstOrNull { it.channel == channel } ?: return
         _voiceAssignments.value = _voiceAssignments.value.map { if (it.channel == channel) it.copy(program = program, bank = bank, sf2Name = _sf2Presets.value.firstOrNull { p -> p.bank == bank && p.program == program }?.name) else it }
@@ -1230,6 +1312,14 @@ class MainViewModel @Inject constructor(
                     drumAuditStyle = parsed
                     arrangerBrain.loadStyle(parsed)
                     _voiceAssignments.value = voiceSlotsFromStyle(parsed)
+                    // CPV: restore this style's saved manual voices (pins were cleared by loadStyle).
+                    currentStyleSha = com.yourapp.yamahaarranger.style.StyleOverrideStore.sha256(bytes)
+                    currentStyleFileName = fileName
+                    val saved = withContext(Dispatchers.IO) { overrideStore.read(currentStyleSha!!) }
+                    currentOverrides = saved.record
+                    overridesWritable = saved.writable
+                    DebugLog.add("CPV overrides style=$fileName status=${saved.status} entries=${saved.record?.overrides?.size ?: 0}")
+                    restoreStyleOverrides()
                     // Register destinations before publishing READY; the first note must not race a UI collector.
                     midiInputManager.setMixerStyleChannels(_voiceAssignments.value.map { it.channel }.toSet())
                     syncMixerMidiMute()
@@ -1245,68 +1335,29 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    /** Prefer Yamaha-specific melody/drum fonts over arbitrary folder order. */
-    private fun preferredSoundFontPair(
-        files: List<Pair<Uri, String>>
-    ): Pair<Pair<Uri, String>, Pair<Uri, String>>? {
-        if (files.isEmpty()) return null
-
-        fun scoreDrum(name: String): Int {
-            val n = name.lowercase()
-            return when {
-                n.contains("drumkit") && n.contains("yamaha") && n.contains("sx700") -> 100
-                n.contains("drumkit") && n.contains("yamaha") -> 95
-                n.contains("yamaha") && n.contains("drum") -> 90
-                n.contains("drumkit") -> 80
-                n.contains("drum") || n.contains("percussion") -> 60
-                else -> 0
-            }
+    /**
+     * CPV font stack: Colombo GM/GS2 primary, Tyros 4 fallback, no Prime and no
+     * dedicated drum SF2. Returns false when neither Colombo nor Tyros exists.
+     */
+    private suspend fun loadCpvStack(files: List<Pair<Uri, String>>, request: ReadyToPlayGate.Request): Boolean {
+        val plan = com.yourapp.yamahaarranger.audio.SoundFontRolePlanner.plan(files) { it.second }
+        val primary = plan.primary ?: return false
+        DebugLog.add("🎯 CPV SF2 plan: PRIMARY='${primary.second}' FALLBACK='${plan.fallback?.second ?: "-"}' " +
+            "notAutoLoaded=${plan.excluded.joinToString { it.second }}")
+        val primaryCache = withContext(Dispatchers.IO) {
+            contentResolver.copySoundFontToCache(primary.first, primary.second, "ready-${request.generation}")
         }
-
-        fun scoreMelody(name: String): Int {
-            val n = name.lowercase()
-            return when {
-                (n.contains("melodi") || n.contains("melody")) && n.contains("yamaha") && (n.contains("sx700") || n.contains("sx900")) -> 100
-                (n.contains("melodi") || n.contains("melody")) && n.contains("yamaha") -> 95
-                n.contains("yamaha") && n.contains("tyros") -> 90
-                n.contains("tyros") -> 85
-                n.contains("colombo") -> 80
-                n.contains("timbres") -> 70
-                n.contains("merlin") -> 50
-                n.contains("cp80") -> 40
-                else -> 10
-            }
+        val fallbackCache = plan.fallback?.let { f -> withContext(Dispatchers.IO) {
+            contentResolver.copySoundFontToCache(f.first, f.second, "ready-${request.generation}")
+        } }
+        if (primaryCache == null) { DebugLog.add("❌ CPV SF2 cache failed"); _soundFontName.value = "Load failed"; return true }
+        val ok = withContext(Dispatchers.Default) {
+            audioEngine.loadColomboPrimaryStack(primaryCache.absolutePath, fallbackCache?.absolutePath, request)
         }
-
-        val drum = files.maxByOrNull { scoreDrum(it.second) }?.takeIf { scoreDrum(it.second) > 0 }
-            ?: return null
-        val melody = files
-            .filter { it != drum }
-            .maxByOrNull { scoreMelody(it.second) }
-            ?.takeIf { scoreMelody(it.second) > 0 }
-            ?: return null
-
-        DebugLog.add("🎯 Preferred SF2 pair: MELODY='${melody.second}' DRUM='${drum.second}'")
-        return melody to drum
-    }
-
-    private fun fallbackMelodyScore(name: String): Int {
-        val n = name.lowercase()
-        return when {
-            // ColomboGMGS2_BM is the broad BASSMIDI/GM2/GS compatibility
-            // layer (892 presets in the audited user inventory). Keep the
-            // Yamaha SX700/SX900 font as PRIMARY, but prefer Colombo for the
-            // first optional pool slot. Tyros may occupy a second slot;
-            // source load order does not decide the resolver winner.
-            n.contains("colombo") && (n.contains("bm") || n.contains("bassmidi")) -> 100
-            n.contains("colombo") -> 98
-            n.contains("yamaha") && n.contains("tyros") -> 90
-            n.contains("tyros") -> 85
-            n.contains("timbres") -> 70
-            n.contains("merlin") -> 50
-            n.contains("cp80") -> 40
-            else -> 0
-        }
+        fontRequestSucceeded = ok
+        _soundFontName.value = if (ok) primary.second + (plan.fallback?.let { " + " + it.second } ?: "") else "Load failed"
+        if (ok) withContext(Dispatchers.Default) { reapplyStyleVoicePins() }
+        return true
     }
 
     private suspend fun autoLoadSoundFont(request: ReadyToPlayGate.Request) {
@@ -1315,70 +1366,10 @@ class MainViewModel @Inject constructor(
             DebugLog.add("📂 SF2 folder ready: /storage/emulated/0/YamahaArranger/SF2")
             return
         }
-        val preferredPair = preferredSoundFontPair(files)
-        val melody = preferredPair?.first
-        val drum = preferredPair?.second
-        if (melody != null && drum != null) {
-            DebugLog.add("🔄 Auto-loading MELODY + FALLBACK + DRUM SF2 as one transaction")
-            val fallback = files
-                .filter { it != melody && it != drum }
-                .maxByOrNull { fallbackMelodyScore(it.second) }
-                ?.takeIf { fallbackMelodyScore(it.second) > 0 }
-            if (fallback != null) {
-                DebugLog.add("🧩 Secondary melody SF2: ${fallback.second}")
-            }
-            val additional = files.firstOrNull {
-                it != melody && it != drum && it != fallback && it.second.lowercase().contains("tyros") &&
-                    !it.second.lowercase().contains("drum")
-            }
-            if (additional != null) DebugLog.add("🧩 Yamaha alternate SF2: ${additional.second}")
-            val melodyCache = withContext(Dispatchers.IO) {
-                contentResolver.copySoundFontToCache(melody.first, melody.second, "ready-${request.generation}")
-            }
-            val fallbackCache = if (fallback != null) withContext(Dispatchers.IO) {
-                contentResolver.copySoundFontToCache(fallback.first, fallback.second, "ready-${request.generation}")
-            } else null
-            val additionalCache = if (additional != null) withContext(Dispatchers.IO) {
-                contentResolver.copySoundFontToCache(additional.first, additional.second, "ready-${request.generation}")
-            } else null
-            val drumCache = withContext(Dispatchers.IO) {
-                contentResolver.copySoundFontToCache(drum.first, drum.second, "ready-${request.generation}")
-            }
-            if (melodyCache != null && drumCache != null) {
-                val ok = withContext(Dispatchers.Default) {
-                    audioEngine.loadSoundFontPairWithFallback(
-                        melodyCache.absolutePath,
-                        fallbackCache?.absolutePath,
-                        drumCache.absolutePath,
-                        additionalCache?.absolutePath, request = request
-                    )
-                }
-                fontRequestSucceeded = ok
-                if (ok) {
-                    _soundFontName.value = buildString {
-                        append(melody.second)
-                        if (fallback != null) append(" + ").append(fallback.second)
-                        if (additional != null) append(" + ").append(additional.second)
-                        append(" + ").append(drum.second)
-                    }
-                    DebugLog.add("✅ Auto SF2 stack loaded")
-                }
-            } else {
-                DebugLog.add("❌ Auto SF2 stack cache failed")
-            }
-        } else if (files.size == 1) {
-            // A style-specific SF2 is often shipped as a single file. Keep the
-            // same font available to both melodic and Yamaha rhythm channels.
-            val single = files.first()
-            DebugLog.add("🔄 Auto-loading SINGLE SF2: " + single.second)
-            loadSoundFontUri(single.first, single.second, role = null, replaceAll = false, request = request)
-        } else if (melody != null) {
-            DebugLog.add("🔄 Auto-loading MELODY SF2: " + melody.second)
-            loadSoundFontUri(melody.first, melody.second, role = "MELODY", replaceAll = false, request = request)
-        } else if (drum != null) {
-            DebugLog.add("🥁 Auto-loading DRUM SF2: " + drum.second)
-            loadSoundFontUri(drum.first, drum.second, role = "DRUM", replaceAll = false, request = request)
-        }
+        if (loadCpvStack(files, request)) return
+        // No Colombo/Tyros: Prime Melodi/Drum and other SF2 files are never auto-loaded.
+        DebugLog.add("❌ CPV: Colombo/Tyros SF2 not found; Prime Melodi/Drum are not loaded automatically")
+        _soundFontName.value = "Colombo/Tyros SF2 not found"
     }
 
     private suspend fun loadSoundFontUri(uri: Uri, displayName: String, role: String? = null, replaceAll: Boolean = false, request: ReadyToPlayGate.Request) {
@@ -1476,57 +1467,10 @@ class MainViewModel @Inject constructor(
             // both roles with the selected file. That made selecting the drum
             // font remove the melody font, and vice versa.
             val files = withContext(Dispatchers.IO) { contentResolver.listSoundFonts() }
-            val preferredPair = preferredSoundFontPair(files)
-            val melody = preferredPair?.first
-            val drum = preferredPair?.second
-
-            if (melody != null && drum != null) {
-                val fallback = files.filter { it != melody && it != drum }
-                    .maxByOrNull { fallbackMelodyScore(it.second) }
-                    ?.takeIf { fallbackMelodyScore(it.second) > 0 }
-                val additional = files.firstOrNull {
-                    it != melody && it != drum && it != fallback && it.second.lowercase().contains("tyros") &&
-                        !it.second.lowercase().contains("drum")
-                }
-                val fallbackCache = if (fallback != null) withContext(Dispatchers.IO) {
-                    contentResolver.copySoundFontToCache(fallback.first, fallback.second, "ready-${request.generation}")
-                } else null
-                val additionalCache = if (additional != null) withContext(Dispatchers.IO) {
-                    contentResolver.copySoundFontToCache(additional.first, additional.second, "ready-${request.generation}")
-                } else null
-                val melodyCache = withContext(Dispatchers.IO) {
-                    contentResolver.copySoundFontToCache(melody.first, melody.second, "ready-${request.generation}")
-                }
-                val drumCache = withContext(Dispatchers.IO) {
-                    contentResolver.copySoundFontToCache(drum.first, drum.second, "ready-${request.generation}")
-                }
-
-                if (melodyCache != null && drumCache != null) {
-                    val ok = withContext(Dispatchers.Default) {
-                        audioEngine.loadSoundFontPairWithFallback(
-                            melodyCache.absolutePath,
-                            fallbackCache?.absolutePath,
-                            drumCache.absolutePath,
-                            additionalCache?.absolutePath, request = request
-                        )
-                    }
-                    fontRequestSucceeded = ok
-                    _soundFontName.value = if (ok) name else "Load failed"
-                    DebugLog.add(
-                        if (ok) "✅ MELODY + DRUM SF2 reloaded; selected=$name"
-                        else "❌ MELODY + DRUM SF2 reload failed"
-                    )
-                    return@launchFontRequest
-                }
-
-                DebugLog.add("❌ MELODY + DRUM SF2 cache failed")
-                _soundFontName.value = "Load failed"
-                return@launchFontRequest
-            }
-
-            // Only one managed SF2 exists: use it for both melodic and
-            // Yamaha rhythm channels.
-            loadSoundFontUri(uri, name, role = null, replaceAll = true, request = request)
+            // CPV: the managed folder always loads as Colombo primary + Tyros fallback.
+            if (loadCpvStack(files, request)) return@launchFontRequest
+            DebugLog.add("❌ CPV: Colombo/Tyros SF2 not found; Prime Melodi/Drum are not loaded automatically")
+            _soundFontName.value = "Colombo/Tyros SF2 not found"
         }
     }
 

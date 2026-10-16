@@ -10,7 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 BASELINE = 'c75732f28fec58fbfbc7e626bc380b10a00722b8'  # R2-3 drum A/B, CI green
 R24_ONLY = ['app/src/main/cpp/drum_punch.h']
-SYMBOLS = [b'nativeChannelBinding', b'nativeSetSourceTiered', b'nativeBindDrumAB', b'nativeSetDrumABMode']
+SYMBOLS = [b'nativeChannelBinding', b'nativeSetSourceTiered', b'nativePinChannelPreset', b'nativeFontPdta', b'nativeBindDrumAB', b'nativeSetDrumABMode']
 
 
 def git(*args):

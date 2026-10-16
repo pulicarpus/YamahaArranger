@@ -127,6 +127,8 @@ class ArrangerBrain @Inject constructor(
         loadedStyle = style
         ensureSequencer()
         sequencer.tempoBpm = style.defaultTempoBpm
+        // CPV: manual voices belong to one style; the caller restores the new style's own pins.
+        sequencer.clearVoicePins()
         sequencer.setVoiceMap(style.voiceMap)
         _state.update { it.copy(tempoBpm = style.defaultTempoBpm) }
         Timber.i("Style loaded: ${style.fileName}, voices=${style.voiceMap.size}")
@@ -666,6 +668,15 @@ class ArrangerBrain @Inject constructor(
         ensureSequencer()
         sequencer.setChannelMixer(channel, volume, pan, expression, reverbSend, chorusSend)
     }
+
+    /** CPV manual voice for a style channel (null releases it). Internal sound only. */
+    fun setStyleVoicePin(channel: Int, pin: com.yourapp.yamahaarranger.style.StyleVoicePin?): Boolean {
+        ensureSequencer()
+        return sequencer.setVoicePin(channel, pin)
+    }
+    fun invalidateAppliedVoices() { if (::sequencer.isInitialized) sequencer.invalidateAppliedVoices() }
+    fun styleVoicePin(channel: Int): com.yourapp.yamahaarranger.style.StyleVoicePin? =
+        if (::sequencer.isInitialized) sequencer.voicePin(channel) else null
 
     fun setStyleChannelProgram(channel: Int, program: Int, bank: Int) {
         ensureSequencer()
