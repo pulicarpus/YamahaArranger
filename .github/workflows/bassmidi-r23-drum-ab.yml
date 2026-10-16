@@ -3,7 +3,7 @@ name: BASSMIDI R2-3 Drum A-B Diagnostic APK
 on:
   push:
     branches: [experiment/bassmidi-r2-3-drum-ab]
-    paths: [.github/workflows/bassmidi-r23-drum-ab.yml]
+    paths: [.github/workflows/bassmidi-r23-drum-ab.yml, app/src/main/java/com/yourapp/ui/Sf2StyleInspectorScreen.kt]
   workflow_dispatch: {}
 permissions:
   contents: read
@@ -110,7 +110,7 @@ jobs:
       - name: Compile debug APK for both configured ARM ABIs
         run: |
           set -euo pipefail
-          gradle --no-daemon --max-workers=2 assembleDebug --stacktrace 2>&1 | tee evidence/android-build.log
+          gradle --no-daemon --max-workers=2 compileDebugKotlin assembleDebug --stacktrace 2>&1 | tee evidence/android-build.log
       - name: Verify signed debug APK, both ABIs and source provenance
         run: |
           set -euo pipefail

@@ -141,6 +141,7 @@ fun Sf2StyleInspectorDialog(
                     OutlinedButton(onClick = { r22Report=viewModel.r22ShadowReport() }) { Text("DRUM KIT SHADOW") }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    val context = LocalContext.current
                     for(resolved in listOf(false,true)) OutlinedButton(enabled = !state.isPlaying && !exportBusy, onClick = {
                         if(viewModel.setDrumABMode(resolved))r23Resolved=resolved
                         else Toast.makeText(context,"STOP; wait for playback jobs to finish, then retry",Toast.LENGTH_LONG).show()
