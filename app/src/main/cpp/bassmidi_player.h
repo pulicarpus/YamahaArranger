@@ -69,6 +69,9 @@ public:
     std::string noteZoneReport() const;
     uint64_t markPcmSession(pcm_session::Controls controls);
     std::string drumChannelSelection(int channel) const; // R22 cached metadata only
+    bool setDrumABMode(bool resolved);
+    bool bindDrumAB(int channel,const std::string& pdta,int bank,int pc,const std::string& section);
+    std::string drumABReport() const;
     std::string pcmSessionReport(pcm_session::Controls controls) const;
     std::string drumKitCoverage(const std::vector<drum_audit::Hit>& hits) const;
     std::string drumCompatibilityReport(const std::vector<drum_compat::Demand>& demand, const std::vector<std::pair<int,int>>& comparisonKits = {}) const;
@@ -287,6 +290,10 @@ private:
     int voices_ = 1000;
     float soundFontVolume_ = 0.90f;
     // R22 observations are never read by selection or rendering.
+    struct DrumABBinding { HSOUNDFONT font=0; int rawBank=-1,nativeBank=-1,pc=-1; std::string pdta,section; bool verified=false; };
+    bool drumABResolved_=false;
+    uint64_t drumABGeneration_=0;
+    std::array<DrumABBinding,2> drumABBindings_{};
     struct DrumSelectionObservation { uint64_t generation=0; int bank=-1,pc=-1; std::string path,pdta,name,reason; };
     uint64_t drumSelectionGeneration_=0;
     std::array<DrumSelectionObservation,16> drumSelections_{};

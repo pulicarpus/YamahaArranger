@@ -1,0 +1,28 @@
+{
+  "baseline_ns": [
+    597816394,
+    566062688,
+    570930218,
+    571100732,
+    608233623,
+    569825736,
+    621798580
+  ],
+  "candidate_ns": [
+    574751933,
+    601505890,
+    579572582,
+    562898794,
+    583162419,
+    616328492,
+    624504264
+  ],
+  "median_overhead_percent": 2.1120069235001537,
+  "scope": "HOST_MOCK_DECODE_NOT_ANDROID_CALLBACK",
+  "device_G5": "UNVERIFIED",
+  "gate_lt_1_percent": false,
+  "benchmark_baseline": "163f769bf056f0dd0593f78ab20fbbe700dcb56f",
+  "r23_required_parent": "d456d733c788b46ae06fe09c8b687eeb4915d554",
+  "threshold_unchanged": true,
+  "interpretation": "not an isolated R2-3 minus R2-2 measurement; no Android/device performance conclusion"
+}

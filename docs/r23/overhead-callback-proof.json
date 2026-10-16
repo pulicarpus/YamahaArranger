@@ -1,0 +1,16 @@
+{
+  "r22_and_r23_render_identical_sha256": "0e890188f80d13d16afb90a6a04258b8b437d957fbe83c2c7ea1136aac14b300",
+  "new_production_changes_in_this_investigation": false,
+  "reviewed_production_paths": 11,
+  "shadow_cold_p99_us": [
+    250.317,
+    287.463,
+    218.008
+  ],
+  "shadow_threshold_us": 2000,
+  "shadow_decision_digest": "a9c5be4fa03d42ac663aa399c1c0e9b66dcaf6af4783287f6320208aa2eae681",
+  "callback_path": "AudioEngine onAudioReady -> BassMidiPlayer render; no resolveAB/evaluate/bindDrumAB calls",
+  "note_path": "JNI -> AudioEngine sfNoteOn* -> BassMidiPlayer noteOn; direct caller thread, not an onAudioReady command queue",
+  "resolution_path": "Kotlin section/setup/dynamic-PC -> resolveAB; shadow observe evaluation uses R22-shadow-metadata worker",
+  "real_device_callback_overhead": "UNVERIFIED"
+}

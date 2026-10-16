@@ -1,0 +1,824 @@
+{
+  "protocol": "persistent processes; 1000 render-block epochs; six orders exactly 25 times per trial; fixed N=48; all samples retained",
+  "trials": 48,
+  "epochs_per_trial": 150,
+  "render_blocks_per_epoch": 1000,
+  "frames_per_block": 128,
+  "warmup_blocks_per_process": 10000,
+  "seed": 20261016,
+  "cpu_affinity": [
+    1
+  ],
+  "cgroup_before": {
+    "usage_usec": 7185524846,
+    "user_usec": 6998983547,
+    "system_usec": 186541299,
+    "nice_usec": 0,
+    "nr_periods": 125729,
+    "nr_throttled": 26225,
+    "throttled_usec": 2110365807,
+    "nr_bursts": 0,
+    "burst_usec": 0
+  },
+  "cgroup_after": {
+    "usage_usec": 7276800405,
+    "user_usec": 7088897951,
+    "system_usec": 187902453,
+    "nice_usec": 0,
+    "nr_periods": 126633,
+    "nr_throttled": 26225,
+    "throttled_usec": 2110365807,
+    "nr_bursts": 0,
+    "burst_usec": 0
+  },
+  "cgroup_delta": {
+    "usage_usec": 91275559,
+    "user_usec": 89914404,
+    "system_usec": 1361154,
+    "nice_usec": 0,
+    "nr_periods": 904,
+    "nr_throttled": 0,
+    "throttled_usec": 0,
+    "nr_bursts": 0,
+    "burst_usec": 0
+  },
+  "shared_vm_not_exclusive": true,
+  "governor_control": false,
+  "host": "Linux-6.18.44-x86_64-with-glibc2.41",
+  "blocks": [
+    {
+      "r22_legacy": {
+        "wall": 579076736,
+        "cpu": 578775401
+      },
+      "r23_legacy": {
+        "wall": 576874533,
+        "cpu": 576674531
+      },
+      "r23_resolved": {
+        "wall": 574915633,
+        "cpu": 574635432
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 605190777,
+        "cpu": 604759251
+      },
+      "r23_legacy": {
+        "wall": 618316156,
+        "cpu": 617986852
+      },
+      "r23_resolved": {
+        "wall": 602961546,
+        "cpu": 602645845
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 622963634,
+        "cpu": 622708266
+      },
+      "r23_legacy": {
+        "wall": 611249190,
+        "cpu": 611033348
+      },
+      "r23_resolved": {
+        "wall": 585394431,
+        "cpu": 585129773
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 551294474,
+        "cpu": 551146122
+      },
+      "r23_legacy": {
+        "wall": 549747421,
+        "cpu": 549599462
+      },
+      "r23_resolved": {
+        "wall": 549856077,
+        "cpu": 549737943
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 569556674,
+        "cpu": 569370718
+      },
+      "r23_legacy": {
+        "wall": 566203593,
+        "cpu": 566019933
+      },
+      "r23_resolved": {
+        "wall": 565666614,
+        "cpu": 565425747
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 569132395,
+        "cpu": 568881703
+      },
+      "r23_legacy": {
+        "wall": 571798847,
+        "cpu": 571549666
+      },
+      "r23_resolved": {
+        "wall": 574189635,
+        "cpu": 573840054
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 589765826,
+        "cpu": 589314379
+      },
+      "r23_legacy": {
+        "wall": 589040914,
+        "cpu": 588600951
+      },
+      "r23_resolved": {
+        "wall": 585831310,
+        "cpu": 585463015
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 587628942,
+        "cpu": 587362838
+      },
+      "r23_legacy": {
+        "wall": 597399757,
+        "cpu": 597170909
+      },
+      "r23_resolved": {
+        "wall": 583129591,
+        "cpu": 582887630
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 645787529,
+        "cpu": 645408855
+      },
+      "r23_legacy": {
+        "wall": 655463526,
+        "cpu": 655121546
+      },
+      "r23_resolved": {
+        "wall": 674829475,
+        "cpu": 674503035
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 611187069,
+        "cpu": 610903831
+      },
+      "r23_legacy": {
+        "wall": 595644886,
+        "cpu": 595441134
+      },
+      "r23_resolved": {
+        "wall": 594924727,
+        "cpu": 594702295
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 565036960,
+        "cpu": 564874428
+      },
+      "r23_legacy": {
+        "wall": 564021968,
+        "cpu": 563752636
+      },
+      "r23_resolved": {
+        "wall": 560205753,
+        "cpu": 560025357
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 575522229,
+        "cpu": 575091478
+      },
+      "r23_legacy": {
+        "wall": 581537748,
+        "cpu": 581308807
+      },
+      "r23_resolved": {
+        "wall": 572441361,
+        "cpu": 572248851
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 580971427,
+        "cpu": 580731672
+      },
+      "r23_legacy": {
+        "wall": 585008865,
+        "cpu": 584754638
+      },
+      "r23_resolved": {
+        "wall": 587034923,
+        "cpu": 586742909
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 600986194,
+        "cpu": 600480616
+      },
+      "r23_legacy": {
+        "wall": 599624970,
+        "cpu": 599229423
+      },
+      "r23_resolved": {
+        "wall": 610278193,
+        "cpu": 609848688
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 699745443,
+        "cpu": 698241538
+      },
+      "r23_legacy": {
+        "wall": 690863512,
+        "cpu": 688884186
+      },
+      "r23_resolved": {
+        "wall": 728920656,
+        "cpu": 723414433
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 669943666,
+        "cpu": 668963076
+      },
+      "r23_legacy": {
+        "wall": 673167504,
+        "cpu": 672125945
+      },
+      "r23_resolved": {
+        "wall": 662022330,
+        "cpu": 660394621
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 603879113,
+        "cpu": 603122551
+      },
+      "r23_legacy": {
+        "wall": 604588756,
+        "cpu": 603845087
+      },
+      "r23_resolved": {
+        "wall": 611009382,
+        "cpu": 610151925
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 629702627,
+        "cpu": 628851816
+      },
+      "r23_legacy": {
+        "wall": 635704406,
+        "cpu": 634742448
+      },
+      "r23_resolved": {
+        "wall": 633026679,
+        "cpu": 632193569
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 624300573,
+        "cpu": 623953846
+      },
+      "r23_legacy": {
+        "wall": 633400292,
+        "cpu": 633060309
+      },
+      "r23_resolved": {
+        "wall": 603558611,
+        "cpu": 603065345
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 628472016,
+        "cpu": 628027856
+      },
+      "r23_legacy": {
+        "wall": 636547729,
+        "cpu": 636002672
+      },
+      "r23_resolved": {
+        "wall": 634435226,
+        "cpu": 634080516
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 663180061,
+        "cpu": 661940833
+      },
+      "r23_legacy": {
+        "wall": 663108251,
+        "cpu": 661862133
+      },
+      "r23_resolved": {
+        "wall": 653286639,
+        "cpu": 652021700
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 654096140,
+        "cpu": 653402868
+      },
+      "r23_legacy": {
+        "wall": 633530805,
+        "cpu": 632784028
+      },
+      "r23_resolved": {
+        "wall": 623696333,
+        "cpu": 622941352
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 621268044,
+        "cpu": 620196941
+      },
+      "r23_legacy": {
+        "wall": 625740275,
+        "cpu": 624526691
+      },
+      "r23_resolved": {
+        "wall": 625931078,
+        "cpu": 624754239
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 636746815,
+        "cpu": 635402560
+      },
+      "r23_legacy": {
+        "wall": 640197027,
+        "cpu": 638784990
+      },
+      "r23_resolved": {
+        "wall": 652834909,
+        "cpu": 651476038
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 615453755,
+        "cpu": 614428991
+      },
+      "r23_legacy": {
+        "wall": 624868639,
+        "cpu": 624000462
+      },
+      "r23_resolved": {
+        "wall": 626324906,
+        "cpu": 625593527
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 556154313,
+        "cpu": 555867297
+      },
+      "r23_legacy": {
+        "wall": 559980520,
+        "cpu": 559673674
+      },
+      "r23_resolved": {
+        "wall": 560561720,
+        "cpu": 560254412
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 625552419,
+        "cpu": 624833584
+      },
+      "r23_legacy": {
+        "wall": 621730360,
+        "cpu": 621186951
+      },
+      "r23_resolved": {
+        "wall": 601057543,
+        "cpu": 600605126
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 680512562,
+        "cpu": 679264416
+      },
+      "r23_legacy": {
+        "wall": 669274622,
+        "cpu": 668254953
+      },
+      "r23_resolved": {
+        "wall": 662210151,
+        "cpu": 661148588
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 650328254,
+        "cpu": 650029945
+      },
+      "r23_legacy": {
+        "wall": 671717672,
+        "cpu": 671380100
+      },
+      "r23_resolved": {
+        "wall": 623749126,
+        "cpu": 623318286
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 614476794,
+        "cpu": 613274265
+      },
+      "r23_legacy": {
+        "wall": 620108869,
+        "cpu": 619839464
+      },
+      "r23_resolved": {
+        "wall": 622779080,
+        "cpu": 622473790
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 600435781,
+        "cpu": 599703376
+      },
+      "r23_legacy": {
+        "wall": 596726863,
+        "cpu": 596381499
+      },
+      "r23_resolved": {
+        "wall": 648750812,
+        "cpu": 648389877
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 597930664,
+        "cpu": 597690401
+      },
+      "r23_legacy": {
+        "wall": 601324004,
+        "cpu": 600999559
+      },
+      "r23_resolved": {
+        "wall": 601228284,
+        "cpu": 600910340
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 589004160,
+        "cpu": 588751232
+      },
+      "r23_legacy": {
+        "wall": 597660761,
+        "cpu": 597421987
+      },
+      "r23_resolved": {
+        "wall": 585425187,
+        "cpu": 585207146
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 625134325,
+        "cpu": 624245425
+      },
+      "r23_legacy": {
+        "wall": 654945306,
+        "cpu": 654104678
+      },
+      "r23_resolved": {
+        "wall": 621987471,
+        "cpu": 621730173
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 634180991,
+        "cpu": 633941688
+      },
+      "r23_legacy": {
+        "wall": 610565844,
+        "cpu": 610309044
+      },
+      "r23_resolved": {
+        "wall": 617066766,
+        "cpu": 616826779
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 649997540,
+        "cpu": 649655215
+      },
+      "r23_legacy": {
+        "wall": 653287836,
+        "cpu": 652930007
+      },
+      "r23_resolved": {
+        "wall": 650800031,
+        "cpu": 650417498
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 664408275,
+        "cpu": 664107305
+      },
+      "r23_legacy": {
+        "wall": 670738815,
+        "cpu": 670419594
+      },
+      "r23_resolved": {
+        "wall": 674157040,
+        "cpu": 673727891
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 591424259,
+        "cpu": 591118409
+      },
+      "r23_legacy": {
+        "wall": 594253366,
+        "cpu": 594011643
+      },
+      "r23_resolved": {
+        "wall": 591004069,
+        "cpu": 590820658
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 589988484,
+        "cpu": 589826606
+      },
+      "r23_legacy": {
+        "wall": 575018322,
+        "cpu": 574847511
+      },
+      "r23_resolved": {
+        "wall": 573657185,
+        "cpu": 573450321
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 609634310,
+        "cpu": 609427361
+      },
+      "r23_legacy": {
+        "wall": 597746744,
+        "cpu": 597523760
+      },
+      "r23_resolved": {
+        "wall": 615949013,
+        "cpu": 615652914
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 573462128,
+        "cpu": 572673527
+      },
+      "r23_legacy": {
+        "wall": 581973723,
+        "cpu": 581198281
+      },
+      "r23_resolved": {
+        "wall": 580291733,
+        "cpu": 579531920
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 569134212,
+        "cpu": 568939464
+      },
+      "r23_legacy": {
+        "wall": 575522038,
+        "cpu": 575329862
+      },
+      "r23_resolved": {
+        "wall": 572789958,
+        "cpu": 572550373
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 588422371,
+        "cpu": 588206767
+      },
+      "r23_legacy": {
+        "wall": 591068252,
+        "cpu": 590859716
+      },
+      "r23_resolved": {
+        "wall": 588041468,
+        "cpu": 587857940
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 596566757,
+        "cpu": 596383604
+      },
+      "r23_legacy": {
+        "wall": 583443597,
+        "cpu": 583039572
+      },
+      "r23_resolved": {
+        "wall": 582551918,
+        "cpu": 582346357
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 632278727,
+        "cpu": 632019502
+      },
+      "r23_legacy": {
+        "wall": 633531147,
+        "cpu": 633316372
+      },
+      "r23_resolved": {
+        "wall": 639460298,
+        "cpu": 639214629
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 587322357,
+        "cpu": 586455806
+      },
+      "r23_legacy": {
+        "wall": 586937587,
+        "cpu": 585356071
+      },
+      "r23_resolved": {
+        "wall": 589580898,
+        "cpu": 588756725
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 620195213,
+        "cpu": 619468154
+      },
+      "r23_legacy": {
+        "wall": 631460624,
+        "cpu": 630488850
+      },
+      "r23_resolved": {
+        "wall": 617245497,
+        "cpu": 616276685
+      }
+    },
+    {
+      "r22_legacy": {
+        "wall": 610779517,
+        "cpu": 609691287
+      },
+      "r23_legacy": {
+        "wall": 599132049,
+        "cpu": 597949534
+      },
+      "r23_resolved": {
+        "wall": 597885868,
+        "cpu": 596790635
+      }
+    }
+  ],
+  "comparisons": [
+    {
+      "baseline": "r22_legacy",
+      "candidate": "r23_legacy",
+      "metric": "wall",
+      "median_delta_percent": -1.1882090057637518,
+      "paired_geomean_percent": 0.14229721691109307,
+      "paired_bootstrap95_percent": [
+        -0.30879173884557604,
+        0.5994699747840956
+      ],
+      "median_lt_1": true,
+      "upper95_lt_1": true
+    },
+    {
+      "baseline": "r22_legacy",
+      "candidate": "r23_legacy",
+      "metric": "cpu",
+      "median_delta_percent": -1.1708460061222836,
+      "paired_geomean_percent": 0.1431830200730597,
+      "paired_bootstrap95_percent": [
+        -0.3069339149707475,
+        0.6028113975471716
+      ],
+      "median_lt_1": true,
+      "upper95_lt_1": true
+    },
+    {
+      "baseline": "r22_legacy",
+      "candidate": "r23_resolved",
+      "metric": "wall",
+      "median_delta_percent": -1.1384392484435568,
+      "paired_geomean_percent": -0.23604590981923523,
+      "paired_bootstrap95_percent": [
+        -0.8908752481597405,
+        0.45746493566633734
+      ],
+      "median_lt_1": true,
+      "upper95_lt_1": true
+    },
+    {
+      "baseline": "r22_legacy",
+      "candidate": "r23_resolved",
+      "metric": "cpu",
+      "median_delta_percent": -1.0997664601386736,
+      "paired_geomean_percent": -0.24213181527165603,
+      "paired_bootstrap95_percent": [
+        -0.8942829090664874,
+        0.4493338935307229
+      ],
+      "median_lt_1": true,
+      "upper95_lt_1": true
+    },
+    {
+      "baseline": "r23_legacy",
+      "candidate": "r23_resolved",
+      "metric": "wall",
+      "median_delta_percent": 0.050368237251263714,
+      "paired_geomean_percent": -0.37780551999004597,
+      "paired_bootstrap95_percent": [
+        -1.0672876866931922,
+        0.32548322285003234
+      ],
+      "median_lt_1": true,
+      "upper95_lt_1": true
+    },
+    {
+      "baseline": "r23_legacy",
+      "candidate": "r23_resolved",
+      "metric": "cpu",
+      "median_delta_percent": 0.07192163760505466,
+      "paired_geomean_percent": -0.3847639187457033,
+      "paired_bootstrap95_percent": [
+        -1.0744414335620365,
+        0.31373940782524423
+      ],
+      "median_lt_1": true,
+      "upper95_lt_1": true
+    }
+  ],
+  "commands": {
+    "r22_legacy": [
+      "/workspace/work/r23/precision-runner/r22-debug.exe",
+      "/workspace/work/r23/final/native/golden-fixtures",
+      "legacy"
+    ],
+    "r23_legacy": [
+      "/workspace/work/r23/precision-runner/r23-debug.exe",
+      "/workspace/work/r23/final/native/golden-fixtures",
+      "legacy"
+    ],
+    "r23_resolved": [
+      "/workspace/work/r23/precision-runner/r23-debug.exe",
+      "/workspace/work/r23/final/native/golden-fixtures",
+      "resolved"
+    ]
+  },
+  "binary_sha256": {
+    "r22_legacy": "d2487c0ec33a5401854f9faa77fadce48a77405bde79c21bcc820aa8673c38de",
+    "r23_legacy": "425bfe768d92065d0764f0ec7473b0c029a634ea5f60f8e30ae74f77559d21e0",
+    "r23_resolved": "425bfe768d92065d0764f0ec7473b0c029a634ea5f60f8e30ae74f77559d21e0"
+  }
+}

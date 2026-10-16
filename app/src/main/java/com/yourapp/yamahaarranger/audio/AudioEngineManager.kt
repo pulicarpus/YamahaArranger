@@ -342,6 +342,15 @@ class AudioEngineManager @Inject constructor(
     fun markPcmSession(): Long = PcmSessionControls.snapshot { bridge.nativeMarkPcmSession(it.muteMask,it.knownMask,it.changes,it.lastChangeNs) }
     fun pcmSessionReport(): String = PcmSessionControls.snapshot { bridge.nativePcmSessionReport(it.muteMask,it.knownMask,it.changes,it.lastChangeNs) }
     fun drumChannelSelection(channel: Int): String = bridge.nativeDrumChannelSelection(channel)
+    var drumABResolved: Boolean = false
+        private set
+    fun setDrumABMode(resolved: Boolean): Boolean {
+        val ok=bridge.nativeSetDrumABMode(resolved)
+        if(ok)drumABResolved=resolved
+        return ok
+    }
+    fun bindDrumAB(ch: Int, pdta: String, bank: Int, pc: Int, section: String): Boolean = bridge.nativeBindDrumAB(ch,pdta,bank,pc,section)
+    fun drumABReport(): String = bridge.nativeDrumABReport()
     fun noteZoneReport(): String = bridge.nativeGetNoteZoneReport()
     fun drumKitCoverage(histogram: IntArray): String = bridge.nativeGetDrumKitCoverage(histogram)
     fun drumCompatibilityReport(histogram: IntArray): String = bridge.nativeGetDrumCompatibilityReport(histogram)

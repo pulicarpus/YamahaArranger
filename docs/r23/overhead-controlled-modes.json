@@ -1,0 +1,957 @@
+{
+  "scope": "HOST_MOCK_DECODE_NO_DEVICE_AUDIO",
+  "trials": 31,
+  "warmups_each": 5,
+  "cpu_affinity": [
+    1
+  ],
+  "flags": "-O2 -pthread COMPATIBLE_PERCUSSION=1 ROLE_PCM_METERS=1 PCM_HEADROOM=1",
+  "blocks": [
+    {
+      "order": [
+        "r23_resolved",
+        "r22_legacy",
+        "r23_legacy"
+      ],
+      "values": {
+        "r23_resolved": {
+          "WALL": 571885298,
+          "CPU": 571835304,
+          "NOTE_PAIRS_NS": 3342601,
+          "OBSERVATIONS_NS": 241053
+        },
+        "r22_legacy": {
+          "WALL": 583190934,
+          "CPU": 583157937,
+          "NOTE_PAIRS_NS": 3636282,
+          "OBSERVATIONS_NS": 242615
+        },
+        "r23_legacy": {
+          "WALL": 577097639,
+          "CPU": 577060361,
+          "NOTE_PAIRS_NS": 3462701,
+          "OBSERVATIONS_NS": 270337
+        }
+      }
+    },
+    {
+      "order": [
+        "r23_legacy",
+        "r22_legacy",
+        "r23_resolved"
+      ],
+      "values": {
+        "r23_legacy": {
+          "WALL": 579229474,
+          "CPU": 576687410,
+          "NOTE_PAIRS_NS": 3156380,
+          "OBSERVATIONS_NS": 238499
+        },
+        "r22_legacy": {
+          "WALL": 563558382,
+          "CPU": 563523906,
+          "NOTE_PAIRS_NS": 3548411,
+          "OBSERVATIONS_NS": 246220
+        },
+        "r23_resolved": {
+          "WALL": 566850457,
+          "CPU": 566804373,
+          "NOTE_PAIRS_NS": 3426507,
+          "OBSERVATIONS_NS": 246291
+        }
+      }
+    },
+    {
+      "order": [
+        "r22_legacy",
+        "r23_legacy",
+        "r23_resolved"
+      ],
+      "values": {
+        "r22_legacy": {
+          "WALL": 573949941,
+          "CPU": 573906029,
+          "NOTE_PAIRS_NS": 3546328,
+          "OBSERVATIONS_NS": 252951
+        },
+        "r23_legacy": {
+          "WALL": 576643746,
+          "CPU": 576607533,
+          "NOTE_PAIRS_NS": 3186176,
+          "OBSERVATIONS_NS": 250026
+        },
+        "r23_resolved": {
+          "WALL": 567699093,
+          "CPU": 567652936,
+          "NOTE_PAIRS_NS": 3314108,
+          "OBSERVATIONS_NS": 256355
+        }
+      }
+    },
+    {
+      "order": [
+        "r23_resolved",
+        "r23_legacy",
+        "r22_legacy"
+      ],
+      "values": {
+        "r23_resolved": {
+          "WALL": 571641367,
+          "CPU": 571594306,
+          "NOTE_PAIRS_NS": 3638797,
+          "OBSERVATIONS_NS": 248524
+        },
+        "r23_legacy": {
+          "WALL": 565735328,
+          "CPU": 565699156,
+          "NOTE_PAIRS_NS": 3175660,
+          "OBSERVATIONS_NS": 242114
+        },
+        "r22_legacy": {
+          "WALL": 563770110,
+          "CPU": 563742814,
+          "NOTE_PAIRS_NS": 3462161,
+          "OBSERVATIONS_NS": 272881
+        }
+      }
+    },
+    {
+      "order": [
+        "r23_legacy",
+        "r22_legacy",
+        "r23_resolved"
+      ],
+      "values": {
+        "r23_legacy": {
+          "WALL": 569290289,
+          "CPU": 569240751,
+          "NOTE_PAIRS_NS": 3346367,
+          "OBSERVATIONS_NS": 248814
+        },
+        "r22_legacy": {
+          "WALL": 578058981,
+          "CPU": 576988531,
+          "NOTE_PAIRS_NS": 3263252,
+          "OBSERVATIONS_NS": 241053
+        },
+        "r23_resolved": {
+          "WALL": 583059332,
+          "CPU": 583023296,
+          "NOTE_PAIRS_NS": 3430133,
+          "OBSERVATIONS_NS": 245089
+        }
+      }
+    },
+    {
+      "order": [
+        "r23_resolved",
+        "r23_legacy",
+        "r22_legacy"
+      ],
+      "values": {
+        "r23_resolved": {
+          "WALL": 628966012,
+          "CPU": 628938500,
+          "NOTE_PAIRS_NS": 3458375,
+          "OBSERVATIONS_NS": 257457
+        },
+        "r23_legacy": {
+          "WALL": 589042898,
+          "CPU": 589002160,
+          "NOTE_PAIRS_NS": 3236021,
+          "OBSERVATIONS_NS": 249295
+        },
+        "r22_legacy": {
+          "WALL": 584388935,
+          "CPU": 584360697,
+          "NOTE_PAIRS_NS": 3344413,
+          "OBSERVATIONS_NS": 240342
+        }
+      }
+    },
+    {
+      "order": [
+        "r23_legacy",
+        "r23_resolved",
+        "r22_legacy"
+      ],
+      "values": {
+        "r23_legacy": {
+          "WALL": 589083199,
+          "CPU": 589054288,
+          "NOTE_PAIRS_NS": 3185384,
+          "OBSERVATIONS_NS": 251829
+        },
+        "r23_resolved": {
+          "WALL": 585297937,
+          "CPU": 585255094,
+          "NOTE_PAIRS_NS": 3294779,
+          "OBSERVATIONS_NS": 240682
+        },
+        "r22_legacy": {
+          "WALL": 576187790,
+          "CPU": 576152473,
+          "NOTE_PAIRS_NS": 3439697,
+          "OBSERVATIONS_NS": 243657
+        }
+      }
+    },
+    {
+      "order": [
+        "r23_resolved",
+        "r22_legacy",
+        "r23_legacy"
+      ],
+      "values": {
+        "r23_resolved": {
+          "WALL": 562526740,
+          "CPU": 562473723,
+          "NOTE_PAIRS_NS": 3327849,
+          "OBSERVATIONS_NS": 240242
+        },
+        "r22_legacy": {
+          "WALL": 610472601,
+          "CPU": 610437592,
+          "NOTE_PAIRS_NS": 3160667,
+          "OBSERVATIONS_NS": 257438
+        },
+        "r23_legacy": {
+          "WALL": 568865601,
+          "CPU": 568839332,
+          "NOTE_PAIRS_NS": 3421850,
+          "OBSERVATIONS_NS": 244888
+        }
+      }
+    },
+    {
+      "order": [
+        "r23_legacy",
+        "r23_resolved",
+        "r22_legacy"
+      ],
+      "values": {
+        "r23_legacy": {
+          "WALL": 569796691,
+          "CPU": 569755277,
+          "NOTE_PAIRS_NS": 3387899,
+          "OBSERVATIONS_NS": 248284
+        },
+        "r23_resolved": {
+          "WALL": 575415028,
+          "CPU": 575368858,
+          "NOTE_PAIRS_NS": 3414108,
+          "OBSERVATIONS_NS": 244258
+        },
+        "r22_legacy": {
+          "WALL": 570257344,
+          "CPU": 570211026,
+          "NOTE_PAIRS_NS": 3261629,
+          "OBSERVATIONS_NS": 244438
+        }
+      }
+    },
+    {
+      "order": [
+        "r23_legacy",
+        "r22_legacy",
+        "r23_resolved"
+      ],
+      "values": {
+        "r23_legacy": {
+          "WALL": 564629204,
+          "CPU": 564594560,
+          "NOTE_PAIRS_NS": 3208239,
+          "OBSERVATIONS_NS": 245199
+        },
+        "r22_legacy": {
+          "WALL": 585511443,
+          "CPU": 585484221,
+          "NOTE_PAIRS_NS": 3174769,
+          "OBSERVATIONS_NS": 245169
+        },
+        "r23_resolved": {
+          "WALL": 591917730,
+          "CPU": 591878528,
+          "NOTE_PAIRS_NS": 3310403,
+          "OBSERVATIONS_NS": 239430
+        }
+      }
+    },
+    {
+      "order": [
+        "r23_resolved",
+        "r22_legacy",
+        "r23_legacy"
+      ],
+      "values": {
+        "r23_resolved": {
+          "WALL": 623559541,
+          "CPU": 623509911,
+          "NOTE_PAIRS_NS": 3684866,
+          "OBSERVATIONS_NS": 275515
+        },
+        "r22_legacy": {
+          "WALL": 593099445,
+          "CPU": 593061726,
+          "NOTE_PAIRS_NS": 3985419,
+          "OBSERVATIONS_NS": 290877
+        },
+        "r23_legacy": {
+          "WALL": 579375890,
+          "CPU": 579319421,
+          "NOTE_PAIRS_NS": 3234689,
+          "OBSERVATIONS_NS": 301814
+        }
+      }
+    },
+    {
+      "order": [
+        "r23_legacy",
+        "r23_resolved",
+        "r22_legacy"
+      ],
+      "values": {
+        "r23_legacy": {
+          "WALL": 563513896,
+          "CPU": 563487092,
+          "NOTE_PAIRS_NS": 3217122,
+          "OBSERVATIONS_NS": 254172
+        },
+        "r23_resolved": {
+          "WALL": 564872823,
+          "CPU": 564784123,
+          "NOTE_PAIRS_NS": 3298409,
+          "OBSERVATIONS_NS": 277909
+        },
+        "r22_legacy": {
+          "WALL": 778390867,
+          "CPU": 778350878,
+          "NOTE_PAIRS_NS": 3205389,
+          "OBSERVATIONS_NS": 287042
+        }
+      }
+    },
+    {
+      "order": [
+        "r23_legacy",
+        "r23_resolved",
+        "r22_legacy"
+      ],
+      "values": {
+        "r23_legacy": {
+          "WALL": 599125526,
+          "CPU": 599090253,
+          "NOTE_PAIRS_NS": 3295104,
+          "OBSERVATIONS_NS": 244368
+        },
+        "r23_resolved": {
+          "WALL": 590206998,
+          "CPU": 590169398,
+          "NOTE_PAIRS_NS": 3298745,
+          "OBSERVATIONS_NS": 237938
+        },
+        "r22_legacy": {
+          "WALL": 587433771,
+          "CPU": 587407284,
+          "NOTE_PAIRS_NS": 3285896,
+          "OBSERVATIONS_NS": 243236
+        }
+      }
+    },
+    {
+      "order": [
+        "r23_resolved",
+        "r23_legacy",
+        "r22_legacy"
+      ],
+      "values": {
+        "r23_resolved": {
+          "WALL": 577028379,
+          "CPU": 577003200,
+          "NOTE_PAIRS_NS": 3539768,
+          "OBSERVATIONS_NS": 241483
+        },
+        "r23_legacy": {
+          "WALL": 596035558,
+          "CPU": 595985740,
+          "NOTE_PAIRS_NS": 3303643,
+          "OBSERVATIONS_NS": 242925
+        },
+        "r22_legacy": {
+          "WALL": 577739981,
+          "CPU": 577656813,
+          "NOTE_PAIRS_NS": 3617144,
+          "OBSERVATIONS_NS": 250497
+        }
+      }
+    },
+    {
+      "order": [
+        "r23_legacy",
+        "r23_resolved",
+        "r22_legacy"
+      ],
+      "values": {
+        "r23_legacy": {
+          "WALL": 582406475,
+          "CPU": 582370874,
+          "NOTE_PAIRS_NS": 3446196,
+          "OBSERVATIONS_NS": 243877
+        },
+        "r23_resolved": {
+          "WALL": 577789045,
+          "CPU": 577763393,
+          "NOTE_PAIRS_NS": 3319587,
+          "OBSERVATIONS_NS": 238439
+        },
+        "r22_legacy": {
+          "WALL": 573903213,
+          "CPU": 573859641,
+          "NOTE_PAIRS_NS": 3162921,
+          "OBSERVATIONS_NS": 327032
+        }
+      }
+    },
+    {
+      "order": [
+        "r23_resolved",
+        "r22_legacy",
+        "r23_legacy"
+      ],
+      "values": {
+        "r23_resolved": {
+          "WALL": 568824017,
+          "CPU": 568784531,
+          "NOTE_PAIRS_NS": 3571666,
+          "OBSERVATIONS_NS": 268614
+        },
+        "r22_legacy": {
+          "WALL": 571872176,
+          "CPU": 571828734,
+          "NOTE_PAIRS_NS": 3568562,
+          "OBSERVATIONS_NS": 238078
+        },
+        "r23_legacy": {
+          "WALL": 568134979,
+          "CPU": 568102776,
+          "NOTE_PAIRS_NS": 3195560,
+          "OBSERVATIONS_NS": 242305
+        }
+      }
+    },
+    {
+      "order": [
+        "r23_resolved",
+        "r23_legacy",
+        "r22_legacy"
+      ],
+      "values": {
+        "r23_resolved": {
+          "WALL": 569851064,
+          "CPU": 569821326,
+          "NOTE_PAIRS_NS": 3329050,
+          "OBSERVATIONS_NS": 269666
+        },
+        "r23_legacy": {
+          "WALL": 573696537,
+          "CPU": 573659667,
+          "NOTE_PAIRS_NS": 3265615,
+          "OBSERVATIONS_NS": 242586
+        },
+        "r22_legacy": {
+          "WALL": 577679246,
+          "CPU": 577633198,
+          "NOTE_PAIRS_NS": 3210893,
+          "OBSERVATIONS_NS": 393372
+        }
+      }
+    },
+    {
+      "order": [
+        "r23_legacy",
+        "r22_legacy",
+        "r23_resolved"
+      ],
+      "values": {
+        "r23_legacy": {
+          "WALL": 617634001,
+          "CPU": 617604791,
+          "NOTE_PAIRS_NS": 3135840,
+          "OBSERVATIONS_NS": 238008
+        },
+        "r22_legacy": {
+          "WALL": 577627239,
+          "CPU": 577564175,
+          "NOTE_PAIRS_NS": 3664706,
+          "OBSERVATIONS_NS": 250327
+        },
+        "r23_resolved": {
+          "WALL": 566901934,
+          "CPU": 566865593,
+          "NOTE_PAIRS_NS": 3627921,
+          "OBSERVATIONS_NS": 247632
+        }
+      }
+    },
+    {
+      "order": [
+        "r23_legacy",
+        "r22_legacy",
+        "r23_resolved"
+      ],
+      "values": {
+        "r23_legacy": {
+          "WALL": 582763298,
+          "CPU": 582720540,
+          "NOTE_PAIRS_NS": 4070160,
+          "OBSERVATIONS_NS": 245840
+        },
+        "r22_legacy": {
+          "WALL": 616566607,
+          "CPU": 616528167,
+          "NOTE_PAIRS_NS": 3277786,
+          "OBSERVATIONS_NS": 250798
+        },
+        "r23_resolved": {
+          "WALL": 570197139,
+          "CPU": 570155385,
+          "NOTE_PAIRS_NS": 3279489,
+          "OBSERVATIONS_NS": 256697
+        }
+      }
+    },
+    {
+      "order": [
+        "r22_legacy",
+        "r23_legacy",
+        "r23_resolved"
+      ],
+      "values": {
+        "r22_legacy": {
+          "WALL": 552069558,
+          "CPU": 552042649,
+          "NOTE_PAIRS_NS": 3180981,
+          "OBSERVATIONS_NS": 255044
+        },
+        "r23_legacy": {
+          "WALL": 557414457,
+          "CPU": 557378085,
+          "NOTE_PAIRS_NS": 3210415,
+          "OBSERVATIONS_NS": 249145
+        },
+        "r23_resolved": {
+          "WALL": 596669605,
+          "CPU": 596628127,
+          "NOTE_PAIRS_NS": 3644886,
+          "OBSERVATIONS_NS": 251599
+        }
+      }
+    },
+    {
+      "order": [
+        "r23_legacy",
+        "r22_legacy",
+        "r23_resolved"
+      ],
+      "values": {
+        "r23_legacy": {
+          "WALL": 562470466,
+          "CPU": 562422836,
+          "NOTE_PAIRS_NS": 3162520,
+          "OBSERVATIONS_NS": 238329
+        },
+        "r22_legacy": {
+          "WALL": 565121528,
+          "CPU": 565089278,
+          "NOTE_PAIRS_NS": 3200026,
+          "OBSERVATIONS_NS": 240001
+        },
+        "r23_resolved": {
+          "WALL": 612291413,
+          "CPU": 612250126,
+          "NOTE_PAIRS_NS": 3414851,
+          "OBSERVATIONS_NS": 243306
+        }
+      }
+    },
+    {
+      "order": [
+        "r23_legacy",
+        "r22_legacy",
+        "r23_resolved"
+      ],
+      "values": {
+        "r23_legacy": {
+          "WALL": 621500791,
+          "CPU": 621470713,
+          "NOTE_PAIRS_NS": 4487595,
+          "OBSERVATIONS_NS": 245239
+        },
+        "r22_legacy": {
+          "WALL": 564819451,
+          "CPU": 564779867,
+          "NOTE_PAIRS_NS": 3283956,
+          "OBSERVATIONS_NS": 239651
+        },
+        "r23_resolved": {
+          "WALL": 556564341,
+          "CPU": 556531093,
+          "NOTE_PAIRS_NS": 3546080,
+          "OBSERVATIONS_NS": 244147
+        }
+      }
+    },
+    {
+      "order": [
+        "r23_legacy",
+        "r22_legacy",
+        "r23_resolved"
+      ],
+      "values": {
+        "r23_legacy": {
+          "WALL": 564587462,
+          "CPU": 564538408,
+          "NOTE_PAIRS_NS": 3562715,
+          "OBSERVATIONS_NS": 245119
+        },
+        "r22_legacy": {
+          "WALL": 582551142,
+          "CPU": 582514358,
+          "NOTE_PAIRS_NS": 3291887,
+          "OBSERVATIONS_NS": 260252
+        },
+        "r23_resolved": {
+          "WALL": 565869272,
+          "CPU": 565828649,
+          "NOTE_PAIRS_NS": 3328883,
+          "OBSERVATIONS_NS": 242505
+        }
+      }
+    },
+    {
+      "order": [
+        "r23_resolved",
+        "r23_legacy",
+        "r22_legacy"
+      ],
+      "values": {
+        "r23_resolved": {
+          "WALL": 564576326,
+          "CPU": 564542594,
+          "NOTE_PAIRS_NS": 3364676,
+          "OBSERVATIONS_NS": 274824
+        },
+        "r23_legacy": {
+          "WALL": 567341650,
+          "CPU": 567305224,
+          "NOTE_PAIRS_NS": 3188261,
+          "OBSERVATIONS_NS": 252130
+        },
+        "r22_legacy": {
+          "WALL": 569034493,
+          "CPU": 569000303,
+          "NOTE_PAIRS_NS": 3162410,
+          "OBSERVATIONS_NS": 240442
+        }
+      }
+    },
+    {
+      "order": [
+        "r22_legacy",
+        "r23_resolved",
+        "r23_legacy"
+      ],
+      "values": {
+        "r22_legacy": {
+          "WALL": 581249749,
+          "CPU": 581214483,
+          "NOTE_PAIRS_NS": 3428150,
+          "OBSERVATIONS_NS": 249896
+        },
+        "r23_resolved": {
+          "WALL": 572554940,
+          "CPU": 572530430,
+          "NOTE_PAIRS_NS": 3494621,
+          "OBSERVATIONS_NS": 343797
+        },
+        "r23_legacy": {
+          "WALL": 573213540,
+          "CPU": 573178135,
+          "NOTE_PAIRS_NS": 3591257,
+          "OBSERVATIONS_NS": 255064
+        }
+      }
+    },
+    {
+      "order": [
+        "r22_legacy",
+        "r23_legacy",
+        "r23_resolved"
+      ],
+      "values": {
+        "r22_legacy": {
+          "WALL": 585808632,
+          "CPU": 585745910,
+          "NOTE_PAIRS_NS": 3140057,
+          "OBSERVATIONS_NS": 278509
+        },
+        "r23_legacy": {
+          "WALL": 571480432,
+          "CPU": 571443521,
+          "NOTE_PAIRS_NS": 3751968,
+          "OBSERVATIONS_NS": 243146
+        },
+        "r23_resolved": {
+          "WALL": 573838503,
+          "CPU": 573812478,
+          "NOTE_PAIRS_NS": 3408551,
+          "OBSERVATIONS_NS": 242084
+        }
+      }
+    },
+    {
+      "order": [
+        "r23_legacy",
+        "r23_resolved",
+        "r22_legacy"
+      ],
+      "values": {
+        "r23_legacy": {
+          "WALL": 606395254,
+          "CPU": 606328371,
+          "NOTE_PAIRS_NS": 3331886,
+          "OBSERVATIONS_NS": 308554
+        },
+        "r23_resolved": {
+          "WALL": 576649845,
+          "CPU": 576622114,
+          "NOTE_PAIRS_NS": 3322712,
+          "OBSERVATIONS_NS": 240472
+        },
+        "r22_legacy": {
+          "WALL": 566823852,
+          "CPU": 566774878,
+          "NOTE_PAIRS_NS": 3253878,
+          "OBSERVATIONS_NS": 274654
+        }
+      }
+    },
+    {
+      "order": [
+        "r23_legacy",
+        "r22_legacy",
+        "r23_resolved"
+      ],
+      "values": {
+        "r23_legacy": {
+          "WALL": 568837173,
+          "CPU": 568799684,
+          "NOTE_PAIRS_NS": 3436593,
+          "OBSERVATIONS_NS": 243126
+        },
+        "r22_legacy": {
+          "WALL": 572467367,
+          "CPU": 572441376,
+          "NOTE_PAIRS_NS": 3266027,
+          "OBSERVATIONS_NS": 331689
+        },
+        "r23_resolved": {
+          "WALL": 565190754,
+          "CPU": 565148476,
+          "NOTE_PAIRS_NS": 3414060,
+          "OBSERVATIONS_NS": 242996
+        }
+      }
+    },
+    {
+      "order": [
+        "r23_resolved",
+        "r22_legacy",
+        "r23_legacy"
+      ],
+      "values": {
+        "r23_resolved": {
+          "WALL": 586091643,
+          "CPU": 586048181,
+          "NOTE_PAIRS_NS": 3698437,
+          "OBSERVATIONS_NS": 240151
+        },
+        "r22_legacy": {
+          "WALL": 584577940,
+          "CPU": 584541459,
+          "NOTE_PAIRS_NS": 3748483,
+          "OBSERVATIONS_NS": 268064
+        },
+        "r23_legacy": {
+          "WALL": 607467506,
+          "CPU": 607435833,
+          "NOTE_PAIRS_NS": 3336452,
+          "OBSERVATIONS_NS": 243456
+        }
+      }
+    },
+    {
+      "order": [
+        "r23_resolved",
+        "r23_legacy",
+        "r22_legacy"
+      ],
+      "values": {
+        "r23_resolved": {
+          "WALL": 586141414,
+          "CPU": 586120158,
+          "NOTE_PAIRS_NS": 3561030,
+          "OBSERVATIONS_NS": 243487
+        },
+        "r23_legacy": {
+          "WALL": 594836883,
+          "CPU": 594802449,
+          "NOTE_PAIRS_NS": 3424224,
+          "OBSERVATIONS_NS": 242355
+        },
+        "r22_legacy": {
+          "WALL": 579783534,
+          "CPU": 579738144,
+          "NOTE_PAIRS_NS": 3170612,
+          "OBSERVATIONS_NS": 290828
+        }
+      }
+    },
+    {
+      "order": [
+        "r22_legacy",
+        "r23_resolved",
+        "r23_legacy"
+      ],
+      "values": {
+        "r22_legacy": {
+          "WALL": 586251549,
+          "CPU": 585257935,
+          "NOTE_PAIRS_NS": 3506528,
+          "OBSERVATIONS_NS": 240963
+        },
+        "r23_resolved": {
+          "WALL": 584021033,
+          "CPU": 583992429,
+          "NOTE_PAIRS_NS": 3350503,
+          "OBSERVATIONS_NS": 241454
+        },
+        "r23_legacy": {
+          "WALL": 570878228,
+          "CPU": 570853822,
+          "NOTE_PAIRS_NS": 3185956,
+          "OBSERVATIONS_NS": 237538
+        }
+      }
+    }
+  ],
+  "comparisons": [
+    {
+      "baseline": "r22_legacy",
+      "candidate": "r23_legacy",
+      "metric": "WALL",
+      "paired_geomean_percent": -0.7245459040061418,
+      "paired_bootstrap_95ci_percent": [
+        -3.2999633374910466,
+        1.2545356753891208
+      ],
+      "ratio_of_medians_percent": -0.6998726300716185,
+      "upper95_lt_1percent": false,
+      "median_threshold_lt_1percent": true
+    },
+    {
+      "baseline": "r22_legacy",
+      "candidate": "r23_legacy",
+      "metric": "CPU",
+      "paired_geomean_percent": -0.727224607923867,
+      "paired_bootstrap_95ci_percent": [
+        -3.3064350855608526,
+        1.2466469146209638
+      ],
+      "ratio_of_medians_percent": -0.6878986550215571,
+      "upper95_lt_1percent": false,
+      "median_threshold_lt_1percent": true
+    },
+    {
+      "baseline": "r22_legacy",
+      "candidate": "r23_resolved",
+      "metric": "WALL",
+      "paired_geomean_percent": -0.8563080622871937,
+      "paired_bootstrap_95ci_percent": [
+        -3.386621540311748,
+        1.1481677260314778
+      ],
+      "ratio_of_medians_percent": -0.6752999841290186,
+      "upper95_lt_1percent": false,
+      "median_threshold_lt_1percent": true
+    },
+    {
+      "baseline": "r22_legacy",
+      "candidate": "r23_resolved",
+      "metric": "CPU",
+      "paired_geomean_percent": -0.8453188451774997,
+      "paired_bootstrap_95ci_percent": [
+        -3.3807478738745003,
+        1.162674091685557
+      ],
+      "ratio_of_medians_percent": -0.6614439774633607,
+      "upper95_lt_1percent": false,
+      "median_threshold_lt_1percent": true
+    },
+    {
+      "baseline": "r23_legacy",
+      "candidate": "r23_resolved",
+      "metric": "WALL",
+      "paired_geomean_percent": -0.13272380316049448,
+      "paired_bootstrap_95ci_percent": [
+        -1.5921115490480846,
+        1.3047244687812238
+      ],
+      "ratio_of_medians_percent": 0.024745835270745253,
+      "upper95_lt_1percent": false,
+      "median_threshold_lt_1percent": true
+    },
+    {
+      "baseline": "r23_legacy",
+      "candidate": "r23_resolved",
+      "metric": "CPU",
+      "paired_geomean_percent": -0.11895933883909339,
+      "paired_bootstrap_95ci_percent": [
+        -1.5796041691340208,
+        1.3260095283277784
+      ],
+      "ratio_of_medians_percent": 0.026637919447813907,
+      "upper95_lt_1percent": false,
+      "median_threshold_lt_1percent": true
+    }
+  ],
+  "component_medians_ns": {
+    "r22_legacy": {
+      "WALL": 577739981,
+      "CPU": 577633198,
+      "NOTE_PAIRS_NS": 3283956,
+      "OBSERVATIONS_NS": 250497
+    },
+    "r23_legacy": {
+      "WALL": 573696537,
+      "CPU": 573659667,
+      "NOTE_PAIRS_NS": 3295104,
+      "OBSERVATIONS_NS": 245119
+    },
+    "r23_resolved": {
+      "WALL": 573838503,
+      "CPU": 573812478,
+      "NOTE_PAIRS_NS": 3414060,
+      "OBSERVATIONS_NS": 244147
+    }
+  },
+  "render_blocks": 150000,
+  "frames_per_block": 128,
+  "note_pairs": 2000,
+  "readonly_snapshots": 1000,
+  "binary_sha256": {
+    "r22": "3b108e147733cb56cea870785f0a990a7c31a3fc445e7759664cd09a86e1d60a",
+    "r23": "8d4956b3b923d22c1d528e8fd0212a22fbed94830fe90e0bdc07753ffd716ae3"
+  },
+  "interpretation": "Median threshold and paired-bootstrap uncertainty are reported separately; all timings retained, no optional stopping or result selection."
+}

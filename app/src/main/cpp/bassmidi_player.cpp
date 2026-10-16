@@ -252,6 +252,15 @@ bool BassMidiPlayer::applyFonts() {
         }
     };
 
+    // R23 exact drum bindings precede generic mappings, scoped to one channel.
+    if(drumABResolved_) for(int ch=8;ch<=9;++ch) {
+        const auto& b=drumABBindings_[ch-8];
+        if(!b.font)continue;
+        BASS_MIDI_FONTEX2 map{};
+        map.font=b.font;map.spreset=b.pc;map.sbank=b.nativeBank;
+        map.dpreset=b.pc;map.dbank=128;map.dbanklsb=0;map.minchan=ch;map.numchan=1;
+        cfg.push_back(map);
+    }
     addResolvedChannelMappings();
     if (!validMelodicMappings) return false;
 
@@ -541,6 +550,7 @@ bool BassMidiPlayer::loadDrum(const std::string& path) {
 
 void BassMidiPlayer::unload() {
     std::lock_guard<std::mutex> lock(mutex_);
+    drumABBindings_={};++drumABGeneration_;
     clearRolePcmMeters(); // remove read-only child DSPs before freeing their parent
 // MEASURED_BALANCE_BEGIN
     clearMeasuredBalance();
@@ -1225,8 +1235,15 @@ void BassMidiPlayer::noteOn(int channel, int key, float velocity, const AudioPat
         return;
     }
 
+    // No metadata evaluation, scanning or mapping work in the note/render path.
+    if(drumABResolved_ && (channel==8 || channel==9)) {
+        auto& b=drumABBindings_[channel-8];if(!b.verified)return;BASS_MIDI_FONT live{};
+        b.verified=b.font && BASS_MIDI_StreamGetPreset(stream_,channel,&live) &&
+            live.font==b.font && live.bank==b.nativeBank && live.preset==b.pc;
+        if(!b.verified)return; // never fall through to Prime or a stale map
+    }
     bool compatibleSent=false;
-    if (percussionOn(channel,key,vel,origin,compatibleSent)) {
+    if (!drumABResolved_ && percussionOn(channel,key,vel,origin,compatibleSent)) {
         pcmSessionNotes_.sent[channel]+=compatibleSent;
         return; // exactly one NOTE_ON path; no production-channel program/font mutation
     }
@@ -1299,6 +1316,7 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program, const 
     if (!ensureEngine()) return;
 
     channel = std::max(0, std::min(15, channel));
+    if(drumABResolved_ && (channel==8 || channel==9)) return;
     if (channel < 4) keyboardPresets_[channel] = {};
     const int requestedBank = bank;
     program = std::max(0, std::min(65535, program));
@@ -2876,3 +2894,76 @@ std::string BassMidiPlayer::drumChannelSelection(int channel) const {
     return out.str(); // cache identity, not an independent BASS binding readback
 }
 // R22_SELECTION_GETTER_END
+
+
+// R23 explicit diagnostic A/B; caller admits mode changes only after STOP jobs drain.
+bool BassMidiPlayer::setDrumABMode(bool resolved) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if(resolved==drumABResolved_)return true;
+    const bool oldMode=drumABResolved_;const auto oldBindings=drumABBindings_;
+    // Stop held percussion and release tails on both possible render routes.
+    bool ok=true;
+    if(stream_) for(int ch=8;ch<=9;++ch)ok=send(ch,MIDI_EVENT_SOUNDOFF,0)&&ok;
+    for(auto& lane:percussionLanes_) {
+        if(lane.stream) {
+            for(int key=0;key<128;++key)ok=BASS_MIDI_StreamEvent(lane.stream,key,MIDI_EVENT_SOUNDOFF,0)&&ok;
+            BASS_StreamFree(lane.stream);
+        }
+        lane={};
+    }
+    drumABBindings_={};drumABResolved_=resolved;++drumABGeneration_;
+    for(int ch=8;ch<=9;++ch){channels_[ch].initialized=false;drumSelections_[ch]={};}
+    // Remove the exact maps even when returning to LEGACY.
+    if(stream_)ok=applyFonts()&&ok;
+    if(!ok){
+        drumABResolved_=oldMode;drumABBindings_=oldBindings;
+        for(auto& b:drumABBindings_)b.verified=false;
+        if(stream_)applyFonts();
+    }
+    return ok;
+}
+bool BassMidiPlayer::bindDrumAB(int ch,const std::string& pdta,int bank,int pc,const std::string& section) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if(!drumABResolved_ || !stream_ || ch<8 || ch>9)return false;
+    auto& b=drumABBindings_[ch-8];b={};b.section=section;
+    // Reviewed automatic namespaces only. A program-only UI override is not a custom identity.
+    const bool col=pdta=="ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506";
+    const bool tyr=pdta=="16bb60deafdf426cdc7e269b6c5f434cd5b7db6e14a83f86d17f54720176217a";
+    if(pc<0 || pc>127 || !((col && (bank==127 || bank==128)) || (tyr && bank==128)))return false;
+    auto choose=[&](HSOUNDFONT font,const std::string& path) {
+        const auto fp=pdtaFingerprints_.find(path);
+        if(b.font || !font || fp==pdtaFingerprints_.end() || !fp->second.valid || fp->second.sha256!=pdta)return;
+        // Reserved drum banks retain their raw phdr identity in the loaded SF2.
+        // Never consult the melodic normalization table: it excludes 127/128.
+        const auto inventory=melodicZoneInventories_.find(path);
+        if(inventory==melodicZoneInventories_.end() || !inventory->second->valid ||
+           !inventory->second->presetNames.count({bank,pc}))return;
+        const char* loadedName=BASS_MIDI_FontGetPreset(font,pc,bank);
+        if(loadedName && inventory->second->presetNames.at({bank,pc})==loadedName)
+            b={font,bank,bank,pc,pdta,section,false};
+    };
+    choose(melodyFont_,melodyPath_);
+    for(const auto& s:secondaryMelodies_)choose(s.font,s.path);
+    if(!b.font)return false;
+    auto& state=channels_[ch];state.drum=true;state.initialized=true;state.bankMsb=128;state.bankLsb=0;state.program=pc;
+    state.resolverReason="r23_exact_fingerprint_namespace_coverage";
+    bool ok=applyFonts();
+    ok=send(ch,MIDI_EVENT_DRUMS,1)&&ok;ok=send(ch,MIDI_EVENT_BANK,128)&&ok;
+    ok=send(ch,MIDI_EVENT_BANK_LSB,0)&&ok;ok=send(ch,MIDI_EVENT_PROGRAM,pc)&&ok;
+    BASS_MIDI_FONT live{};
+    b.verified=ok && BASS_MIDI_StreamGetPreset(stream_,ch,&live) && live.font==b.font && live.bank==b.nativeBank && live.preset==pc;
+    auto& o=drumSelections_[ch];o.generation=++drumSelectionGeneration_;o.bank=bank;o.pc=pc;o.pdta=pdta;o.reason=b.verified?state.resolverReason:"r23_binding_readback_failed";
+    if(b.verified)BASS_MIDI_FontLoadEx(b.font,pc,b.nativeBank,-1,BASS_MIDI_FONTLOAD_NOWAIT);
+    return b.verified;
+}
+std::string BassMidiPlayer::drumABReport() const {
+    std::lock_guard<std::mutex> lock(mutex_);std::ostringstream out;
+    out<<"=== DRUM_AB R2-3 ===\nmode="<<(drumABResolved_?"RESOLVED":"LEGACY")<<" generation="<<drumABGeneration_<<" frame="<<pcmSamples_/2<<"\n";
+    for(int ch=8;ch<=9;++ch){const auto& b=drumABBindings_[ch-8];BASS_MIDI_FONT live{};
+        const bool got=stream_ && BASS_MIDI_StreamGetPreset(stream_,ch,&live);
+        bool verified=got && b.font && live.font==b.font && live.bank==b.nativeBank && live.preset==b.pc;
+        out<<"DRUM_AB_BOUND ch="<<ch<<" section='"<<b.section<<"' pdta="<<b.pdta<<" rawBank="<<b.rawBank<<" expectedNativeBank="<<b.nativeBank
+            <<" expectedPC="<<b.pc<<" actualFont="<<live.font<<" actualBank="<<live.bank<<" actualPC="<<live.preset<<" readback="<<got<<" bindingVerified="<<verified
+            <<" NOTE_ON="<<pcmSessionNotes_.sent[ch]<<"\n";
+    }return out.str();
+}

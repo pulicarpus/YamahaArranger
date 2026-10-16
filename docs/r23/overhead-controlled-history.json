@@ -1,0 +1,441 @@
+{
+  "scope": "HOST_MOCK_DECODE_NOT_DEVICE",
+  "cpu_affinity": [
+    1
+  ],
+  "trials": 31,
+  "warmup_runs_each": 5,
+  "seed": 20261016,
+  "compiler": "g++ (Debian 14.2.0-19) 14.2.0",
+  "host": "Linux-6.18.44-x86_64-with-glibc2.41",
+  "flags": [
+    "-std=c++17",
+    "-O2",
+    "-pthread",
+    "-DR20_CANDIDATE=1",
+    "-DYAMAHA_ROLE_PCM_METERS=1",
+    "-DYAMAHA_PCM_HEADROOM=1",
+    "-I/workspace/work/r23/final/pcm-session/mocks"
+  ],
+  "executables_sha256": {
+    "historic163": "2097fde000da668eb10258aa844fcb11d2f77ee30f91dead7fadd03915e95513",
+    "r22": "1efbff35492442b8694115e5af2159a3011e884a652739ea5f7c2004728c8fc1",
+    "r23_legacy": "24e7b2f49be96d5b454f928dfef156819eea3b6b3a2f44ab43b9aa672319ceb5"
+  },
+  "blocks": [
+    {
+      "order": [
+        "r23_legacy",
+        "r22",
+        "historic163"
+      ],
+      "ns": {
+        "r23_legacy": 573202900,
+        "r22": 577090776,
+        "historic163": 577942503
+      }
+    },
+    {
+      "order": [
+        "historic163",
+        "r22",
+        "r23_legacy"
+      ],
+      "ns": {
+        "historic163": 579661140,
+        "r22": 572599321,
+        "r23_legacy": 557930571
+      }
+    },
+    {
+      "order": [
+        "r23_legacy",
+        "historic163",
+        "r22"
+      ],
+      "ns": {
+        "r23_legacy": 563207788,
+        "historic163": 569346592,
+        "r22": 599972687
+      }
+    },
+    {
+      "order": [
+        "r22",
+        "r23_legacy",
+        "historic163"
+      ],
+      "ns": {
+        "r22": 585930505,
+        "r23_legacy": 573160806,
+        "historic163": 575903226
+      }
+    },
+    {
+      "order": [
+        "historic163",
+        "r22",
+        "r23_legacy"
+      ],
+      "ns": {
+        "historic163": 570482663,
+        "r22": 565307199,
+        "r23_legacy": 568324797
+      }
+    },
+    {
+      "order": [
+        "r22",
+        "r23_legacy",
+        "historic163"
+      ],
+      "ns": {
+        "r22": 579302630,
+        "r23_legacy": 576649805,
+        "historic163": 577659382
+      }
+    },
+    {
+      "order": [
+        "r22",
+        "historic163",
+        "r23_legacy"
+      ],
+      "ns": {
+        "r22": 625015220,
+        "historic163": 628185368,
+        "r23_legacy": 595815966
+      }
+    },
+    {
+      "order": [
+        "r22",
+        "historic163",
+        "r23_legacy"
+      ],
+      "ns": {
+        "r22": 577190200,
+        "historic163": 580604442,
+        "r23_legacy": 587704232
+      }
+    },
+    {
+      "order": [
+        "historic163",
+        "r22",
+        "r23_legacy"
+      ],
+      "ns": {
+        "historic163": 575988381,
+        "r22": 566127543,
+        "r23_legacy": 570125642
+      }
+    },
+    {
+      "order": [
+        "historic163",
+        "r23_legacy",
+        "r22"
+      ],
+      "ns": {
+        "historic163": 574505188,
+        "r23_legacy": 568435658,
+        "r22": 569076442
+      }
+    },
+    {
+      "order": [
+        "historic163",
+        "r22",
+        "r23_legacy"
+      ],
+      "ns": {
+        "historic163": 570617668,
+        "r22": 574070247,
+        "r23_legacy": 584810802
+      }
+    },
+    {
+      "order": [
+        "historic163",
+        "r22",
+        "r23_legacy"
+      ],
+      "ns": {
+        "historic163": 607337886,
+        "r22": 580261323,
+        "r23_legacy": 564421615
+      }
+    },
+    {
+      "order": [
+        "r23_legacy",
+        "historic163",
+        "r22"
+      ],
+      "ns": {
+        "r23_legacy": 573931523,
+        "historic163": 568307879,
+        "r22": 569546677
+      }
+    },
+    {
+      "order": [
+        "historic163",
+        "r23_legacy",
+        "r22"
+      ],
+      "ns": {
+        "historic163": 574772506,
+        "r23_legacy": 579005512,
+        "r22": 577833907
+      }
+    },
+    {
+      "order": [
+        "r23_legacy",
+        "historic163",
+        "r22"
+      ],
+      "ns": {
+        "r23_legacy": 590110771,
+        "historic163": 586468971,
+        "r22": 608358398
+      }
+    },
+    {
+      "order": [
+        "r22",
+        "historic163",
+        "r23_legacy"
+      ],
+      "ns": {
+        "r22": 600058949,
+        "historic163": 608840371,
+        "r23_legacy": 611371820
+      }
+    },
+    {
+      "order": [
+        "r22",
+        "historic163",
+        "r23_legacy"
+      ],
+      "ns": {
+        "r22": 610514741,
+        "historic163": 595130342,
+        "r23_legacy": 621618206
+      }
+    },
+    {
+      "order": [
+        "r23_legacy",
+        "historic163",
+        "r22"
+      ],
+      "ns": {
+        "r23_legacy": 616014459,
+        "historic163": 570153743,
+        "r22": 586357669
+      }
+    },
+    {
+      "order": [
+        "historic163",
+        "r22",
+        "r23_legacy"
+      ],
+      "ns": {
+        "historic163": 629878050,
+        "r22": 669308800,
+        "r23_legacy": 588110722
+      }
+    },
+    {
+      "order": [
+        "r22",
+        "r23_legacy",
+        "historic163"
+      ],
+      "ns": {
+        "r22": 623575997,
+        "r23_legacy": 580971233,
+        "historic163": 596331396
+      }
+    },
+    {
+      "order": [
+        "r23_legacy",
+        "historic163",
+        "r22"
+      ],
+      "ns": {
+        "r23_legacy": 590404013,
+        "historic163": 577879542,
+        "r22": 586448339
+      }
+    },
+    {
+      "order": [
+        "r23_legacy",
+        "r22",
+        "historic163"
+      ],
+      "ns": {
+        "r23_legacy": 647675226,
+        "r22": 658183856,
+        "historic163": 574638999
+      }
+    },
+    {
+      "order": [
+        "historic163",
+        "r23_legacy",
+        "r22"
+      ],
+      "ns": {
+        "historic163": 584800603,
+        "r23_legacy": 595728610,
+        "r22": 589173863
+      }
+    },
+    {
+      "order": [
+        "r23_legacy",
+        "r22",
+        "historic163"
+      ],
+      "ns": {
+        "r23_legacy": 596364681,
+        "r22": 588807411,
+        "historic163": 563731156
+      }
+    },
+    {
+      "order": [
+        "r22",
+        "r23_legacy",
+        "historic163"
+      ],
+      "ns": {
+        "r22": 573460915,
+        "r23_legacy": 570361394,
+        "historic163": 575204145
+      }
+    },
+    {
+      "order": [
+        "r23_legacy",
+        "r22",
+        "historic163"
+      ],
+      "ns": {
+        "r23_legacy": 584683589,
+        "r22": 606869578,
+        "historic163": 609956175
+      }
+    },
+    {
+      "order": [
+        "historic163",
+        "r22",
+        "r23_legacy"
+      ],
+      "ns": {
+        "historic163": 657698760,
+        "r22": 624184375,
+        "r23_legacy": 589270439
+      }
+    },
+    {
+      "order": [
+        "r22",
+        "historic163",
+        "r23_legacy"
+      ],
+      "ns": {
+        "r22": 681761076,
+        "historic163": 623691108,
+        "r23_legacy": 618791972
+      }
+    },
+    {
+      "order": [
+        "historic163",
+        "r23_legacy",
+        "r22"
+      ],
+      "ns": {
+        "historic163": 609314786,
+        "r23_legacy": 659557089,
+        "r22": 624841680
+      }
+    },
+    {
+      "order": [
+        "r22",
+        "historic163",
+        "r23_legacy"
+      ],
+      "ns": {
+        "r22": 604483045,
+        "historic163": 594460619,
+        "r23_legacy": 591853664
+      }
+    },
+    {
+      "order": [
+        "r23_legacy",
+        "r22",
+        "historic163"
+      ],
+      "ns": {
+        "r23_legacy": 661126675,
+        "r22": 613624362,
+        "historic163": 585284186
+      }
+    }
+  ],
+  "comparisons": [
+    {
+      "baseline": "historic163",
+      "candidate": "r22",
+      "paired_geomean_percent": 1.5608234964822751,
+      "paired_bootstrap_95ci_percent": [
+        0.34651041430388874,
+        3.000287679293332
+      ],
+      "ratio_of_medians_percent": 1.577865129961964,
+      "upper_95ci_lt_1": false,
+      "median_threshold_lt_1percent": false,
+      "paired_geomean_lt_1percent": false
+    },
+    {
+      "baseline": "historic163",
+      "candidate": "r23_legacy",
+      "paired_geomean_percent": 0.38739624661181377,
+      "paired_bootstrap_95ci_percent": [
+        -1.3108121707953997,
+        2.2244588594250416
+      ],
+      "ratio_of_medians_percent": 1.3875506645141034,
+      "upper_95ci_lt_1": false,
+      "median_threshold_lt_1percent": false,
+      "paired_geomean_lt_1percent": true
+    },
+    {
+      "baseline": "r22",
+      "candidate": "r23_legacy",
+      "paired_geomean_percent": -1.1553935951603465,
+      "paired_bootstrap_95ci_percent": [
+        -2.618818698797255,
+        0.25732174855356515
+      ],
+      "ratio_of_medians_percent": -0.18735820565274341,
+      "upper_95ci_lt_1": true,
+      "median_threshold_lt_1percent": true,
+      "paired_geomean_lt_1percent": true
+    }
+  ],
+  "interpretation": "Median threshold and paired-bootstrap uncertainty are reported separately; all timings retained, no optional stopping or result selection."
+}

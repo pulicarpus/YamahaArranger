@@ -39,6 +39,10 @@ object DrumKitShadowRuntime {
         context=Context(DrumKitShadowResolver.sha256(bytes),style.dialectIdentity.dialect.name,profiles,resolver)
         synchronized(rows){rows.clear();timings.clear();agreements=0;comparisons=0;historyOmitted=0};submitted.set(0);completed.set(0);dropped.set(0)
     }
+    fun resolveAB(section:StyleSectionModel,ch:Int,msb:Int?,lsb:Int?,pc:Int?,source:String):DrumKitShadowResolver.Candidate? {
+        val c=context?:return null
+        return c.resolver.evaluate(DrumKitShadowResolver.Request(c.hash,c.format,section.name,ch,msb,lsb,pc,source),c.profiles["${section.name}:$ch"].orEmpty()).ideal
+    }
     fun observe(section:StyleSectionModel,ch:Int,msb:Int?,lsb:Int?,pc:Int?,source:String,actual:String){
         if(!enabled)return
         val c=context?:return

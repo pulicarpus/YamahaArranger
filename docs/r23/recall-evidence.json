@@ -1,0 +1,76 @@
+{
+  "baseline": "d456d733c788b46ae06fe09c8b687eeb4915d554",
+  "final_handshake": [
+    {
+      "failures": 0,
+      "source": "candidate",
+      "trials": 30,
+      "variant": "fixed"
+    },
+    {
+      "failures": 0,
+      "source": "baseline",
+      "trials": 30,
+      "variant": "fixed"
+    },
+    {
+      "failures": 0,
+      "source": "candidate",
+      "trials": 3,
+      "variant": "fixed-adversarial"
+    },
+    {
+      "failures": 0,
+      "source": "baseline",
+      "trials": 3,
+      "variant": "fixed-adversarial"
+    },
+    {
+      "failures": 3,
+      "source": "candidate",
+      "trials": 3,
+      "variant": "negative-drop-off"
+    },
+    {
+      "failures": 3,
+      "source": "baseline",
+      "trials": 3,
+      "variant": "negative-drop-off"
+    }
+  ],
+  "interpretation": "append-only capture prototype is not in final fixture; final fixture retains original recorder and assertions plus event handshake",
+  "logs_sha256": {
+    "baseline-adversarial.log": "17b04656844de130ea2fd3ef581eef4b67bd3573ceb303fc4a17b7ee8d2dc3fe",
+    "baseline-fixed-adversarial.log": "1722c89cbd0af334b581734267543948e777859a16d201fa129f6fce6f553f21",
+    "baseline-handshake-fixed-adversarial.log": "11e2c2038f64645c48015571d806b5fdf26b5a1a6f41ac1a257c6e33b3ba24f2",
+    "baseline-handshake-fixed.log": "cbd5db8a3f0f970506bdf5a126b98395867f5cb522662e483733b8a484f12d41",
+    "baseline-handshake-negative-drop-off.log": "0a1ebfe0d285db7f2bf965f144994c728b71b00355ab513683423c5d050ad7db",
+    "baseline-isolated.log": "cbd5db8a3f0f970506bdf5a126b98395867f5cb522662e483733b8a484f12d41",
+    "candidate-adversarial.log": "c57cce0b2761525b07acb74efe4712d7080fe336b9020442eaadc219810fa038",
+    "candidate-fixed-adversarial.log": "1722c89cbd0af334b581734267543948e777859a16d201fa129f6fce6f553f21",
+    "candidate-handshake-fixed-adversarial.log": "11e2c2038f64645c48015571d806b5fdf26b5a1a6f41ac1a257c6e33b3ba24f2",
+    "candidate-handshake-fixed.log": "cbd5db8a3f0f970506bdf5a126b98395867f5cb522662e483733b8a484f12d41",
+    "candidate-handshake-negative-drop-off.log": "566190a9a0c0965e0f6bf0ae1c3bb589f6f00853324df35890bccac439d99817",
+    "candidate-isolated.log": "b6b22de9fb19759dff1ef8f25c5b59b8ef986e16adcd6ac1dd363aa1af5c3704"
+  },
+  "original_late_observer_control": {
+    "baseline": {
+      "expected_failures": 3,
+      "trials": 3
+    },
+    "candidate": {
+      "expected_failures": 3,
+      "trials": 3
+    }
+  },
+  "original_normal": {
+    "baseline": {
+      "failures": 0,
+      "trials": 30
+    },
+    "candidate": {
+      "failures": 0,
+      "trials": 30
+    }
+  }
+}

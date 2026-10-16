@@ -23,6 +23,18 @@ import java.util.concurrent.atomic.AtomicLong
 
 class StyleSequencer(private val audioEngine: AudioEngineManager, private val midiInputManager: MidiInputManager, private val scope: CoroutineScope) {
     private var playbackJob:Job?=null
+    private var r23LastJob:Job?=null
+    fun setDrumABMode(resolved:Boolean):Boolean = lifecycle {
+        if(playbackJob?.isActive==true || r23LastJob?.isCompleted==false)return@lifecycle false
+        if(!audioEngine.setDrumABMode(resolved))return@lifecycle false
+        appliedChannelStates.remove(8);appliedChannelStates.remove(9);lastAppliedSection=""
+        true
+    }
+    private fun applyDrumAB(section:StyleSectionModel,ch:Int,msb:Int?,lsb:Int?,pc:Int,source:String) {
+        val kit=DrumKitShadowRuntime.resolveAB(section,ch,msb,lsb,pc,source)?.kit
+        // An unresolved request invalidates the prior binding; no implicit Prime fallback.
+        audioEngine.bindDrumAB(ch,kit?.pdta.orEmpty(),kit?.bank?:-1,kit?.pc?:-1,section.name)
+    }
     // Musical position is integrated at each tempo change, never re-scaled from
     // the playback anchor. This monitor protects clock arithmetic only: no
     // native/MIDI calls, callbacks, delay or lifecycle monitor acquisition.
@@ -546,6 +558,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     fun stop(){
         pendingSectionQueue.clear()
         pendingTransition = null
+        r23LastJob=playbackJob ?: r23LastJob
         playbackJob?.cancel()
         playbackJob=null
         masterClockStartedAtNanos=0L
@@ -791,9 +804,10 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             // Re-apply the native preset for explicit string destinations so the
             // soundfont state is authoritative at every section activation.
             val forceNativePreset = stringVoice && destination in 13..14
+            if(drum && audioEngine.drumABResolved) applyDrumAB(section,destination,r22Msb,r22Lsb,prog,r22Source)
             if (forceNativePreset || appliedChannelStates[destination] != nativeState) {
                 chordTrace.record { "SECTION_PRESET section='${section.name}' part='${sourcePart.name}' dst=$destination requestBank=$audioBank requestPC=$prog voice='${c.voiceName}'" }
-                audioEngine.setChannelProgram(destination, prog, audioBank, c.voiceName)
+                if(!drum || !audioEngine.drumABResolved) audioEngine.setChannelProgram(destination, prog, audioBank, c.voiceName)
                 audioEngine.setChannelMixer(destination, nativeState.volume, nativeState.pan, nativeState.expression,
                     nativeState.reverbSend, nativeState.chorusSend)
                 appliedChannelStates[destination] = nativeState
@@ -1121,7 +1135,10 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                         val lsb = if (drum) 0 else (bank and 0x7f)
                         val program = s.event.note.coerceIn(0, 127)
                         chordTrace.record { "DYNAMIC_PROGRAM chordId=${chordTrace.chordId()} section='${section.name}' part='${s.part.name}' src=${s.event.channel} dst=$destination requestBank=$bank requestPC=$program tick=$absoluteTick" }
-                        audioEngine.setChannelProgram(destination, program, bank)
+                        if(drum && audioEngine.drumABResolved) applyDrumAB(section,destination,
+                            (styleBank ushr 7).takeIf { s.part.events.any { e->e.channel==s.event.channel && e.tick<=s.tick && e.isControlChange && e.note==0 } },
+                            (styleBank and 127).takeIf { s.part.events.any { e->e.channel==s.event.channel && e.tick<=s.tick && e.isControlChange && e.note==32 } },program,"DYNAMIC_PC")
+                        else audioEngine.setChannelProgram(destination, program, bank)
                         // R22_OBSERVE_DYNAMIC_BEGIN
                         if(drum && DrumKitShadowRuntime.active) DrumKitShadowRuntime.observe(section,destination,
                             (styleBank ushr 7).takeIf { s.part.events.any { e->e.channel==s.event.channel && e.tick<=s.tick && e.isControlChange && e.note==0 } },

@@ -11,6 +11,9 @@ class NativeAudioBridge @Inject constructor() {
     }
 
     external fun nativeDrumChannelSelection(channel: Int): String
+    external fun nativeSetDrumABMode(resolved: Boolean): Boolean
+    external fun nativeBindDrumAB(channel: Int, pdta: String, bank: Int, pc: Int, section: String): Boolean
+    external fun nativeDrumABReport(): String
     external fun nativeShadowDrumSnapshot(): String
     external fun nativeInitLogger()
     external fun nativeStart(): Boolean

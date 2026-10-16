@@ -75,6 +75,7 @@ fun Sf2StyleInspectorDialog(
     var managedAudition by remember { mutableStateOf(false) }
     if (managedAudition) ManagedSf2AuditionDialog(viewModel) { managedAudition = false }
     var tab by remember { mutableStateOf(0) }
+    var r23Resolved by remember { mutableStateOf(viewModel.drumABResolved()) }
     var r22Report by remember { mutableStateOf("") }
     var r22Enabled by remember { mutableStateOf(com.yourapp.yamahaarranger.arranger.DrumKitShadowRuntime.enabled) }
     var query by remember { mutableStateOf("") }
@@ -138,6 +139,12 @@ fun Sf2StyleInspectorDialog(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(enabled = !state.isPlaying, onClick = { r22Enabled=!r22Enabled;viewModel.setR22ShadowEnabled(r22Enabled) }) { Text("R2-2 SHADOW ${if(r22Enabled) "ON" else "OFF"}") }
                     OutlinedButton(onClick = { r22Report=viewModel.r22ShadowReport() }) { Text("DRUM KIT SHADOW") }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    for(resolved in listOf(false,true)) OutlinedButton(enabled = !state.isPlaying && !exportBusy, onClick = {
+                        if(viewModel.setDrumABMode(resolved))r23Resolved=resolved
+                        else Toast.makeText(context,"STOP; wait for playback jobs to finish, then retry",Toast.LENGTH_LONG).show()
+                    }) { Text((if(r23Resolved==resolved)"✓ " else "")+(if(resolved)"RESOLVED" else "LEGACY")) }
                 }
                 if(r22Report.isNotEmpty()) Text(r22Report.take(6000), color=InspectorDim, fontSize=9.sp, modifier=Modifier.heightIn(max=140.dp).verticalScroll(rememberScrollState()))
                 Text("Play C → F → G → C, END CAPTURE, STOP, then SAVE CHORD (max 48 KiB).", color = InspectorDim, fontSize = 10.sp)

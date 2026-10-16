@@ -1,0 +1,24 @@
+{
+  "baseline_ns": [
+    584069848,
+    608161169,
+    557764624,
+    570956020,
+    630918910,
+    635762086,
+    633364166
+  ],
+  "candidate_ns": [
+    610738930,
+    585118648,
+    564357783,
+    566752209,
+    609035937,
+    597768691,
+    590862260
+  ],
+  "median_overhead_percent": -2.844461284571098,
+  "scope": "HOST_MOCK_DECODE_NOT_ANDROID_CALLBACK",
+  "device_G5": "UNVERIFIED",
+  "gate_lt_1_percent": true
+}

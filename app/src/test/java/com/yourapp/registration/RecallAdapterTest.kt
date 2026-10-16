@@ -73,13 +73,22 @@ class RecallAdapterTest {
     }
     @Test fun externalRecallWhileRealStyleSequencerIsPlayingKeepsItsNotesAndClock()=runBlocking<Unit> {
         val r=Rig();val seq=StyleSequencer(r.engine,r.midi,r.scope);val completed=CompletableDeferred<Unit>()
+        // Event handshake, not a timing delay: the scheduled style OFF cannot
+        // finish before recall, even if the observer resumes after its deadline.
+        val recallApplied=CountDownLatch(1)
+        doAnswer {
+            assertTrue("external recall must complete before scheduled style OFF",recallApplied.await(3,TimeUnit.SECONDS))
+            null
+        }.`when`(r.bridge).nativeSfNoteOffChannel(10,36)
         try {
             val policy=CasmPolicyModel(10,10,"Bass",0,0,0,0,127,0,127,0,false)
             val section=StyleSectionModel("Main A",480,listOf(StylePartModel("Bass",listOf(
                 StyleNoteEvent(0,true,36,100,10,0x9a),StyleNoteEvent(120,false,36,0,10,0x8a)),casm=policy,program=0)))
             r.midi.setMixerStyleChannels(setOf(10));seq.play(section,480,loopLimit=1,onComplete={completed.complete(Unit)})
             until { synchronized(r.bytes) { r.bytes.any{it[0]==0x9a} } }
+            assertFalse("style must still be playing during recall",completed.isCompleted)
             r.reset();val report=r.vm.registrationCoordinator.recall("STYLE-EXT",r.target()).await()
+            recallApplied.countDown()
             assertEquals(RecallCompletion.COMPLETED,report.completion);withTimeout(3000){completed.await()}
             val bytes=synchronized(r.bytes){r.bytes.toList()}
             println("REG_STYLE_CAPTURE bytes=$bytes")
@@ -88,7 +97,7 @@ class RecallAdapterTest {
             verify(r.bridge,never()).nativeSetKeyboardPreset(anyInt(),anyLong(),anyInt(),anyInt())
             verify(r.bridge,never()).nativeGetSoundFontPresets()
             println("REG_STYLE_RECORDER actualSequencer=true naturalCompletion=true externalRecall=true SF2=0 deviceTiming=UNVERIFIED")
-        } finally { seq.stop();r.close() }
+        } finally { recallApplied.countDown();seq.stop();r.close() }
     }
     @Test fun M4_bothUsesDistinctSf2AndExplicitExternalIdentities()=runBlocking<Unit> {
         val r=Rig();try{r.reset();r.vm.registrationCoordinator.recall("B",r.target(OutputMode.BOTH)).await();verify(r.bridge).nativeSetKeyboardPreset(0,1L,65535,24);assertEquals(listOf(listOf(0xb0,0,0),listOf(0xb0,32,112),listOf(0xc0,5)),r.bytes.filter(::isBank))}finally{r.close()}

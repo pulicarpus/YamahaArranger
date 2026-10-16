@@ -384,6 +384,11 @@ class ArrangerBrain @Inject constructor(
         DebugLog.add("🎼 ACMP chord → ${chord.label()}")
     }
 
+    fun setDrumABMode(resolved:Boolean):Boolean {
+        if(_state.value.isPlaying || pendingTransitionJob?.isActive==true || pendingChordJob?.isActive==true)return false
+        ensureSequencer()
+        return sequencer.setDrumABMode(resolved)
+    }
     fun startStop() {
         ensureSequencer()
         val style = loadedStyle

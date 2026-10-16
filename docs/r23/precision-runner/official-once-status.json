@@ -1,0 +1,10 @@
+{
+  "returncode": 0,
+  "cpu_affinity": [
+    1
+  ],
+  "attempts": 1,
+  "tool": "unchanged tools/test_r20_host.py",
+  "threshold_percent": 1,
+  "baseline": "163f769bf056f0dd0593f78ab20fbbe700dcb56f"
+}

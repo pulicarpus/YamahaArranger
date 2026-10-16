@@ -1,0 +1,19 @@
+{
+  "baseline": "d456d733c788b46ae06fe09c8b687eeb4915d554",
+  "production_sha256": {
+    "app/src/main/cpp/audio_engine.h": "97529c28412ef44e97d19585be83e2abe13a11b9cee0ec5e60c79088a1af543a",
+    "app/src/main/cpp/bassmidi_player.cpp": "2428ed60098858ff5f69078933bcb1e367793b055589af0e019519632f53b275",
+    "app/src/main/cpp/bassmidi_player.h": "52865a00f7ad9728575632276f390ae7c4bdc08dfadd6e2d7b77155ed13ef60a",
+    "app/src/main/cpp/native_lib.cpp": "ec6c3f142317a813c2934333d79df717e516ffd910ac5e8a699b1bec4d307e1e",
+    "app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt": "e3ccd792bc246ef653e9f9300918be4f4cda764e67e40cdbaf8b38f4b7e2471c",
+    "app/src/main/java/com/yourapp/ui/MainViewModel.kt": "df1ca8d10785ac28230ce199278e7576145772bf10aaf8a49c369ed5738e4651",
+    "app/src/main/java/com/yourapp/ui/Sf2StyleInspectorScreen.kt": "9ec23262113f8a47a0992bc4187229beedfa464b0cfd679e3904ad265bff1ee0",
+    "app/src/main/java/com/yourapp/yamahaarranger/arranger/DrumKitShadowRuntime.kt": "b3fdafec571ca26f72396a4d5cd602b1d69f6ef3598a04e016239ca7d8442eab",
+    "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt": "dda63ef245a812e817aa661a6a1690d2fec90145599d5504b0542ad7f5c9fe8a",
+    "app/src/main/java/com/yourapp/yamahaarranger/audio/AudioEngineManager.kt": "bd7dd7b3b25880d4a63f1fbbdb7b32f259432c4dd569cce7e52bad8e79a998b9",
+    "app/src/main/java/com/yourapp/yamahaarranger/audio/NativeAudioBridge.kt": "6d0fa5b24bf0f78930c92c3d81f4c1216d8b857a31eb1f41e482e2351aa4eb5e"
+  },
+  "reviewed_fixture_sha256": {
+    "app/src/test/java/com/yourapp/registration/RecallAdapterTest.kt": "948ae9a029b7c0c16e77f527702a6d6b366e23ec935fb0e78be8d335901fb63b"
+  }
+}
