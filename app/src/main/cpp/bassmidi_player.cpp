@@ -394,6 +394,7 @@ bool BassMidiPlayer::loadRole(const std::string& path, bool drum) {
         for (const auto& secondary : secondaryMelodies_) BASS_MIDI_FontFree(secondary.font);
         secondaryMelodies_.clear();
         invalidateMelodicChannels();
+        channelPins_ = {}; // font ids are about to change; callers re-pin after load
     }
     if (target) {
         BASS_MIDI_FontFree(target);
@@ -586,6 +587,7 @@ void BassMidiPlayer::unload() {
     publishedFontMaps_.clear();
     for (auto& ch : channels_) ch = ChannelState{};
     drumSelections_={}; ++drumSelectionGeneration_; // R22 observation invalidation only
+    channelPins_ = {};
     audioDiagnostics_ = {};
     drumZoneInventories_.clear();
     melodicZoneInventories_.clear(); noteZoneRows_.clear(); noteZoneLimit_=false;
@@ -936,8 +938,9 @@ void BassMidiPlayer::invalidateMelodicChannels() {
 }
 
 void BassMidiPlayer::refreshMelodicChannels() {
-    for (auto& state : channels_) {
-        if (!state.initialized || state.drum) continue;
+    for (size_t ch = 0; ch < channels_.size(); ++ch) {
+        auto& state = channels_[ch];
+        if (!state.initialized || state.drum || channelPins_[ch].active) continue;
         state.melodySourceBank = -1;
         state.melodySourceProgram = -1;
         state.melodySourceName.clear();
@@ -1004,7 +1007,7 @@ bool BassMidiPlayer::findMelodicPreset(
                  bestDecision.reason.c_str(), bestDecision.score);
         }
     }
-    const int selected = select(request, candidates);
+    const int selected = sourceTiered_ ? selectTiered(request, candidates) : select(request, candidates);
     if (selected < 0) {
         if(diagnosticReason)*diagnosticReason="no_compatible_candidate";
         sourceFont = -1;
@@ -1317,6 +1320,10 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program, const 
 
     channel = std::max(0, std::min(15, channel));
     if(drumABResolved_ && (channel==8 || channel==9)) return;
+    if (channelPins_[channel].active) {
+        LOGI("SET PRESET ignored ch=%d bank=%d prog=%d reason=manual_override_pinned", channel, bank, program);
+        return;
+    }
     if (channel < 4) keyboardPresets_[channel] = {};
     const int requestedBank = bank;
     program = std::max(0, std::min(65535, program));
@@ -2967,3 +2974,136 @@ std::string BassMidiPlayer::drumABReport() const {
             <<" NOTE_ON="<<pcmSessionNotes_.sent[ch]<<"\n";
     }return out.str();
 }
+
+// CPV_CHANNEL_BINDING_BEGIN
+// Read-only snapshot of what one channel is bound to. No MIDI, mapping or
+// render state is touched. Fields are tab-separated:
+// channel status source sf2 pdta rawBank program presetName reason
+std::string BassMidiPlayer::channelBinding(int channel) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (channel < 0 || channel >= 16) return "";
+    auto base = [](const std::string& path) { return path.substr(path.find_last_of("/\\") + 1); };
+    auto pdtaOf = [&](const std::string& path) {
+        const auto fp = pdtaFingerprints_.find(path);
+        return fp != pdtaFingerprints_.end() && fp->second.valid ? fp->second.sha256 : std::string();
+    };
+    auto clean = [](std::string text) { for (auto& ch : text) if (ch == '\t' || ch == '\n' || ch == '\r') ch = ' '; return text; };
+    auto row = [&](const char* status, const char* source, const std::string& path, int bank, int pc,
+                   const std::string& name, const std::string& reason) {
+        std::ostringstream out;
+        out << channel << '\t' << status << '\t' << source << '\t' << clean(path.empty() ? std::string() : base(path)) << '\t'
+            << (path.empty() ? std::string() : pdtaOf(path)) << '\t' << bank << '\t' << pc << '\t' << clean(name) << '\t' << clean(reason);
+        return out.str();
+    };
+    const ChannelState& state = channels_[channel];
+    if (channel < 4 && keyboardPresets_[channel].fontId) {
+        const auto* preset = keyboardPreset(keyboardPresets_[channel]);
+        if (!preset) return row("UNRESOLVED", "KEYBOARD", "", -1, -1, "", "keyboard_preset_missing");
+        return row(keyboardPresets_[channel].verified ? "BOUND" : "UNVERIFIED", "KEYBOARD", preset->file,
+                   preset->bank, preset->program, preset->name, "keyboard_exact_selection");
+    }
+    if ((channel == 8 || channel == 9) && drumABResolved_) {
+        const auto& b = drumABBindings_[channel - 8];
+        if (!b.font) return row("UNRESOLVED", "DRUM_R23", "", -1, -1, "", "no_verified_drum_binding");
+        std::string path;
+        if (b.font == melodyFont_) path = melodyPath_;
+        for (const auto& s : secondaryMelodies_) if (s.font == b.font) path = s.path;
+        std::string name;
+        const auto inventory = melodicZoneInventories_.find(path);
+        if (inventory != melodicZoneInventories_.end() && inventory->second) {
+            const auto found = inventory->second->presetNames.find({b.rawBank, b.pc});
+            if (found != inventory->second->presetNames.end()) name = found->second;
+        }
+        return row(b.verified ? "BOUND" : "UNRESOLVED", "DRUM_R23", path, b.rawBank, b.pc, name,
+                   b.verified ? state.resolverReason : "r23_binding_readback_failed");
+    }
+    if (channelPins_[channel].active) {
+        const auto& pin = channelPins_[channel];
+        return row(pin.verified ? "BOUND" : "UNVERIFIED", "PINNED", pin.path, pin.bank, pin.program, pin.name, "manual_override");
+    }
+    if (!state.initialized) return row("UNINITIALIZED", "NONE", "", -1, -1, "", "");
+    if (state.drum) {
+        const auto& o = drumSelections_[channel];
+        std::string name = o.name;
+        return row(o.bank >= 0 ? "BOUND" : "UNRESOLVED", "DRUM_LEGACY", o.path, o.bank, o.pc, name, o.reason);
+    }
+    if (state.melodySourceProgram < 0) return row("UNRESOLVED", "MELODY", "", -1, -1, "", state.resolverReason);
+    std::string path;
+    if (state.melodySource == 0) path = melodyPath_;
+    else if (state.melodySource > 0 && static_cast<size_t>(state.melodySource) <= secondaryMelodies_.size())
+        path = secondaryMelodies_[state.melodySource - 1].path;
+    return row("BOUND", state.melodySource == 0 ? "PRIMARY" : "SECONDARY", path, state.melodySourceBank,
+               state.melodySourceProgram, state.melodySourceName, state.resolverReason);
+}
+// CPV_CHANNEL_BINDING_END
+
+// CPV_SOURCE_POLICY_BEGIN
+// Colombo-primary policy: earlier SF2 sources outrank later ones before score.
+void BassMidiPlayer::setSourceTiered(bool tiered) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (sourceTiered_ == tiered) return;
+    sourceTiered_ = tiered;
+    if (!stream_) return;
+    refreshMelodicChannels();
+    if (!applyFonts()) invalidateMelodicChannels();
+}
+// CPV_SOURCE_POLICY_END
+
+// CPV_CHANNEL_PIN_BEGIN
+bool BassMidiPlayer::pinChannelPreset(int channel, uint64_t fontId, int bank, int program) {
+    f12::SynthLock lock(mutex_,f12::Preset);
+    if (channel < 4 || channel > 15 || channel == 8 || channel == 9) return false;
+    auto& pin = channelPins_[channel];
+    ChannelState& state = channels_[channel];
+    if (!fontId) {
+        const bool was = pin.active;
+        pin = {};
+        if (!was) return true;
+        // Forget the pinned identity so the next style request resolves normally.
+        state = ChannelState{};
+        LOGI("CPV PIN cleared ch=%d", channel);
+        return !stream_ || applyFonts();
+    }
+    if (!ensureEngine()) return false;
+    int source = -1; std::string path; HSOUNDFONT font = 0;
+    if (melodyFont_ && fontId == melodyFontId_) { source = 0; path = melodyPath_; font = melodyFont_; }
+    for (size_t i = 0; i < secondaryMelodies_.size(); ++i)
+        if (secondaryMelodies_[i].fontId == fontId) { source = static_cast<int>(i) + 1; path = secondaryMelodies_[i].path; font = secondaryMelodies_[i].font; }
+    if (source < 0 || bank < 0 || bank == 127 || bank == 128 || program < 0 || program > 127) return false;
+    const BrowserPreset* preset = nullptr;
+    for (const auto& p : browserPresets_) if (p.fontId == fontId && p.bank == bank && p.program == program) preset = &p;
+    if (!preset) return false;
+    const ChannelState previous = state; const ChannelPin previousPin = pin;
+    state = ChannelState{};
+    state.initialized = true; state.drum = false; state.bankMsb = 0; state.bankLsb = 0; state.program = program;
+    state.melodySource = source; state.melodySourceBank = bank; state.melodySourceProgram = program;
+    state.melodySourceName = preset->name; state.requestedVoiceName = preset->name; state.resolverReason = "manual_override";
+    pin = ChannelPin{fontId, bank, program, preset->name, path, true, false};
+    if (!applyFonts()) {
+        state = previous; pin = previousPin;
+        if (!applyFonts()) invalidateMelodicChannels();
+        return false;
+    }
+    bool ok = send(channel, MIDI_EVENT_DRUMS, 0);
+    ok = send(channel, MIDI_EVENT_BANK, 0) && ok;
+    ok = send(channel, MIDI_EVENT_BANK_LSB, 0) && ok;
+    ok = send(channel, MIDI_EVENT_PROGRAM, static_cast<DWORD>(program)) && ok;
+    BASS_MIDI_FONT live{};
+    pin.verified = ok && BASS_MIDI_StreamGetPreset(stream_, channel, &live) && live.font == font && live.preset == program;
+    LOGI("CPV PIN ch=%d sf2='%s' bank=%d prog=%d name='%s' verified=%d", channel, path.c_str(), bank, program,
+         preset->name.c_str(), pin.verified ? 1 : 0);
+    preloadCurrentPreset(channel);
+    updateRolePcmMeter(channel);
+    return pin.verified;
+}
+
+std::string BassMidiPlayer::fontPdta(uint64_t fontId) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::string path;
+    if (fontId && fontId == melodyFontId_) path = melodyPath_;
+    if (fontId && fontId == drumFontId_) path = drumPath_;
+    for (const auto& s : secondaryMelodies_) if (fontId && s.fontId == fontId) path = s.path;
+    const auto fp = pdtaFingerprints_.find(path);
+    return fp != pdtaFingerprints_.end() && fp->second.valid ? fp->second.sha256 : std::string();
+}
+// CPV_CHANNEL_PIN_END

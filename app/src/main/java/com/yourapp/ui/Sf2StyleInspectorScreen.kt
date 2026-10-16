@@ -11,6 +11,7 @@ import androidx.compose.runtime.DisposableEffect
 
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -116,8 +117,9 @@ fun Sf2StyleInspectorDialog(
                         exportScope.launch {
                             try {
                                 val kitAudit = viewModel.drumKitAuditReport()
+                                val voiceText = viewModel.styleVoiceReportText()
                                 val fileName = withContext(Dispatchers.IO) {
-                                    saveInspectorReport(context, state, kitAudit)
+                                    saveInspectorReport(context, state, kitAudit, voiceText)
                                 }
                                 Toast.makeText(
                                     context,
@@ -299,13 +301,15 @@ fun Sf2StyleInspectorDialog(
                     Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("SF2") })
                     Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("STYLE") })
                     Tab(selected = tab == 2, onClick = { tab = 2 }, text = { Text("RESOLVER") })
+                    Tab(selected = tab == 3, onClick = { tab = 3 }, text = { Text("VOICES") })
                 }
 
                 Spacer(Modifier.height(8.dp))
                 when (tab) {
                     0 -> Sf2Inspector(state, query, { query = it }, viewModel::refreshSoundFontList)
                     1 -> StyleInspector(state)
-                    else -> ResolverInspector(state)
+                    2 -> ResolverInspector(state)
+                    else -> StyleVoiceInspector(state, viewModel)
                 }
             }
         }
@@ -476,13 +480,16 @@ private fun ResolverInspector(state: MainUiState) {
     }
 }
 
-private fun saveInspectorReport(context: Context, state: MainUiState, kitAudit: String): String? {
+private fun saveInspectorReport(context: Context, state: MainUiState, kitAudit: String, voiceText: String = ""): String? {
     val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
     val fileName = "YamahaArranger_Inspector_$stamp.txt"
 
     val report = buildString {
         appendLine("YAMAHA ARRANGER — SF2 / STYLE INSPECTOR")
         appendLine("Generated: $stamp")
+        appendLine()
+        appendLine("=== STYLE VOICE INSPECTOR (requested vs actual) ===")
+        appendLine(voiceText)
         appendLine()
         appendLine("=== NOTE ZONES / ALL DEDICATED KITS PER SECTION ===")
         appendLine(kitAudit)
@@ -628,6 +635,67 @@ private suspend fun saveSf2Metadata(context: Context, viewModel: MainViewModel, 
         } catch (error: Exception) {
             target?.let { runCatching { context.contentResolver.delete(it, null, null) } }
             throw error
+        }
+    }
+}
+
+/** Requested style voice per section/part next to the channel's actual native binding. */
+@Composable
+private fun StyleVoiceInspector(state: MainUiState, viewModel: MainViewModel) {
+    var refresh by remember { mutableStateOf(0) }
+    val requests = remember(state.styleName, refresh) { viewModel.styleVoiceRequests() }
+    val bindings = remember(state.styleName, state.activeSection, refresh) { viewModel.channelBindings() }
+    val sections = remember(requests) { requests.map { it.section }.distinct() }
+    var section by remember(state.styleName) { mutableStateOf<String?>(null) }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text("STYLE VOICES: ${state.styleName}", color = InspectorText, fontSize = 14.sp, fontWeight = FontWeight.Bold,
+            modifier = Modifier.weight(1f))
+        OutlinedButton(onClick = { refresh++ }) { Text("REFRESH") }
+    }
+    Text("Request = MSB:LSB:PC from the style (\"-\" = not sent). Actual = current engine binding; UNRESOLVED channels are silent, never substituted.",
+        color = InspectorDim, fontSize = 10.sp)
+    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        OutlinedButton(onClick = { section = null }) { Text((if (section == null) "✓ " else "") + "ALL", fontSize = 10.sp) }
+        sections.forEach { name ->
+            OutlinedButton(onClick = { section = name }) { Text((if (section == name) "✓ " else "") + name, fontSize = 10.sp) }
+        }
+    }
+    Row(Modifier.fillMaxWidth().background(InspectorPanel).padding(5.dp)) {
+        Text("SECTION", color = InspectorDim, modifier = Modifier.width(78.dp), fontSize = 9.sp)
+        Text("SRC→DST", color = InspectorDim, modifier = Modifier.width(56.dp), fontSize = 9.sp)
+        Text("PART / CASM", color = InspectorDim, modifier = Modifier.width(120.dp), fontSize = 9.sp)
+        Text("REQ MSB:LSB:PC", color = InspectorDim, modifier = Modifier.width(92.dp), fontSize = 9.sp)
+        Text("DYNAMIC PC", color = InspectorDim, modifier = Modifier.width(110.dp), fontSize = 9.sp)
+        Text("ACTUAL (current)", color = InspectorDim, fontSize = 9.sp)
+    }
+    if (requests.isEmpty()) {
+        Text("Load a style first.", color = InspectorDim, fontSize = 11.sp)
+        return
+    }
+    LazyColumn(Modifier.fillMaxSize()) {
+        items(requests.filter { section == null || it.section == section }) { r ->
+            val binding = bindings[r.destinationChannel]
+            val actualColor = when {
+                !r.appliedToDestination -> InspectorDim
+                binding == null -> InspectorDim
+                binding.resolved -> InspectorGood
+                else -> InspectorBad
+            }
+            Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                Text(r.section, color = InspectorText, modifier = Modifier.width(78.dp), fontSize = 10.sp)
+                Text("${r.sourceChannel}→${r.destinationChannel}${if (r.drum) " D" else ""}", color = InspectorText,
+                    modifier = Modifier.width(56.dp), fontSize = 10.sp)
+                Text("${r.partName.take(10)} / ${r.casmVoiceName.ifBlank { if (r.hasCasm) "?" else "no CASM" }}",
+                    color = InspectorText, modifier = Modifier.width(120.dp), fontSize = 10.sp)
+                Text("${r.bankText}:${r.programText}", color = if (r.program == null) InspectorWarn else InspectorText,
+                    modifier = Modifier.width(92.dp), fontSize = 10.sp)
+                Text(r.dynamicChanges.take(3).joinToString(" ") { "${it.msb ?: "-"}:${it.lsb ?: "-"}:${it.program}" }
+                    .let { if (r.dynamicChanges.size > 3) "$it +${r.dynamicChanges.size - 3}" else it }.ifEmpty { "-" },
+                    color = InspectorDim, modifier = Modifier.width(110.dp), fontSize = 10.sp)
+                Text(if (!r.appliedToDestination) "(not applied: another part owns ch${r.destinationChannel})"
+                    else binding?.let { "${it.status} ${it.source} ${it.summary()}" } ?: "-",
+                    color = actualColor, fontSize = 10.sp)
+            }
         }
     }
 }

@@ -72,6 +72,13 @@ public:
     bool setDrumABMode(bool resolved);
     bool bindDrumAB(int channel,const std::string& pdta,int bank,int pc,const std::string& section);
     std::string drumABReport() const;
+    // CPV read-only per-channel binding snapshot for the Style Voice Inspector.
+    std::string channelBinding(int channel) const;
+    void setSourceTiered(bool tiered);
+    // CPV manual override: exact font/bank/program on one melodic style channel (4..15, not 8/9).
+    // fontId 0 removes the pin. Returns the native readback result.
+    bool pinChannelPreset(int channel, uint64_t fontId, int bank, int program);
+    std::string fontPdta(uint64_t fontId) const;
     std::string pcmSessionReport(pcm_session::Controls controls) const;
     std::string drumKitCoverage(const std::vector<drum_audit::Hit>& hits) const;
     std::string drumCompatibilityReport(const std::vector<drum_compat::Demand>& demand, const std::vector<std::pair<int,int>>& comparisonKits = {}) const;
@@ -292,6 +299,9 @@ private:
     // R22 observations are never read by selection or rendering.
     struct DrumABBinding { HSOUNDFONT font=0; int rawBank=-1,nativeBank=-1,pc=-1; std::string pdta,section; bool verified=false; };
     bool drumABResolved_=false;
+    bool sourceTiered_=false; // CPV: primary SF2 outranks secondaries
+    struct ChannelPin { uint64_t fontId=0; int bank=-1, program=-1; std::string name, path; bool active=false, verified=false; };
+    std::array<ChannelPin,16> channelPins_{};
     uint64_t drumABGeneration_=0;
     std::array<DrumABBinding,2> drumABBindings_{};
     struct DrumSelectionObservation { uint64_t generation=0; int bank=-1,pc=-1; std::string path,pdta,name,reason; };

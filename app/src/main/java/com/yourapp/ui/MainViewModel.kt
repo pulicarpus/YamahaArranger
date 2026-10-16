@@ -1147,6 +1147,19 @@ class MainViewModel @Inject constructor(
     private var pcmSessionUiMark = "PCM_SESSION_UI status=UNMARKED"
     fun setR22ShadowEnabled(value:Boolean) { if(!uiState.value.isPlaying) com.yourapp.yamahaarranger.arranger.DrumKitShadowRuntime.setEnabled(value) }
     fun r22ShadowReport():String = com.yourapp.yamahaarranger.arranger.DrumKitShadowRuntime.report()
+    // CPV Style Voice Inspector: read-only style requests and native channel bindings.
+    fun styleVoiceRequests(): List<com.yourapp.yamahaarranger.style.StyleVoiceRequest> =
+        drumAuditStyle?.let { com.yourapp.yamahaarranger.style.StyleVoiceRequests.extract(it) } ?: emptyList()
+    fun channelBindings(): Map<Int, com.yourapp.yamahaarranger.audio.ChannelBinding> =
+        (4..15).mapNotNull { ch -> audioEngine.channelBinding(ch)?.let { ch to it } }.toMap()
+    fun styleVoiceReportText(): String = buildString {
+        appendLine("style='${_styleName.value}'")
+        append(com.yourapp.yamahaarranger.style.StyleVoiceRequests.report(styleVoiceRequests()))
+        channelBindings().values.sortedBy { it.channel }.forEach { b ->
+            appendLine("STYLE_VOICE_ACTUAL ch=${b.channel} status=${b.status} source=${b.source} sf2='${b.soundFontName}' " +
+                "bank=${b.bank} pc=${b.program} preset='${b.presetName}' reason=${b.reason}")
+        }
+    }
     fun drumABResolved():Boolean = audioEngine.drumABResolved
     fun setDrumABMode(resolved:Boolean):Boolean = !uiState.value.isPlaying && arrangerBrain.setDrumABMode(resolved)
     fun markPcmSession(): Long {

@@ -51,6 +51,19 @@ data class StyleChannelOverride(
     val chorusSend: Int? = null
 )
 
+/**
+ * CPV manual voice chosen in the Mixer for one style channel. Identity is the
+ * SF2 file name plus raw bank/program, never a runtime font id. Internal
+ * sound only: it is never sent to MIDI OUT.
+ */
+data class StyleVoicePin(
+    val soundFontName: String,
+    val bank: Int,
+    val program: Int,
+    val presetName: String,
+    val drum: Boolean
+)
+
 data class StylePartModel(
     val name: String,
     val events: List<StyleNoteEvent>,

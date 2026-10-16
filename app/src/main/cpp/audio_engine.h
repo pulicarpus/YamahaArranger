@@ -52,6 +52,10 @@ public:
     bool setDrumABMode(bool r){return soundFont_.setDrumABMode(r);}
     bool bindDrumAB(int ch,const std::string& fp,int bank,int pc,const std::string& section){return soundFont_.bindDrumAB(ch,fp,bank,pc,section);}
     std::string drumABReport()const{return soundFont_.drumABReport();}
+    std::string channelBinding(int ch)const{return soundFont_.channelBinding(ch);}
+    void setSourceTiered(bool t){soundFont_.setSourceTiered(t);}
+    bool pinChannelPreset(int ch,uint64_t id,int bank,int pc){return soundFont_.pinChannelPreset(ch,id,bank,pc);}
+    std::string fontPdta(uint64_t id)const{return soundFont_.fontPdta(id);}
     std::string sfShadowDrumSnapshot() const { return soundFont_.shadowDrumSnapshot(); }
     std::vector<unsigned char> sfDiagnosticDrumWav(int bank,int pc,int key,int velocity);
     std::string sfNoteZoneReport() const;

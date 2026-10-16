@@ -225,11 +225,12 @@ inline Decision evaluate(const Request& request, const Candidate& candidate) {
     return d;
 }
 
-inline int select(const Request& request, const std::vector<Candidate>& candidates) {
+inline int select(const Request& request, const std::vector<Candidate>& candidates, int onlySource = -1) {
     const auto decoded = decodeRequest(request, candidates);
     int best = -1;
     Decision bestDecision;
     for (size_t i = 0; i < candidates.size(); ++i) {
+        if (onlySource >= 0 && candidates[i].source != onlySource) continue;
         const auto d = evaluate(decoded, candidates[i]);
         if (!d.accepted) continue;
         const auto& c = candidates[i];
@@ -243,5 +244,18 @@ inline int select(const Request& request, const std::vector<Candidate>& candidat
         }
     }
     return best;
+}
+
+// CPV source tiers: the primary SF2 (source 0) wins whenever it holds any
+// family-compatible candidate; a secondary is consulted only when every
+// earlier source has none. Scoring inside one source is unchanged.
+inline int selectTiered(const Request& request, const std::vector<Candidate>& candidates) {
+    int maxSource = -1;
+    for (const auto& c : candidates) maxSource = std::max(maxSource, c.source);
+    for (int source = 0; source <= maxSource; ++source) {
+        const int best = select(request, candidates, source);
+        if (best >= 0) return best;
+    }
+    return -1;
 }
 } // namespace voice_resolver

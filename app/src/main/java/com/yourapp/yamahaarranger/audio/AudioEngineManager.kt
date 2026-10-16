@@ -202,6 +202,35 @@ class AudioEngineManager @Inject constructor(
 
 
     /**
+     * CPV stack: Colombo is the primary melodic source, Tyros the optional
+     * fallback. No dedicated drum SF2 is loaded; Rhythm channels use the R2-3
+     * verified Colombo/Tyros kit binding, and an unverified kit stays silent.
+     * The primary path also satisfies the readiness drum slot because it is
+     * the drum source.
+     */
+    fun loadColomboPrimaryStack(primaryPath: String, fallbackPath: String?, request: ReadyToPlayGate.Request? = null): Boolean =
+        fontOperation(request, primaryPath, primaryPath) {
+            val result = runBlocking { soundFontOperationMutex.withLock { withAudioStreamPausedUnsafe {
+                // Drop any previous stack, including a dedicated drum font.
+                bridge.nativeUnloadSoundFont()
+                bridge.nativeSetSourceTiered(true)
+                if (!bridge.nativeLoadMelodySoundFont(primaryPath)) return@withAudioStreamPausedUnsafe false
+                if (!fallbackPath.isNullOrBlank()) {
+                    val ok = bridge.nativeLoadMelodyFallbackSoundFont(fallbackPath)
+                    DebugLog.add(if (ok) "✅ CPV fallback SF2 attached" else "⚠️ CPV fallback SF2 failed; primary remains active")
+                }
+                val drums = bridge.nativeSetDrumABMode(true)
+                if (drums) drumABResolved = true
+                DebugLog.add("CPV drum route=R23_RESOLVED ok=$drums")
+                true
+            } } }
+            soundFontLoaded = result
+            DebugLog.add(if (result) "✅ CPV SF2 stack: primary=$primaryPath fallback=${fallbackPath ?: "-"}"
+                else "❌ CPV SF2 stack failed")
+            result
+        }
+
+    /**
      * Load one SF2 as the shared source for both melodic and drum channels.
      * This is the correct mode for a style that ships with one custom SF2:
      * the same font remains available on normal channels and on Yamaha rhythm
@@ -351,6 +380,38 @@ class AudioEngineManager @Inject constructor(
     }
     fun bindDrumAB(ch: Int, pdta: String, bank: Int, pc: Int, section: String): Boolean = bridge.nativeBindDrumAB(ch,pdta,bank,pc,section)
     fun drumABReport(): String = bridge.nativeDrumABReport()
+    fun channelBinding(channel: Int): ChannelBinding? = ChannelBinding.parse(bridge.nativeChannelBinding(channel))
+
+    /** Loaded preset for a saved pin. Reads the cached native snapshot without the readiness lock. */
+    fun findLoadedPreset(pin: com.yourapp.yamahaarranger.style.StyleVoicePin): SfPreset? =
+        SoundFontPresetCatalog.parse(bridge.nativeGetSoundFontPresets()).firstOrNull {
+            it.soundFontName == pin.soundFontName && it.bank == pin.bank && it.program == pin.program
+        }
+
+    /**
+     * CPV manual override for a style channel; internal sound only (no MIDI OUT).
+     * Melodic channels use an exact native pin; Rhythm 8/9 use the R2-3 verified kit
+     * binding. Returns false when the preset is not loaded or readback fails, and the
+     * channel then reports UNRESOLVED/UNVERIFIED instead of a substitute.
+     */
+    fun pinStyleChannel(channel: Int, pin: com.yourapp.yamahaarranger.style.StyleVoicePin, section: String = "OVERRIDE"): Boolean {
+        if (channel !in 4..15) return false
+        val preset = findLoadedPreset(pin)
+        val drum = channel == 8 || channel == 9
+        val ok = when {
+            preset == null -> false
+            drum -> drumABResolved && pin.drum &&
+                bridge.nativeBindDrumAB(channel, bridge.nativeFontPdta(preset.soundFontId), pin.bank, pin.program, section)
+            else -> !pin.drum && bridge.nativePinChannelPreset(channel, preset.soundFontId, pin.bank, pin.program)
+        }
+        DebugLog.add("CPV OVERRIDE ch=$channel sf2=${pin.soundFontName} bank=${pin.bank} pc=${pin.program} " +
+            "name='${pin.presetName}' loaded=${preset != null} verified=$ok")
+        return ok
+    }
+
+    /** Remove a melodic pin; Rhythm channels are rebound by the sequencer from the style request. */
+    fun unpinStyleChannel(channel: Int): Boolean =
+        if (channel == 8 || channel == 9) true else bridge.nativePinChannelPreset(channel, 0L, 0, 0)
     fun noteZoneReport(): String = bridge.nativeGetNoteZoneReport()
     fun drumKitCoverage(histogram: IntArray): String = bridge.nativeGetDrumKitCoverage(histogram)
     fun drumCompatibilityReport(histogram: IntArray): String = bridge.nativeGetDrumCompatibilityReport(histogram)
@@ -436,3 +497,36 @@ class AudioEngineManager @Inject constructor(
     }
 }
 
+
+/** What a synth channel is actually bound to, as read back from the native player. */
+data class ChannelBinding(
+    val channel: Int,
+    /** BOUND, UNRESOLVED, UNVERIFIED or UNINITIALIZED. */
+    val status: String,
+    /** PRIMARY, SECONDARY, DRUM_R23, DRUM_LEGACY, KEYBOARD, PINNED or NONE. */
+    val source: String,
+    val soundFontName: String,
+    val pdta: String,
+    val bank: Int,
+    val program: Int,
+    val presetName: String,
+    val reason: String
+) {
+    val resolved: Boolean get() = status == "BOUND"
+
+    fun summary(): String = if (resolved) "$soundFontName $bank:$program '$presetName'"
+        else "$status${if (reason.isNotBlank()) " ($reason)" else ""}"
+
+    companion object {
+        fun parse(raw: String): ChannelBinding? {
+            val f = raw.split('\t')
+            if (f.size < 9) return null
+            return ChannelBinding(
+                channel = f[0].toIntOrNull() ?: return null,
+                status = f[1], source = f[2], soundFontName = f[3], pdta = f[4],
+                bank = f[5].toIntOrNull() ?: -1, program = f[6].toIntOrNull() ?: -1,
+                presetName = f[7], reason = f[8]
+            )
+        }
+    }
+}

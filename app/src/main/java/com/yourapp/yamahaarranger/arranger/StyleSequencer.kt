@@ -109,6 +109,12 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     private var lastAppliedSection=""
     private var lockedChannels:Set<Int> = emptySet()
     private val channelOverrides = mutableMapOf<Int, StyleChannelOverride>()
+    // CPV manual voice pins (internal sound only) and the last style request per channel,
+    // so removing a pin restores the style's own voice immediately.
+    private val voicePins = mutableMapOf<Int, com.yourapp.yamahaarranger.style.StyleVoicePin>()
+    private data class StyleVoiceState(val section: StyleSectionModel, val program: Int, val bank: Int,
+        val voiceName: String?, val drum: Boolean, val msb: Int?, val lsb: Int?, val source: String)
+    private val lastStyleVoice = mutableMapOf<Int, StyleVoiceState>()
     
     private data class AppliedChannelState(
         val program: Int, val bank: Int, val volume: Int, val pan: Int,
@@ -256,6 +262,34 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     fun setChannelProgramOverride(channel:Int, program:Int, bank:Int){
         val old=channelOverride(channel)
         setChannelOverride(channel, old.copy(program=program.coerceIn(0,127), bank=bank.coerceIn(0,16383)))
+    }
+    /** CPV: pin (or with null, release) the internal voice of one style channel 4..15. */
+    fun setVoicePin(channel:Int, pin:com.yourapp.yamahaarranger.style.StyleVoicePin?):Boolean = lifecycle {
+        if(channel !in 4..15) return@lifecycle false
+        if(pin==null) {
+            if(voicePins.remove(channel)==null) return@lifecycle true
+            audioEngine.unpinStyleChannel(channel)
+            appliedChannelStates.remove(channel)
+            lastStyleVoice[channel]?.let { applyStyleVoice(channel,it) }
+            com.yourapp.yamahaarranger.ui.DebugLog.add("CPV PIN released ch$channel; style voice restored")
+            true
+        } else {
+            voicePins[channel]=pin
+            appliedChannelStates.remove(channel)
+            audioEngine.pinStyleChannel(channel,pin)
+        }
+    }
+    fun voicePin(channel:Int):com.yourapp.yamahaarranger.style.StyleVoicePin? = voicePins[channel]
+    /** Re-install every pin after an SF2 reload (native font ids change). */
+    fun reapplyVoicePins():Map<Int,Boolean> = lifecycle { voicePins.mapValues { (ch,pin) -> audioEngine.pinStyleChannel(ch,pin) } }
+    /** A new style starts with no pins; its own saved pins are restored afterwards. */
+    fun clearVoicePins() = lifecycle {
+        voicePins.keys.toList().forEach { audioEngine.unpinStyleChannel(it); appliedChannelStates.remove(it) }
+        voicePins.clear(); lastStyleVoice.clear()
+    }
+    private fun applyStyleVoice(channel:Int, v:StyleVoiceState) {
+        if(v.drum && audioEngine.drumABResolved) applyDrumAB(v.section,channel,v.msb,v.lsb,v.program,v.source)
+        else audioEngine.setChannelProgram(channel,v.program,v.bank,v.voiceName)
     }
     fun setVoiceMap(vm:Map<Int,String>){partPresence.reset();voiceMap=vm;lastAppliedSection="";com.yourapp.yamahaarranger.ui.DebugLog.add("🎼 Legacy VoiceMap received: ${vm.size}; CASM policy takes precedence")}
     private data class PendingSection(
@@ -804,10 +838,13 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             // Re-apply the native preset for explicit string destinations so the
             // soundfont state is authoritative at every section activation.
             val forceNativePreset = stringVoice && destination in 13..14
-            if(drum && audioEngine.drumABResolved) applyDrumAB(section,destination,r22Msb,r22Lsb,prog,r22Source)
+            lastStyleVoice[destination] = StyleVoiceState(section, prog, audioBank, c.voiceName, drum, r22Msb, r22Lsb, r22Source)
+            val pin = voicePins[destination]
+            if(pin!=null) com.yourapp.yamahaarranger.ui.DebugLog.add("CPV PIN keeps ch$destination=${pin.soundFontName} ${pin.bank}:${pin.program}; style request pc=$prog bank=$audioBank not applied to audio")
+            if(pin==null && drum && audioEngine.drumABResolved) applyDrumAB(section,destination,r22Msb,r22Lsb,prog,r22Source)
             if (forceNativePreset || appliedChannelStates[destination] != nativeState) {
                 chordTrace.record { "SECTION_PRESET section='${section.name}' part='${sourcePart.name}' dst=$destination requestBank=$audioBank requestPC=$prog voice='${c.voiceName}'" }
-                if(!drum || !audioEngine.drumABResolved) audioEngine.setChannelProgram(destination, prog, audioBank, c.voiceName)
+                if(pin==null && (!drum || !audioEngine.drumABResolved)) audioEngine.setChannelProgram(destination, prog, audioBank, c.voiceName)
                 audioEngine.setChannelMixer(destination, nativeState.volume, nativeState.pan, nativeState.expression,
                     nativeState.reverbSend, nativeState.chorusSend)
                 appliedChannelStates[destination] = nativeState
@@ -1135,7 +1172,11 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                         val lsb = if (drum) 0 else (bank and 0x7f)
                         val program = s.event.note.coerceIn(0, 127)
                         chordTrace.record { "DYNAMIC_PROGRAM chordId=${chordTrace.chordId()} section='${section.name}' part='${s.part.name}' src=${s.event.channel} dst=$destination requestBank=$bank requestPC=$program tick=$absoluteTick" }
-                        if(drum && audioEngine.drumABResolved) applyDrumAB(section,destination,
+                        val dynMsb=(styleBank ushr 7).takeIf { s.part.events.any { e->e.channel==s.event.channel && e.tick<=s.tick && e.isControlChange && e.note==0 } }
+                        val dynLsb=(styleBank and 127).takeIf { s.part.events.any { e->e.channel==s.event.channel && e.tick<=s.tick && e.isControlChange && e.note==32 } }
+                        lastStyleVoice[destination]=StyleVoiceState(section,program,bank,null,drum,dynMsb,dynLsb,"DYNAMIC_PC")
+                        if(voicePins.containsKey(destination)) com.yourapp.yamahaarranger.ui.DebugLog.add("CPV PIN keeps ch$destination; DYNAMIC_PC_SUPPRESSED_BY_OVERRIDE pc=$program bank=$bank")
+                        else if(drum && audioEngine.drumABResolved) applyDrumAB(section,destination,
                             (styleBank ushr 7).takeIf { s.part.events.any { e->e.channel==s.event.channel && e.tick<=s.tick && e.isControlChange && e.note==0 } },
                             (styleBank and 127).takeIf { s.part.events.any { e->e.channel==s.event.channel && e.tick<=s.tick && e.isControlChange && e.note==32 } },program,"DYNAMIC_PC")
                         else audioEngine.setChannelProgram(destination, program, bank)
