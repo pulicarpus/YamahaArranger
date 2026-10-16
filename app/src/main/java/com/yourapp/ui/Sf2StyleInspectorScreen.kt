@@ -75,6 +75,7 @@ fun Sf2StyleInspectorDialog(
     var managedAudition by remember { mutableStateOf(false) }
     if (managedAudition) ManagedSf2AuditionDialog(viewModel) { managedAudition = false }
     var tab by remember { mutableStateOf(0) }
+    var r24Punch by remember { mutableStateOf(viewModel.drumPunchMode()) }
     var r23Resolved by remember { mutableStateOf(viewModel.drumABResolved()) }
     var r22Report by remember { mutableStateOf("") }
     var r22Enabled by remember { mutableStateOf(com.yourapp.yamahaarranger.arranger.DrumKitShadowRuntime.enabled) }
@@ -143,9 +144,17 @@ fun Sf2StyleInspectorDialog(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     val context = LocalContext.current
                     for(resolved in listOf(false,true)) OutlinedButton(enabled = !state.isPlaying && !exportBusy, onClick = {
-                        if(viewModel.setDrumABMode(resolved))r23Resolved=resolved
+                        if(viewModel.setDrumABMode(resolved)){r23Resolved=resolved;r24Punch=0}
                         else Toast.makeText(context,"STOP; wait for playback jobs to finish, then retry",Toast.LENGTH_LONG).show()
                     }) { Text((if(r23Resolved==resolved)"✓ " else "")+(if(resolved)"RESOLVED" else "LEGACY")) }
+                }
+                Text("DRUM PUNCH R2-4 (STOP + RESOLVED)", color=InspectorDim, fontSize=10.sp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val punchContext=LocalContext.current
+                    for((mode,label) in listOf("ORIGINAL","LEVEL+","PUNCH+").withIndex()) OutlinedButton(
+                        enabled=r23Resolved && !state.isPlaying && !exportBusy,
+                        onClick={if(viewModel.setDrumPunch(mode))r24Punch=mode else Toast.makeText(punchContext,"STOP; wait for playback jobs to finish",Toast.LENGTH_LONG).show()}
+                    ){Text((if(r24Punch==mode)"✓ " else "")+label)}
                 }
                 if(r22Report.isNotEmpty()) Text(r22Report.take(6000), color=InspectorDim, fontSize=9.sp, modifier=Modifier.heightIn(max=140.dp).verticalScroll(rememberScrollState()))
                 Text("Play C → F → G → C, END CAPTURE, STOP, then SAVE CHORD (max 48 KiB).", color = InspectorDim, fontSize = 10.sp)

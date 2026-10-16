@@ -1148,6 +1148,8 @@ class MainViewModel @Inject constructor(
     fun setR22ShadowEnabled(value:Boolean) { if(!uiState.value.isPlaying) com.yourapp.yamahaarranger.arranger.DrumKitShadowRuntime.setEnabled(value) }
     fun r22ShadowReport():String = com.yourapp.yamahaarranger.arranger.DrumKitShadowRuntime.report()
     fun drumABResolved():Boolean = audioEngine.drumABResolved
+    fun setDrumPunch(mode:Int):Boolean = !uiState.value.isPlaying && arrangerBrain.setDrumPunch(mode)
+    fun drumPunchMode():Int = audioEngine.drumPunchReport().substringAfter("requestedMode=", "0").substringBefore(" ").toIntOrNull() ?: 0
     fun setDrumABMode(resolved:Boolean):Boolean = !uiState.value.isPlaying && arrangerBrain.setDrumABMode(resolved)
     fun markPcmSession(): Long {
         if (uiState.value.isPlaying) return 0
@@ -1165,6 +1167,7 @@ class MainViewModel @Inject constructor(
                 appendLine(audioEngine.pcmSessionReport())
                 appendLine(pcmSessionUiMark)
                 appendLine(audioEngine.drumABReport())
+                appendLine(audioEngine.drumPunchReport())
                 appendLine(com.yourapp.yamahaarranger.arranger.DrumKitShadowRuntime.report())
                 appendLine(arrangerBrain.partPresenceReport(style))
                 appendLine(arrangerBrain.chordDiagnosticReport())

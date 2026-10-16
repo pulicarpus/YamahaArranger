@@ -550,6 +550,7 @@ bool BassMidiPlayer::loadDrum(const std::string& path) {
 
 void BassMidiPlayer::unload() {
     std::lock_guard<std::mutex> lock(mutex_);
+    clearDrumPunch();drumPunchMode_=0;
     drumABBindings_={};++drumABGeneration_;
     clearRolePcmMeters(); // remove read-only child DSPs before freeing their parent
 // MEASURED_BALANCE_BEGIN
@@ -614,6 +615,7 @@ bool BassMidiPlayer::send(int channel, DWORD event, DWORD param) {
              channel, static_cast<unsigned>(event),
              static_cast<unsigned>(param), eventError);
     }
+    if (sent) mirrorDrumPunch(channel,event,param);
     if (sent) mirrorPercussionController(channel,event,param);
     if (sent) observeRolePcmController(channel,event,param); // counters only; controller event unchanged
     if (sent && channel >= 4) {
@@ -1242,6 +1244,8 @@ void BassMidiPlayer::noteOn(int channel, int key, float velocity, const AudioPat
             live.font==b.font && live.bank==b.nativeBank && live.preset==b.pc;
         if(!b.verified)return; // never fall through to Prime or a stale map
     }
+    bool punchSent=false;
+    if(punchOn(channel,key,vel,punchSent)){pcmSessionNotes_.sent[channel]+=punchSent;logAudioPath(channel,key,vel,punchSent,punchSent?0:BASS_ErrorGetCode(),origin,"r24_isolated_target",0);return;}
     bool compatibleSent=false;
     if (!drumABResolved_ && percussionOn(channel,key,vel,origin,compatibleSent)) {
         pcmSessionNotes_.sent[channel]+=compatibleSent;
@@ -1273,6 +1277,7 @@ void BassMidiPlayer::noteOff(int channel, int key, const AudioPathOrigin& origin
 
     channel = std::max(0, std::min(15, channel));
     key = std::max(0, std::min(127, key));
+    if (punchOff(channel,key)) return;
     if (percussionOff(channel,key,origin)) return;
     captureChordState("OFF_PRE",channel,key,0,-1,0,origin);
     const bool sent = send(channel, MIDI_EVENT_NOTE, static_cast<DWORD>(key));
@@ -1523,6 +1528,7 @@ void BassMidiPlayer::setMasterGain(float gain) {
                              std::max(0.0f, std::min(1.0f, gain)));
     for(const auto& lane:percussionLanes_) if(lane.stream)
         BASS_ChannelSetAttribute(lane.stream,BASS_ATTRIB_MIDI_VOL,std::clamp(gain,0.0f,1.0f));
+    for(auto& lane:punchLanes_)if(lane.stream)BASS_ChannelSetAttribute(lane.stream,BASS_ATTRIB_MIDI_VOL,std::clamp(gain,0.0f,1.0f));
 }
 
 void BassMidiPlayer::auditNoteZone(int channel,int key,int velocity,bool sent,const AudioPathOrigin& origin) {
@@ -2189,6 +2195,7 @@ void BassMidiPlayer::render(float* out, int numFrames) {
 #endif
 // HEADROOM_OBSERVER_END
     renderPercussion(out,numFrames);
+    if(drumPunchMode_)renderDrumPunch(out,numFrames);
 // HEADROOM_OBSERVER_BEGIN
 #if YAMAHA_PCM_HEADROOM
     headroom_.finish(out,numFrames*2);
@@ -2966,4 +2973,87 @@ std::string BassMidiPlayer::drumABReport() const {
             <<" expectedPC="<<b.pc<<" actualFont="<<live.font<<" actualBank="<<live.bank<<" actualPC="<<live.preset<<" readback="<<got<<" bindingVerified="<<verified
             <<" NOTE_ON="<<pcmSessionNotes_.sent[ch]<<"\n";
     }return out.str();
+}
+
+// R2-4: optional isolated decode stems. No resolver decisions or SF2 loading.
+void BassMidiPlayer::clearDrumPunch(){
+ for(auto& lane:punchLanes_){if(lane.stream)BASS_StreamFree(lane.stream);lane={};}
+ punchOwners_={};punchProcessor_.init(sampleRate_);
+}
+bool BassMidiPlayer::setDrumPunch(int mode){
+ std::lock_guard<std::mutex> lock(mutex_);
+ if(mode<0||mode>2||(mode && !drumABResolved_))return false;
+ if(mode==drumPunchMode_)return true;
+ // Admission is STOP + drained playback job in the existing lifecycle monitor.
+ if(stream_)for(int ch=8;ch<=9;++ch)if(!send(ch,MIDI_EVENT_SOUNDOFF,0))return false;
+ clearDrumPunch();drumPunchMode_=mode;punchFailures_=punchOns_=punchOffs_=0;return true;
+}
+void BassMidiPlayer::refreshDrumPunch(int ch){
+ std::lock_guard<std::mutex> lock(mutex_);
+ if(!drumPunchMode_||ch<8||ch>9)return;
+ const auto& b=drumABBindings_[ch-8];
+ const bool reviewed=drumABResolved_ && b.verified && b.rawBank==127 && (b.pc==0||b.pc==8||b.pc==16) &&
+  b.pdta=="ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506";
+ for(int group=0;group<2;++group){auto& lane=punchLanes_[(ch-8)*2+group];lane.ready=false;lane.sounded=false;
+  if(!reviewed)continue;
+  if(!lane.stream)lane.stream=BASS_MIDI_StreamCreate(16,BASS_STREAM_DECODE|BASS_SAMPLE_FLOAT|BASS_MIDI_NOTEOFF1,sampleRate_);
+  if(!lane.stream){++punchFailures_;continue;}
+  BASS_MIDI_FONTEX2 map{};map.font=b.font;map.spreset=b.pc;map.sbank=b.nativeBank;map.dpreset=b.pc;map.dbank=128;map.minchan=ch;map.numchan=1;
+  bool ok=BASS_MIDI_StreamSetFonts(lane.stream,&map,1|BASS_MIDI_FONT_EX2);
+  for(auto ev:{MIDI_EVENT_DRUMS,MIDI_EVENT_BANK,MIDI_EVENT_BANK_LSB,MIDI_EVENT_PROGRAM,MIDI_EVENT_VOLUME,MIDI_EVENT_PAN,MIDI_EVENT_EXPRESSION,MIDI_EVENT_REVERB,MIDI_EVENT_CHORUS,MIDI_EVENT_SUSTAIN})
+   ok=BASS_MIDI_StreamEvent(lane.stream,ch,ev,BASS_MIDI_StreamGetEvent(stream_,ch,ev))&&ok;
+  BASS_MIDI_FONTEX2 actual{};
+  ok=ok && BASS_MIDI_StreamGetFonts(lane.stream,&actual,1|BASS_MIDI_FONT_EX2)==1 &&
+   actual.font==map.font && actual.spreset==map.spreset && actual.sbank==map.sbank && actual.dpreset==map.dpreset && actual.dbank==map.dbank && actual.minchan==map.minchan && actual.numchan==1;
+  float master=1;ok=BASS_ChannelGetAttribute(stream_,BASS_ATTRIB_MIDI_VOL,&master)&&ok;
+  ok=BASS_ChannelSetAttribute(lane.stream,BASS_ATTRIB_MIDI_VOL,master)&&ok;
+  ok=BASS_ChannelSetAttribute(lane.stream,BASS_ATTRIB_MIDI_SRC,float(interpolation_))&&ok;
+  lane.ready=ok;lane.font=b.font;lane.pc=b.pc;if(!ok)++punchFailures_;
+ }
+}
+void BassMidiPlayer::mirrorDrumPunch(int ch,DWORD event,DWORD param){
+ if(!drumPunchMode_||ch<8||ch>9)return;
+ if(event!=MIDI_EVENT_VOLUME && event!=MIDI_EVENT_PAN && event!=MIDI_EVENT_EXPRESSION && event!=MIDI_EVENT_REVERB && event!=MIDI_EVENT_CHORUS && event!=MIDI_EVENT_SUSTAIN && event!=MIDI_EVENT_NOTESOFF && event!=MIDI_EVENT_SOUNDOFF)return;
+ for(int group=0;group<2;++group){auto& lane=punchLanes_[(ch-8)*2+group];
+  if(lane.stream && !BASS_MIDI_StreamEvent(lane.stream,ch,event,param)){lane.ready=false;++punchFailures_;}}
+ if(event==MIDI_EVENT_NOTESOFF||event==MIDI_EVENT_SOUNDOFF){punchOwners_[ch-8]={};punchProcessor_.attack[(ch-8)*2]=punchProcessor_.attack[(ch-8)*2+1]=0;}
+}
+bool BassMidiPlayer::punchOn(int ch,int key,int vel,bool& accepted){
+ const int group=drum_punch::group(key);if(!drumPunchMode_||!drumABResolved_||ch<8||ch>9||group<0)return false;
+ auto& lane=punchLanes_[(ch-8)*2+group];const auto& b=drumABBindings_[ch-8];
+ const bool route=lane.ready && lane.font==b.font && lane.pc==b.pc && b.verified;
+ auto& q=punchOwners_[ch-8][key];if(!q.push(route?lane.stream:stream_)){++punchFailures_;accepted=false;return true;}
+ if(!route)return false; // exactly one unchanged parent dispatch; remember OFF ownership
+ accepted=BASS_MIDI_StreamEvent(lane.stream,ch,MIDI_EVENT_NOTE,DWORD(key|(vel<<8)));
+ if(accepted){++punchOns_;punchProcessor_.hit((ch-8)*2+group);BASS_MIDI_FONT live{};
+  if(!BASS_MIDI_StreamGetPreset(lane.stream,ch,&live)||live.font!=b.font||live.bank!=127||live.preset!=b.pc){lane.ready=false;++punchFailures_;BASS_MIDI_StreamEvent(lane.stream,ch,MIDI_EVENT_SOUNDOFF,0);}else lane.sounded=true;}
+ else{lane.ready=false;++punchFailures_;}
+ return true;
+}
+bool BassMidiPlayer::punchOff(int ch,int key){
+ if(!drumPunchMode_||ch<8||ch>9||drum_punch::group(key)<0)return false;
+ auto stream=punchOwners_[ch-8][key].pop();if(!stream||stream==stream_)return false;
+ if(BASS_MIDI_StreamEvent(stream,ch,MIDI_EVENT_NOTE,DWORD(key)))++punchOffs_;else ++punchFailures_;
+ return true;
+}
+void BassMidiPlayer::renderDrumPunch(float* out,int frames){
+ for(int offset=0;offset<frames;){int count=std::min(drum_punch::blockFrames,frames-offset);
+  std::array<std::array<float,1024>,4> stems{};
+  for(int lane=0;lane<4;++lane)if(punchLanes_[lane].stream){
+   const DWORD got=BASS_ChannelGetData(punchLanes_[lane].stream,stems[lane].data(),DWORD(count*2*sizeof(float))|BASS_DATA_FLOAT);
+   if(got==DWORD(-1)||got!=DWORD(count*2*sizeof(float))){punchLanes_[lane].ready=false;++punchFailures_;stems[lane].fill(0);}}
+  punchProcessor_.mix(out+offset*2,stems,count,drumPunchMode_);offset+=count;
+ }
+}
+std::string BassMidiPlayer::drumPunchReport()const{
+ std::lock_guard<std::mutex> lock(mutex_);std::ostringstream o;
+ o<<"=== DRUM_PUNCH R2-4 ===\nrequestedMode="<<drumPunchMode_<<" label="<<(drumPunchMode_==0?"ORIGINAL":drumPunchMode_==1?"LEVEL+":"PUNCH+")
+ <<" resolved="<<drumABResolved_<<" technique=isolated_decode_stems_only keys=35,36:KICK;38,40:SNARE bank=127 pcs=0,8,16"
+ <<" levelCeiling=1.12 transientExtraCeiling=0.06 transientDecayMs=12 actualGain=PCM_headroom_budget_per_stereo_frame recoveryMs=20 no_global_limiter=1 no_velocity_change=1"
+ <<" guardedBlocks="<<punchProcessor_.guarded<<" maxAppliedExtra="<<punchProcessor_.maxExtra<<" stemNonfinite="<<punchProcessor_.bad
+ <<" nativeFailures="<<punchFailures_<<" routedNOTE_ON="<<punchOns_<<" routedNOTE_OFF="<<punchOffs_
+ <<" nonTargetKeys=parent_unchanged metrics=PCM_SESSION_after_MARK certification=DEVICE_PENDING\n";
+ for(int i=0;i<4;++i){const auto& lane=punchLanes_[i];o<<"PUNCH_STEM ch="<<8+i/2<<" group="<<i%2<<" stream="<<lane.stream<<" font="<<lane.font<<" pc="<<lane.pc<<" prepared="<<lane.ready<<" postNoteReadback="<<lane.sounded
+ <<" fallback="<<(drumPunchMode_==0?"ORIGINAL_parent":lane.ready?"none":"parent_unreviewed_or_prepare_failed")<<'\n';}
+ o<<"FX_NOTE independent_stem_reverb_chorus_state_may_differ_from_shared_parent; compare_on_device; no_GetChannel\n";return o.str();
 }

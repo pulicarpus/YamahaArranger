@@ -1,0 +1,2 @@
+mode=1 guarded=1000 maxExtra=0 frames=512000 oldClips=52132 newClips=52132
+dsp: tests/r24_dsp_test.cpp:20: int main(): Assertion `p.guarded>0 && p.maxExtra>0 && p.maxExtra<=.181f' failed.

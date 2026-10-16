@@ -346,10 +346,19 @@ class AudioEngineManager @Inject constructor(
         private set
     fun setDrumABMode(resolved: Boolean): Boolean {
         val ok=bridge.nativeSetDrumABMode(resolved)
-        if(ok)drumABResolved=resolved
+        if(ok){drumABResolved=resolved;drumPunchMode=0}
         return ok
     }
     fun bindDrumAB(ch: Int, pdta: String, bank: Int, pc: Int, section: String): Boolean = bridge.nativeBindDrumAB(ch,pdta,bank,pc,section)
+    var drumPunchMode: Int = 0
+        private set
+    fun setDrumPunch(mode: Int): Boolean {
+        if(mode !in 0..2 || (mode != 0 && !drumABResolved))return false
+        val ok=bridge.nativeSetDrumPunch(mode)
+        if(ok)drumPunchMode=mode
+        return ok
+    }
+    fun drumPunchReport(): String = bridge.nativeDrumPunchReport()
     fun drumABReport(): String = bridge.nativeDrumABReport()
     fun noteZoneReport(): String = bridge.nativeGetNoteZoneReport()
     fun drumKitCoverage(histogram: IntArray): String = bridge.nativeGetDrumKitCoverage(histogram)

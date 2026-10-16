@@ -271,3 +271,6 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_Nati
     const bool ok=g_engine->bindDrumAB(ch,a,bank,pc,b);env->ReleaseStringUTFChars(fp,a);env->ReleaseStringUTFChars(section,b);return ok;
 }
 extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeDrumABReport(JNIEnv* env,jobject){const auto s=g_engine?g_engine->drumABReport():"DRUM_AB engine_absent";return env->NewStringUTF(sanitizeUtf8ForJni(s.c_str()).c_str());}
+
+extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetDrumPunch(JNIEnv*,jobject,jint mode){return g_engine && g_engine->setDrumPunch(mode);}
+extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeDrumPunchReport(JNIEnv* env,jobject){const auto s=g_engine?g_engine->drumPunchReport():"DRUM_PUNCH engine_absent";return env->NewStringUTF(sanitizeUtf8ForJni(s.c_str()).c_str());}

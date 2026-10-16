@@ -30,6 +30,11 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         appliedChannelStates.remove(8);appliedChannelStates.remove(9);lastAppliedSection=""
         true
     }
+    // Diagnostic admission only; clock/scheduler/transport bodies are unchanged.
+    fun setDrumPunch(mode:Int):Boolean = lifecycle {
+        if(playbackJob?.isActive==true || r23LastJob?.isCompleted==false)return@lifecycle false
+        audioEngine.setDrumPunch(mode)
+    }
     private fun applyDrumAB(section:StyleSectionModel,ch:Int,msb:Int?,lsb:Int?,pc:Int,source:String) {
         val kit=DrumKitShadowRuntime.resolveAB(section,ch,msb,lsb,pc,source)?.kit
         // An unresolved request invalidates the prior binding; no implicit Prime fallback.

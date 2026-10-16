@@ -49,8 +49,10 @@ public:
     std::vector<unsigned char> sfDiagnosticKeyboardReleaseWav(int ch,int key,int velocity) { return soundFont_.diagnosticKeyboardReleaseWav(ch,key,velocity); }
     std::string sfKeyboardReleaseProbeReport() const { return soundFont_.keyboardReleaseProbeReport(); }
     std::string drumChannelSelection(int ch)const{return soundFont_.drumChannelSelection(ch);}
-    bool setDrumABMode(bool r){return soundFont_.setDrumABMode(r);}
-    bool bindDrumAB(int ch,const std::string& fp,int bank,int pc,const std::string& section){return soundFont_.bindDrumAB(ch,fp,bank,pc,section);}
+    bool setDrumABMode(bool r){if(!soundFont_.setDrumPunch(0))return false;return soundFont_.setDrumABMode(r);}
+    bool bindDrumAB(int ch,const std::string& fp,int bank,int pc,const std::string& section){const bool ok=soundFont_.bindDrumAB(ch,fp,bank,pc,section);soundFont_.refreshDrumPunch(ch);return ok;}
+    bool setDrumPunch(int m){const bool ok=soundFont_.setDrumPunch(m);if(ok){soundFont_.refreshDrumPunch(8);soundFont_.refreshDrumPunch(9);}return ok;}
+    std::string drumPunchReport()const{return soundFont_.drumPunchReport();}
     std::string drumABReport()const{return soundFont_.drumABReport();}
     std::string sfShadowDrumSnapshot() const { return soundFont_.shadowDrumSnapshot(); }
     std::vector<unsigned char> sfDiagnosticDrumWav(int bank,int pc,int key,int velocity);

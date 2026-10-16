@@ -11,6 +11,7 @@
 #include "measured_balance_profiles.h"
 // HEADROOM_OBSERVER_BEGIN
 #include "pcm_headroom.h"
+#include "drum_punch.h"
 #include "pcm_session.h"
 // HEADROOM_OBSERVER_END
 
@@ -69,6 +70,9 @@ public:
     std::string noteZoneReport() const;
     uint64_t markPcmSession(pcm_session::Controls controls);
     std::string drumChannelSelection(int channel) const; // R22 cached metadata only
+    bool setDrumPunch(int mode);
+    void refreshDrumPunch(int channel);
+    std::string drumPunchReport() const;
     bool setDrumABMode(bool resolved);
     bool bindDrumAB(int channel,const std::string& pdta,int bank,int pc,const std::string& section);
     std::string drumABReport() const;
@@ -291,6 +295,17 @@ private:
     float soundFontVolume_ = 0.90f;
     // R22 observations are never read by selection or rendering.
     struct DrumABBinding { HSOUNDFONT font=0; int rawBank=-1,nativeBank=-1,pc=-1; std::string pdta,section; bool verified=false; };
+    int drumPunchMode_=0;
+    struct PunchLane {HSTREAM stream=0;HSOUNDFONT font=0;int pc=-1;bool ready=false,sounded=false;};
+    std::array<PunchLane,4> punchLanes_{};
+    std::array<std::array<drum_punch::OwnerQueue,128>,2> punchOwners_{};
+    drum_punch::Processor punchProcessor_{};
+    uint64_t punchFailures_=0,punchOns_=0,punchOffs_=0;
+    void clearDrumPunch();
+    void mirrorDrumPunch(int channel,DWORD event,DWORD param);
+    bool punchOn(int channel,int key,int velocity,bool& sent);
+    bool punchOff(int channel,int key);
+    void renderDrumPunch(float* out,int frames);
     bool drumABResolved_=false;
     uint64_t drumABGeneration_=0;
     std::array<DrumABBinding,2> drumABBindings_{};
