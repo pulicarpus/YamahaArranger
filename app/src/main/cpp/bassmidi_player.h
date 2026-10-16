@@ -4,6 +4,7 @@
 #include <array>
 #include <vector>
 #include <memory>
+#include "right_voice_diag.h"
 #include "audio_path_diagnostic.h"
 #include "sf2_pdta_fingerprint.h"
 #include "role_pcm_meter.h"
@@ -62,6 +63,9 @@ public:
     void setMasterGain(float gain);
     std::string presetList() const;
     std::string keyboardVoiceSnapshot() const;
+    // RIGHT A/B diagnostic: read-only backend readback + forwarded-velocity histogram.
+    std::string rightVoiceDiagnostic() const;
+    void resetRightVelocityStats();
     std::vector<unsigned char> diagnosticKeyboardReleaseWav(int channel,int key,int velocity);
     std::string keyboardReleaseProbeReport() const;
     std::string shadowDrumSnapshot() const;
@@ -110,6 +114,7 @@ private:
         bool needsReadback=true, notePresetVerified=false;
     };
     std::array<KeyboardEvidence,4> keyboardEvidence_{};
+    std::array<right_voice_diag::VelocityHist,3> rightForwardedHist_{};
     std::string keyboardReleaseProbeReport_;
     struct ChannelState {
         int bankMsb = 0;

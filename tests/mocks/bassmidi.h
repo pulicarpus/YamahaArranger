@@ -37,6 +37,7 @@ inline bool failRelease=false;
 inline std::vector<std::tuple<HSTREAM,DWORD,DWORD,DWORD>> history;
 inline std::map<std::pair<int,DWORD>,DWORD> events;
 inline std::map<std::tuple<HSOUNDFONT,int,int>,std::string> presets;
+inline std::map<HSOUNDFONT,std::string> fontNames; // INAM read from the file, like BASS_MIDI_FontGetInfo().name
 }
 inline HSTREAM BASS_MIDI_StreamCreate(int, DWORD flags, int) { mock_bass::streamFlags=flags; return mock_bass::nextStream++; }
 inline bool BASS_MIDI_StreamEvent(HSTREAM stream, DWORD chan, DWORD event, DWORD value) {
@@ -60,6 +61,12 @@ inline HSOUNDFONT BASS_MIDI_FontInit(const char* path, DWORD) {
     std::ifstream file(path,std::ios::binary);
     std::vector<unsigned char> data((std::istreambuf_iterator<char>(file)),std::istreambuf_iterator<char>());
     bool foundPhdr=false;
+    for (size_t off=12;off+8<=data.size() && off<4096;++off) // INFO list precedes sdta/pdta
+        if (std::string(reinterpret_cast<const char*>(data.data()+off),4)=="INAM") {
+            const size_t n=size_t(data[off+4])|(size_t(data[off+5])<<8);
+            if (off+8+n<=data.size()) { std::string v(reinterpret_cast<const char*>(data.data()+off+8),n); while(!v.empty()&&v.back()==0)v.pop_back(); mock_bass::fontNames[handle]=v; }
+            break;
+        }
     // Enumerate all phdr records, not only the first preset of a font.
     for (size_t off=12;off+8<=data.size();++off) {
         if (std::string(reinterpret_cast<const char*>(data.data()+off),4)!="phdr") continue;
@@ -88,6 +95,7 @@ inline bool BASS_MIDI_FontSetVolume(HSOUNDFONT, float) { return true; }
 inline bool BASS_MIDI_FontGetInfo(HSOUNDFONT h, BASS_MIDI_FONTINFO* info) {
     if (!mock_bass::fonts.count(h)) return false;
     info->presets = 0;
+    if (mock_bass::fontNames.count(h)) info->name = mock_bass::fontNames[h].c_str();
     for (const auto& entry : mock_bass::presets) if (std::get<0>(entry.first)==h) ++info->presets;
     return true;
 }

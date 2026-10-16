@@ -55,6 +55,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (savedInstanceState == null) { // fresh process/launch: diagnostic test mode never survives a restart
+            com.yourapp.yamahaarranger.audio.RightVelocityTest.reset()
+            com.yourapp.yamahaarranger.audio.RightVelocityMonitor.shared.reset()
+        }
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
@@ -81,6 +85,12 @@ class MainActivity : ComponentActivity() {
                         viewModel = viewModel,
                         onOpenInspector = { showInspector.value = true },
                         onMixerVisibilityChanged = { overlayPageVisible.value = it }
+                    )
+                    RightVoiceDiagOverlay(
+                        viewModel = viewModel,
+                        modifier = androidx.compose.ui.Modifier
+                            .align(androidx.compose.ui.Alignment.BottomStart)
+                            .padding(start = 6.dp, bottom = 6.dp)
                     )
                     if (!overlayPageVisible.value) ChordModeSelector(
                         modifier = androidx.compose.ui.Modifier

@@ -1058,6 +1058,33 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    /** App-side (NOT backend-read) values for one RIGHT layer; the panel labels them as APP STATE. */
+    data class RightDiagApp(
+        val label: String, val enabled: Boolean, val voiceName: String, val soundFontName: String,
+        val bank: Int, val program: Int, val volumeKnob: Int, val expressionSent: Int, val reverb: Int, val chorus: Int
+    )
+    data class RightDiagSnapshot(
+        val backend: List<com.yourapp.yamahaarranger.audio.RightVoiceDiagRow>,
+        val app: List<RightDiagApp>
+    )
+
+    /** Read-only. Backend readback plus app state; never changes voice, SF2 or controllers. */
+    suspend fun rightVoiceDiagSnapshot(): RightDiagSnapshot = withContext(Dispatchers.Default) {
+        val backend = com.yourapp.yamahaarranger.audio.RightVoiceDiagParser.parse(audioEngine.rightVoiceDiagnostic())
+        val details = _keyboardMixerDetails.value
+        val app = _rightVoices.value.filter { it.layer in 0..2 }.map { slot ->
+            RightDiagApp(slot.label, slot.enabled, slot.displayName(), slot.soundFontName, slot.bank, slot.program,
+                keyboardVolume(slot.layer).value, _mixerConsole.value.keyboardGain(slot.layer, keyboardVolume(slot.layer).value),
+                details[slot.layer].reverb, details[slot.layer].chorus)
+        }
+        RightDiagSnapshot(backend, app)
+    }
+
+    fun resetRightDiagStats() {
+        com.yourapp.yamahaarranger.audio.RightVelocityMonitor.shared.reset()
+        viewModelScope.launch(Dispatchers.Default) { audioEngine.resetRightVelocityStats() }
+    }
+
     fun runKeyboardReleaseProbe(part: KeyboardPart, onResult: (ByteArray) -> Unit) {
         viewModelScope.launch(Dispatchers.Default) {
             var wav = byteArrayOf()

@@ -100,6 +100,10 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_Nativ
 extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeKeyboardVoiceSnapshot(JNIEnv* env,jobject){
     return env->NewStringUTF(g_engine?sanitizeUtf8ForJni(g_engine->sfKeyboardVoiceSnapshot().c_str()).c_str():"KEYBOARD VOICE unavailable\n");
 }
+extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeRightVoiceDiagnostic(JNIEnv* env,jobject){
+    return env->NewStringUTF(g_engine?sanitizeUtf8ForJni(g_engine->sfRightVoiceDiagnostic().c_str()).c_str():"");
+}
+extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeResetRightVelocityStats(JNIEnv*,jobject){if(g_engine)g_engine->sfResetRightVelocityStats();}
 extern "C" JNIEXPORT jbyteArray JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeDiagnosticKeyboardReleaseWav(JNIEnv* env,jobject,jint ch,jint key,jint velocity){
     const auto wav=g_engine?g_engine->sfDiagnosticKeyboardReleaseWav(ch,key,velocity):std::vector<unsigned char>{};
     auto result=env->NewByteArray(static_cast<jsize>(wav.size()));

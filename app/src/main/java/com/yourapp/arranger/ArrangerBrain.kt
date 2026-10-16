@@ -1,5 +1,7 @@
 package com.yourapp.yamahaarranger.arranger
 
+import com.yourapp.yamahaarranger.audio.RightVelocityMonitor
+import com.yourapp.yamahaarranger.audio.RightVelocityTest
 import com.yourapp.yamahaarranger.audio.AudioEngineManager
 import com.yourapp.yamahaarranger.chord.ChordDetector
 import com.yourapp.yamahaarranger.chord.ChordQuality
@@ -197,8 +199,10 @@ class ArrangerBrain @Inject constructor(
         for (channel in 0..2) {
             if (!rightVoiceEnabled[channel]) continue
             stopSustainedNote(channel, outputNote)
-            engineNoteOn(channel, outputNote, velocity)
-            midiInputManager.sendNoteOn(channel, outputNote, velocity127)
+            // Diagnostic: monitor the keyboard velocity; the A/B test alters ONLY the internal synth velocity.
+            RightVelocityMonitor.shared.record(channel, velocity127)
+            engineNoteOn(channel, outputNote, RightVelocityTest.internalVelocity(velocity, velocity127))
+            midiInputManager.sendNoteOn(channel, outputNote, RightVelocityTest.midiOutVelocity127(velocity127))
             owners[channel] = outputNote
         }
     }

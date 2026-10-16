@@ -1260,6 +1260,7 @@ void BassMidiPlayer::noteOn(int channel, int key, float velocity, const AudioPat
     if (channel < 4) {
         auto& evidence=keyboardEvidence_[channel];
         ++evidence.ons;evidence.sent+=sent;evidence.key=key;evidence.velocity=vel;
+        if (channel<3 && sent) rightForwardedHist_[channel].add(vel); // histogram of velocity actually sent to BASSMIDI
         if (sent && evidence.needsReadback) {
             evidence.notePresetVerified=BASS_MIDI_StreamGetPreset(stream_,channel,&evidence.actual);
             evidence.release=BASS_MIDI_StreamGetEvent(stream_,channel,MIDI_EVENT_RELEASE);
@@ -2080,6 +2081,100 @@ std::string BassMidiPlayer::keyboardVoiceSnapshot() const {
            <<" noteOns="<<e.ons<<" sent="<<e.sent<<" noteOffs="<<e.offs<<" lastKey="<<e.key<<" lastVelocity="<<e.velocity
            <<" atNoteFont="<<e.actual.font<<" atNoteBank="<<e.actual.bank<<" atNotePC="<<e.actual.preset
            <<" atNoteReadback="<<e.notePresetVerified<<" atNoteRelease="<<e.release<<'\n';
+    }
+    return out.str();
+}
+
+void BassMidiPlayer::resetRightVelocityStats() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    for(auto& h:rightForwardedHist_) h.reset();
+}
+
+// Read-only. Every field is labelled by origin: BASS = read back from the live stream/font handle,
+// FILE = independent parse of the original SF2, APP = state held by the app. Nothing here writes to BASS.
+std::string BassMidiPlayer::rightVoiceDiagnostic() const {
+    struct Row {
+        KeyboardPreset request;BASS_MIDI_FONT live{};bool liveOk=false;
+        bool havePreset=false;BrowserPreset preset{};
+        std::string livePath,liveName,infoName;bool infoOk=false;DWORD infoPresets=0;
+        int cc7=-1,cc11=-1,cc91=-1,cc93=-1,cc71=-1,cc74=-1,release=-1,pan=-1;
+        float fontVolume=-1;uint64_t liveFontId=0;
+        right_voice_diag::VelocityHist fwd;uint64_t noteOns=0;
+        bool tableIntact=false;
+    };
+    std::array<Row,3> rows;float streamVol=-1;bool streamVolOk=false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        const bool tableIntact=publishedFontTableIntact();
+        for(int ch=0;ch<3;++ch) {
+            auto& r=rows[ch];r.request=keyboardPresets_[ch];r.fwd=rightForwardedHist_[ch];
+            r.noteOns=keyboardEvidence_[ch].ons;r.tableIntact=tableIntact;
+            if(const auto* p=keyboardPreset(r.request)) {r.havePreset=true;r.preset=*p;}
+            if(!stream_) continue;
+            r.liveOk=BASS_MIDI_StreamGetPreset(stream_,ch,&r.live);
+            r.cc7=int(BASS_MIDI_StreamGetEvent(stream_,ch,MIDI_EVENT_VOLUME));
+            r.cc11=int(BASS_MIDI_StreamGetEvent(stream_,ch,MIDI_EVENT_EXPRESSION));
+            r.cc91=int(BASS_MIDI_StreamGetEvent(stream_,ch,MIDI_EVENT_REVERB));
+            r.cc93=int(BASS_MIDI_StreamGetEvent(stream_,ch,MIDI_EVENT_CHORUS));
+            r.pan=int(BASS_MIDI_StreamGetEvent(stream_,ch,MIDI_EVENT_PAN));
+            r.release=int(BASS_MIDI_StreamGetEvent(stream_,ch,MIDI_EVENT_RELEASE));
+#ifdef MIDI_EVENT_RESONANCE
+            r.cc71=int(BASS_MIDI_StreamGetEvent(stream_,ch,MIDI_EVENT_RESONANCE));
+#endif
+#ifdef MIDI_EVENT_CUTOFF
+            r.cc74=int(BASS_MIDI_StreamGetEvent(stream_,ch,MIDI_EVENT_CUTOFF));
+#endif
+            if(r.liveOk) {
+                const char* n=BASS_MIDI_FontGetPreset(r.live.font,r.live.preset,r.live.bank);
+                r.liveName=n?n:"";
+                BASS_MIDI_FONTINFO info{};
+                r.infoOk=BASS_MIDI_FontGetInfo(r.live.font,&info);
+                if(r.infoOk) {r.infoName=info.name?info.name:"";r.infoPresets=info.presets;}
+                r.fontVolume=BASS_MIDI_FontGetVolume(r.live.font);
+                if(r.live.font==melodyFont_) {r.livePath=melodyPath_;r.liveFontId=melodyFontId_;}
+                else if(r.live.font==drumFont_) {r.livePath=drumPath_;r.liveFontId=drumFontId_;}
+                for(const auto& s:secondaryMelodies_) if(r.live.font==s.font) {r.livePath=s.path;r.liveFontId=s.fontId;}
+            }
+        }
+        streamVolOk=stream_ && BASS_ChannelGetAttribute(stream_,BASS_ATTRIB_MIDI_VOL,&streamVol);
+    }
+    std::ostringstream out;
+    for(int ch=0;ch<3;++ch) {
+        const auto& r=rows[ch];
+        right_voice_diag::IdentityInputs in;
+        in.requested=r.havePreset;in.liveOk=r.liveOk;in.selectionVerified=r.request.verified;
+        std::string requestedPath,requestedSf2,actualSf2="UNAVAILABLE";
+        if(r.havePreset) {
+            requestedSf2=r.preset.file;
+            in.fontHandleMatches=r.liveOk && r.live.font==r.preset.font;
+            in.triple=r.liveOk && r.live.bank==r.preset.nativeBank && r.live.preset==r.preset.program;
+            in.bassPresetNameMatches=r.liveOk && !r.liveName.empty() && r.liveName==r.preset.name;
+        }
+        if(!r.livePath.empty()) actualSf2=right_voice_diag::baseName(r.livePath);
+        right_voice_diag::Sf2Info file;
+        if(!r.livePath.empty()) file=right_voice_diag::cachedSf2(r.livePath);
+        in.infoOk=r.infoOk;in.fileInfoOk=file.ok;
+        in.inamMatches=file.ok && r.infoOk && file.name==r.infoName;
+        std::string reason;
+        const char* status=right_voice_diag::status(in,reason);
+        if(std::string(status)=="MATCH" && !right_voice_diag::baseName(r.livePath).empty() &&
+           right_voice_diag::baseName(r.livePath)!=requestedSf2) {status="MISMATCH";reason="actual_file_differs_from_requested_file";}
+        out<<"RVD part=RIGHT"<<(ch+1)<<" ch="<<ch
+           <<" reqFontId="<<r.request.fontId<<" reqSf2='"<<requestedSf2<<"' reqLabel="<<(requestedSf2.empty()?"NONE":right_voice_diag::fileLabel(requestedSf2))
+           <<" reqBank="<<r.request.bank<<" reqPC="<<r.request.program<<" reqName='"<<(r.havePreset?r.preset.name:"")<<"'"
+           <<" selVerified="<<r.request.verified
+           <<" liveOk="<<r.liveOk<<" liveFont="<<unsigned(r.live.font)<<" liveBank="<<r.live.bank<<" livePC="<<r.live.preset
+           <<" liveName='"<<r.liveName<<"' actualFontId="<<r.liveFontId<<" actualSf2='"<<actualSf2<<"' actualLabel="
+           <<(r.livePath.empty()?"UNKNOWN":right_voice_diag::fileLabel(r.livePath))
+           <<" bassFontName='"<<r.infoName<<"' bassFontPresets="<<r.infoPresets
+           <<" fileInam='"<<file.name<<"' filePresets="<<file.presets<<" presetCountAgree="<<(file.presets<0?-1:(int(r.infoPresets)==file.presets))
+           <<" tableIntact="<<r.tableIntact
+           <<" status="<<status<<" reason="<<reason
+           <<" cc7="<<r.cc7<<" cc11="<<r.cc11<<" cc91="<<r.cc91<<" cc93="<<r.cc93<<" pan="<<r.pan<<" release="<<r.release
+           <<" cc71="<<r.cc71<<" cc74="<<r.cc74
+           <<" fontVolume="<<r.fontVolume<<" streamMidiVol="<<(streamVolOk?streamVol:-1.0f)
+           <<" noteOns="<<r.noteOns<<" fwdCount="<<r.fwd.count<<" fwdLast="<<r.fwd.last
+           <<" fwdMin="<<r.fwd.minimum()<<" fwdMed="<<r.fwd.median()<<" fwdMax="<<r.fwd.maximum()<<'\n';
     }
     return out.str();
 }

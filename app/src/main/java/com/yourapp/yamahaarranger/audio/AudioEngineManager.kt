@@ -464,6 +464,10 @@ class AudioEngineManager @Inject constructor(
 
     fun keyboardVoiceSnapshot(): String = bridge.nativeKeyboardVoiceSnapshot()
 
+    /** Read-only RIGHT diagnostic (backend readback + forwarded velocity histogram). */
+    fun rightVoiceDiagnostic(): String = bridge.nativeRightVoiceDiagnostic()
+    fun resetRightVelocityStats() = bridge.nativeResetRightVelocityStats()
+
     fun diagnosticKeyboardRelease(part: KeyboardPart, allowed: () -> Boolean): KeyboardReleaseProbe =
         runBlocking { readiness.operations.withLock {
             if (part == KeyboardPart.LEFT || !allowed()) return@withLock KeyboardReleaseProbe(
