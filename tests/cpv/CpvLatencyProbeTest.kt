@@ -8,8 +8,8 @@ import org.junit.Before
 import org.junit.Test
 
 class CpvLatencyProbeTest {
-    @Before fun clean() { LatencyProbe.enabled = true; LatencyProbe.reset() }
-    @After fun restore() { LatencyProbe.enabled = true }
+    @Before fun clean() { LatencyProbe.enabled = true; LatencyProbe.tuning = LatencyProbe.TUNE_ALL; LatencyProbe.cpuClock = { 0L }; LatencyProbe.threadPriority = null; LatencyProbe.reset() }
+    @After fun restore() { LatencyProbe.enabled = true; LatencyProbe.tuning = LatencyProbe.TUNE_ALL; LatencyProbe.cpuClock = { 0L }; LatencyProbe.threadPriority = null }
 
     @Test fun statBucketsPercentilesAndMax() {
         val s = LatencyProbe.Stat("t")
@@ -98,8 +98,62 @@ class CpvLatencyProbeTest {
         LatencyProbe.enabled = true
         val text = LatencyProbe.report()
         assertTrue(text.contains("dispatch_is_not_audible_time=1"))
-        assertTrue(text.lines().count { it.startsWith("LATENCY_KOTLIN stat=") } == 16)
+        assertTrue(text.lines().count { it.startsWith("LATENCY_KOTLIN stat=") } == 24)
+        assertTrue(text.contains("LATENCY_TUNING kotlin="))
         LatencyProbe.reset()
         assertEquals(0, LatencyProbe.sectionApply.count())
+    }
+
+    @Test fun schedulerLatenessSeparatesSteadyFromPostSectionEvents() {
+        val now = System.nanoTime()
+        LatencyProbe.schedulerWake(now, now - 3_000_000L)                       // no section applied yet: steady
+        assertEquals(1, LatencyProbe.schedulerWakeSteady.count()); assertEquals(0, LatencyProbe.schedulerWakePostSection.count())
+        LatencyProbe.voiceApplyStart(); LatencyProbe.voiceApplyEnd()
+        LatencyProbe.schedulerWake(System.nanoTime(), System.nanoTime() - 50_000_000L)   // just after the apply
+        assertEquals(1, LatencyProbe.schedulerWakePostSection.count())
+        assertEquals(2, LatencyProbe.schedulerWakeLateness.count())             // the combined stat keeps both
+        LatencyProbe.schedulerWake(now, now + 1_000_000L)                       // early events are not lateness
+        assertEquals(2, LatencyProbe.schedulerWakeLateness.count())
+    }
+
+    @Test fun cpuTimeIsRecordedOnlyWhenAvailableAndExposesBlockedTime() {
+        var cpu = 0L
+        LatencyProbe.cpuClock = { cpu }
+        cpu = 10_000_000L
+        LatencyProbe.onSendEnter(0L); LatencyProbe.noteOnParsed()
+        cpu = 10_400_000L                                                       // 0.4 ms of CPU while wall time was longer
+        Thread.sleep(3)
+        LatencyProbe.rightHandedOff()
+        assertEquals(1, LatencyProbe.rightHandoffCpu.count()); assertEquals(400, LatencyProbe.rightHandoffCpu.maxUs())
+        assertTrue(LatencyProbe.rightIngressToHandoff.maxUs() >= 3000)          // wall >> cpu = blocked or preempted
+        LatencyProbe.cpuClock = { 0L }                                          // unavailable: nothing is recorded
+        LatencyProbe.onSendEnter(0L); LatencyProbe.noteOnParsed(); LatencyProbe.rightHandedOff()
+        assertEquals(1, LatencyProbe.rightHandoffCpu.count())
+        assertTrue(LatencyProbe.report().contains("cpuClock=unavailable"))
+    }
+
+    @Test fun midiThreadPriorityFollowsTheTuningBitAndIsAppliedOncePerThread() {
+        val calls = ArrayList<Boolean>()
+        LatencyProbe.threadPriority = { calls.add(it) }
+        LatencyProbe.onSendEnter(0L); LatencyProbe.onSendEnter(0L)
+        assertEquals(listOf(true), calls)                                       // boosted once, not per message
+        LatencyProbe.tuning = LatencyProbe.TUNE_ALL and LatencyProbe.TUNE_MIDI_THREAD_PRIORITY.inv()
+        LatencyProbe.onSendEnter(0L); LatencyProbe.onSendEnter(0L)
+        assertEquals(listOf(true, false), calls)                                // restored for the A run
+        LatencyProbe.threadPriority = { throw SecurityException("denied") }
+        LatencyProbe.tuning = LatencyProbe.TUNE_ALL
+        LatencyProbe.onSendEnter(0L)                                            // a refused boost must not break MIDI input
+    }
+
+    @Test fun lifecycleMonitorWaitAndHoldAreSeparate() {
+        val requested = LatencyProbe.stamp(); Thread.sleep(1)
+        val acquired = LatencyProbe.stamp(); Thread.sleep(2)
+        LatencyProbe.lifecycleDone(requested, acquired)
+        assertEquals(1, LatencyProbe.lifecycleWait.count()); assertEquals(1, LatencyProbe.lifecycleHold.count())
+        assertTrue(LatencyProbe.lifecycleWait.maxUs() >= 1000 && LatencyProbe.lifecycleHold.maxUs() >= 2000)
+        LatencyProbe.enabled = false
+        assertEquals(0L, LatencyProbe.stamp())                                   // disabled: no clock read, nothing recorded
+        LatencyProbe.lifecycleDone(0L, 0L)
+        assertEquals(1, LatencyProbe.lifecycleWait.count())
     }
 }

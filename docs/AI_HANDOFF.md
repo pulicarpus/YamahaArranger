@@ -3,91 +3,86 @@
 Branch kerja: `experiment/colombo-primary-voice-override`. Baseline stabil: R2-3 `c75732f28fec58fbfbc7e626bc380b10a00722b8`
 (R2-4 Drum Punch **tidak** dipakai). Jangan merge ke `main`, jangan buat PR tanpa persetujuan pemilik.
 
-Label bukti: **[T]** terbukti (kode, `git diff`, laporan perangkat), **[K]** indikasi kuat, **[?]** belum diketahui.
+Label bukti: **[T]** terbukti (kode, `git diff`, laporan perangkat, tes), **[K]** indikasi kuat, **[?]** belum diketahui.
 
 ## Aturan yang harus dipertahankan
-- CASM, algoritma chord, dan aturan transisi Main/Fill **tidak boleh diubah** sebelum penyebab latensi terbukti dengan pengukuran.
+- CASM, algoritma chord, aturan transisi Main/Fill, dan jeda chord 15 ms **tidak diubah** sebelum dampaknya terbukti.
 - LIVE CONTROL, REG MEMORY (schema 2), RELEASE, RIGHT OFF, MIDI OUT PSR-E343 (tanpa Bank/PC otomatis), Voice Inspector, dan
   override Mixer per style harus tetap berfungsi.
 - Tidak ada limiter, normalisasi, atau perubahan gain tanpa persetujuan.
 - Prime Melodi/Drum tidak dimuat otomatis. Colombo = SF2 utama, Tyros 4 = fallback.
+- Oboe sudah memakai backend AAudio; jangan diganti.
+- **Jangan menyatakan latensi membaik sebelum pengujian perangkat A/B membuktikannya.**
 
-## Status fitur CPV (kode lokal lulus tes host; belum diuji di perangkat)
-- P0–P5 selesai: Style Voice Inspector, Colombo utama/Tyros fallback, override manual per style (disimpan per hash isi style,
-  schema 1, siap per-section), drum lewat resolver R2-3 (RESOLVED selalu aktif).
-- Build APK dijalankan oleh CI `cpv-colombo-primary.yml`. Kode Compose belum pernah dikompilasi di lingkungan lokal (tanpa Android SDK).
+## Riwayat commit (branch ini)
+| Commit | Isi |
+|---|---|
+| `690e578` | P0–P1: workflow CI, Style Voice Inspector |
+| `6d48ae4` | P2–P5: Colombo utama/Tyros fallback, override Mixer per style |
+| `88c3dd2` | probe latensi (observer saja) + investigasi awal |
+| lihat `git log` | patch latensi bertahap + probe lebih rinci + saklar A/B (dijelaskan di bawah) |
 
-## Investigasi latensi (gejala dari Redmi Pad + E343)
-Gejala nyata: RIGHT1/2/3 lewat audio internal terlambat (termasuk Piano); suara langsung E343 normal; style terasa tertahan saat
-pindah Main; respons chord ACMP terlambat. SF2 terbaca benar.
+## Hasil perangkat Redmi Pad + E343, build `88c3dd2` (baseline A/B)
+File asli: `YamahaArranger_Inspector_20261016_194230.txt` (SHA-256 `8906f0cc…16efb1d5`). Angka di-parse ke
+`docs/cpv/baseline/latency_88c3dd2_redmi_pad_20261016_194230.json`; fixture ringkas `tests/fixtures/cpv/latency_device_88c3dd2.txt`;
+perbandingan: `python3 tools/compare_latency.py compare A B`.
 
-### Fakta terverifikasi
-1. **[T] Callback audio = 256 frame (5,33 ms @48 kHz).** Dari laporan perangkat `Inspector_230525`/`230632`:
-   `frames/callbacks` = 3.646.464/14.244 = 6.858.240/26.790 = 256. Oboe diminta LowLatency+Exclusive, buffer = 2×burst
-   (`audio_engine.cpp:49-94`), dengan fallback Shared/None bila ditolak. **Mode yang benar-benar dipakai perangkat belum
-   diketahui** (log "Stream opened" tidak ada di laporan) → diukur oleh `LATENCY_OUTPUT`.
-2. **[T] Satu mutex (`BassMidiPlayer::mutex_`) dipakai bersama** oleh `render()` (ditahan selama seluruh `BASS_ChannelGetData`),
-   `noteOn/noteOff`, `setChannelPreset` (+`findMelodicPreset`, `applyFonts`/`BASS_MIDI_StreamSetFonts`, preload, log),
-   `setChannelMixer`, `bindDrumAB`, `pinChannelPreset`, `channelBinding`, `presetList`. Callback audio memakai `lock_guard`
-   biasa; panggilan berat di thread lain bisa memblok callback (underrun) dan NOTE_ON.
-3. **[T] Jalur RIGHT tidak berubah antara R2-3 dan CPV.** `git diff c75732f HEAD` tidak punya hunk di `MidiInputManager`,
-   `ArrangerBrain.onKeyboardNoteOn/startRightNote`, `AudioEngineManager.noteOn/noteOnChannel`, maupun `BassMidiPlayer::noteOn/render`
-   (sebelum probe ditambahkan). CPV tidak menambah pekerjaan per-nada.
-4. **[T] Jalur RIGHT berjalan di thread MIDI Android** (bukan main), tanpa hop dispatcher. Per nada dengan 3 layer: 3 kali
-   ambil `mutex_` native berurutan, ±6 panggilan `DebugLog.add` (format tanggal + monitor), alokasi kecil
-   (`mutableMapOf`, `Pair`, `String.format`). Tidak ada `runBlocking`. Pembacaan `BASS_MIDI_StreamGetPreset` hanya sekali per preset.
-5. **[T] ACMP**: `chordSettleMs = 15` (`ArrangerBrain.kt:89`) lalu `applyChordNow` di **thread Main** (`viewModelScope`).
-   `handleChordChange` me-retarget not yang sedang berbunyi secara sinkron (monitor `lifecycle` + `mutex_` per not).
-   Tidak berubah di CPV.
-6. **[T] Section**: perpindahan dikuantisasi ke **bar berikutnya** (bukan beat) — ini dirancang. Setelah boundary, sebelum note
-   pertama section baru, thread sequencer menjalankan berurutan: release note lama, `applyVoicesFromCasm` (JNI+log per kanal),
-   lalu merge/sort event section. `applyVoicesFromCasm` hanya jalan bila **nama** section berubah.
-7. **[T] Perbedaan CPV vs R2-3 yang menyentuh transisi:** drum RESOLVED sekarang selalu aktif. Di R2-3 default LEGACY, jalur drum
-   tidak memanggil `applyFonts` (`if (!state.drum && !applyFonts())`). Di CPV, `applyDrumAB` → `bindDrumAB` → `applyFonts`
-   (+ ±K+4 baris `uiLog` lewat JNI → `DebugLog`) berjalan untuk ch8 dan ch9 pada setiap pergantian nama section, di dalam
-   `mutex_`. Ini satu-satunya penambahan CPV di jalur section-start.
-8. **[T] Bukti lama (F12, Build #811/#813, LoveSong, sebelum CPV):** keterlambatan event style 77–100 ms pada transisi Main,
-   dispatch maksimum 61,7 ms, tunggu `lifecycle` 24,3 ms, jeda callback 40,3 ms; **akar masalah saat itu "UNKNOWN"**
-   (`docs/F12_LATENCY_DIAGNOSTIC.md`). Jadi gejala section/chord sudah ada sebelum CPV dan **bukan semata regresi CPV**.
-9. **[T] `uiLog` native** (`vsnprintf` + logcat + `NewStringUTF` + `DebugLog.add`) dipanggil dalam `mutex_` pada
-   `setChannelPreset`/`applyFonts` (±25–35 baris per kanal berubah). Biaya per baris tidak terukur di kode.
-
-### Hipotesis (belum terbukti — diukur oleh probe)
-| # | Hipotesis | Diukur oleh |
+| Area | Hasil | Arti |
 |---|---|---|
-| H1 | Stream Oboe jatuh ke Shared/None atau latensi output Android besar | `LATENCY_OUTPUT`: `fallbackToShared`, `perf`, `estimatedOutputLatencyMs`, `xruns` |
-| H2 | Render mendekati anggaran 5,33 ms (Colombo, 1000 voice, SRC 8-point, meter PCM debug, native debug) | `callbackTotal` p99, `overBudget`, `over80pct`, `renderDecode` |
-| H3 | `mutex_` ditahan lama saat section-start (apply voice, drum RESOLVED) | `renderLockWait` max, `keyboardNoteLockWait` max pada waktu transisi |
-| H4 | Biaya `DebugLog` per nada/section di thread MIDI/sequencer | `midiOnSendTotal`, `rightNoteOnSend…`, `sectionVoiceApplyDuration` |
-| H5 | Sampel Colombo belum termuat saat nada pertama (preload NOWAIT) | outlier `keyboardNoteQueuedToBufferReady` pada nada pertama |
-| H6 | ACMP: 15 ms + hop Main + retarget; detektor chord tidak membersihkan `heldNotes` saat release sehingga chord baru bisa tertunda | `chordLastNoteToApplyChordNow`, `chordApplyDuration…` |
-| H7 | APK debug membangun native tanpa optimasi dan dengan meter PCM | log build CI (`CMAKE_BUILD_TYPE`), perbandingan `renderDecode` |
+| Stream Oboe | AAudio, **Shared + LowLatency**, burst 256, buffer 512 (10,67 ms), estimasi output **18,82 ms**, XRUN 13 | [T] lantai latensi output ±19 ms (estimasi Oboe, bukan ukur akustik); tidak jatuh ke mode None |
+| Callback | 25.894 callback, `renderDecode` rata-rata 1,31 ms (maks 7,76 ms), **116 over-budget** (anggaran 5,33 ms), `renderLockWait` maks **16,99 ms**, `callbackTotal` maks 17,61 ms | [T] decode sendiri hampir selalu dalam anggaran; callback yang lewat anggaran bertepatan dengan menunggu `mutex_` [K] |
+| RIGHT | USB→`onSend` rata-rata 1,03 ms (maks 11,9); onSend→semua layer ke native rata-rata **4,46 ms** (maks 16,0); lock native 0,40 ms; NOTE_ON→render 2,40 ms; →buffer siap 4,26 ms (maks 6,63) | [T] ±1 ms JNI per tekan; **±3,4 ms per tekan hilang di Kotlin/penjadwalan thread MIDI** (penyebab [?]) |
+| Section | boundary→apply 16 ms (maks 45,7); **apply voice 35,9 ms (maks 68,9)**; apply→nada pertama 6,2 ms; boundary→nada pertama **50,1 ms (maks 82,4)**; keterlambatan nada pertama 60,4 ms | [T] ±58 ms antara bar-boundary dan nada pertama section baru |
+| Kuantisasi | permintaan tombol→boundary rata-rata 1,63 s (maks 2,75 s) | [T] **disengaja** (bar berikutnya); tidak dihitung sebagai keterlambatan |
+| ACMP | nada terakhir→apply 25,8 ms (maks 44,2); retarget 32,0 ms (maks 65,4); total **57,8 ms (maks 92,8)** | [T] 15 ms settle + ±11 ms hop Main + ±32 ms retarget |
+| Scheduler | wake lateness: 41 % kejadian ≥16 ms, **24,5 % ≥64 ms**, maks **316 ms**; setelah lifecycle 8 % ≥64 ms | [T] thread sequencer sering tertinggal jadwal; penyebab per-fase [?] (lihat probe baru) |
 
-## Instrumentasi yang ditambahkan (observer saja, perilaku tidak berubah)
-- Native `latency_probe.h`: atomik relaxed + `steady_clock`, tanpa log/alokasi/lock/JNI di jalur realtime.
-  Hook di `BassMidiPlayer::noteOn` (tunggu lock, dispatch), `render` (tunggu lock, decode, pasangan nada→render), dan callback Oboe
-  (durasi total, anggaran, over-budget). `AudioEngine::latencyReport()` menambah deskripsi stream (sharing, perf, API, burst, buffer),
-  `getXRunCount`, dan `calculateLatencyMillis` (estimasi) — dipanggil di luar callback.
-- Kotlin `LatencyProbe` (di `PcmSessionControls.kt`): ingress USB, thread MIDI, lock keyboard, JNI, section (permintaan→boundary→apply
-  →note pertama), scheduler, ACMP. Jam `System.nanoTime()` = `CLOCK_MONOTONIC` = jam native.
-- Inspector: tombol **RESET LATENCY**; blok `=== LATENCY PROBE ===` di SAVE REPORT.
-- Uji: `tests/cpv/CpvLatencyProbeTest.kt` (JVM) dan bagian 7 di `tests/cpv_native_test.cpp` (pasangan nada→render, parity MIDI
-  probe ON/OFF, kontrak anggaran). Protokol perangkat: `docs/cpv/LATENCY_TEST.md`.
-- Overhead di host x86: ±29 ns per `now()`, ±16 ns per `record`, ±0,19 µs per siklus note+render+callback. **Belum diukur di ARM.**
+### Arti `keyNotesOverwrittenBeforeRender = 212` [T]
+Bukan NOTE_ON hilang. Probe lama hanya memasangkan **satu** NOTE_ON per render pass; NOTE_ON lain yang masuk antrian BASSMIDI sebelum
+render berikutnya (layer ke-2/3 dari satu tekan, nada chord bersamaan) tidak dipasangkan dan dihitung sebagai "overwritten".
+Bukti tidak ada yang hilang: `JNI Kotlin = lock native = dispatch native = 426`, dan `214 dipasangkan + 212 = 426`. Dispatch hanya dihitung
+setelah `BASS_MIDI_StreamEvent` sukses. Counter sudah diganti (`keyNotesQueued`, `renderWindowsWithKeyNotes`,
+`maxKeyNotesInOneRenderWindow`, `pairingOverflow`) dan **setiap** NOTE_ON dipasangkan.
 
-## Rencana perbaikan (belum dikerjakan; urutan menurut bukti yang akan datang)
-Jangan menerapkan butir apa pun sebelum data perangkat mendukungnya.
-1. **Bila H1:** konfigurasi stream — mencoba LowLatency tanpa Exclusive, tidak memaksa 48 kHz bila perangkat asli berbeda
-   (buat BASS di laju perangkat), `Usage::Game`, penyetelan buffer berbasis `xruns`.
-2. **Bila H2:** kurangi beban render — turunkan voice maksimum, kualitas SRC untuk keyboard live, matikan meter PCM dan
-   metering per-sampel di build uji latensi, build native dengan optimasi.
-3. **Bila H3:** satu `applyFonts` per section (bukan per kanal), lewati `applyDrumAB` bila binding drum tidak berubah,
-   hapus `uiLog` dari dalam `mutex_` (antrian log asinkron), siapkan voice section berikutnya sebelum boundary bila targetnya diketahui.
-4. **Bila H4:** ganti `DebugLog.add` per nada di thread MIDI dengan ring tanpa lock; salin buffer ekspor di luar monitor.
-5. **Bila H6:** ukur dulu; baru pertimbangkan memindahkan `applyChordNow` dari Main dan mengevaluasi settle 15 ms. Algoritma chord tidak diubah.
-6. **Perbandingan dengan R2-3:** probe yang sama perlu dipasang di cabang berbasis R2-3 (hanya instrumentasi) agar A/B di perangkat
-   memakai alat ukur yang sama. Belum dibuat karena butuh branch baru.
+## Akar masalah yang terbukti vs dugaan
+1. **[T] Section tertahan ±58 ms** berasal dari kerja sinkron di thread sequencer antara boundary dan nada pertama: release nada lama
+   (16 ms), `applyVoicesFromCasm` (36 ms), merge/sort event (6 ms). Kuantisasi 1,6 s adalah desain.
+2. **[T dari kode] Satu penyumbang apply voice yang berulang:** drum RESOLVED selalu aktif, sehingga setiap pergantian nama section
+   memanggil `bindDrumAB` → `applyFonts` untuk ch8 dan ch9 meskipun kit tidak berubah. Di R2-3 (LEGACY) jalur drum tidak memanggil
+   `applyFonts`. Pembagian biaya apply (drum vs melodik vs log) **belum terukur** → probe baru.
+3. **[K] Callback melewati anggaran karena rebutan `mutex_`**, bukan karena decode: `renderLockWait` maks 17,0 ms ≈ `callbackTotal` maks 17,6 ms.
+4. **[T] Latensi output ±19 ms (estimasi)** + antrian BASSMIDI 2–4 ms ⇒ RIGHT terdengar ±23–29 ms setelah USB tiba pada kondisi rata-rata
+   [estimasi, bukan ukur akustik]. Ini batas bawah arsitektur saat ini; tidak ada bukti stream salah konfigurasi.
+5. **[?] RIGHT 4,46 ms di Kotlin:** belum diketahui apakah CPU (kode) atau menunggu/dijadwalkan ulang → probe CPU thread vs waktu dinding.
+6. **[?] Penyebab 24,5 % kejadian style ≥64 ms:** burst nada pada tick yang sama (tiap nada ±0,6 ms tunggu lock + JNI + log), pasca-transisi,
+   atau stall lain → probe `wake lateness` dipisah menjadi `steadyState` vs `within500msOfSectionStart`, plus `styleLifecycleMonitorWait/Hold`.
+7. **[T dari kode] ACMP:** `handleChordChange` me-retarget not satu per satu: tiap not = noteOff + noteOn JNI, masing-masing menunggu
+   `mutex_` (rata-rata lock style 0,63 ms). Itu cocok dengan 32 ms retarget [K]. Penyelesaian penuh (batch di bawah satu lock atau antrian
+   perintah tanpa blok) adalah perubahan besar → **belum dikerjakan**, butuh data A/B dulu.
 
-## Hasil uji lokal (host)
-Lihat pesan commit terakhir. Native, JVM (97 tes), Policy C, ROSITA, LIVE/REG lulus lokal; build Android dan semua klaim audio/latensi
-**belum diverifikasi** sampai CI dan perangkat.
+## Perubahan kode pada iterasi ini (semua dapat dimatikan saat runtime untuk A/B)
+Saklar di Inspector (baris **LATENCY TUNING**; `A: ALL OFF` = perilaku `88c3dd2`, `B: ALL ON` = semua patch). Default aplikasi: ON.
+Native default 0 (perilaku lama) agar kontrak historis tetap valid; aplikasi menyalakannya saat memasang stack Colombo.
+
+| Bit | Patch | Alasan berbasis bukti | Risiko / batas |
+|---|---|---|---|
+| 1 `DRUM_REBIND_SKIP` | `bindDrumAB` untuk kit yang sama dan sudah terverifikasi hanya diverifikasi ulang dengan readback independen; tanpa `applyFonts`, 4 event MIDI, preload | apply voice 36 ms; bind ch8+ch9 berulang tiap section (kode) | readback tidak cocok ⇒ jalur penuh seperti semula; kit berbeda ⇒ jalur penuh |
+| 2 `FONTS_NOOP_SKIP` | `applyFonts` tidak mengirim ulang tabel FONTEX2 yang identik dan menunda ±15 baris log (kirim hanya bila tabel berubah) | rebutan `mutex_` saat apply; log `uiLog` JNI di dalam mutex | tabel selalu dikirim setelah font dimuat/dibebaskan/gagal (`fontTableDirty_`). **Perbedaan perilaku:** pada tabel identik, kegagalan pengiriman tidak lagi mungkin, jadi channel tidak ditandai fail-closed (kontrak `accompaniment_presence_test` berlaku untuk saklar OFF) |
+| 4 `CHORD_OFF_MAIN` | tunggu 15 ms + penerapan chord berjalan di `Dispatchers.Default` bukan thread Main (settle 15 ms **tidak diubah**) | `chordLastNoteToApplyChordNow` 25,8 ms ≫ 15 ms | state chord kini `@Volatile`; chord yang datang di dalam settle tetap membatalkan yang lama (diuji) |
+| 8 `MIDI_THREAD_PRIORITY` | thread dispatch MIDI dinaikkan ke `URGENT_AUDIO` sekali (OFF mengembalikan ke default) | handoff RIGHT 3,4 ms tak terjelaskan CPU | percobaan; bila ditolak Android, input MIDI tetap jalan |
+
+Probe baru (observer saja): pemasangan semua NOTE_ON keyboard ke render; waktu `setChannelPreset`, `findMelodicPreset`, `applyFonts` (saat dikirim),
+`BASS_MIDI_StreamSetFonts`, `bindDrumAB` penuh, panggilan `uiLog`; hitungan `applyFontsSkipped`, `drumBindSkipped/Full`; CPU thread vs waktu dinding
+untuk handoff RIGHT, apply voice, retarget chord; biaya satu `DebugLog.add`; tunggu dan tahan monitor `lifecycle` sequencer; pemisahan wake lateness.
+`tools/compare_latency.py` membandingkan dua laporan.
+
+## Belum dikerjakan (butuh data A/B atau keputusan)
+- Satu `applyFonts` untuk seluruh channel per section (batch) dan memoisasi `findMelodicPreset` (900 kandidat disalin per panggilan).
+- Antrian perintah MIDI native tanpa blok (NOTE_ON tidak menunggu `render()`); batch noteOff/noteOn untuk retarget chord.
+- Memindahkan apply voice sebelum boundary; mengurangi release nada lama; `DebugLog` lazy-format.
+- Build native debug memakai `YAMAHA_ROLE_PCM_METERS` dan `YAMAHA_PCM_HEADROOM`; belum diukur seberapa besar menambah `renderDecode`.
+- Evaluasi jeda chord 15 ms (jangan dihapus tanpa pengujian deteksi chord dan stabilitas ACMP).
+
+## Hasil uji lokal (host; bukan perangkat)
+Lihat bagian "Hasil tes" di pesan commit terakhir. Build Android, semua klaim audio, dan semua klaim latensi **belum diverifikasi** sampai
+CI dan uji perangkat A/B (`docs/cpv/LATENCY_TEST.md`).

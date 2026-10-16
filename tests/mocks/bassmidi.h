@@ -22,7 +22,7 @@ namespace mock_bass {
 inline std::map<HSOUNDFONT, std::string> fonts;
 inline std::vector<BASS_MIDI_FONTEX2> mappings;
 inline HSOUNDFONT nextFont=100, preloadedFont=0;
-inline int preloadProgram=-1, preloadBank=-1, noteOns=0;
+inline int preloadProgram=-1, preloadBank=-1, noteOns=0, setFontsCalls=0;
 inline DWORD preloadFlags=0, streamFlags=0;
 inline HSTREAM nextStream=1;
 inline std::map<HSTREAM,std::vector<BASS_MIDI_FONTEX2>> otherMappings;
@@ -132,6 +132,7 @@ inline bool BASS_MIDI_FontLoadEx(HSOUNDFONT h, int pc, int bank, int, DWORD flag
     return !mock_bass::failPreload;
 }
 inline bool BASS_MIDI_StreamSetFonts(HSTREAM stream, const BASS_MIDI_FONTEX2* maps, DWORD count) {
+    if(stream==1)++mock_bass::setFontsCalls;
     if(stream!=1 && mock_bass::failAuxMapping)return false;
     if (mock_bass::failMapping || !(count & BASS_MIDI_FONT_EX2)) {
         if (mock_bass::dropMappingsOnFailure) mock_bass::mappings.clear();

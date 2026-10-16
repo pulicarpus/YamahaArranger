@@ -36,6 +36,8 @@ extern jclass g_debugLogClass;
 extern jmethodID g_debugLogAddMethod;
 
 static void uiLog(const char* fmt, ...) {
+    const uint64_t probeStart = latency_probe::probe.on() ? latency_probe::now() : 0; // LATENCY_PROBE
+    struct LogProbe { uint64_t t; ~LogProbe() { if (t) latency_probe::probe.uiLogCall.record(latency_probe::now() - t); } } logProbe{probeStart};
     char buf[1024];
     va_list args;
     va_start(args, fmt);
@@ -143,6 +145,16 @@ bool BassMidiPlayer::ensureEngine() {
 
 bool BassMidiPlayer::applyFonts() {
     if (!stream_) return false;
+    const uint64_t probeStart = latency_probe::probe.on() ? latency_probe::now() : 0; // LATENCY_PROBE
+    latency_probe::probe.applyFontsCalls.fetch_add(1, std::memory_order_relaxed);
+    // Logs are collected while the table is built and only emitted when it is actually submitted;
+    // every one of them is a JNI call into DebugLog and this runs under mutex_.
+    std::vector<std::string> deferredLogs;
+    auto defer = [&](const char* fmt, auto... args) {
+        char line[512];
+        std::snprintf(line, sizeof(line), fmt, args...);
+        deferredLogs.emplace_back(line);
+    };
 
     // MIDI Voyager supports multiple soundfonts and bank-aware preset
     // selection. Use the newer FONTEX2 form so the same SF2 can expose all
@@ -230,7 +242,7 @@ bool BassMidiPlayer::applyFonts() {
 
             const int virtualBank = toVirtualBank(*maps, state.melodySourceBank);
             if (virtualBank < 0) {
-                LOGI("VOICE MAP skipped ch=%d role=%s rawSourceBank=%d sourceProg=%d",
+                defer("VOICE MAP skipped ch=%d role=%s rawSourceBank=%d sourceProg=%d",
                      ch, role, state.melodySourceBank, state.melodySourceProgram);
                 validMelodicMappings = false;
                 continue;
@@ -247,7 +259,7 @@ bool BassMidiPlayer::applyFonts() {
             selected.numchan = 1;
             cfg.push_back(selected);
 
-            LOGI("VOICE MAP ch=%d role=%s srcBank=%d srcProg=%d srcName='%s' -> dstBank=%d:%d dstProg=%d",
+            defer("VOICE MAP ch=%d role=%s srcBank=%d srcProg=%d srcName='%s' -> dstBank=%d:%d dstProg=%d",
                  ch, role, state.melodySourceBank, state.melodySourceProgram,
                  state.melodySourceName.c_str(), state.bankMsb, state.bankLsb, state.program);
         }
@@ -299,7 +311,7 @@ bool BassMidiPlayer::applyFonts() {
             melodyB.numchan = 6;
             cfg.push_back(melodyB);
         }
-        LOGI("BASSMIDI normalized melody FONTEX2 mappings=%u",
+        defer("BASSMIDI normalized melody FONTEX2 mappings=%u",
              static_cast<unsigned>(normalizedBanks_.size()));
     }
 
@@ -321,7 +333,7 @@ bool BassMidiPlayer::applyFonts() {
             fallbackB.numchan = 6;
             cfg.push_back(fallbackB);
         }
-        LOGI("BASSMIDI secondary FONTEX2 sf2='%s' mappings=%u",
+        defer("BASSMIDI secondary FONTEX2 sf2='%s' mappings=%u",
              secondary.path.c_str(), static_cast<unsigned>(secondary.banks.size()));
     }
 
@@ -335,13 +347,28 @@ bool BassMidiPlayer::applyFonts() {
     // (1026), etc. fall back to the virtual source bank number instead of
     // the intended Yamaha destination bank.
     const DWORD flags = count | BASS_MIDI_FONT_EX2;
-    if (!BASS_MIDI_StreamSetFonts(stream_, cfg.data(), flags)) {
+    // LATENCY tuning: an identical table needs no BASSMIDI call. Never skip after a font was loaded,
+    // freed or a submission failed (fontTableDirty_): a re-used font handle could hide a changed font.
+    if (latency_probe::probe.tuned(latency_probe::kFontsNoopSkip) && !fontTableDirty_ &&
+        sameFontTable(cfg, publishedFontMaps_)) {
+        latency_probe::probe.applyFontsSkipped.fetch_add(1, std::memory_order_relaxed);
+        if (melodyFont_) BASS_MIDI_FontSetVolume(melodyFont_, soundFontVolume_);
+        if (drumFont_) BASS_MIDI_FontSetVolume(drumFont_, soundFontVolume_);
+        return true;
+    }
+    const uint64_t submitStart = probeStart ? latency_probe::now() : 0; // LATENCY_PROBE
+    const bool submitted = BASS_MIDI_StreamSetFonts(stream_, cfg.data(), flags);
+    if (submitStart) latency_probe::probe.streamSetFonts.record(latency_probe::now() - submitStart);
+    if (!submitted) {
+        fontTableDirty_ = true;
         LOGE("StreamSetFonts(FONTEX2) failed flags=%u error=%d",
              static_cast<unsigned>(flags), BASS_ErrorGetCode());
         return false;
     }
+    fontTableDirty_ = false;
     publishedFontMaps_ = cfg;
     ++fontMappingGeneration_;
+    for (const auto& line : deferredLogs) LOGI("%s", line.c_str());
     LOGI("BASSMIDI FONTEX2 applied: entries=%u flags=%u",
          static_cast<unsigned>(count), static_cast<unsigned>(flags));
 
@@ -355,6 +382,17 @@ bool BassMidiPlayer::applyFonts() {
     LOGI("BASSMIDI fonts applied: FONTEX2 entries=%u melody=%d drum=%d volume=%.2f",
          static_cast<unsigned>(count), melodyFont_ != 0, drumFont_ != 0,
          soundFontVolume_);
+    if (probeStart) latency_probe::probe.applyFontsTotal.record(latency_probe::now() - probeStart);
+    return true;
+}
+
+bool BassMidiPlayer::sameFontTable(const std::vector<BASS_MIDI_FONTEX2>& a, const std::vector<BASS_MIDI_FONTEX2>& b) {
+    if (a.size() != b.size()) return false;
+    for (size_t i = 0; i < a.size(); ++i) {
+        const auto& x = a[i]; const auto& y = b[i];
+        if (x.font != y.font || x.spreset != y.spreset || x.sbank != y.sbank || x.dpreset != y.dpreset ||
+            x.dbank != y.dbank || x.dbanklsb != y.dbanklsb || x.minchan != y.minchan || x.numchan != y.numchan) return false;
+    }
     return true;
 }
 
@@ -381,6 +419,7 @@ bool BassMidiPlayer::loadRole(const std::string& path, bool drum) {
 
     closeRolePcmWindows(); // measurement boundary only; no MIDI/resource routing writes
     retirePercussionStreams(); // auxiliary streams only; never clears the production stream
+    fontTableDirty_ = true; // a font is about to be freed/created: the next table must be submitted
     HSOUNDFONT& target = drum ? drumFont_ : melodyFont_;
     if (drum) {
         drumPath_.clear();
@@ -490,6 +529,7 @@ bool BassMidiPlayer::loadMelodyFallback(const std::string& path) {
     // allocation failure cannot discard the established melody/drum pair.
     if (secondaryMelodies_.size() >= 2) return false;
     closeRolePcmWindows(); // prevent attribution across an SF2 resource change
+    fontTableDirty_ = true;
     SecondaryMelody secondary;
     secondary.path = path;
     secondary.bassPath = path + ".bassmidi-normalized.sf2";
@@ -586,6 +626,7 @@ void BassMidiPlayer::unload() {
     browserPresets_.clear();
     for (auto& selection : keyboardPresets_) selection.verified = false;
     publishedFontMaps_.clear();
+    fontTableDirty_ = true;
     for (auto& ch : channels_) ch = ChannelState{};
     drumSelections_={}; ++drumSelectionGeneration_; // R22 observation invalidation only
     channelPins_ = {};
@@ -954,6 +995,7 @@ void BassMidiPlayer::refreshMelodicChannels() {
 bool BassMidiPlayer::findMelodicPreset(
     int requestedBank, int requestedProgram, const std::string& voiceName,
     int& sourceBank, int& sourceProgram, std::string& matchedName, int& sourceFont, std::string* diagnosticReason) const {
+    latency_probe::ScopedTimer probeTimer(latency_probe::probe.findMelodicPreset); // LATENCY_PROBE
     using namespace voice_resolver;
     std::vector<Candidate> candidates;
     auto collect = [&](int source, const std::string& path, const std::vector<MelodicPresetEntry>& cache) {
@@ -1320,6 +1362,7 @@ void BassMidiPlayer::allNotesOff() {
 
 void BassMidiPlayer::setChannelPreset(int channel, int bank, int program, const std::string& voiceName) {
     f12::SynthLock lock(mutex_,f12::Preset);
+    latency_probe::ScopedTimer probeTimer(latency_probe::probe.setChannelPreset); // LATENCY_PROBE (after the lock)
     if (!ensureEngine()) return;
 
     channel = std::max(0, std::min(15, channel));
@@ -2939,11 +2982,25 @@ bool BassMidiPlayer::setDrumABMode(bool resolved) {
 bool BassMidiPlayer::bindDrumAB(int ch,const std::string& pdta,int bank,int pc,const std::string& section) {
     std::lock_guard<std::mutex> lock(mutex_);
     if(!drumABResolved_ || !stream_ || ch<8 || ch>9)return false;
-    auto& b=drumABBindings_[ch-8];b={};b.section=section;
     // Reviewed automatic namespaces only. A program-only UI override is not a custom identity.
     const bool col=pdta=="ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506";
     const bool tyr=pdta=="16bb60deafdf426cdc7e269b6c5f434cd5b7db6e14a83f86d17f54720176217a";
-    if(pc<0 || pc>127 || !((col && (bank==127 || bank==128)) || (tyr && bank==128)))return false;
+    const bool validRequest=!(pc<0 || pc>127 || !((col && (bank==127 || bank==128)) || (tyr && bank==128)));
+    // LATENCY tuning: the same kit requested again (every section start asks for it) is only re-verified
+    // by an independent readback; the font table, MIDI events and preload are not repeated.
+    if(validRequest && latency_probe::probe.tuned(latency_probe::kDrumRebindSkip)) {
+        auto& current=drumABBindings_[ch-8];BASS_MIDI_FONT live{};
+        if(current.verified && current.font && current.pdta==pdta && current.rawBank==bank && current.pc==pc &&
+           BASS_MIDI_StreamGetPreset(stream_,ch,&live) && live.font==current.font && live.bank==current.nativeBank && live.preset==pc) {
+            current.section=section;
+            latency_probe::probe.drumBindSkipped.fetch_add(1, std::memory_order_relaxed);
+            return true;
+        }
+    }
+    latency_probe::ScopedTimer probeTimer(latency_probe::probe.bindDrum); // LATENCY_PROBE
+    latency_probe::probe.drumBindFull.fetch_add(1, std::memory_order_relaxed);
+    auto& b=drumABBindings_[ch-8];b={};b.section=section;
+    if(!validRequest)return false;
     auto choose=[&](HSOUNDFONT font,const std::string& path) {
         const auto fp=pdtaFingerprints_.find(path);
         if(b.font || !font || fp==pdtaFingerprints_.end() || !fp->second.valid || fp->second.sha256!=pdta)return;

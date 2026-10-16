@@ -214,6 +214,7 @@ class AudioEngineManager @Inject constructor(
                 // Drop any previous stack, including a dedicated drum font.
                 bridge.nativeUnloadSoundFont()
                 bridge.nativeSetSourceTiered(true)
+                bridge.nativeLatencySetTuning(LatencyProbe.tuning and 3) // native latency patches follow the Kotlin tuning mask
                 if (!bridge.nativeLoadMelodySoundFont(primaryPath)) return@withAudioStreamPausedUnsafe false
                 if (!fallbackPath.isNullOrBlank()) {
                     val ok = bridge.nativeLoadMelodyFallbackSoundFont(fallbackPath)
@@ -389,6 +390,12 @@ class AudioEngineManager @Inject constructor(
     /** LATENCY_PROBE report (Kotlin + native + Oboe stream). Call outside realtime paths. */
     fun latencyReport(): String = LatencyProbe.report() + bridge.nativeLatencyReport()
     fun latencyReset() { LatencyProbe.reset(); bridge.nativeLatencyReset() }
+    /** Runtime A/B switches: bits 0-1 reach native, bits 2-3 are read by Kotlin. 0 reproduces the previous behaviour. */
+    fun setLatencyTuning(mask: Int) {
+        LatencyProbe.tuning = mask and LatencyProbe.TUNE_ALL
+        bridge.nativeLatencySetTuning(LatencyProbe.tuning and 3)
+        DebugLog.add("LATENCY tuning mask=${LatencyProbe.tuning}")
+    }
     fun channelBinding(channel: Int): ChannelBinding? = ChannelBinding.parse(bridge.nativeChannelBinding(channel))
 
     /** Loaded preset for a saved pin. Reads the cached native snapshot without the readiness lock. */

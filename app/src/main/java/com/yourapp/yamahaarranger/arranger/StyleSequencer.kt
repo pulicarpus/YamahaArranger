@@ -169,9 +169,14 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     private val f12Timing=F12Timing()
     private inline fun <T> lifecycle(block:()->T):T {
         val requested=f12Timing.begin()
+        val probeRequested=com.yourapp.yamahaarranger.audio.LatencyProbe.stamp() // LATENCY_PROBE
         return synchronized(noteLifecycleLock) {
             val acquired=if(requested!=0L) System.nanoTime() else 0L
-            try { block() } finally { f12Timing.finish(0,requested,acquired) }
+            val probeAcquired=com.yourapp.yamahaarranger.audio.LatencyProbe.stamp() // LATENCY_PROBE
+            try { block() } finally {
+                f12Timing.finish(0,requested,acquired)
+                com.yourapp.yamahaarranger.audio.LatencyProbe.lifecycleDone(probeRequested,probeAcquired) // LATENCY_PROBE
+            }
         }
     }
     // F12_TIMING_END

@@ -80,9 +80,9 @@ class ArrangerBrain @Inject constructor(
     // Notes currently sounding through the dedicated LEFT VOICE channel.
     // Mode changes must release them even if the key-up arrives after ACMP changes.
     private val leftVoiceNotes = mutableSetOf<Int>()
-    private var appliedChord: DetectedChord? = null
-    private var pendingChord: DetectedChord? = null
-    private var pendingChordJob: Job? = null
+    @Volatile private var appliedChord: DetectedChord? = null
+    @Volatile private var pendingChord: DetectedChord? = null
+    @Volatile private var pendingChordJob: Job? = null
     private var pendingTransitionJob: Job? = null
     // MIDI keyboards commonly deliver the fingers of one chord a few
     // milliseconds apart. Settle the note-on burst before retargeting CASM.
@@ -370,7 +370,11 @@ class ArrangerBrain @Inject constructor(
         pendingChord = chord
         DebugLog.add("🎹 CHORD SETTLE " + chord.label() + " (" + chordSettleMs + "ms)")
         val scope = externalScope ?: CoroutineScope(Dispatchers.Main + SupervisorJob())
-        pendingChordJob = scope.launch {
+        // The 15 ms settle itself is unchanged. With the tuning bit on, the wait and the retarget run on a
+        // worker instead of the UI looper; a busy Main thread was adding ~10 ms (max 44 ms) before the retarget.
+        val context = if (com.yourapp.yamahaarranger.audio.LatencyProbe.tuned(com.yourapp.yamahaarranger.audio.LatencyProbe.TUNE_CHORD_OFF_MAIN))
+            Dispatchers.Default else kotlin.coroutines.EmptyCoroutineContext
+        pendingChordJob = scope.launch(context) {
             delay(chordSettleMs)
             val settled = pendingChord
             pendingChord = null

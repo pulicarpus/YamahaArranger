@@ -82,6 +82,10 @@ object DebugLog {
     }
     @Volatile private var longText: String = ""
     @JvmStatic fun add(msg: String) {
+        val probeStart = System.nanoTime() // LATENCY_PROBE: cost of one log call, lock wait included
+        try { addLine(msg) } finally { com.yourapp.yamahaarranger.audio.LatencyProbe.debugLogAdd.record(System.nanoTime() - probeStart) }
+    }
+    private fun addLine(msg: String) {
         val diagnostic = timing?.takeIf { it.active }
         val began = if (diagnostic != null) System.nanoTime() else 0L
         val formatter = timestamp.get()
@@ -710,6 +714,13 @@ class MainViewModel @Inject constructor(
             }
         }
 
+        // LATENCY_PROBE hooks that need android.os (kept out of the pure, JVM-tested probe).
+        com.yourapp.yamahaarranger.audio.LatencyProbe.cpuClock = { android.os.Debug.threadCpuTimeNanos() }
+        com.yourapp.yamahaarranger.audio.LatencyProbe.threadPriority = { boost ->
+            android.os.Process.setThreadPriority(
+                if (boost) android.os.Process.THREAD_PRIORITY_URGENT_AUDIO else android.os.Process.THREAD_PRIORITY_DEFAULT)
+            DebugLog.add("LATENCY MIDI thread priority ${if (boost) "URGENT_AUDIO" else "DEFAULT"} tid=${android.os.Process.myTid()}")
+        }
         midiInputManager.onNoteOn = { note, velocity -> arrangerBrain.onKeyboardNoteOn(note, velocity / 127f) }
         midiInputManager.onNoteOff = { note -> arrangerBrain.onKeyboardNoteOff(note) }
         midiInputManager.onSustainChange = { enabled ->
@@ -1245,6 +1256,8 @@ class MainViewModel @Inject constructor(
     // LATENCY_PROBE: statistics only; both calls are safe during playback but belong off the realtime path.
     fun latencyReport(): String = audioEngine.latencyReport()
     fun latencyReset() = audioEngine.latencyReset()
+    fun latencyTuning(): Int = com.yourapp.yamahaarranger.audio.LatencyProbe.tuning
+    fun setLatencyTuning(mask: Int) = audioEngine.setLatencyTuning(mask)
     fun drumABResolved():Boolean = audioEngine.drumABResolved
     fun setDrumABMode(resolved:Boolean):Boolean = !uiState.value.isPlaying && arrangerBrain.setDrumABMode(resolved)
     fun markPcmSession(): Long {

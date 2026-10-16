@@ -26,6 +26,13 @@
 
 namespace latency_probe {
 
+// Runtime tuning bits so one APK can run A (all off = previous behaviour) and B (on) with the same probe.
+enum Tuning : uint32_t {
+    kDrumRebindSkip = 1u << 0,   // bindDrumAB: unchanged, verified binding is not rebuilt
+    kFontsNoopSkip  = 1u << 1,   // applyFonts: identical FONTEX2 table is not re-submitted to BASSMIDI
+    kNativeMask     = kDrumRebindSkip | kFontsNoopSkip,
+};
+
 inline uint64_t now() {
     return uint64_t(std::chrono::duration_cast<std::chrono::nanoseconds>(
         std::chrono::steady_clock::now().time_since_epoch()).count());
@@ -88,36 +95,54 @@ struct Probe {
     Stat renderLockWait, renderDecode, callbackTotal;
     std::atomic<uint64_t> callbacks{0}, overBudget{0}, overEightyPercent{0};
     std::atomic<uint64_t> budgetNs{0};
-    // First keyboard NOTE_ON queued and not yet consumed by a render pass (0 = none).
-    std::atomic<uint64_t> pendingKeyNoteNs{0};
-    std::atomic<uint64_t> pendingStyleNoteNs{0};
-    std::atomic<uint64_t> unconsumedKeyNotesOverwritten{0};
+    // Keyboard NOTE_ONs queued and not yet consumed by a render pass. noteOn() and render() both hold
+    // BassMidiPlayer::mutex_ when they touch these, so plain fields are race-free and every note is paired.
+    static constexpr unsigned kPending = 32;
+    uint64_t pendingKey[kPending]{};
+    unsigned pendingKeyCount = 0;
+    std::atomic<uint64_t> keyNotesQueued{0}, renderWindowsWithKeyNotes{0}, pairingOverflow{0};
+    std::atomic<uint32_t> maxKeyNotesInOneWindow{0};
+    // Internal native costs, recorded under mutex_ by the code they time.
+    Stat setChannelPreset, findMelodicPreset, applyFontsTotal, streamSetFonts, bindDrum, uiLogCall;
+    std::atomic<uint64_t> applyFontsCalls{0}, applyFontsSkipped{0}, drumBindFull{0}, drumBindSkipped{0};
+    // Default 0 = previous behaviour, so historical native contracts stay valid. The app turns the patches on
+    // (setLatencyTuning) when it installs the Colombo stack.
+    std::atomic<uint32_t> tuning{0};
+    bool tuned(Tuning t) const { return (tuning.load(std::memory_order_relaxed) & t) != 0; }
 
     bool on() const { return enabled.load(std::memory_order_relaxed) != 0; }
     void reset() {
         keyLockWait.reset(); keyDispatch.reset(); styleLockWait.reset(); styleDispatch.reset();
         noteToRender.reset(); noteToBuffer.reset(); renderLockWait.reset(); renderDecode.reset(); callbackTotal.reset();
-        callbacks = 0; overBudget = 0; overEightyPercent = 0; pendingKeyNoteNs = 0; pendingStyleNoteNs = 0;
-        unconsumedKeyNotesOverwritten = 0;
+        setChannelPreset.reset(); findMelodicPreset.reset(); applyFontsTotal.reset(); streamSetFonts.reset();
+        bindDrum.reset(); uiLogCall.reset();
+        callbacks = 0; overBudget = 0; overEightyPercent = 0;
+        keyNotesQueued = 0; renderWindowsWithKeyNotes = 0; pairingOverflow = 0; maxKeyNotesInOneWindow = 0;
+        applyFontsCalls = 0; applyFontsSkipped = 0; drumBindFull = 0; drumBindSkipped = 0;
+        // pendingKey is owned by mutex_; a stale stamp is harmless and is consumed by the next render.
     }
     // Called after BASS_MIDI_StreamEvent(NOTE) returned, with the earlier stamps.
     void noteQueued(bool keyboard, uint64_t enterNs, uint64_t lockedNs, uint64_t sentNs) {
         (keyboard ? keyLockWait : styleLockWait).record(lockedNs - enterNs);
         (keyboard ? keyDispatch : styleDispatch).record(sentNs - lockedNs);
-        auto& pending = keyboard ? pendingKeyNoteNs : pendingStyleNoteNs;
-        uint64_t expected = 0;
-        if (!pending.compare_exchange_strong(expected, sentNs, std::memory_order_relaxed) && keyboard)
-            unconsumedKeyNotesOverwritten.fetch_add(1, std::memory_order_relaxed);
+        if (!keyboard) return;
+        keyNotesQueued.fetch_add(1, std::memory_order_relaxed);
+        if (pendingKeyCount < kPending) pendingKey[pendingKeyCount++] = sentNs;
+        else pairingOverflow.fetch_add(1, std::memory_order_relaxed);
     }
     // Called by render() around the decode; all stamps are taken by the caller.
     void renderDone(uint64_t callbackStartNs, uint64_t lockedNs, uint64_t decodeEndNs) {
         renderLockWait.record(lockedNs - callbackStartNs);
         renderDecode.record(decodeEndNs - lockedNs);
-        for (auto* pending : {&pendingKeyNoteNs, &pendingStyleNoteNs}) {
-            const uint64_t noteNs = pending->exchange(0, std::memory_order_relaxed);
-            if (noteNs && lockedNs >= noteNs) {
-                if (pending == &pendingKeyNoteNs) { noteToRender.record(lockedNs - noteNs); noteToBuffer.record(decodeEndNs - noteNs); }
+        if (pendingKeyCount) {
+            for (unsigned i = 0; i < pendingKeyCount; ++i) {
+                const uint64_t noteNs = pendingKey[i];
+                if (lockedNs >= noteNs) { noteToRender.record(lockedNs - noteNs); noteToBuffer.record(decodeEndNs - noteNs); }
             }
+            renderWindowsWithKeyNotes.fetch_add(1, std::memory_order_relaxed);
+            auto old = maxKeyNotesInOneWindow.load(std::memory_order_relaxed);
+            while (old < pendingKeyCount && !maxKeyNotesInOneWindow.compare_exchange_weak(old, pendingKeyCount, std::memory_order_relaxed)) {}
+            pendingKeyCount = 0;
         }
     }
     void callbackDone(uint64_t startNs, uint64_t endNs) {
@@ -136,7 +161,13 @@ struct Probe {
         out << "LATENCY_NATIVE clock=steady_monotonic_same_as_System.nanoTime enabled=" << enabled.load()
             << " callbacks=" << cb << " callbackBudgetUs=" << budgetNs.load() / 1000
             << " overBudget=" << overBudget.load() << " over80pct=" << overEightyPercent.load()
-            << " keyNotesOverwrittenBeforeRender=" << unconsumedKeyNotesOverwritten.load() << "\n";
+            << " keyNotesQueued=" << keyNotesQueued.load() << " renderWindowsWithKeyNotes=" << renderWindowsWithKeyNotes.load()
+            << " maxKeyNotesInOneRenderWindow=" << maxKeyNotesInOneWindow.load() << " pairingOverflow=" << pairingOverflow.load()
+            << " (every queued keyboard NOTE_ON is paired with the render pass that first consumes it)\n";
+        out << "LATENCY_TUNING native=" << (tuning.load() & kNativeMask) << " drumRebindSkip=" << ((tuning.load() & kDrumRebindSkip) ? 1 : 0)
+            << " fontsNoopSkip=" << ((tuning.load() & kFontsNoopSkip) ? 1 : 0) << " applyFontsCalls=" << applyFontsCalls.load()
+            << " applyFontsSkipped=" << applyFontsSkipped.load() << " drumBindFull=" << drumBindFull.load()
+            << " drumBindSkipped=" << drumBindSkipped.load() << "\n";
         keyLockWait.print(out, "keyboardNoteLockWait");
         keyDispatch.print(out, "keyboardNoteDispatch");
         styleLockWait.print(out, "styleNoteLockWait");
@@ -146,10 +177,23 @@ struct Probe {
         renderLockWait.print(out, "renderLockWait");
         renderDecode.print(out, "renderDecode");
         callbackTotal.print(out, "callbackTotal");
+        setChannelPreset.print(out, "nativeSetChannelPreset");
+        findMelodicPreset.print(out, "nativeFindMelodicPreset");
+        applyFontsTotal.print(out, "nativeApplyFontsWhenSubmitted");
+        streamSetFonts.print(out, "nativeBassStreamSetFonts");
+        bindDrum.print(out, "nativeBindDrumABFull");
+        uiLogCall.print(out, "nativeUiLogCall_JNI_to_DebugLog");
         return out.str();
     }
 };
 
 inline Probe probe;
+
+// Records the duration of a scope into a Stat when the probe is enabled.
+struct ScopedTimer {
+    Stat& stat; uint64_t start;
+    explicit ScopedTimer(Stat& s) : stat(s), start(probe.on() ? now() : 0) {}
+    ~ScopedTimer() { if (start) stat.record(now() - start); }
+};
 
 } // namespace latency_probe

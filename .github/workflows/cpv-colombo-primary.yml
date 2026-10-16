@@ -3,6 +3,7 @@ name: CPV Colombo Primary Voice Override APK
 on:
   push:
     branches: [experiment/colombo-primary-voice-override]
+    paths-ignore: ['docs/**']   # documentation-only pushes do not rebuild the APK
   workflow_dispatch: {}
 permissions:
   contents: read
@@ -52,6 +53,7 @@ jobs:
           python3 tools/test_r20_policy.py --out evidence/policy 2>&1 | tee evidence/policy.log
           python3 tools/test_r23_rosita.py --out evidence/rosita 2>&1 | tee evidence/rosita.log
           python3 tools/test_cpv_native.py --out evidence/cpv-native 2>&1 | tee evidence/cpv-native.log
+          python3 tools/test_compare_latency.py 2>&1 | tee evidence/compare-latency.log
       - name: JVM integration with CPV tests, LIVE/REG and JVM regressions
         run: |
           set -euo pipefail

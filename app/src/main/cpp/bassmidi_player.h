@@ -152,6 +152,8 @@ private:
     bool ensureEngine();
     bool loadRole(const std::string& path, bool drum);
     bool applyFonts();
+    static bool sameFontTable(const std::vector<BASS_MIDI_FONTEX2>& a, const std::vector<BASS_MIDI_FONTEX2>& b);
+    bool fontTableDirty_ = true; // true until a table was submitted since the last font load/free/failure
     bool publishedFontTableIntact() const;
     std::vector<BASS_MIDI_FONTEX2> publishedFontMaps_;
     struct PartPresence {

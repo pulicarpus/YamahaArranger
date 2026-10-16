@@ -18,6 +18,7 @@ class NativeAudioBridge @Inject constructor() {
     external fun nativeSetSourceTiered(tiered: Boolean)
     external fun nativeLatencyReport(): String
     external fun nativeLatencyReset()
+    external fun nativeLatencySetTuning(mask: Int)
     external fun nativePinChannelPreset(channel: Int, fontId: Long, bank: Int, program: Int): Boolean
     external fun nativeFontPdta(fontId: Long): String
     external fun nativeShadowDrumSnapshot(): String

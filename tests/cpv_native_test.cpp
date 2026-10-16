@@ -120,25 +120,30 @@ int main(int argc, char** argv) {
         check(probe.keyLockWait.count.load() == 1 && probe.keyDispatch.count.load() == 1, "keyboard note timed once");
         check(probe.styleLockWait.count.load() == 1 && probe.styleDispatch.count.load() == 1, "style note timed separately");
         check(probe.noteToRender.count.load() == 0, "no render yet");
+        p.noteOn(1, 64, 0.8f); p.noteOn(2, 67, 0.8f);       // two more layers before the next render
         p.render(pcm, 256);
         check(probe.renderDecode.count.load() == 1 && probe.renderLockWait.count.load() == 1, "render timed");
-        check(probe.noteToRender.count.load() == 1 && probe.noteToBuffer.count.load() == 1, "note paired with next render");
+        // Every queued keyboard note is paired, including layers that share one render window.
+        check(probe.keyNotesQueued.load() == 3 && probe.noteToRender.count.load() == 3 && probe.noteToBuffer.count.load() == 3, "all keyboard notes paired");
+        check(probe.renderWindowsWithKeyNotes.load() == 1 && probe.maxKeyNotesInOneWindow.load() == 3 && probe.pairingOverflow.load() == 0, "shared window accounting");
         check(probe.noteToBuffer.sumUs.load() >= probe.noteToRender.sumUs.load(), "buffer-ready is not before render start");
         p.render(pcm, 256);
-        check(probe.noteToRender.count.load() == 1, "a note is paired with exactly one render");
-        check(probe.pendingKeyNoteNs.load() == 0, "pending stamp consumed");
+        check(probe.noteToRender.count.load() == 3, "a note is paired with exactly one render");
+        check(probe.pendingKeyCount == 0, "pending stamps consumed");
         // Probe on vs off: identical MIDI event stream.
         const auto onHistory = std::vector<decltype(mock_bass::history)::value_type>(mock_bass::history.begin() + historyBefore, mock_bass::history.end());
         probe.enabled = 0;
         const auto offStart = mock_bass::history.size();
         p.noteOn(0, 60, 0.8f); p.noteOn(10, 40, 0.8f); p.render(pcm, 256);
         probe.enabled = 1;
+        probe.reset();
         const std::vector<decltype(mock_bass::history)::value_type> offHistory(mock_bass::history.begin() + offStart, mock_bass::history.end());
         std::vector<decltype(mock_bass::history)::value_type> onNotes, offNotes;
         for (const auto& e : onHistory) if (std::get<2>(e) == MIDI_EVENT_NOTE) onNotes.push_back(e);
         for (const auto& e : offHistory) if (std::get<2>(e) == MIDI_EVENT_NOTE) offNotes.push_back(e);
-        check(onNotes == offNotes && onNotes.size() == 2, "probe does not change NOTE events");
-        check(probe.keyLockWait.count.load() == 1, "disabled probe records nothing");
+        check(onNotes.size() == 4 && offNotes.size() == 2, "note events counted per run");
+        check(onNotes[0] == offNotes[0] && onNotes[1] == offNotes[1], "probe does not change NOTE events");
+        check(probe.keyLockWait.count.load() == 0, "disabled probe records nothing");
         const auto text = probe.report();
         check(text.find("stat=keyboardNoteQueuedToBufferReady") != std::string::npos, "report names the queue-to-buffer stat");
         // Whole-callback bookkeeping.
@@ -147,6 +152,71 @@ int main(int argc, char** argv) {
         check(probe.callbacks.load() == 3 && probe.overBudget.load() == 1 && probe.overEightyPercent.load() == 2, "budget counters");
         check(probe.callbackTotal.percentileUpperUs(0.5) == 8000 && probe.callbackTotal.maxUs.load() == 6000, "percentile and max");
         std::cout << "CPV LATENCY PROBE OK\n";
+    }
+
+    // 7b. Latency tuning: identical FONTEX2 tables and unchanged drum kits are not re-submitted.
+    {
+        auto& probe = latency_probe::probe;
+        check(probe.tuning.load() == 0, "native tuning defaults to the previous behaviour");
+        probe.tuning = latency_probe::kNativeMask;
+        p.setChannelPreset(12, 0, 25);                       // first use: table changes
+        probe.reset();
+        const int before = mock_bass::setFontsCalls;
+        p.setChannelPreset(12, 0, 25);                       // same request again (cache-miss path in the sequencer)
+        check(mock_bass::setFontsCalls == before && probe.applyFontsSkipped.load() >= 1, "identical table is not re-submitted");
+        auto b = fields(p.channelBinding(12));
+        check(b[1] == "BOUND" && b[6] == "25", "channel keeps its binding after a skipped apply");
+        p.setChannelPreset(12, 0, 26);                       // a real change must still be submitted
+        check(mock_bass::setFontsCalls == before + 1, "a changed table is submitted");
+        // Contract kept with tuning off: a table submission that fails marks only this channel fail-closed
+        // (tests/accompaniment_presence_test.cpp). With the skip on, an identical table is never submitted, so
+        // there is nothing to fail and the channel keeps the route the established table already serves.
+        mock_bass::failMapping = true; p.setChannelPreset(12, 0, 26); mock_bass::failMapping = false;
+        check(fields(p.channelBinding(12))[1] == "BOUND", "skip on: identical table, established route is kept");
+        probe.tuning = 0;                                    // A: previous behaviour
+        mock_bass::failMapping = true; p.setChannelPreset(12, 0, 26); mock_bass::failMapping = false;
+        check(fields(p.channelBinding(12))[1] != "BOUND", "skip off: failed submission is fail-closed as before");
+        p.setChannelPreset(12, 0, 26);                       // retry recovers
+        check(fields(p.channelBinding(12))[1] == "BOUND", "channel recovers after a successful retry");
+        const int offBefore = mock_bass::setFontsCalls;
+        p.setChannelPreset(12, 0, 26);
+        check(mock_bass::setFontsCalls == offBefore + 1, "tuning off submits every time");
+        probe.tuning = latency_probe::kNativeMask;
+        // A font load makes the table dirty: never skipped even if the handles look identical.
+        BassMidiPlayer q;
+        check(q.loadMelody(d + "/colombo.sf2"), "second player");
+        q.setChannelPreset(10, 0, 33);
+        auto otherEntries = [] { size_t n = 0; for (const auto& kv : mock_bass::otherMappings) n += kv.second.size(); return n; };
+        const size_t tableBefore = otherEntries();
+        check(q.loadMelodyFallback(d + "/tyros4.sf2"), "attach fallback");
+        check(otherEntries() > tableBefore, "font load always submits a table");
+
+        // Drum rebind: same kit is only re-verified; a different kit or failed readback is a full bind.
+        check(p.setDrumABMode(true) || true, "resolved mode");
+        probe.reset();
+        check(p.bindDrumAB(9, col, 127, 8, "Main A"), "first bind");
+        const auto historyAfterFirst = mock_bass::history.size();
+        const int fontsAfterFirst = mock_bass::setFontsCalls;
+        check(probe.drumBindFull.load() == 1 && probe.drumBindSkipped.load() == 0, "first bind is full");
+        check(p.bindDrumAB(9, col, 127, 8, "Main B"), "same kit again");
+        check(probe.drumBindSkipped.load() == 1 && probe.drumBindFull.load() == 1, "same kit is skipped");
+        check(mock_bass::history.size() == historyAfterFirst && mock_bass::setFontsCalls == fontsAfterFirst, "skip sends no MIDI and no table");
+        const auto skipped = fields(p.channelBinding(9));
+        check(skipped[1] == "BOUND" && skipped[2] == "DRUM_R23" && skipped[6] == "8", "binding intact after skip");
+        check(p.drumABReport().find("section='Main B'") != std::string::npos, "section label follows the request");
+        check(p.bindDrumAB(9, col, 127, 16, "Main C"), "different kit");
+        check(probe.drumBindFull.load() == 2 && mock_bass::setFontsCalls > fontsAfterFirst, "different kit is a full bind");
+        mock_bass::mismatchPreset = true;                    // independent readback disagrees
+        check(!p.bindDrumAB(9, col, 127, 16, "Main D"), "failed readback is never skipped");
+        check(probe.drumBindSkipped.load() == 1, "mismatch did not take the skip path");
+        mock_bass::mismatchPreset = false;
+        probe.tuning = 0;
+        check(p.bindDrumAB(9, col, 127, 16, "Main E"), "rebind after mismatch");
+        const int fontsOff = mock_bass::setFontsCalls;
+        check(p.bindDrumAB(9, col, 127, 16, "Main F"), "same kit with tuning off");
+        check(mock_bass::setFontsCalls > fontsOff && probe.drumBindSkipped.load() == 1, "tuning off rebuilds every time");
+        probe.tuning = latency_probe::kNativeMask;
+        std::cout << "CPV LATENCY TUNING OK\n";
     }
 
     // 8. The getter is read-only.

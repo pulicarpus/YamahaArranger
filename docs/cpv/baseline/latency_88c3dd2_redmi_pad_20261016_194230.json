@@ -1,0 +1,538 @@
+{
+ "meta": {
+  "LATENCY_KOTLIN": {
+   "clock": "System.nanoTime(=CLOCK_MONOTONIC)",
+   "dispatch_is_not_audible_time": "1",
+   "enabled": "true"
+  },
+  "LATENCY_NATIVE": {
+   "callbackBudgetUs": "5333",
+   "callbacks": "25894",
+   "clock": "steady_monotonic_same_as_System.nanoTime",
+   "enabled": "1",
+   "keyNotesOverwrittenBeforeRender": "212",
+   "over80pct": "173",
+   "overBudget": "116"
+  },
+  "LATENCY_OUTPUT": {
+   "api": "2(1=OpenSLES,2=AAudio)",
+   "bufferCapacity": "2048",
+   "bufferSizeAtStart": "512",
+   "channels": "2",
+   "fallbackToShared": "0",
+   "framesPerBurst": "256",
+   "framesPerCallback": "0",
+   "perf": "12(10=None,11=PowerSaving,12=LowLatency)",
+   "sampleRate": "48000",
+   "sharing": "1(0=Exclusive,1=Shared)",
+   "streamOpen": "1"
+  },
+  "LATENCY_OUTPUT_LIVE": {
+   "bufferSizeNow": "512",
+   "estimatedOutputLatencyMs": "18.8211",
+   "xruns": "13"
+  }
+ },
+ "stats": {
+  "callbackTotal": {
+   "buckets": [
+    2162,
+    3169,
+    5020,
+    8749,
+    6608,
+    152,
+    33,
+    1,
+    0,
+    0
+   ],
+   "count": 25894,
+   "maxUs": 17607,
+   "meanUs": 1388,
+   "p50UpperUs": 2000,
+   "p95UpperUs": 4000,
+   "p99UpperUs": 4000
+  },
+  "chordApplyDuration_handleChordChange": {
+   "buckets": [
+    2,
+    0,
+    0,
+    0,
+    0,
+    1,
+    2,
+    8,
+    14,
+    1
+   ],
+   "count": 28,
+   "maxUs": 65441,
+   "meanUs": 31952,
+   "p50UpperUs": 64000,
+   "p95UpperUs": 64000,
+   "p99UpperUs": 65441
+  },
+  "chordLastNoteToApplyChordNow": {
+   "buckets": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    27,
+    1,
+    0
+   ],
+   "count": 28,
+   "maxUs": 44213,
+   "meanUs": 25833,
+   "p50UpperUs": 32000,
+   "p95UpperUs": 32000,
+   "p99UpperUs": 64000
+  },
+  "chordLastNoteToRetargetDone": {
+   "buckets": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    3,
+    16,
+    9
+   ],
+   "count": 28,
+   "maxUs": 92803,
+   "meanUs": 57786,
+   "p50UpperUs": 64000,
+   "p95UpperUs": 92803,
+   "p99UpperUs": 92803
+  },
+  "jniKeyboardNoteOn_includesNativeLockWait": {
+   "buckets": [
+    325,
+    9,
+    17,
+    38,
+    37,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "count": 426,
+   "maxUs": 3771,
+   "meanUs": 455,
+   "p50UpperUs": 250,
+   "p95UpperUs": 4000,
+   "p99UpperUs": 4000
+  },
+  "keyboardLockWait": {
+   "buckets": [
+    279,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "count": 279,
+   "maxUs": 11,
+   "meanUs": 6,
+   "p50UpperUs": 250,
+   "p95UpperUs": 250,
+   "p99UpperUs": 250
+  },
+  "keyboardNoteDispatch": {
+   "buckets": [
+    426,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "count": 426,
+   "maxUs": 181,
+   "meanUs": 31,
+   "p50UpperUs": 250,
+   "p95UpperUs": 250,
+   "p99UpperUs": 250
+  },
+  "keyboardNoteLockWait": {
+   "buckets": [
+    326,
+    10,
+    17,
+    39,
+    34,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "count": 426,
+   "maxUs": 3678,
+   "meanUs": 397,
+   "p50UpperUs": 250,
+   "p95UpperUs": 4000,
+   "p99UpperUs": 4000
+  },
+  "keyboardNoteQueuedToBufferReady": {
+   "buckets": [
+    0,
+    0,
+    5,
+    14,
+    49,
+    146,
+    0,
+    0,
+    0,
+    0
+   ],
+   "count": 214,
+   "maxUs": 6630,
+   "meanUs": 4261,
+   "p50UpperUs": 8000,
+   "p95UpperUs": 8000,
+   "p99UpperUs": 8000
+  },
+  "keyboardNoteQueuedToRenderStart": {
+   "buckets": [
+    5,
+    7,
+    13,
+    59,
+    106,
+    24,
+    0,
+    0,
+    0,
+    0
+   ],
+   "count": 214,
+   "maxUs": 5320,
+   "meanUs": 2395,
+   "p50UpperUs": 4000,
+   "p95UpperUs": 8000,
+   "p99UpperUs": 8000
+  },
+  "midiOnSendTotal": {
+   "buckets": [
+    7140,
+    4,
+    9,
+    105,
+    239,
+    141,
+    49,
+    2,
+    0,
+    0
+   ],
+   "count": 7689,
+   "maxUs": 26062,
+   "meanUs": 293,
+   "p50UpperUs": 250,
+   "p95UpperUs": 4000,
+   "p99UpperUs": 8000
+  },
+  "midiUsbTimestampToOnSend": {
+   "buckets": [
+    22,
+    205,
+    6,
+    13,
+    12,
+    14,
+    7,
+    0,
+    0,
+    0
+   ],
+   "count": 279,
+   "maxUs": 11865,
+   "meanUs": 1029,
+   "p50UpperUs": 500,
+   "p95UpperUs": 8000,
+   "p99UpperUs": 16000
+  },
+  "renderDecode": {
+   "buckets": [
+    3010,
+    2912,
+    4794,
+    8979,
+    6198,
+    1,
+    0,
+    0,
+    0,
+    0
+   ],
+   "count": 25894,
+   "maxUs": 7755,
+   "meanUs": 1309,
+   "p50UpperUs": 2000,
+   "p95UpperUs": 4000,
+   "p99UpperUs": 4000
+  },
+  "renderLockWait": {
+   "buckets": [
+    25467,
+    65,
+    82,
+    88,
+    114,
+    57,
+    20,
+    1,
+    0,
+    0
+   ],
+   "count": 25894,
+   "maxUs": 16988,
+   "meanUs": 41,
+   "p50UpperUs": 250,
+   "p95UpperUs": 250,
+   "p99UpperUs": 2000
+  },
+  "rightNoteOnSendToAllLayersHandedToNative": {
+   "buckets": [
+    0,
+    0,
+    0,
+    14,
+    82,
+    72,
+    18,
+    0,
+    0,
+    0
+   ],
+   "count": 186,
+   "maxUs": 15997,
+   "meanUs": 4462,
+   "p50UpperUs": 4000,
+   "p95UpperUs": 16000,
+   "p99UpperUs": 16000
+  },
+  "sectionBoundaryToFirstNoteDispatch": {
+   "buckets": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    2,
+    1
+   ],
+   "count": 4,
+   "maxUs": 82373,
+   "meanUs": 50141,
+   "p50UpperUs": 64000,
+   "p95UpperUs": 82373,
+   "p99UpperUs": 82373
+  },
+  "sectionBoundaryToVoiceApplyStart": {
+   "buckets": [
+    0,
+    0,
+    0,
+    0,
+    1,
+    1,
+    1,
+    0,
+    1,
+    0
+   ],
+   "count": 4,
+   "maxUs": 45739,
+   "meanUs": 15972,
+   "p50UpperUs": 8000,
+   "p95UpperUs": 64000,
+   "p99UpperUs": 64000
+  },
+  "sectionFirstNoteLatenessVsSchedule": {
+   "buckets": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    1,
+    2
+   ],
+   "count": 4,
+   "maxUs": 86813,
+   "meanUs": 60354,
+   "p50UpperUs": 64000,
+   "p95UpperUs": 86813,
+   "p99UpperUs": 86813
+  },
+  "sectionRequestToBoundaryWake": {
+   "buckets": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    4
+   ],
+   "count": 4,
+   "maxUs": 2745781,
+   "meanUs": 1630756,
+   "p50UpperUs": 2745781,
+   "p95UpperUs": 2745781,
+   "p99UpperUs": 2745781
+  },
+  "sectionVoiceApplyDuration": {
+   "buckets": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    3,
+    5,
+    1
+   ],
+   "count": 10,
+   "maxUs": 68936,
+   "meanUs": 35860,
+   "p50UpperUs": 64000,
+   "p95UpperUs": 68936,
+   "p99UpperUs": 68936
+  },
+  "sectionVoiceApplyEndToFirstNoteDispatch": {
+   "buckets": [
+    0,
+    0,
+    0,
+    0,
+    1,
+    1,
+    2,
+    0,
+    0,
+    0
+   ],
+   "count": 4,
+   "maxUs": 8672,
+   "meanUs": 6155,
+   "p50UpperUs": 8000,
+   "p95UpperUs": 16000,
+   "p99UpperUs": 16000
+  },
+  "styleEventDispatchLatenessAfterLifecycle": {
+   "buckets": [
+    14,
+    16,
+    81,
+    383,
+    350,
+    315,
+    352,
+    280,
+    119,
+    167
+   ],
+   "count": 2077,
+   "maxUs": 315990,
+   "meanUs": 17990,
+   "p50UpperUs": 8000,
+   "p95UpperUs": 315990,
+   "p99UpperUs": 315990
+  },
+  "styleEventWakeLatenessBeforeLifecycle": {
+   "buckets": [
+    13,
+    32,
+    154,
+    603,
+    474,
+    358,
+    355,
+    287,
+    285,
+    830
+   ],
+   "count": 3391,
+   "maxUs": 315938,
+   "meanUs": 35869,
+   "p50UpperUs": 16000,
+   "p95UpperUs": 315938,
+   "p99UpperUs": 315938
+  },
+  "styleNoteDispatch": {
+   "buckets": [
+    1216,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "count": 1218,
+   "maxUs": 351,
+   "meanUs": 22,
+   "p50UpperUs": 250,
+   "p95UpperUs": 250,
+   "p99UpperUs": 250
+  },
+  "styleNoteLockWait": {
+   "buckets": [
+    807,
+    19,
+    63,
+    184,
+    120,
+    25,
+    0,
+    0,
+    0,
+    0
+   ],
+   "count": 1218,
+   "maxUs": 7670,
+   "meanUs": 627,
+   "p50UpperUs": 250,
+   "p95UpperUs": 4000,
+   "p99UpperUs": 8000
+  }
+ }
+}

@@ -77,6 +77,7 @@ fun Sf2StyleInspectorDialog(
     if (managedAudition) ManagedSf2AuditionDialog(viewModel) { managedAudition = false }
     var tab by remember { mutableStateOf(0) }
     var r23Resolved by remember { mutableStateOf(viewModel.drumABResolved()) }
+    var latencyTuning by remember { mutableStateOf(viewModel.latencyTuning()) }
     var r22Report by remember { mutableStateOf("") }
     var r22Enabled by remember { mutableStateOf(com.yourapp.yamahaarranger.arranger.DrumKitShadowRuntime.enabled) }
     var query by remember { mutableStateOf("") }
@@ -139,6 +140,17 @@ fun Sf2StyleInspectorDialog(
                     OutlinedButton(enabled = !exportBusy, onClick = viewModel::armChordDiagnostic) { Text("CAPTURE CHORD (60s)") }
                     OutlinedButton(enabled = !exportBusy, onClick = viewModel::latencyReset) { Text("RESET LATENCY") }
                     OutlinedButton(enabled = !exportBusy, onClick = viewModel::stopChordDiagnostic) { Text("END CAPTURE") }
+                }
+                // LATENCY A/B: the same APK and the same probe; 0 = previous behaviour, 15 = all latency patches.
+                Row(Modifier.horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically) {
+                    Text("LATENCY TUNING $latencyTuning", color = InspectorDim, fontSize = 10.sp)
+                    OutlinedButton(enabled = !exportBusy, onClick = { viewModel.setLatencyTuning(0); latencyTuning = viewModel.latencyTuning() }) { Text("A: ALL OFF", fontSize = 10.sp) }
+                    OutlinedButton(enabled = !exportBusy, onClick = { viewModel.setLatencyTuning(15); latencyTuning = viewModel.latencyTuning() }) { Text("B: ALL ON", fontSize = 10.sp) }
+                    listOf(1 to "DRUM-SKIP", 2 to "FONTS-SKIP", 4 to "CHORD-OFF-MAIN", 8 to "MIDI-PRIO").forEach { (bit, label) ->
+                        OutlinedButton(enabled = !exportBusy, onClick = { viewModel.setLatencyTuning(latencyTuning xor bit); latencyTuning = viewModel.latencyTuning() }) {
+                            Text((if (latencyTuning and bit != 0) "✓ " else "") + label, fontSize = 10.sp)
+                        }
+                    }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(enabled = !state.isPlaying, onClick = { r22Enabled=!r22Enabled;viewModel.setR22ShadowEnabled(r22Enabled) }) { Text("R2-2 SHADOW ${if(r22Enabled) "ON" else "OFF"}") }

@@ -55,3 +55,51 @@ Statistik: jumlah, rata-rata, batas atas p50/p95/p99 (per bucket), maksimum, dan
   belum diukur; diperkirakan tetap di bawah 1 µs per callback (anggaran 5333 µs).
 - Build debug saat ini memakai `YAMAHA_ROLE_PCM_METERS` dan `YAMAHA_PCM_HEADROOM`, yang menambah kerja di dalam `render()`.
   Statistik `renderDecode` termasuk kerja itu.
+
+
+---
+
+# A/B pada satu APK (build setelah baseline 88c3dd2)
+
+APK ini punya empat saklar latensi di Inspector (baris **LATENCY TUNING**), dan probe yang sama untuk keduanya.
+`A: ALL OFF` mengembalikan perilaku persis seperti build 88c3dd2. `B: ALL ON` mengaktifkan semua patch.
+Setiap laporan memuat baris `LATENCY_TUNING` (Kotlin dan native) sehingga jelas konfigurasi mana yang diukur.
+
+| Bit | Saklar | Efek saat ON |
+|---|---|---|
+| 1 | DRUM-SKIP | `bindDrumAB` untuk kit yang sama (diminta ulang di tiap pergantian section) hanya diverifikasi dengan readback, tanpa membangun ulang tabel font, tanpa 4 event MIDI, tanpa preload |
+| 2 | FONTS-SKIP | `applyFonts` tidak mengirim ulang tabel FONTEX2 yang identik ke BASSMIDI dan tidak menulis ±15 baris log per panggilan; tabel selalu dikirim setelah font dimuat atau dibebaskan |
+| 4 | CHORD-OFF-MAIN | jeda 15 ms (tidak diubah) dan penerapan chord berjalan di worker, bukan di looper UI |
+| 8 | MIDI-PRIO | thread dispatch MIDI Android dinaikkan ke `URGENT_AUDIO` sekali; OFF mengembalikannya ke `DEFAULT` |
+
+Urutan uji (jangan ubah tempo, style, SF2, layar Mixer, atau cara bermain antar-run):
+
+1. Mulai aplikasi, muat style, hubungkan E343. **A: ALL OFF**, lalu **RESET LATENCY**.
+2. Jalankan skenario yang sama persis: 30 nada RIGHT (RIGHT1 saja, lalu R1+R2+R3), START, Main A→B→C→D masing-masing 3 kali,
+   Fill, 10 ganti chord. STOP. **SAVE REPORT**. Beri nama file A.
+3. **B: ALL ON**, **RESET LATENCY**, ulangi skenario yang sama. **SAVE REPORT**. Beri nama file B.
+4. Ulangi A lalu B satu kali lagi (A1 B1 A2 B2) agar variasi antar-sesi terlihat.
+5. Bandingkan di PC: `python3 tools/compare_latency.py compare A1.txt B1.txt`. Alat itu hanya menampilkan angka yang dicetak
+   aplikasi dan perubahan rata-rata; ia bukan uji statistik.
+6. Untuk melihat saklar mana yang berpengaruh, ulangi B dengan satu saklar ON saja.
+
+Metrik utama untuk membandingkan:
+
+| Masalah | Statistik | Harapan hanya bila patch bekerja |
+|---|---|---|
+| Section tertahan | `sectionVoiceApplyDuration`, `sectionBoundaryToFirstNoteDispatch`, `sectionFirstNoteLatenessVsSchedule`, `nativeBindDrumABFull` (jumlah turun), `LATENCY_TUNING drumBindSkipped` | turun dan `drumBindSkipped` > 0 |
+| Callback tersendat | `renderLockWait` (maks), `callbackTotal` (maks), `overBudget`, `xruns` | `renderLockWait` maksimum lebih rendah saat transisi |
+| Biaya apply font | `nativeApplyFontsWhenSubmitted` (jumlah), `LATENCY_TUNING applyFontsSkipped`, `nativeUiLogCall_JNI_to_DebugLog` (jumlah) | jumlah panggilan dan log turun |
+| ACMP | `chordLastNoteToApplyChordNow`, `chordLastNoteToRetargetDone` | selisih dari 15 ms mengecil |
+| RIGHT | `rightNoteOnSendToAllLayersHandedToNative`, `rightNoteOnSendToHandoff_threadCpuTime`, `midiOnSendTotal` | lihat catatan CPU di bawah |
+
+Catatan membaca CPU vs waktu dinding pada RIGHT: bila `…_threadCpuTime` jauh lebih kecil daripada
+`rightNoteOnSendToAllLayersHandedToNative`, thread MIDI **menunggu atau dijadwalkan ulang** (bukan lambat mengerjakan kode);
+bila keduanya mirip, kodenya sendiri yang memakan waktu.
+
+Statistik baru: `styleEventWakeLateness_steadyState` vs `…within500msOfSectionStart` memisahkan keterlambatan akibat transisi dari
+keterlambatan saat bermain normal; `styleLifecycleMonitorWait/Hold` menunjukkan rebutan monitor style; `debugLogAddCall` menunjukkan
+biaya satu panggilan log; `nativeSetChannelPreset`, `nativeFindMelodicPreset`, `nativeBassStreamSetFonts` memecah biaya apply voice.
+
+`LATENCY_NATIVE … keyNotesQueued / renderWindowsWithKeyNotes / maxKeyNotesInOneRenderWindow` menggantikan counter lama
+`keyNotesOverwrittenBeforeRender`. Setiap NOTE_ON keyboard kini dipasangkan dengan render pass pertama yang memprosesnya.

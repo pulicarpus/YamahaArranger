@@ -69,6 +69,7 @@ public:
     std::string latencyReport();
     void latencyReset(){latency_probe::probe.reset();}
     void latencySetEnabled(bool e){latency_probe::probe.enabled.store(e?1:0);}
+    void latencySetTuning(uint32_t mask){latency_probe::probe.tuning.store(mask&latency_probe::kNativeMask);}
 private:
     std::shared_ptr<oboe::AudioStream> stream_;
     std::array<Voice,kMaxPolyphony> voices_;
