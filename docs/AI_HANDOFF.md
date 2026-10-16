@@ -20,7 +20,7 @@ Label bukti: **[T]** terbukti (kode, `git diff`, laporan perangkat, tes), **[K]*
 | `690e578` | P0–P1: workflow CI, Style Voice Inspector |
 | `6d48ae4` | P2–P5: Colombo utama/Tyros fallback, override Mixer per style |
 | `88c3dd2` | probe latensi (observer saja) + investigasi awal |
-| lihat `git log` | patch latensi bertahap + probe lebih rinci + saklar A/B (dijelaskan di bawah) |
+| `2e844e3` | patch latensi bertahap + probe lebih rinci + saklar A/B (dijelaskan di bawah) |
 
 ## Hasil perangkat Redmi Pad + E343, build `88c3dd2` (baseline A/B)
 File asli: `YamahaArranger_Inspector_20261016_194230.txt` (SHA-256 `8906f0cc…16efb1d5`). Angka di-parse ke
@@ -83,6 +83,13 @@ untuk handoff RIGHT, apply voice, retarget chord; biaya satu `DebugLog.add`; tun
 - Build native debug memakai `YAMAHA_ROLE_PCM_METERS` dan `YAMAHA_PCM_HEADROOM`; belum diukur seberapa besar menambah `renderDecode`.
 - Evaluasi jeda chord 15 ms (jangan dihapus tanpa pengujian deteksi chord dan stabilitas ACMP).
 
-## Hasil uji lokal (host; bukan perangkat)
-Lihat bagian "Hasil tes" di pesan commit terakhir. Build Android, semua klaim audio, dan semua klaim latensi **belum diverifikasi** sampai
-CI dan uji perangkat A/B (`docs/cpv/LATENCY_TEST.md`).
+## Hasil tes untuk `2e844e3`
+- **Lokal (host):** U0/U1 native 210 resolver + 70 routing + audit path; R2-3 native; Policy C (A/B 39.936 kasus nama); ROSITA; LIVE/REG;
+  JVM dan integrasi R2-3; CPV native (pairing probe, parity NOTE ON/OFF, tuning on/off untuk tabel font dan bind drum, aturan tabel kotor);
+  CPV JVM **104 tes** termasuk thread chord dan settle 15 ms; `tools/test_compare_latency.py`. Semua lulus.
+  Satu kegagalan sempat muncul dan diperbaiki sebelum commit: `accompaniment_presence_test` ("failing destination remains fail-closed")
+  gagal saat saklar tabel-font aktif sebagai default native; native kini default 0 dan aplikasi yang menyalakannya.
+- **GitHub Actions run #3:** https://github.com/pulicarpus/YamahaArranger/actions/runs/38907793389 — job `host` dan `android` (dua ABI) **sukses**.
+  Artifact APK: `YamahaArranger-CPV-2e844e3fedd81a599f4f4e16ed75854709a018c4` (13,7 MB, SHA-256 arsip
+  `d8251d5f8954992c4ae3aa771d1d9355cb5a85de7db6b614382a544216f83502`); unduh butuh login GitHub.
+- **Perangkat:** belum diuji. Tidak ada klaim perbaikan latensi sampai A/B (`docs/cpv/LATENCY_TEST.md`) dijalankan.
