@@ -1,5 +1,6 @@
 name: BASSMIDI R2-4 Drum Punch Diagnostic APK
 # Owner-authorized R24 device-first diagnostic. Minimum safety gates precede APK.
+# Uses the tracked canonical gzip catalog, not a local generated JSON.
 # Historical overhead gate is separate, unchanged and NOT claimed PASS.
 on:
   push:

@@ -1,6 +1,6 @@
 # R2-4 Drum Punch — diagnostic implementation
 
-Mandatory parent: c75732f28fec58fbfbc7e626bc380b10a00722b8, the R2-3 source
+Mandatory R2-3 source baseline: c75732f28fec58fbfbc7e626bc380b10a00722b8, the R2-3 source
 with successful run38833703203 attempt2, not the Kotlin-failed ce68890d build.
 Branch: experiment/bassmidi-r2-4-drum-punch. Exact candidate SHA is in CI provenance.
 Owner explicitly authorizes a dedicated device-first diagnostic workflow separate
@@ -94,3 +94,13 @@ argument admission, not in audio code, and is not counted as PASS. The final
 frozen fixture+runner completes successfully and compares all4096 raw PCM bytes,
 plus the full event trace, against the exact c75732f source. Raw PCM SHA256:
 08b6730a04836813da245808f9c5227ce74513b7deef07a2d0ffad8bec6ea56b.
+
+CI run38845108844 FAIL is retained: the first runner requested a local generated
+`catalog.json`, absent in a clean checkout. DSP normal/fast-math, raw ORIGINAL
+PCM/event identity and native binding tests had passed before that input error.
+The tooling-only follow-up reads tracked catalog.json.gz. Its decompressed bytes
+are exactly the same local catalog (SHA256
+6c9080268ba55ed6ee673c6ba63bf2efb7a0cad08c71fccc26f218d0b9fb0864),
+now explicitly pinned. No production, key rule, assertion or threshold changed.
+The follow-up parent is the exact reviewed R24 commit and production diff is empty;
+mandatory R23 ancestry remains verified.

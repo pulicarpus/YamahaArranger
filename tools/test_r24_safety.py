@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """R24 minimum safety: unchanged original resolved, exact keys, ownership, clipping."""
-import argparse,hashlib,io,json,subprocess,sys,tarfile
+import argparse,gzip,hashlib,io,json,subprocess,sys,tarfile
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1];BASE='c75732f28fec58fbfbc7e626bc380b10a00722b8'
 def run(cmd,**kw):return subprocess.check_output(list(map(str,cmd)),cwd=ROOT,text=True,**kw)
@@ -22,7 +22,7 @@ def main():
  sys.path.insert(0,str(ROOT/'tools/sf2_catalog'));from pdta_inventory import read_source
  fonts=read_source(ROOT/'tests/fixtures/sf2_pdta/export.zip',json.loads((ROOT/'tools/sf2_catalog/catalog_review.yaml').read_text()))
  col=next(v for v in fonts.values() if hashlib.sha256(v['payload']).hexdigest()=='ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506')
- catalog=json.loads((ROOT/'catalog/u01/catalog.json').read_text());proof=[]
+ catalog_bytes=gzip.decompress((ROOT/'catalog/u01/catalog.json.gz').read_bytes());assert hashlib.sha256(catalog_bytes).hexdigest()=='6c9080268ba55ed6ee673c6ba63bf2efb7a0cad08c71fccc26f218d0b9fb0864';catalog=json.loads(catalog_bytes);proof=[]
  for pc in [0,8,16]:
   entry=next(x for x in catalog if x['font_role']=='COLOMBO' and x['bank']==127 and x['pc']==pc);assert entry['keyMapStandard']=='XG'
   for key in [35,36,38,40]:
