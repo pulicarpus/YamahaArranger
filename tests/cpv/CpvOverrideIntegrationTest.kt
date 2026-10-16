@@ -77,7 +77,9 @@ class CpvOverrideIntegrationTest {
         assertEquals(listOf<Any>(8, col, 127, 16, "OVERRIDE"), kit.arguments.toList())
 
         // Main A -> Fill AA -> Main B: style setup never replaces the pinned voices.
+        com.yourapp.yamahaarranger.audio.LatencyProbe.reset()
         for (name in listOf("Main A", "Fill AA", "Main B")) apply.invoke(seq, section(name))
+        assertEquals(3, com.yourapp.yamahaarranger.audio.LatencyProbe.sectionApply.count()) // every section apply is timed
         assertTrue(names(bridge, "nativeSetChannelPresetWithName").none { it.arguments[0] == 10 })
         assertTrue(names(bridge, "nativeSetChannelPreset").none { it.arguments[0] == 10 })
         assertEquals(1, names(bridge, "nativeBindDrumAB").size)

@@ -118,8 +118,9 @@ fun Sf2StyleInspectorDialog(
                             try {
                                 val kitAudit = viewModel.drumKitAuditReport()
                                 val voiceText = viewModel.styleVoiceReportText()
+                                val latencyText = viewModel.latencyReport()
                                 val fileName = withContext(Dispatchers.IO) {
-                                    saveInspectorReport(context, state, kitAudit, voiceText)
+                                    saveInspectorReport(context, state, kitAudit, voiceText, latencyText)
                                 }
                                 Toast.makeText(
                                     context,
@@ -136,6 +137,7 @@ fun Sf2StyleInspectorDialog(
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(enabled = !exportBusy, onClick = viewModel::armChordDiagnostic) { Text("CAPTURE CHORD (60s)") }
+                    OutlinedButton(enabled = !exportBusy, onClick = viewModel::latencyReset) { Text("RESET LATENCY") }
                     OutlinedButton(enabled = !exportBusy, onClick = viewModel::stopChordDiagnostic) { Text("END CAPTURE") }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -480,13 +482,16 @@ private fun ResolverInspector(state: MainUiState) {
     }
 }
 
-private fun saveInspectorReport(context: Context, state: MainUiState, kitAudit: String, voiceText: String = ""): String? {
+private fun saveInspectorReport(context: Context, state: MainUiState, kitAudit: String, voiceText: String = "", latencyText: String = ""): String? {
     val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
     val fileName = "YamahaArranger_Inspector_$stamp.txt"
 
     val report = buildString {
         appendLine("YAMAHA ARRANGER — SF2 / STYLE INSPECTOR")
         appendLine("Generated: $stamp")
+        appendLine()
+        appendLine("=== LATENCY PROBE (counters since app start or last RESET LATENCY) ===")
+        appendLine(latencyText)
         appendLine()
         appendLine("=== STYLE VOICE INSPECTOR (requested vs actual) ===")
         appendLine(voiceText)

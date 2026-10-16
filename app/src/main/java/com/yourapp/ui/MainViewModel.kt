@@ -1242,6 +1242,9 @@ class MainViewModel @Inject constructor(
                 "bank=${b.bank} pc=${b.program} preset='${b.presetName}' reason=${b.reason}")
         }
     }
+    // LATENCY_PROBE: statistics only; both calls are safe during playback but belong off the realtime path.
+    fun latencyReport(): String = audioEngine.latencyReport()
+    fun latencyReset() = audioEngine.latencyReset()
     fun drumABResolved():Boolean = audioEngine.drumABResolved
     fun setDrumABMode(resolved:Boolean):Boolean = !uiState.value.isPlaying && arrangerBrain.setDrumABMode(resolved)
     fun markPcmSession(): Long {

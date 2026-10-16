@@ -395,6 +395,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         }
         pendingSectionQueue.clear()
         pendingTransition = PendingTransition(queue, startTick, nextBarBoundary = true)
+        com.yourapp.yamahaarranger.audio.LatencyProbe.sectionRequested() // LATENCY_PROBE
         wakeMusicalClock()
         return true
     }
@@ -413,6 +414,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         pendingTransition = PendingTransition(
             listOf(PendingSection(section, ppq, -1, null, onStarted)),
             (tick / barTicks + 1L) * barTicks, nextBarBoundary = true)
+        com.yourapp.yamahaarranger.audio.LatencyProbe.sectionRequested() // LATENCY_PROBE
         wakeMusicalClock()
         return true
     }
@@ -527,6 +529,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                     val transition = pendingTransition
                     pendingTransition = null
                     if (transition != null) {
+                        com.yourapp.yamahaarranger.audio.LatencyProbe.sectionBoundary() // LATENCY_PROBE
                         // Release only notes owned by the outgoing section. This
                         // is deliberately NOT allNotesOff(): keyboard voices and
                         // unrelated channels remain untouched.
@@ -776,6 +779,10 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     }
 
     private fun applyVoicesFromCasm(section:StyleSectionModel) {
+        com.yourapp.yamahaarranger.audio.LatencyProbe.voiceApplyStart() // LATENCY_PROBE
+        try { applyVoicesFromCasmTimed(section) } finally { com.yourapp.yamahaarranger.audio.LatencyProbe.voiceApplyEnd() } // LATENCY_PROBE
+    }
+    private fun applyVoicesFromCasmTimed(section:StyleSectionModel) {
         val f12Requested=f12Timing.begin()
         f12Timing.section(section.name)
         val startedAtNanos = System.nanoTime()
@@ -1130,6 +1137,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                 break
             }
             val targetNanos = tickDeadlineNanos(absoluteTick, ppq, clock)
+            com.yourapp.yamahaarranger.audio.LatencyProbe.schedulerWake(System.nanoTime(), targetNanos) // LATENCY_PROBE
 
             if(f12Timing.begin()!=0L) { val now=System.nanoTime(); f12Timing.record(2,now,0,((now-targetNanos)/1000).coerceIn(0,Int.MAX_VALUE.toLong()).toInt(),tick=absoluteTick.toInt()) }
             val chord=currentChord
@@ -1199,6 +1207,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
 
             lifecycle {
                 if(f12Timing.begin()!=0L) { val now=System.nanoTime(); f12Timing.record(6,now,0,((now-targetNanos)/1000).coerceIn(0,Int.MAX_VALUE.toLong()).toInt(),tick=absoluteTick.toInt()) }
+                com.yourapp.yamahaarranger.audio.LatencyProbe.styleEventDispatched(System.nanoTime(), targetNanos, s.event.isNoteOn) // LATENCY_PROBE
                 val diagChannel = policy?.destinationChannel ?: s.part.casmPolicies.ifEmpty { listOfNotNull(s.part.casm) }.map { it.destinationChannel }.distinct().singleOrNull() ?: s.event.channel
                 val diagId = if (s.event.isNoteOn) audioPath.observe(diagChannel) else 0L
                 val diagBank = dynamicBankBySource[s.event.channel] ?: (s.part.bankMsb * 128 + s.part.bankLsb)

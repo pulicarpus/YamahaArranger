@@ -5,6 +5,7 @@
 #include <cstdarg>
 #include <cstdio>
 #include <jni.h>
+#include <sstream>
 
 #define LOG_TAG "AudioEngine"
 extern JavaVM* g_jvm;
@@ -56,7 +57,9 @@ bool AudioEngine::start() {
         ->setContentType(oboe::ContentType::Music);
 
     oboe::Result result = builder.openStream(stream_);
+    streamInfo_ = {};
     if (result != oboe::Result::OK) {
+        streamInfo_.fallbackShared = true; // LATENCY_PROBE: Exclusive/LowLatency was refused
         LOGE("LowLatency/Exclusive failed (%s), retrying Shared/None",
              oboe::convertToText(result));
         stream_.reset();
@@ -102,6 +105,18 @@ bool AudioEngine::start() {
         LOGI("Buffer size adjustment skipped: target=%d error=%s",
              targetBufferFrames, bufferResult.error());
     }
+
+    streamInfo_.sampleRate = stream_->getSampleRate();
+    streamInfo_.channels = stream_->getChannelCount();
+    streamInfo_.sharing = static_cast<int>(stream_->getSharingMode());
+    streamInfo_.perf = static_cast<int>(stream_->getPerformanceMode());
+    streamInfo_.api = static_cast<int>(stream_->getAudioApi());
+    streamInfo_.burst = stream_->getFramesPerBurst();
+    streamInfo_.capacity = stream_->getBufferCapacityInFrames();
+    streamInfo_.bufferSize = stream_->getBufferSizeInFrames();
+    streamInfo_.framesPerCallback = stream_->getFramesPerDataCallback();
+    streamInfo_.deviceId = stream_->getDeviceId();
+    latency_probe::probe.reset();
 
     result = stream_->requestStart();
     if (result != oboe::Result::OK) {
@@ -179,6 +194,14 @@ void AudioEngine::unloadSoundFont() {
 oboe::DataCallbackResult AudioEngine::onAudioReady(
     oboe::AudioStream* stream, void* audioData, int32_t numFrames) {
     (void)stream;
+    // LATENCY_PROBE: whole-callback duration; RAII so every return path is covered.
+    struct CallbackProbe {
+        uint64_t start;
+        explicit CallbackProbe(int frames, int rate) : start(latency_probe::probe.on() ? latency_probe::now() : 0) {
+            if (start && rate > 0) latency_probe::probe.budgetNs.store(uint64_t(frames) * 1000000000ull / uint64_t(rate), std::memory_order_relaxed);
+        }
+        ~CallbackProbe() { if (start) latency_probe::probe.callbackDone(start, latency_probe::now()); }
+    } callbackProbe(numFrames, outputSampleRate_);
     f12::Callback f12Callback(numFrames,outputSampleRate_);
 // PCM_PATH_OBSERVER_BEGIN
 #if YAMAHA_ROLE_PCM_METERS
@@ -356,4 +379,29 @@ std::string AudioEngine::sfCompactChordDiagnosticReport() const { return soundFo
 
 std::string AudioEngine::sfDrumCompatibilityReport(const std::vector<drum_compat::Demand>& demand, const std::vector<std::pair<int,int>>& comparisonKits) const {
     return soundFont_.drumCompatibilityReport(demand,comparisonKits);
+}
+
+// LATENCY_PROBE: report built outside the audio callback.
+std::string AudioEngine::latencyReport() {
+    std::ostringstream out;
+    out << "LATENCY_OUTPUT streamOpen=" << (stream_ ? 1 : 0) << " sampleRate=" << streamInfo_.sampleRate
+        << " channels=" << streamInfo_.channels << " sharing=" << streamInfo_.sharing << "(0=Exclusive,1=Shared)"
+        << " perf=" << streamInfo_.perf << "(10=None,11=PowerSaving,12=LowLatency)"
+        << " api=" << streamInfo_.api << "(1=OpenSLES,2=AAudio)"
+        << " fallbackToShared=" << (streamInfo_.fallbackShared ? 1 : 0)
+        << " framesPerBurst=" << streamInfo_.burst << " framesPerCallback=" << streamInfo_.framesPerCallback
+        << " bufferCapacity=" << streamInfo_.capacity << " bufferSizeAtStart=" << streamInfo_.bufferSize << "\n";
+    if (auto stream = stream_) {
+        const int rate = stream->getSampleRate() > 0 ? stream->getSampleRate() : 48000;
+        out << "LATENCY_OUTPUT_LIVE bufferSizeNow=" << stream->getBufferSizeInFrames() << " (="
+            << (1000.0 * stream->getBufferSizeInFrames() / rate) << "ms) xruns=";
+        const auto xruns = stream->getXRunCount();
+        if (xruns) out << xruns.value(); else out << "unavailable";
+        const auto latency = stream->calculateLatencyMillis();
+        if (latency) out << " estimatedOutputLatencyMs=" << latency.value() << " (Oboe estimate from the stream clock, not an acoustic measurement)";
+        else out << " estimatedOutputLatencyMs=unavailable(" << oboe::convertToText(latency.error()) << ")";
+        out << "\n";
+    }
+    out << latency_probe::probe.report();
+    return out.str();
 }

@@ -271,8 +271,11 @@ class AudioEngineManager @Inject constructor(
 
     fun noteOn(midiNote: Int, velocity01: Float) {
         DebugLog.traceAudio("NOTE_ON ch=legacy note=$midiNote vel=${"%.3f".format(java.util.Locale.US, velocity01)} sf2=$soundFontLoaded")
-        if (soundFontLoaded) bridge.nativeSfNoteOnChannel(0, midiNote, velocity01)
-        else {
+        if (soundFontLoaded) {
+            val probeStart = System.nanoTime() // LATENCY_PROBE
+            bridge.nativeSfNoteOnChannel(0, midiNote, velocity01)
+            LatencyProbe.jniKeyboardNote(probeStart)
+        } else {
             val sample = sampleProvider.sampleForNote(midiNote) ?: return
             bridge.nativeNoteOn(midiNote, sample.rootNote, velocity01, sample.buffer, sample.frameCount, sample.sampleRateHz)
         }
@@ -285,8 +288,11 @@ class AudioEngineManager @Inject constructor(
 
     fun noteOnChannel(channel: Int, midiNote: Int, velocity01: Float) {
         DebugLog.traceAudio("NOTE_ON ch=$channel note=$midiNote vel=${"%.3f".format(java.util.Locale.US, velocity01)} sf2=$soundFontLoaded")
-        if (soundFontLoaded) bridge.nativeSfNoteOnChannel(channel, midiNote, velocity01)
-        else noteOn(midiNote, velocity01)
+        if (soundFontLoaded) {
+            val probeStart = System.nanoTime() // LATENCY_PROBE
+            bridge.nativeSfNoteOnChannel(channel, midiNote, velocity01)
+            if (channel < 4) LatencyProbe.jniKeyboardNote(probeStart)
+        } else noteOn(midiNote, velocity01)
     }
 
     fun noteOnStyleChannel(channel: Int, note: Int, velocity: Float, sourceChannel: Int,
@@ -380,6 +386,9 @@ class AudioEngineManager @Inject constructor(
     }
     fun bindDrumAB(ch: Int, pdta: String, bank: Int, pc: Int, section: String): Boolean = bridge.nativeBindDrumAB(ch,pdta,bank,pc,section)
     fun drumABReport(): String = bridge.nativeDrumABReport()
+    /** LATENCY_PROBE report (Kotlin + native + Oboe stream). Call outside realtime paths. */
+    fun latencyReport(): String = LatencyProbe.report() + bridge.nativeLatencyReport()
+    fun latencyReset() { LatencyProbe.reset(); bridge.nativeLatencyReset() }
     fun channelBinding(channel: Int): ChannelBinding? = ChannelBinding.parse(bridge.nativeChannelBinding(channel))
 
     /** Loaded preset for a saved pin. Reads the cached native snapshot without the readiness lock. */

@@ -201,6 +201,7 @@ class ArrangerBrain @Inject constructor(
             midiInputManager.sendNoteOn(channel, outputNote, velocity127)
             owners[channel] = outputNote
         }
+        com.yourapp.yamahaarranger.audio.LatencyProbe.rightHandedOff() // LATENCY_PROBE
     }
 
     private fun releaseRightNote(sourceNote: Int) {
@@ -217,7 +218,9 @@ class ArrangerBrain @Inject constructor(
     }
 
     fun onKeyboardNoteOn(midiNote: Int, velocity: Float) {
+        val probeRequestedNs = System.nanoTime() // LATENCY_PROBE
         synchronized(keyboardLock) {
+            com.yourapp.yamahaarranger.audio.LatencyProbe.keyboardLockAcquired(probeRequestedNs) // LATENCY_PROBE
             val velocity127 = (velocity * 127f).toInt().coerceIn(0, 127)
             val outputNote = (midiNote + keyboardTranspose).coerceIn(0, 127)
             if (midiNote > splitNote) {
@@ -228,6 +231,7 @@ class ArrangerBrain @Inject constructor(
             if (acmpEnabled && leftVoiceEnabled) {
                 // ACMP/chord notes are deliberately not sustain-held.
                 DebugLog.add("🎹 LEFT IN note=$midiNote vel=$velocity127 → CHORD")
+                com.yourapp.yamahaarranger.audio.LatencyProbe.chordNoteParsed() // LATENCY_PROBE
                 chordDetector.noteOn(midiNote)?.let(::onChordChanged)
             } else if (leftVoiceEnabled) {
                 transposedNotes[midiNote] = outputNote
@@ -381,7 +385,9 @@ class ArrangerBrain @Inject constructor(
         ensureSequencer()
         pendingChord = null
         appliedChord = chord
+        val probeChordStart = com.yourapp.yamahaarranger.audio.LatencyProbe.chordApplyStart() // LATENCY_PROBE
         sequencer.currentChord = chord
+        com.yourapp.yamahaarranger.audio.LatencyProbe.chordApplyEnd(probeChordStart) // LATENCY_PROBE
         _state.update { it.copy(currentChordLabel = chord.label()) }
         DebugLog.add("🎼 ACMP chord → ${chord.label()}")
     }

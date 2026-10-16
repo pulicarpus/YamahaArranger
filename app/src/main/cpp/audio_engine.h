@@ -5,6 +5,7 @@
 #include <string>
 #include "voice.h"
 #include "bassmidi_player.h"
+#include "latency_probe.h"
 // PCM_PATH_OBSERVER_BEGIN
 #if YAMAHA_ROLE_PCM_METERS
 #include "pcm_path_evidence.h"
@@ -64,11 +65,17 @@ public:
     std::string sfDrumKitCoverage(const std::vector<drum_audit::Hit>& hits) const;
     std::string sfDrumCompatibilityReport(const std::vector<drum_compat::Demand>& demand, const std::vector<std::pair<int,int>>& comparisonKits = {}) const;
     oboe::DataCallbackResult onAudioReady(oboe::AudioStream*,void*,int32_t) override;
+    // LATENCY_PROBE: statistics plus a one-shot description of the output stream.
+    std::string latencyReport();
+    void latencyReset(){latency_probe::probe.reset();}
+    void latencySetEnabled(bool e){latency_probe::probe.enabled.store(e?1:0);}
 private:
     std::shared_ptr<oboe::AudioStream> stream_;
     std::array<Voice,kMaxPolyphony> voices_;
     std::mutex voiceMutex_;
     int outputSampleRate_=48000;
+    // Captured once at start(); read from the report thread only after start() returned.
+    struct StreamInfo {int sampleRate=0,channels=0,sharing=-1,perf=-1,api=-1,burst=0,capacity=0,bufferSize=0,framesPerCallback=0,deviceId=0;bool fallbackShared=false;} streamInfo_;
     BassMidiPlayer soundFont_;
 // PCM_PATH_OBSERVER_BEGIN
 #if YAMAHA_ROLE_PCM_METERS

@@ -2,6 +2,7 @@
 #include "keyboard_release_probe.h"
 #include "release_envelope_evidence.h"
 #include "voice_resolver.h"
+#include "latency_probe.h"
 #include "sf2_fingerprint.h"
 #ifndef YAMAHA_COMPATIBLE_PERCUSSION
 #define YAMAHA_COMPATIBLE_PERCUSSION 0
@@ -1205,7 +1206,9 @@ void BassMidiPlayer::logAudioPath(int channel, int key, int velocity, bool sent,
 }
 
 void BassMidiPlayer::noteOn(int channel, int key, float velocity, const AudioPathOrigin& origin) {
+    const uint64_t probeEnter = latency_probe::probe.on() ? latency_probe::now() : 0; // LATENCY_PROBE
     f12::SynthLock lock(mutex_,f12::NoteOn);
+    const uint64_t probeLocked = probeEnter ? latency_probe::now() : 0; // LATENCY_PROBE
     ++pcmSessionNotes_.attempts[std::clamp(channel,0,15)];
     if (!ensureEngine()) {
         logAudioPath(std::clamp(channel, 0, 15), std::clamp(key, 0, 127),
@@ -1256,6 +1259,7 @@ void BassMidiPlayer::noteOn(int channel, int key, float velocity, const AudioPat
     // on every note was one of the diagnostic build's major correctness bugs.
     const bool sent = send(channel, MIDI_EVENT_NOTE,
                            static_cast<DWORD>(key | (vel << 8)));
+    if (probeEnter && sent) latency_probe::probe.noteQueued(channel < 4, probeEnter, probeLocked, latency_probe::now()); // LATENCY_PROBE
     pcmSessionNotes_.sent[channel]+=sent;
     if (channel < 4) {
         auto& evidence=keyboardEvidence_[channel];
@@ -2136,7 +2140,9 @@ std::string BassMidiPlayer::keyboardReleaseProbeReport() const {
 }
 
 void BassMidiPlayer::render(float* out, int numFrames) {
+    const uint64_t probeEnter = latency_probe::probe.on() ? latency_probe::now() : 0; // LATENCY_PROBE
     f12::SynthLock lock(mutex_,f12::Render);
+    const uint64_t probeLocked = probeEnter ? latency_probe::now() : 0; // LATENCY_PROBE
 // PCM_PATH_OBSERVER_BEGIN
 #if YAMAHA_ROLE_PCM_METERS
     ++pcmDecode_.calls;
@@ -2196,6 +2202,7 @@ void BassMidiPlayer::render(float* out, int numFrames) {
 #endif
 // HEADROOM_OBSERVER_END
     renderPercussion(out,numFrames);
+    if (probeEnter) latency_probe::probe.renderDone(probeEnter, probeLocked, latency_probe::now()); // LATENCY_PROBE
 // HEADROOM_OBSERVER_BEGIN
 #if YAMAHA_PCM_HEADROOM
     headroom_.finish(out,numFrames*2);

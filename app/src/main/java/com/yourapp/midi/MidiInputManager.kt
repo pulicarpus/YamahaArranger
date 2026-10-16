@@ -96,7 +96,9 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
 
     private inner class MidiNoteReceiver : MidiReceiver() {
         override fun onSend(data: ByteArray, offset: Int, count: Int, timestamp: Long) {
+            com.yourapp.yamahaarranger.audio.LatencyProbe.onSendEnter(timestamp)
             parseMessages(data, offset, count)
+            com.yourapp.yamahaarranger.audio.LatencyProbe.onSendExit()
         }
     }
 
@@ -175,6 +177,7 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
             when (type) {
                 0x90 -> if (channel == chordInputChannel) {
                     if (d2 > 0) {
+                        com.yourapp.yamahaarranger.audio.LatencyProbe.noteOnParsed()
                         onNoteOn?.invoke(d1, d2)
                         DebugLog.add("🎹 IN ch$channel NoteOn $d1 vel$d2")
                     } else {
