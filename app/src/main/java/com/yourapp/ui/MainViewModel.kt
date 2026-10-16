@@ -1058,6 +1058,13 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    /** On-screen keyboard: plays RIGHT 1/2/3 through ArrangerBrain's virtual path (engine only, never MIDI OUT). */
+    val virtualKeyboard = com.yourapp.yamahaarranger.audio.VirtualKeyboardController(arrangerBrain.virtualKeyboardSink)
+    private val _virtualKeyboardEpoch = MutableStateFlow(0)
+    /** Bumps whenever the keyboard was force-closed (pause/focus loss) so the panel resyncs its controls. */
+    val virtualKeyboardEpoch: StateFlow<Int> = _virtualKeyboardEpoch
+    fun closeVirtualKeyboard() { virtualKeyboard.closePanel(); _virtualKeyboardEpoch.update { it + 1 } }
+
     /** App-side (NOT backend-read) values for one RIGHT layer; the panel labels them as APP STATE. */
     data class RightDiagApp(
         val label: String, val enabled: Boolean, val voiceName: String, val soundFontName: String,

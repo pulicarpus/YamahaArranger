@@ -1,6 +1,8 @@
 package com.yourapp.yamahaarranger.arranger
 
 import com.yourapp.yamahaarranger.audio.RightVelocityMonitor
+import com.yourapp.yamahaarranger.audio.VirtualKeyboardSink
+import com.yourapp.yamahaarranger.audio.VirtualRightVoices
 import com.yourapp.yamahaarranger.audio.RightVelocityTest
 import com.yourapp.yamahaarranger.audio.AudioEngineManager
 import com.yourapp.yamahaarranger.chord.ChordDetector
@@ -158,8 +160,34 @@ class ArrangerBrain @Inject constructor(
     }
 
     private fun engineNoteOff(channel: Int, note: Int) {
+        // A USB release must not cut a key the on-screen keyboard is still holding.
+        if (virtualRight.owns(channel, note)) return
+        rawNoteOff(channel, note)
+    }
+
+    private fun rawNoteOff(channel: Int, note: Int) {
         if (channel == 0) audioEngine.noteOff(note)
         else audioEngine.noteOffChannel(channel, note)
+    }
+
+    // Virtual keyboard (on-screen) RIGHT 1/2/3 path: separate ownership ledger, engine only.
+    // It never reaches MIDI OUT, chord detection, style playback or the USB owner map.
+    private val virtualRight = VirtualRightVoices(
+        engineOn = { channel, pitch, velocity01 ->
+            if (channel == 0) audioEngine.noteOn(pitch, velocity01) else audioEngine.noteOnChannel(channel, pitch, velocity01)
+        },
+        engineOff = { channel, pitch -> rawNoteOff(channel, pitch) },
+        rightEnabled = { channel -> rightVoiceEnabled[channel] },
+        externallyHeld = { channel, pitch ->
+            rightNoteOwners.values.any { it[channel] == pitch } || sustainHeldNotes.contains(channel to pitch)
+        }
+    )
+
+    val virtualKeyboardSink: VirtualKeyboardSink = object : VirtualKeyboardSink {
+        override fun noteOn(pitch: Int, velocity127: Int) { synchronized(keyboardLock) { virtualRight.noteOn(pitch, velocity127) } }
+        override fun noteOff(pitch: Int) { synchronized(keyboardLock) { virtualRight.noteOff(pitch) } }
+        override fun setSustain(enabled: Boolean) { synchronized(keyboardLock) { virtualRight.setSustain(enabled) } }
+        override fun releaseAll() { synchronized(keyboardLock) { virtualRight.releaseAll() } }
     }
 
     private fun releaseKeyboardNote(channel: Int, note: Int) {
@@ -341,6 +369,7 @@ class ArrangerBrain @Inject constructor(
                 }
                 // Covers release-stage voices as well as held notes, on this part only.
                 audioEngine.stopRightPart(layer)
+                virtualRight.forgetPart(layer)
                 midiInputManager.sendRightPartSoundOff(layer)
             }
             DebugLog.add("🎹 RIGHT " + (layer + 1) + ": " + if (enabled) "ON" else "OFF")

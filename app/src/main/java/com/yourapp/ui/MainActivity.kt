@@ -20,6 +20,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import dagger.hilt.android.AndroidEntryPoint
@@ -53,6 +56,17 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.OpenDocument()
     ) { uri -> uri?.let(viewModel::onSoundFontFilePicked) }
 
+    // On-screen keyboard safety: any pause / focus loss releases every virtual note and the virtual sustain.
+    override fun onPause() {
+        viewModel.closeVirtualKeyboard()
+        super.onPause()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (!hasFocus) viewModel.closeVirtualKeyboard()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (savedInstanceState == null) { // fresh process/launch: diagnostic test mode never survives a restart
@@ -80,17 +94,33 @@ class MainActivity : ComponentActivity() {
             YamahaArrangerTheme {
                 val showInspector = remember { mutableStateOf(false) }
                 val overlayPageVisible = remember { mutableStateOf(false) }
+                val keyboardOpen = remember { mutableStateOf(false) }
                 Box(Modifier.fillMaxSize()) {
                     SxMainScreen(
                         viewModel = viewModel,
                         onOpenInspector = { showInspector.value = true },
                         onMixerVisibilityChanged = { overlayPageVisible.value = it }
                     )
+                    if (keyboardOpen.value) VirtualKeyboardPanel(
+                        viewModel = viewModel,
+                        onClose = { keyboardOpen.value = false },
+                        modifier = androidx.compose.ui.Modifier.align(androidx.compose.ui.Alignment.BottomCenter)
+                    ) else androidx.compose.foundation.layout.Box(
+                        androidx.compose.ui.Modifier
+                            .align(androidx.compose.ui.Alignment.BottomEnd)
+                            .padding(end = 6.dp, bottom = 6.dp)
+                            .background(androidx.compose.ui.graphics.Color(0xDD1E5AA8), androidx.compose.foundation.shape.RoundedCornerShape(4.dp))
+                            .clickable { keyboardOpen.value = true }
+                            .padding(horizontal = 10.dp, vertical = 5.dp)
+                    ) {
+                        androidx.compose.material3.Text("🎹 KEYBOARD", color = androidx.compose.ui.graphics.Color.White,
+                            fontSize = 11.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                    }
                     RightVoiceDiagOverlay(
                         viewModel = viewModel,
                         modifier = androidx.compose.ui.Modifier
                             .align(androidx.compose.ui.Alignment.BottomStart)
-                            .padding(start = 6.dp, bottom = 6.dp)
+                            .padding(start = 6.dp, bottom = 6.dp + if (keyboardOpen.value) VirtualKeyboardPanelHeight else 0.dp)
                     )
                     if (!overlayPageVisible.value) ChordModeSelector(
                         modifier = androidx.compose.ui.Modifier

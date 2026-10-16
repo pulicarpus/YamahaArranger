@@ -19,6 +19,7 @@ CPV_SOURCES = [
     MAIN / 'yamahaarranger/style/StyleOverrideStore.kt',
     MAIN / 'yamahaarranger/audio/SoundFontRolePlanner.kt',
     MAIN / 'yamahaarranger/audio/RightVoiceDiag.kt',
+    MAIN / 'yamahaarranger/audio/VirtualKeyboard.kt',
     MAIN / 'yamahaarranger/registration/RegistrationCodec.kt',
     MAIN / 'yamahaarranger/registration/RegistrationModel.kt',
 ]
