@@ -82,6 +82,19 @@ jobs:
         run: |
           set -euo pipefail
           python3 tools/audio_lab/analyze.py --in /tmp/lab --out /tmp/lab_report --tsf-dir /tmp/sf2 2>&1 | tee /tmp/lab_report_stdout.txt
+      - name: Summary (last lines of the log = the evidence)
+        run: |
+          python3 - <<'PY'
+          import re
+          t = open('/tmp/lab_report/report.md').read()
+          parts = re.split(r'\n(?=## )', t)
+          want = ('## T8', '## T7', '## Automatic findings')
+          print('=====SUMMARY-BEGIN=====')
+          print(open('/tmp/lab/sf2_compare.log').read())
+          for p in parts:
+              if p.startswith(want): print(p)
+          print('=====SUMMARY-END=====')
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:

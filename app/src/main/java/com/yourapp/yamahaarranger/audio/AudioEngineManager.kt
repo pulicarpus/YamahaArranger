@@ -33,7 +33,7 @@ class AudioEngineManager @Inject constructor(
             if (!readiness.wantsOutput(epoch)) return@withLock false
             if (!started) {
                 DebugLog.add("🎵 AudioEngine.start()…")
-                bridge.nativeInitLogger()
+                bridge.nativeInitLogger(); bridge.nativeSetDiagnosticLogging(!NoteLogTuning.lean)
                 DebugLog.add("📋 Native logger initialized")
                 started = bridge.nativeStart()
                 if (started) bridge.nativeSetKeyboardReleaseTime(keyboardReleaseTime)
@@ -114,7 +114,7 @@ class AudioEngineManager @Inject constructor(
             block()
         } finally {
             if (resume && readiness.wantsOutput(outputEpoch)) {
-                bridge.nativeInitLogger()
+                bridge.nativeInitLogger(); bridge.nativeSetDiagnosticLogging(!NoteLogTuning.lean)
                 started = bridge.nativeStart()
                 if (started) bridge.nativeSetKeyboardReleaseTime(keyboardReleaseTime)
                 readiness.outputResult(outputEpoch, started)
@@ -485,6 +485,9 @@ class AudioEngineManager @Inject constructor(
     fun setBufferMode(mode: Int): Int = bridge.nativeSetBufferMode(mode)
     fun bufferStatus(): String = bridge.nativeBufferStatus()
     fun bufferTick() = bridge.nativeBufferTick()
+
+    /** NORMAL (false) / DIAGNOSTIC (true) logging for the native per-note messages. */
+    fun setDiagnosticLogging(on: Boolean) = bridge.nativeSetDiagnosticLogging(on)
 
     /** Path A vs B: arm a capture of the live render of the next RIGHT note (style must be stopped). */
     fun armLiveOnset(allowed: () -> Boolean): Boolean = allowed() && bridge.nativeArmLiveOnset()

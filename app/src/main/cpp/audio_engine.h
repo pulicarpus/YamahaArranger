@@ -51,6 +51,7 @@ public:
     std::string sfKeyboardVoiceSnapshot() const { return soundFont_.keyboardVoiceSnapshot(); }
     std::string sfRightOnsetReport(int channel,int key) { return soundFont_.onsetReport(channel,key); }
     bool sfArmLiveOnset() { return soundFont_.armLiveOnset(); }
+    static void sfSetDiagnosticLogging(bool on) { BassMidiPlayer::setDiagnosticLogging(on); }
     std::string sfLiveOnsetStatus() const { return soundFont_.liveOnsetStatus(); }
     std::string sfLiveOnsetReport() { return soundFont_.liveOnsetReport(); }
     std::string sfRightVoiceDiagnostic() const { return soundFont_.rightVoiceDiagnostic(); }

@@ -87,9 +87,9 @@ fun LatencyAbOverlay(viewModel: MainViewModel, modifier: Modifier = Modifier) {
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 4.dp)) {
-            Text("NOTE LOG", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-            Chip("A: NORMAL", if (!leanLog) Color(0xFF1E8E3E) else Color(0xFF444C56)) { viewModel.setLeanNoteLog(false); leanLog = false }
-            Chip("B: LEAN (no NOTE logs)", if (leanLog) Color(0xFF1E8E3E) else Color(0xFF444C56)) { viewModel.setLeanNoteLog(true); leanLog = true }
+            Text("LOG MODE", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Chip("DIAGNOSTIC (per-note logs)", if (!leanLog) Color(0xFF1E8E3E) else Color(0xFF444C56)) { viewModel.setLeanNoteLog(false); leanLog = false }
+            Chip("NORMAL (default)", if (leanLog) Color(0xFF1E8E3E) else Color(0xFF444C56)) { viewModel.setLeanNoteLog(true); leanLog = true }
             Text("LIVE vs ISOLATED", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
             Chip("ARM", Color(0xFF3A5A8A)) { liveReport = ""; scope.launch { liveStatus = viewModel.armLiveOnset() } }
             Text(liveStatus, color = Color(0xFFFFE08A), fontSize = 9.sp)

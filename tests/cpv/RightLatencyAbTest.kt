@@ -27,7 +27,7 @@ import org.mockito.Mockito.verifyNoInteractions
 import org.mockito.Mockito.`when`
 
 class RightLatencyAbTest {
-    @After fun restore() { LatencyProbe.enabled = true; LatencyProbe.reset(); NoteLogTuning.lean = false; NoteLogTuning.resetCounter() }
+    @After fun restore() { LatencyProbe.enabled = true; LatencyProbe.reset(); NoteLogTuning.lean = true; NoteLogTuning.resetCounter() }
 
     private fun brain(): Triple<ArrangerBrain, NativeAudioBridge, MidiInputManager> {
         val bridge = mock(NativeAudioBridge::class.java)
@@ -166,19 +166,19 @@ class RightLatencyAbTest {
     private fun engineCalls(bridge: NativeAudioBridge) = org.mockito.Mockito.mockingDetails(bridge).invocations
         .filter { it.method.name.startsWith("nativeSfNote") }.map { it.method.name + it.arguments.joinToString(",", "(", ")") }
 
-    @Test fun leanLogIsOffByDefaultAndChangesNoEngineOrMidiCall() {
-        assertFalse("every launch starts normal", NoteLogTuning.lean)
+    @Test fun normalModeIsTheDefaultAndLoggingModeChangesNoEngineOrMidiCall() {
+        assertTrue("every launch starts in NORMAL (per-note logging off)", NoteLogTuning.lean)
         val (brainA, bridgeA, midiA) = brain()
-        NoteLogTuning.lean = false; NoteLogTuning.resetCounter()
+        NoteLogTuning.lean = false; NoteLogTuning.resetCounter() // DIAGNOSTIC
         playPhrase(brainA)
-        assertEquals("normal mode suppresses nothing", 0L, NoteLogTuning.suppressed)
+        assertEquals("DIAGNOSTIC mode suppresses nothing", 0L, NoteLogTuning.suppressed)
         val normalEngine = engineCalls(bridgeA)
         val normalMidi = org.mockito.Mockito.mockingDetails(midiA).invocations.map { it.method.name + it.arguments.joinToString(",", "(", ")") }
 
         val (brainB, bridgeB, midiB) = brain()
         NoteLogTuning.lean = true; NoteLogTuning.resetCounter()
         playPhrase(brainB)
-        assertTrue("lean mode does skip the per-note log lines", NoteLogTuning.suppressed >= 12)
+        assertTrue("NORMAL mode skips the per-note log lines", NoteLogTuning.suppressed >= 12)
         assertEquals("identical engine calls, order and velocities", normalEngine, engineCalls(bridgeB))
         val leanMidi = org.mockito.Mockito.mockingDetails(midiB).invocations.map { it.method.name + it.arguments.joinToString(",", "(", ")") }
         assertEquals("MIDI OUT traffic is untouched", normalMidi, leanMidi)
@@ -206,9 +206,42 @@ class RightLatencyAbTest {
     @Test fun leanSwitchIsProcessLocalAndNeverPersisted() {
         val probe = source("yamahaarranger/audio/PcmSessionControls.kt").readText()
         val tuning = probe.substringAfter("object NoteLogTuning")
-        assertTrue(tuning.contains("@Volatile var lean = false"))
+        assertTrue(tuning.contains("@Volatile var lean = true"))
         for (forbidden in listOf("SharedPreferences", "DataStore", "File("))
             assertFalse(tuning.contains(forbidden) || source("ui/LatencyAbOverlay.kt").readText().contains(forbidden))
+    }
+
+    // ---- audio callback hygiene ----------------------------------------------------------------------------------
+
+    @Test fun audioCallbackPathHasNoPerBlockLoggingOrFormatting() {
+        val player = File(root(), "app/src/main/cpp/bassmidi_player.cpp").readText()
+        val render = functionBody(player, "void BassMidiPlayer::render(float* out, int numFrames) {")
+        val percussion = functionBody(player, "void BassMidiPlayer::renderPercussion(float* out,int frames) {")
+        assertFalse("renderPercussion never logs", percussion.contains("LOGI(") || percussion.contains("LOGE("))
+        assertFalse("render() never calls LOGI", render.contains("LOGI("))
+        assertEquals("only the rate-limited decoder-failure LOGE remains", 1, Regex("LOGE\\(").findAll(render).count())
+        assertTrue(render.contains("failure < 3 || failure % 512 == 0"))
+        for (forbidden in listOf("ostringstream", "std::to_string", "snprintf", "std::string "))
+            assertFalse("render() must not build strings: $forbidden", render.contains(forbidden))
+        val engine = File(root(), "app/src/main/cpp/audio_engine.cpp").readText()
+        val callback = functionBody(engine, "oboe::DataCallbackResult AudioEngine::onAudioReady(\n    oboe::AudioStream* stream, void* audioData, int32_t numFrames) {")
+        // The legacy sample-voice fallback (no SF2 loaded) keeps its voice lock; the SF2 path that RIGHT/style use must have none.
+        val soundFontPath = callback.substringBefore("pcmOutput_.fallback()")
+        assertTrue("SF2 path found", soundFontPath.contains("soundFont_.render(out, numFrames)"))
+        for (forbidden in listOf("LOGI(", "LOGE(", "uiLog", "ostringstream", "std::to_string", "snprintf", "std::string ", "new ", "mutex", "lock_guard"))
+            assertFalse("onAudioReady SF2 path must not use $forbidden", soundFontPath.contains(forbidden))
+        for (forbidden in listOf("LOGI(", "LOGE(", "uiLog", "ostringstream", "std::to_string", "snprintf"))
+            assertFalse("onAudioReady (all paths) must not use $forbidden", callback.contains(forbidden))
+    }
+
+    @Test fun nativePerNoteMessagesAreDroppedBeforeFormattingInNormalMode() {
+        val player = File(root(), "app/src/main/cpp/bassmidi_player.cpp").readText()
+        val uiLog = player.substringAfter("static void uiLog(const char* fmt, ...) {").substringBefore("#define LOGI")
+        assertTrue(uiLog.indexOf("perNoteFormat(fmt)") in 0 until uiLog.indexOf("vsnprintf"))
+        for (prefix in listOf("AUDIO PATH", "AUDIO LIVE", "AUDIO SUMMARY", "AUDIO CC", "AUDIO OFF", "DRUM PATH", "NOTE ZONE OBSERVED"))
+            assertTrue("$prefix is a per-note message", player.contains("\"$prefix\""))
+        val manager = source("yamahaarranger/audio/AudioEngineManager.kt").readText()
+        assertEquals("both logger-init sites apply the mode", 2, Regex("nativeSetDiagnosticLogging\\(!NoteLogTuning.lean\\)").findAll(manager).count())
     }
 
     // ---- USB parsing: split packets, running status, realtime bytes, reconnect-safe parser state ----------------------
@@ -232,6 +265,14 @@ class RightLatencyAbTest {
             byteArrayOf(on, 64, 0),                                                   // velocity 0 = NOTE_OFF
             byteArrayOf(off, 60, 64, 62, 0))                                          // NOTE_OFF + running-status NOTE_OFF
         assertEquals(listOf("on:60:100", "on:62:90", "off:64", "off:60", "off:62"), events)
+    }
+
+    private fun functionBody(text: String, header: String): String {
+        val start = text.indexOf(header)
+        assertTrue("function not found: $header", start >= 0)
+        var depth = 1; var i = start + header.length
+        while (depth > 0 && i < text.length) { if (text[i] == '{') depth++ else if (text[i] == '}') depth--; i++ }
+        return text.substring(start, i)
     }
 
     private fun root(): File {

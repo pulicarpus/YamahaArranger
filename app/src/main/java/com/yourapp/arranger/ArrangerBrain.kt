@@ -263,17 +263,17 @@ class ArrangerBrain @Inject constructor(
             }
             if (acmpEnabled && leftVoiceEnabled) {
                 // ACMP/chord notes are deliberately not sustain-held.
-                DebugLog.add("🎹 LEFT IN note=$midiNote vel=$velocity127 → CHORD")
+                if (!com.yourapp.yamahaarranger.audio.NoteLogTuning.skip()) DebugLog.add("🎹 LEFT IN note=$midiNote vel=$velocity127 → CHORD")
                 chordDetector.noteOn(midiNote)?.let(::onChordChanged)
             } else if (leftVoiceEnabled) {
                 transposedNotes[midiNote] = outputNote
-                DebugLog.add("🎹 LEFT IN note=$midiNote → pitch=$outputNote vel=$velocity127 → LEFT VOICE")
+                if (!com.yourapp.yamahaarranger.audio.NoteLogTuning.skip()) DebugLog.add("🎹 LEFT IN note=$midiNote → pitch=$outputNote vel=$velocity127 → LEFT VOICE")
                 stopSustainedNote(leftVoiceChannel, outputNote)
                 audioEngine.noteOnChannel(leftVoiceChannel, outputNote, velocity)
                 midiInputManager.sendNoteOn(leftVoiceChannel, outputNote, velocity127)
                 leftVoiceNotes.add(outputNote)
             } else {
-                DebugLog.add("🎹 LEFT IN note=$midiNote → pitch=$outputNote vel=$velocity127 → R1/R2/R3 (ACMP/L OFF)")
+                if (!com.yourapp.yamahaarranger.audio.NoteLogTuning.skip()) DebugLog.add("🎹 LEFT IN note=$midiNote → pitch=$outputNote vel=$velocity127 → R1/R2/R3 (ACMP/L OFF)")
                 startRightNote(midiNote, outputNote, velocity, velocity127)
             }
         }
@@ -296,7 +296,7 @@ class ArrangerBrain @Inject constructor(
             }
             if (acmpEnabled && leftVoiceEnabled) {
                 // ACMP owns chord release; sustain never intercepts this path.
-                DebugLog.add("🎹 LEFT OFF note=$midiNote → CHORD")
+                if (!com.yourapp.yamahaarranger.audio.NoteLogTuning.skip()) DebugLog.add("🎹 LEFT OFF note=$midiNote → CHORD")
                 val chord = chordDetector.noteOff(midiNote)
                 if (chord != null) onChordChanged(chord)
                 else DebugLog.add("🎹 Chord release: keep last chord")

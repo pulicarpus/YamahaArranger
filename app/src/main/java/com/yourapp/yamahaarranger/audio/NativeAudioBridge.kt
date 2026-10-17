@@ -62,6 +62,7 @@ class NativeAudioBridge @Inject constructor() {
     external fun nativeBufferStatus(): String
     external fun nativeBufferTick()
     external fun nativeRightOnsetReport(channel: Int, key: Int): String
+    external fun nativeSetDiagnosticLogging(on: Boolean)
     external fun nativeArmLiveOnset(): Boolean
     external fun nativeLiveOnsetStatus(): String
     external fun nativeLiveOnsetReport(): String

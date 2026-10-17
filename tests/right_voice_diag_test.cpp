@@ -158,5 +158,31 @@ int main(int argc, char** argv) {
         check(p.liveOnsetStatus() == "ready", "a finished capture stays until re-armed");
         check(p.armLiveOnset() && p.liveOnsetStatus().find("armed") == 0 && p.liveOnsetReport().find("not ready") != std::string::npos, "re-arm resets");
     }
+    // 10. Logging modes: NORMAL drops per-note audio-path logging before formatting; DIAGNOSTIC keeps it; sound is identical.
+    {
+        p.setChannelPreset(11, 0, 24, "Guitar"); p.setChannelPreset(12, 0, 24, "Guitar");   // the audio-path log is throttled per channel
+        auto playStyleNotes = [&](bool diagnostic, int ch) {
+            BassMidiPlayer::setDiagnosticLogging(diagnostic);
+            const auto emitted = BassMidiPlayer::logEmittedCount(), suppressed = BassMidiPlayer::logSuppressedCount();
+            std::vector<float> out(256 * 2);
+            for (int i = 0; i < 12; ++i) { p.noteOn(ch, 55 + i, 0.6f, AudioPathOrigin{ch, 55 + i, 0, i, 1000 + i}); p.render(out.data(), 256); }
+            for (int i = 0; i < 12; ++i) p.noteOff(ch, 55 + i, AudioPathOrigin{ch, 55 + i, 0, i, 1000 + i});
+            return std::make_pair(BassMidiPlayer::logEmittedCount() - emitted, BassMidiPlayer::logSuppressedCount() - suppressed);
+        };
+        const auto normal = playStyleNotes(false, 11);
+        const auto diagnostic = playStyleNotes(true, 12);
+        std::cout << "LOG MODES normal emitted=" << normal.first << " suppressed=" << normal.second
+                  << " | diagnostic emitted=" << diagnostic.first << " suppressed=" << diagnostic.second << "\n";
+        check(normal.first == 0, "NORMAL mode emits no per-note log message");
+        check(diagnostic.first > 0 && diagnostic.second == 0, "DIAGNOSTIC mode keeps the per-note messages and suppresses nothing");
+        // Same events reach BASSMIDI in both modes.
+        mock_bass::history.clear();
+        BassMidiPlayer::setDiagnosticLogging(false); p.noteOn(0, 64, 0.8f); p.noteOff(0, 64);
+        const auto normalHistory = mock_bass::history;
+        mock_bass::history.clear();
+        BassMidiPlayer::setDiagnosticLogging(true); p.noteOn(0, 64, 0.8f); p.noteOff(0, 64);
+        check(mock_bass::history == normalHistory, "logging mode never changes the MIDI events sent to BASSMIDI");
+        BassMidiPlayer::setDiagnosticLogging(true);
+    }
     std::cout << "RIGHT VOICE DIAG NATIVE PASS\n";
 }

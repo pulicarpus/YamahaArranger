@@ -1083,10 +1083,11 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    /** A/B: B skips the keyboard NOTE log lines (measured ~0.6 ms each on the MIDI thread). Not persisted. */
+    /** LOG MODE: NORMAL (lean = true, default) or DIAGNOSTIC. Not persisted. */
     fun setLeanNoteLog(on: Boolean) {
         com.yourapp.yamahaarranger.audio.NoteLogTuning.lean = on
         com.yourapp.yamahaarranger.audio.NoteLogTuning.resetCounter()
+        viewModelScope.launch(Dispatchers.Default) { audioEngine.setDiagnosticLogging(!on) } // native per-note logging follows the mode
     }
     fun leanNoteLog(): Boolean = com.yourapp.yamahaarranger.audio.NoteLogTuning.lean
 

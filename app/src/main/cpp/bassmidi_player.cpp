@@ -13,6 +13,7 @@
 #endif
 #include <android/log.h>
 #include <algorithm>
+#include <atomic>
 #include <fstream>
 #include <unordered_set>
 #include <unordered_map>
@@ -36,7 +37,29 @@ extern JavaVM* g_jvm;
 extern jclass g_debugLogClass;
 extern jmethodID g_debugLogAddMethod;
 
+// Logging modes. DIAGNOSTIC (default inside the library, so host tests keep their evidence) logs everything.
+// The app switches to NORMAL at startup: per-note audio-path/zone messages are dropped BEFORE any formatting, logcat or JNI work.
+namespace diag_log {
+static std::atomic<bool> g_enabled{true};
+static std::atomic<uint64_t> g_emitted{0}, g_suppressed{0};
+}
+void BassMidiPlayer::setDiagnosticLogging(bool on) { diag_log::g_enabled.store(on); }
+bool BassMidiPlayer::diagnosticLogging() { return diag_log::g_enabled.load(std::memory_order_relaxed); }
+uint64_t BassMidiPlayer::logEmittedCount() { return diag_log::g_emitted.load(); }
+uint64_t BassMidiPlayer::logSuppressedCount() { return diag_log::g_suppressed.load(); }
+
+static bool perNoteFormat(const char* fmt) {
+    for (const char* prefix : {"AUDIO PATH", "AUDIO LIVE", "AUDIO SUMMARY", "AUDIO CC", "AUDIO OFF", "DRUM PATH", "NOTE ZONE OBSERVED", "DRUM ZONE ch"})
+        if (std::strncmp(fmt, prefix, std::strlen(prefix)) == 0) return true;
+    return false;
+}
+
 static void uiLog(const char* fmt, ...) {
+    if (!diag_log::g_enabled.load(std::memory_order_relaxed) && perNoteFormat(fmt)) {
+        diag_log::g_suppressed.fetch_add(1, std::memory_order_relaxed);
+        return;
+    }
+    diag_log::g_emitted.fetch_add(1, std::memory_order_relaxed);
     char buf[1024];
     va_list args;
     va_start(args, fmt);
@@ -1124,6 +1147,7 @@ void BassMidiPlayer::logAudioPath(int channel, int key, int velocity, bool sent,
             else ++presence.sendFailed;
         }
     }
+    if (!diag_log::g_enabled.load(std::memory_order_relaxed)) return; // NORMAL: no per-note coverage lookups, string building or logging
     const auto& state = channels_[channel];
     const bool drum = channel == 8 || channel == 9;
     if (drum) {
@@ -2381,7 +2405,10 @@ void BassMidiPlayer::render(float* out, int numFrames) {
 #endif
 // PCM_PATH_OBSERVER_END
 
-        LOGE("BASS_ChannelGetData failed error=%d", BASS_ErrorGetCode());
+        // Audio callback: never log on every block. First few occurrences, then one per ~2.7 s at 5.3 ms blocks.
+        static std::atomic<uint64_t> getDataFailures{0};
+        const uint64_t failure = getDataFailures.fetch_add(1, std::memory_order_relaxed);
+        if (failure < 3 || failure % 512 == 0) LOGE("BASS_ChannelGetData failed error=%d (occurrence %llu)", BASS_ErrorGetCode(), static_cast<unsigned long long>(failure));
         std::fill(out, out + numFrames * 2, 0.0f);
         return;
     }

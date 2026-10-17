@@ -65,6 +65,11 @@ public:
     void setMasterGain(float gain);
     std::string presetList() const;
     std::string keyboardVoiceSnapshot() const;
+    // Logging modes: NORMAL (false) drops per-note audio-path/zone logging before it is formatted; DIAGNOSTIC (true) keeps it.
+    static void setDiagnosticLogging(bool on);
+    static bool diagnosticLogging();
+    static uint64_t logEmittedCount();
+    static uint64_t logSuppressedCount();
     // RIGHT A/B diagnostic: read-only backend readback + forwarded-velocity histogram.
     std::string rightVoiceDiagnostic() const;
     // Offline onset of the selected RIGHT preset (isolated decoder; call only while the style is stopped).

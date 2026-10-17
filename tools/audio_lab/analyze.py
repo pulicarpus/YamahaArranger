@@ -279,6 +279,19 @@ def main():
             for key in (36, 48, 60, 72, 84):
                 r = G(font, preset, 'RAW_neutral', 100, key)
                 if r: m = r['m']; P(f"| {font} | {preset} | {key} | {m['rms_0_500']} | {m['centroid_att']} | {m['hf4k_sus']} | {m['m10']} | {m['f0_drift_cents']} |")
+    # T8 headroom: octave stack of the keys that were rendered (worst-case coherent sum); level changes elsewhere must stay below 0 dBFS
+    P('\n## T8. Headroom: 4-note octave stack (C2+C3+C4+C5, velocity 100, linear sum of the individual renders)\n')
+    P('| font | preset | variant | single C4 peak dBFS | stack peak dBFS | headroom to 0 dBFS | +5 dB candidate peak |')
+    P('|---|---|---|---|---|---|---|')
+    for font in fonts:
+        for preset in ('GrandPiano', 'Strings'):
+            for var in ('RAW_neutral', 'RAW_app', 'PLAYER_app'):
+                parts = [G(font, preset, var, 100, k) for k in (36, 48, 60, 72)]
+                if any(x is None for x in parts): continue
+                n = min(len(x['stereo']) for x in parts)
+                total = sum(x['stereo'][:n] for x in parts)
+                pk = db(np.abs(total).max())
+                P(f"| {font} | {preset} | {var} | {parts[2]['m']['peak_db']} | {pk:.1f} | {-pk:.1f} dB | {pk + 5:.1f} |")
     # T7 reference (independent GM SoundFont through the identical BASSMIDI chain)
     if any(k[0] == 'fluidr3' for k in data):
         P('\n## T7. Brightness / onset / stereo vs an independent GM reference (FluidR3_GM through the SAME BASSMIDI chain, RAW_neutral, v100, C4)\n')
@@ -363,8 +376,14 @@ def main():
     except Exception as e:
         print('plots skipped:', e)
     # ---- listening set (16-bit): neutral vs app vs player, velocity 60 and 100 ----
+    listen_presets = ('GrandPiano', 'EPiano', 'SteelGuitar', 'Strings', 'Organ', 'Brass')
+    (out / 'listen' / 'README.txt').write_text('Files: <font>_<preset>_v<velocity>_<variant>.wav, 48 kHz 16-bit stereo, C4 held 2 s then released, first 2.5 s.\n'
+        'font: colombo / tyros = your SF2s; fluidr3 = independent open GM reference through the SAME BASSMIDI chain.\n'
+        'RAW_neutral = BASSMIDI with CC7=127 CC11=127 no reverb (loud, reference level). RAW_app = BASSMIDI with the RIGHT controllers the app sends.\n'
+        'PLAYER_app = the real BassMidiPlayer code path (what the app renders before Oboe). No EQ, no gain change, no normalisation.\n'
+        'Play them in a normal media player on the Redmi Pad and compare with the app.\n')
     for (font, preset, key, vel, var), r in data.items():
-        if key == 60 and vel in (60, 100) and var in ('RAW_neutral', 'RAW_app', 'PLAYER_app'):
+        if key == 60 and preset in listen_presets and vel in ((60, 100) if preset == 'GrandPiano' else (100,)) and var in ('RAW_neutral', 'RAW_app', 'PLAYER_app'):
             write_wav16(out / 'listen' / f'{font}_{preset}_v{vel}_{var}.wav', SR, r['stereo'][:int(2.5 * SR)])
     print((out / 'report.md').read_text())
 
