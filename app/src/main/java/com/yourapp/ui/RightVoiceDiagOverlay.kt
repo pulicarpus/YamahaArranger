@@ -36,16 +36,9 @@ import kotlinx.coroutines.delay
  */
 @Composable
 fun RightVoiceDiagOverlay(viewModel: MainViewModel, modifier: Modifier = Modifier) {
-    var open by remember { mutableStateOf(false) }
     var mode by remember { mutableStateOf(RightVelocityTest.mode) }
     var snapshot by remember { mutableStateOf<MainViewModel.RightDiagSnapshot?>(null) }
-    if (!open) {
-        Box(
-            modifier.background(Color(0xCC5A2A92), RoundedCornerShape(4.dp)).clickable { open = true }
-                .padding(horizontal = 8.dp, vertical = 3.dp)
-        ) { Text("RIGHT DIAG", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold) }
-        return
-    }
+    if (!ToolPanels.diag) return
     LaunchedEffect(Unit) {
         while (true) {
             snapshot = try { viewModel.rightVoiceDiagSnapshot() } catch (_: Exception) { snapshot }
@@ -58,7 +51,7 @@ fun RightVoiceDiagOverlay(viewModel: MainViewModel, modifier: Modifier = Modifie
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("RIGHT DIAG — diagnostic only, not a fix", color = Color(0xFFFFC857), fontSize = 10.sp, fontWeight = FontWeight.Bold)
             Chip("RESET STATS", Color(0xFF444C56)) { viewModel.resetRightDiagStats() }
-            Chip("CLOSE", Color(0xFF7A2B2B)) { open = false }
+            Chip("CLOSE", Color(0xFF7A2B2B)) { ToolPanels.diag = false }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 4.dp)) {
             Text("RIGHT VELOCITY TEST", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)

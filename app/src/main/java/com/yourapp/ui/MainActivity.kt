@@ -94,39 +94,31 @@ class MainActivity : ComponentActivity() {
             YamahaArrangerTheme {
                 val showInspector = remember { mutableStateOf(false) }
                 val overlayPageVisible = remember { mutableStateOf(false) }
-                val keyboardOpen = remember { mutableStateOf(false) }
                 Box(Modifier.fillMaxSize()) {
                     SxMainScreen(
                         viewModel = viewModel,
                         onOpenInspector = { showInspector.value = true },
                         onMixerVisibilityChanged = { overlayPageVisible.value = it }
                     )
-                    if (keyboardOpen.value) VirtualKeyboardPanel(
+                    // Tool panels are opened from the bottom bar buttons and drawn above that bar, never over it.
+                    if (ToolPanels.keyboard) VirtualKeyboardPanel(
                         viewModel = viewModel,
-                        onClose = { keyboardOpen.value = false },
-                        modifier = androidx.compose.ui.Modifier.align(androidx.compose.ui.Alignment.BottomCenter)
-                    ) else androidx.compose.foundation.layout.Box(
-                        androidx.compose.ui.Modifier
-                            .align(androidx.compose.ui.Alignment.BottomEnd)
-                            .padding(end = 6.dp, bottom = 6.dp)
-                            .background(androidx.compose.ui.graphics.Color(0xDD1E5AA8), androidx.compose.foundation.shape.RoundedCornerShape(4.dp))
-                            .clickable { keyboardOpen.value = true }
-                            .padding(horizontal = 10.dp, vertical = 5.dp)
-                    ) {
-                        androidx.compose.material3.Text("🎹 KEYBOARD", color = androidx.compose.ui.graphics.Color.White,
-                            fontSize = 11.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
-                    }
+                        onClose = { ToolPanels.keyboard = false },
+                        modifier = androidx.compose.ui.Modifier
+                            .align(androidx.compose.ui.Alignment.BottomCenter)
+                            .padding(bottom = ToolPanels.BAR_RESERVE)
+                    )
                     LatencyAbOverlay(
                         viewModel = viewModel,
                         modifier = androidx.compose.ui.Modifier
                             .align(androidx.compose.ui.Alignment.BottomCenter)
-                            .padding(bottom = 6.dp + if (keyboardOpen.value) VirtualKeyboardPanelHeight else 0.dp)
+                            .padding(bottom = ToolPanels.BAR_RESERVE + if (ToolPanels.keyboard) VirtualKeyboardPanelHeight else 0.dp)
                     )
                     RightVoiceDiagOverlay(
                         viewModel = viewModel,
                         modifier = androidx.compose.ui.Modifier
                             .align(androidx.compose.ui.Alignment.BottomStart)
-                            .padding(start = 6.dp, bottom = 6.dp + if (keyboardOpen.value) VirtualKeyboardPanelHeight else 0.dp)
+                            .padding(start = 6.dp, bottom = ToolPanels.BAR_RESERVE + if (ToolPanels.keyboard) VirtualKeyboardPanelHeight else 0.dp)
                     )
                     if (!overlayPageVisible.value) ChordModeSelector(
                         modifier = androidx.compose.ui.Modifier

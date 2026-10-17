@@ -47,14 +47,7 @@ private val BUFFER_LABELS = listOf("A: 2× BURST (baseline)", "B: 1.5× BURST", 
  */
 @Composable
 fun LatencyAbOverlay(viewModel: MainViewModel, modifier: Modifier = Modifier) {
-    var open by remember { mutableStateOf(false) }
-    if (!open) {
-        Box(
-            modifier.background(Color(0xCC8A5A00), RoundedCornerShape(4.dp)).clickable { open = true }
-                .padding(horizontal = 8.dp, vertical = 3.dp)
-        ) { Text("LATENCY", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold) }
-        return
-    }
+    if (!ToolPanels.latency) return
     val mode by viewModel.bufferMode.collectAsState()
     var status by remember { mutableStateOf("") }
     var report by remember { mutableStateOf("") }
@@ -80,7 +73,7 @@ fun LatencyAbOverlay(viewModel: MainViewModel, modifier: Modifier = Modifier) {
             Chip("SAVE REPORT", Color(0xFF2E6B3A)) {
                 scope.launch { saved = saveLatencyReport(context, viewModel.latencyReportText(), onset) ?: "save failed" }
             }
-            Chip("CLOSE", Color(0xFF7A2B2B)) { open = false }
+            Chip("CLOSE", Color(0xFF7A2B2B)) { ToolPanels.latency = false }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 4.dp)) {
             Text("OUTPUT BUFFER", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
