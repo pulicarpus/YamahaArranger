@@ -3,7 +3,7 @@ name: Offline Audio Lab (real BASSMIDI)
 # No APK is built here. Results: job log (report) + artifact (WAV listening set, CSV, PNG, report.md).
 on:
   push:
-    branches: [lab/offline-audio]
+    branches: [lab/offline-audio, investigate/midi-out-vs-bassmidi]
     paths-ignore: ['docs/**']
   workflow_dispatch: {}
 permissions:
@@ -89,7 +89,7 @@ jobs:
           import re
           t = open('/tmp/lab_report/report.md').read()
           parts = re.split(r'\n(?=## )', t)
-          want = ('## T8', '## T7', '## Automatic findings')
+          want = ('## T8', '## T7', '## T9', '## T10', '## T11', '## Automatic findings')
           print('=====SUMMARY-BEGIN=====')
           print(open('/tmp/lab/sf2_compare.log').read())
           for p in parts:

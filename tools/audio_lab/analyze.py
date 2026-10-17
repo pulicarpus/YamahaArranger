@@ -305,9 +305,66 @@ def main():
                 if not r: continue
                 m = r['m']; oc = math.log2(max(m['centroid_att'], 1) / max(ref['m']['centroid_att'], 1)) if ref else float('nan')
                 P(f"| {preset} | {font} | {m['centroid_att']} | {oc:+.2f} | {m['hf4k_att']} | {m['hf4k_sus']} | {m['transient_db']} | {m['m10']} | {m.get('stereo_corr')} | {m.get('mono_compat_db')} |")
+    # T9 velocity<->timbre coupling: does playing harder also brighten the tone (acoustic-like / AWM-like response)?
+    VG = (30, 45, 60, 75, 90, 100, 127)
+    def vel_curve(font, preset):
+        pts = [(v, G(font, preset, 'RAW_neutral', v)) for v in VG]
+        return [(v, r['m']) for v, r in pts if r]
+    P('\n## T9. Velocity response: level vs timbre coupling (RAW_neutral, C4, grid 45..100)\n')
+    P('dLevel = RMS change v45->v100; dOct = log2 attack-centroid change v45->v100; coupling = dOct per 10 dB of level (0 = velocity only makes it louder, never brighter). '
+      'sat = highest grid velocity at which the attack centroid is still >3 % above the previous grid step (above it, playing harder no longer brightens).\n')
+    P('| preset | font | dLevel dB | dOct v45->v100 | coupling oct/10dB | sat velocity | >4k att % v45 | >4k att % v100 |')
+    P('|---|---|---|---|---|---|---|---|')
+    coupling = {}
+    for preset in presets:
+        for font in ('fluidr3', 'colombo', 'tyros'):
+            c = vel_curve(font, preset)
+            d = {v: m for v, m in c}
+            if 45 not in d or 100 not in d: continue
+            dl = d[100]['rms_0_500'] - d[45]['rms_0_500']
+            do = math.log2(max(d[100]['centroid_att'], 1) / max(d[45]['centroid_att'], 1))
+            sat = 30
+            for (v0, m0), (v1, m1) in zip(c, c[1:]):
+                if m1['centroid_att'] > 1.03 * m0['centroid_att']: sat = v1
+            cp = do / (dl / 10.0) if abs(dl) > 0.5 else float('nan')
+            coupling.setdefault(font, []).append(cp)
+            P(f"| {preset} | {font} | {dl:+.1f} | {do:+.2f} | {cp:+.2f} | {sat} | {d[45]['hf4k_att']} | {d[100]['hf4k_att']} |")
+    # T10 E343-like touch scenarios. The velocity distributions are ASSUMPTIONS (the real E343 distribution is unmeasured).
+    SCN = {'soft touch (mean ~45)': {30: .25, 45: .35, 60: .25, 75: .10, 90: .05},
+           'medium touch (mean ~72)': {45: .10, 60: .25, 75: .30, 90: .20, 100: .10, 127: .05},
+           'hard touch (mean ~98)': {75: .10, 90: .25, 100: .30, 127: .35}}
+    P('\n## T10. Expected RIGHT sound for ASSUMED E343 touch distributions (weights are assumptions, not measurements)\n')
+    P('Weighted mean over the velocity grid of the attack metrics. A voice that is "closed" at the player normal touch shows a low centroid / low >4 kHz share here.\n')
+    P('| preset | font | touch | mean RMS dB | mean attack centroid Hz | mean >4k att % | mean transient dB | mean -10dB ms |')
+    P('|---|---|---|---|---|---|---|---|')
+    for preset in ('GrandPiano', 'EPiano', 'SteelGuitar', 'Strings'):
+        for font in ('fluidr3', 'colombo', 'tyros'):
+            c = {v: m for v, m in vel_curve(font, preset)}
+            if not c: continue
+            for name, wts in SCN.items():
+                tot = sum(w for v, w in wts.items() if v in c)
+                if tot <= 0: continue
+                wm = lambda key: sum(w * c[v][key] for v, w in wts.items() if v in c) / tot
+                P(f"| {preset} | {font} | {name} | {wm('rms_0_500'):.1f} | {wm('centroid_att'):.0f} | {wm('hf4k_att'):.2f} | {wm('transient_db'):.1f} | {wm('m10'):.1f} |")
+    # T11 level-matched punch: normalise every render to the same attack RMS, then compare transient shape (separates loudness from punch)
+    P('\n## T11. Level-matched attack shape (all renders scaled to equal RMS over 0-100 ms, v100, C4; RAW_neutral)\n')
+    P('Removes loudness from the comparison. punch dB = peak of the first 30 ms relative to the 100-500 ms RMS; peak@ms = time of the first-30-ms peak.\n')
+    P('| preset | font | punch dB | peak@ms | rise10-90 ms | -10dB ms |')
+    P('|---|---|---|---|---|---|')
+    for preset in ('GrandPiano', 'EPiano', 'SteelGuitar', 'Strings', 'Organ', 'Brass'):
+        for font in ('fluidr3', 'colombo', 'tyros'):
+            r = G(font, preset, 'RAW_neutral')
+            if not r: continue
+            x = r['stereo'].mean(axis=1)
+            a = x[:int(.1 * SR)]; x = x / (rms(a) + EPS)
+            head = np.abs(x[:int(.03 * SR)])
+            P(f"| {preset} | {font} | {db(head.max()) - db(rms(x[int(.1*SR):int(.5*SR)])):.1f} | {int(head.argmax()) * 1000.0 / SR:.1f} | {r['m']['rise_10_90']} | {r['m']['m10']} |")
     # ---- automatic findings ----
     f_ = []
     fin = lambda s: f_.append('- ' + s)
+    for font, v in coupling.items():
+        v = [x for x in v if x == x]
+        if v: fin(f"velocity-timbre coupling {font}: median {np.median(v):+.2f} oct per 10 dB over {len(v)} presets (0 = velocity changes level only)")
     mx = lambda v: max([abs(x) for x in v if not (isinstance(x, float) and math.isnan(x))] or [float('nan')])
     if summary['player_vs_raw_lsd']:
         fin(f"PLAYER_app vs RAW_app (same BASSMIDI, app config): max LSD {mx(summary['player_vs_raw_lsd']):.2f} dB, max |dLevel| {mx(summary['player_vs_raw_dlevel']):.2f} dB, "
