@@ -3,6 +3,7 @@ name: Compile and test (no APK artifact)
 on:
   push:
     branches: [lab/offline-audio]
+    paths-ignore: ['docs/**']
   workflow_dispatch: {}
 permissions:
   contents: read

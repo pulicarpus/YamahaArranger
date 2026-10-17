@@ -4,6 +4,7 @@ name: Offline Audio Lab (real BASSMIDI)
 on:
   push:
     branches: [lab/offline-audio]
+    paths-ignore: ['docs/**']
   workflow_dispatch: {}
 permissions:
   contents: read
