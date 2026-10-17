@@ -26,10 +26,11 @@ static std::string outDir;
 
 struct PresetSpec { const char* name; int pc; };
 static const PresetSpec kPresets[] = {
-    {"GrandPiano", 0}, {"BrightPiano", 1}, {"EPiano", 4}, {"Organ", 16}, {"NylonGuitar", 24},
+    {"GrandPiano", 0}, {"BrightPiano", 1}, {"ElecGrand", 2}, {"HonkyTonk", 3}, {"EPiano", 4}, {"EPiano2", 5}, {"Harpsichord", 6}, {"Clavi", 7},
+    {"Organ", 16}, {"NylonGuitar", 24},
     {"SteelGuitar", 25}, {"Strings", 48}, {"Brass", 61}, {"Sax", 65}, {"SynthLead", 80},
 };
-static const int kVelocities[] = {30, 60, 90, 100, 127};
+static const int kVelocities[] = {30, 45, 60, 75, 90, 100, 127};
 
 // Named controller events: resolved against the real header; -1 means "not defined in this SDK".
 static int eventId(const std::string& n) {
@@ -169,13 +170,15 @@ static std::vector<Variant> sweepVariants() {
     return v;
 }
 
+static std::string g_refFont;
 static int runRaw(const std::string& colombo, const std::string& tyros) {
     if (!BASS_Init(0, kRate, 0, nullptr, nullptr)) { std::cerr << "BASS_Init failed " << BASS_ErrorGetCode() << "\n"; return 3; }
     BASS_SetConfig(BASS_CONFIG_MIDI_VOICES, 1000);
     BASS_SetConfig(BASS_CONFIG_MIDI_COMPACT, 0);
     BASS_SetConfig(BASS_CONFIG_UPDATEPERIOD, 10);
     std::cout << "LAB bass=" << std::hex << BASS_GetVersion() << std::dec << "\n";
-    const std::pair<std::string, std::string> fonts[] = {{"colombo", colombo}, {"tyros", tyros}};
+    std::vector<std::pair<std::string, std::string>> fonts = {{"colombo", colombo}, {"tyros", tyros}};
+    if (!g_refFont.empty()) fonts.push_back({"fluidr3", g_refFont});   // independent GM reference through the identical BASSMIDI chain
     // Defaults reported by a fresh stream: nothing is assumed to be 64 or 0.
     {
         const HSTREAM s = BASS_MIDI_StreamCreate(16, BASS_STREAM_DECODE | BASS_SAMPLE_FLOAT | BASS_MIDI_NOTEOFF1, kRate);
@@ -216,7 +219,7 @@ static int runRaw(const std::string& colombo, const std::string& tyros) {
             for (int vel : kVelocities) { emit(neutral, 60, vel); emit(appCtl, 60, vel); }
             emit(factory, 60, 100);
             if (p.pc == 0 || p.pc == 48) for (int key : {36, 48, 72, 84}) { emit(neutral, key, 100); emit(appCtl, key, 100); }
-            if (p.pc == 0 || p.pc == 4 || p.pc == 48)
+            if (f.first != "fluidr3" && (p.pc == 0 || p.pc == 4 || p.pc == 48))
                 for (const auto& v : sweep) emit(v, 60, 100);
         }
         BASS_MIDI_FontFree(font);
@@ -254,6 +257,12 @@ static void playerRender(BassMidiPlayer& p, int key, int vel, std::vector<float>
     pull(kHoldMs);
     p.noteOff(0, key);
     pull(kTailMs);
+    // Isolation between renders: kill any voice still ringing and let the reverb drain, discarding that audio.
+    p.stopKeyboardPart(0);
+    std::vector<float> discard;
+    std::vector<float> keep; keep.swap(out);
+    pull(5000);
+    out.swap(keep);
 }
 
 static int runPlayer(const std::string& colombo, const std::string& tyros) {
@@ -311,7 +320,8 @@ static int runPlayer(const std::string& colombo, const std::string& tyros) {
 }
 
 int main(int argc, char** argv) {
-    if (argc != 5) { std::cerr << "usage: audio_lab raw|player <outdir> <colombo.sf2> <tyros.sf2>\n"; return 2; }
+    if (argc != 5 && argc != 6) { std::cerr << "usage: audio_lab raw|player <outdir> <colombo.sf2> <tyros.sf2> [reference.sf2]\n"; return 2; }
+    if (argc == 6) g_refFont = argv[5];
     const std::string mode = argv[1];
     outDir = argv[2];
     manifest.open(outDir + "/manifest_" + mode + ".csv");

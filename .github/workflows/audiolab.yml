@@ -53,6 +53,12 @@ jobs:
           PY
           rm -f /tmp/SF2.zip
           ls -la /tmp/sf2; sha256sum /tmp/sf2/*
+      - name: Independent GM reference font (FluidR3, open licence)
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fluid-soundfont-gm
+          ls -la /usr/share/sounds/sf2/ || true
       - name: Build the lab (real BASS + production BassMidiPlayer)
         run: |
           set -euo pipefail
@@ -64,11 +70,14 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p /tmp/lab
-          /tmp/audio_lab raw /tmp/lab /tmp/sf2/ColomboGMGS2_BM.sf2 "/tmp/sf2/yamaha tyros 4_just_t4_fixed.sf2" 2>&1 | tee /tmp/lab/raw.log
+          /tmp/audio_lab raw /tmp/lab /tmp/sf2/ColomboGMGS2_BM.sf2 "/tmp/sf2/yamaha tyros 4_just_t4_fixed.sf2" /usr/share/sounds/sf2/FluidR3_GM.sf2 2>&1 | tee /tmp/lab/raw.log
       - name: Render with the production BassMidiPlayer
         run: |
           set -euo pipefail
           /tmp/audio_lab player /tmp/lab /tmp/sf2/ColomboGMGS2_BM.sf2 "/tmp/sf2/yamaha tyros 4_just_t4_fixed.sf2" 2>&1 | grep -v "^\s*$" | tee /tmp/lab/player.log | grep "^LAB"
+      - name: Normalisation proof (what the app changes in Colombo and Tyros)
+        run: |
+          python3 tools/audio_lab/sf2_compare.py /tmp/sf2/ColomboGMGS2_BM.sf2 "/tmp/sf2/yamaha tyros 4_just_t4_fixed.sf2" 2>&1 | tee /tmp/lab/sf2_compare.log
       - name: Analyse
         run: |
           set -euo pipefail
@@ -81,5 +90,6 @@ jobs:
             /tmp/lab_report/**
             /tmp/lab/raw.log
             /tmp/lab/player.log
+            /tmp/lab/sf2_compare.log
             /tmp/lab/manifest_*.csv
           if-no-files-found: warn

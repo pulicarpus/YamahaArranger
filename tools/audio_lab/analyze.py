@@ -115,6 +115,12 @@ def metrics(stereo, key):
         m.update({f'centroid_{tag}': round(centroid(f, p)), f'hf2k_{tag}': round(hf_share(f, p, 2000), 3), f'hf4k_{tag}': round(hf_share(f, p, 4000), 3),
                   f'hf8k_{tag}': round(hf_share(f, p, 8000), 4), f'rolloff85_{tag}': round(rolloff(f, p))})
     m['f0_drift_cents'] = round(f0_drift_cents(mono, key), 2)
+    x = seg(stereo, 0, 1000)
+    if len(x) > 100 and x[:, 0].std() > 1e-9 and x[:, 1].std() > 1e-9:
+        m['stereo_corr'] = round(float(np.corrcoef(x[:, 0], x[:, 1])[0, 1]), 3)
+        m['mono_compat_db'] = round(db(rms((x[:, 0] + x[:, 1]) / 2)) - db((rms(x[:, 0]) + rms(x[:, 1])) / 2), 2)
+    else:
+        m['stereo_corr'], m['mono_compat_db'] = 1.0, 0.0
     return m
 
 
@@ -170,10 +176,11 @@ def main():
         try:
             import tinysoundfont
             fonts = {'colombo': 'ColomboGMGS2_BM.sf2', 'tyros': 'yamaha tyros 4_just_t4_fixed.sf2'}
-            pcs = {r['preset']: int(r['pc']) for r in rows}
+            wanted = ('GrandPiano', 'EPiano', 'SteelGuitar', 'Strings')
+            pcs = {r['preset']: int(r['pc']) for r in rows if r['preset'] in wanted}
             for font, fn in fonts.items():
                 for preset, pc in pcs.items():
-                    for vel in (30, 60, 90, 100, 127):
+                    for vel in (60, 100):
                         s = tinysoundfont.Synth(gain=0, samplerate=SR); sid = s.sfload(os.path.join(a.tsf_dir, fn)); s.program_select(0, sid, 0, pc)
                         s.noteon(0, 60, vel); x1 = np.frombuffer(s.generate(int(2.0 * SR)), dtype=np.float32).reshape(-1, 2)
                         s.noteoff(0, 60); x2 = np.frombuffer(s.generate(int(1.0 * SR)), dtype=np.float32).reshape(-1, 2)
@@ -201,8 +208,8 @@ def main():
     # T1
     P('\n## T1. Neutral vs app controllers vs production player (key C4, velocity 100)\n')
     P('Level columns are absolute (dBFS); timbre columns are level-invariant. dLevel = RMS(0-500 ms) difference; LSD = level-normalised spectral distance (dB).\n')
-    P('| font | preset | variant | peak dB | RMS0-500 dB | centroid att Hz | centroid sus Hz | >4k sus % | transient dB | -10dB ms | rise10-90 ms | f0 drift cents |')
-    P('|---|---|---|---|---|---|---|---|---|---|---|---|')
+    P('| font | preset | variant | peak dB | RMS0-500 dB | centroid att Hz | centroid sus Hz | >4k sus % | transient dB | -10dB ms | rise10-90 ms | f0 drift cents | stereo corr | mono sum dB |')
+    P('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|')
     summary = {'app_vs_neutral_lsd': [], 'app_vs_neutral_dlevel': [], 'player_vs_raw_lsd': [], 'player_vs_raw_dlevel': [], 'player_vs_raw_err': []}
     for font in fonts:
         for preset in presets:
@@ -210,7 +217,7 @@ def main():
                 r = G(font, preset, var)
                 if not r: continue
                 m = r['m']
-                P(f"| {font} | {preset} | {var} | {m['peak_db']} | {m['rms_0_500']} | {m['centroid_att']} | {m['centroid_sus']} | {m['hf4k_sus']} | {m['transient_db']} | {m['m10']} | {m['rise_10_90']} | {m['f0_drift_cents']} |")
+                P(f"| {font} | {preset} | {var} | {m['peak_db']} | {m['rms_0_500']} | {m['centroid_att']} | {m['centroid_sus']} | {m['hf4k_sus']} | {m['transient_db']} | {m['m10']} | {m['rise_10_90']} | {m['f0_drift_cents']} | {m.get('stereo_corr')} | {m.get('mono_compat_db')} |")
             n, ap_, pl = G(font, preset, 'RAW_neutral'), G(font, preset, 'RAW_app'), G(font, preset, 'PLAYER_app')
             if n and ap_:
                 summary['app_vs_neutral_lsd'].append(lsd(n['stereo'], ap_['stereo'])); summary['app_vs_neutral_dlevel'].append(ap_['m']['rms_0_500'] - n['m']['rms_0_500'])
@@ -234,7 +241,7 @@ def main():
     P('|---|---|---|---|---|---|---|---|---|---|')
     for font in fonts:
         for preset in presets:
-            for vel in (30, 60, 90, 100, 127):
+            for vel in (30, 45, 60, 75, 90, 100, 127):
                 r = G(font, preset, 'RAW_neutral', vel)
                 if r: m = r['m']; P(f"| {font} | {preset} | {vel} | {m['rms_0_500']} | {m['centroid_att']} | {m['centroid_sus']} | {m['hf4k_att']} | {m['hf4k_sus']} | {m['transient_db']} | {m['m10']} |")
     # T4 sweep
@@ -272,6 +279,19 @@ def main():
             for key in (36, 48, 60, 72, 84):
                 r = G(font, preset, 'RAW_neutral', 100, key)
                 if r: m = r['m']; P(f"| {font} | {preset} | {key} | {m['rms_0_500']} | {m['centroid_att']} | {m['hf4k_sus']} | {m['m10']} | {m['f0_drift_cents']} |")
+    # T7 reference (independent GM SoundFont through the identical BASSMIDI chain)
+    if any(k[0] == 'fluidr3' for k in data):
+        P('\n## T7. Brightness / onset / stereo vs an independent GM reference (FluidR3_GM through the SAME BASSMIDI chain, RAW_neutral, v100, C4)\n')
+        P('octaves = log2(centroid / FluidR3 centroid); negative = darker than the reference. mono = level change when L and R are summed (negative = phase cancellation on a mono/near speaker).\n')
+        P('| preset | font | centroid att Hz | octaves vs ref | >4k att % | >4k sus % | transient dB | -10dB ms | stereo corr | mono sum dB |')
+        P('|---|---|---|---|---|---|---|---|---|---|')
+        for preset in presets:
+            ref = G('fluidr3', preset, 'RAW_neutral')
+            for font in ('fluidr3', 'colombo', 'tyros'):
+                r = G(font, preset, 'RAW_neutral')
+                if not r: continue
+                m = r['m']; oc = math.log2(max(m['centroid_att'], 1) / max(ref['m']['centroid_att'], 1)) if ref else float('nan')
+                P(f"| {preset} | {font} | {m['centroid_att']} | {oc:+.2f} | {m['hf4k_att']} | {m['hf4k_sus']} | {m['transient_db']} | {m['m10']} | {m.get('stereo_corr')} | {m.get('mono_compat_db')} |")
     # ---- automatic findings ----
     f_ = []
     fin = lambda s: f_.append('- ' + s)
@@ -287,6 +307,16 @@ def main():
     for r in big: fin(f"sweep {r['font']}/{r['preset']}/{r['variant']}: LSD {r['lsd']:.2f} dB, dCentroid {r['dcent']:+d} Hz, d>4k {r['dhf']:+.3f} pts, dLevel {r['dlevel']:+.2f} dB")
     drifts = [r['m']['f0_drift_cents'] for r in data.values() if r['variant'] in ('RAW_neutral', 'RAW_app', 'PLAYER_app') and r['preset'] in ('GrandPiano', 'EPiano', 'NylonGuitar', 'SteelGuitar', 'Strings', 'Organ') and r['m']['f0_drift_cents'] == r['m']['f0_drift_cents']]
     if drifts: fin(f"pitch stability (informational): peak-frequency drift over 0.2-1.5 s, median {np.median(drifts):.1f} cents, 95th pct {np.percentile(drifts, 95):.1f} cents. This includes the preset's own detune/beating; compare the SAME preset across variants (T4, CC1 rows) to isolate controller-induced vibrato")
+    for font in fonts:
+        mc = [r['m']['mono_compat_db'] for k, r in data.items() if k[0] == font and k[4] == 'RAW_neutral' and k[3] == 100 and k[2] == 60]
+        if mc: fin(f"mono compatibility {font}: worst {min(mc):.2f} dB, median {np.median(mc):.2f} dB (L+R summed vs the average channel level)")
+    ref_oct = {}
+    for font in ('colombo', 'tyros'):
+        o = []
+        for preset in presets:
+            r, ref = G(font, preset, 'RAW_neutral'), G('fluidr3', preset, 'RAW_neutral')
+            if r and ref: o.append(math.log2(max(r['m']['centroid_att'], 1) / max(ref['m']['centroid_att'], 1)))
+        if o: fin(f"{font} attack centroid vs FluidR3 reference (same BASSMIDI chain): median {np.median(o):+.2f} octaves over {len(o)} presets ({sum(1 for x in o if x < -0.3)} of {len(o)} darker than -0.3 oct)")
     P('\n## Automatic findings\n'); md += f_
     (out / 'report.md').write_text('\n'.join(md) + '\n')
     # ---- plots ----
@@ -306,7 +336,7 @@ def main():
         fig, axes = plt.subplots(1, 2, figsize=(13, 4.5))
         for font, ls in zip(fonts, ('-', '--')):
             for preset in presets:
-                xs = [v for v in (30, 60, 90, 100, 127) if G(font, preset, 'RAW_neutral', v)]
+                xs = [v for v in (30, 45, 60, 75, 90, 100, 127) if G(font, preset, 'RAW_neutral', v)]
                 if xs:
                     axes[0].plot(xs, [G(font, preset, 'RAW_neutral', v)['m']['centroid_att'] for v in xs], ls, marker='o', label=f'{font} {preset}')
                     axes[1].plot(xs, [G(font, preset, 'RAW_neutral', v)['m']['rms_0_500'] for v in xs], ls, marker='o')
