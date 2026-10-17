@@ -16,6 +16,8 @@ class NativeAudioBridge @Inject constructor() {
     external fun nativeDrumABReport(): String
     external fun nativeChannelBinding(channel: Int): String
     external fun nativeSetSourceTiered(tiered: Boolean)
+    external fun nativeLatencyReport(): String
+    external fun nativeLatencyReset()
     external fun nativePinChannelPreset(channel: Int, fontId: Long, bank: Int, program: Int): Boolean
     external fun nativeFontPdta(fontId: Long): String
     external fun nativeShadowDrumSnapshot(): String
@@ -56,6 +58,10 @@ class NativeAudioBridge @Inject constructor() {
     external fun nativeGetSoundFontPresets(): String
     external fun nativeKeyboardVoiceSnapshot(): String
     external fun nativeRightVoiceDiagnostic(): String
+    external fun nativeSetBufferMode(mode: Int): Int
+    external fun nativeBufferStatus(): String
+    external fun nativeBufferTick()
+    external fun nativeRightOnsetReport(channel: Int, key: Int): String
     external fun nativeResetRightVelocityStats()
     external fun nativeDiagnosticKeyboardReleaseWav(channel: Int, key: Int, velocity: Int): ByteArray
     external fun nativeKeyboardReleaseProbeReport(): String

@@ -218,6 +218,7 @@ class ArrangerBrain @Inject constructor(
     }
 
     private fun startRightNote(sourceNote: Int, outputNote: Int, velocity: Float, velocity127: Int) {
+        com.yourapp.yamahaarranger.audio.LatencyProbe.rightRoutingStart() // LATENCY_PROBE
         rightNoteOwners.remove(sourceNote)?.forEach { (channel, pitch) ->
             engineNoteOff(channel, pitch)
             midiInputManager.sendNoteOff(channel, pitch)
@@ -233,6 +234,7 @@ class ArrangerBrain @Inject constructor(
             midiInputManager.sendNoteOn(channel, outputNote, RightVelocityTest.midiOutVelocity127(velocity127))
             owners[channel] = outputNote
         }
+        com.yourapp.yamahaarranger.audio.LatencyProbe.rightHandedOff() // LATENCY_PROBE
     }
 
     private fun releaseRightNote(sourceNote: Int) {
@@ -249,7 +251,9 @@ class ArrangerBrain @Inject constructor(
     }
 
     fun onKeyboardNoteOn(midiNote: Int, velocity: Float) {
+        val probeRequestedNs = System.nanoTime() // LATENCY_PROBE
         synchronized(keyboardLock) {
+            com.yourapp.yamahaarranger.audio.LatencyProbe.keyboardLockAcquired(probeRequestedNs) // LATENCY_PROBE
             val velocity127 = (velocity * 127f).toInt().coerceIn(0, 127)
             val outputNote = (midiNote + keyboardTranspose).coerceIn(0, 127)
             if (midiNote > splitNote) {

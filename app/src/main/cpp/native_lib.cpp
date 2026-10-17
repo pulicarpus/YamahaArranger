@@ -274,8 +274,15 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_Nati
     const char* a=env->GetStringUTFChars(fp,nullptr);const char* b=env->GetStringUTFChars(section,nullptr);
     const bool ok=g_engine->bindDrumAB(ch,a,bank,pc,b);env->ReleaseStringUTFChars(fp,a);env->ReleaseStringUTFChars(section,b);return ok;
 }
+extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeLatencyReport(JNIEnv* env,jobject){const auto s=g_engine?g_engine->latencyReport():std::string("LATENCY_NATIVE engine_absent\n");return env->NewStringUTF(sanitizeUtf8ForJni(s.c_str()).c_str());}
+extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeLatencyReset(JNIEnv*,jobject){if(g_engine)g_engine->latencyReset();}
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetSourceTiered(JNIEnv*,jobject,jboolean tiered){if(g_engine)g_engine->setSourceTiered(tiered);}
 extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativePinChannelPreset(JNIEnv*,jobject,jint ch,jlong id,jint bank,jint pc){return g_engine && g_engine->pinChannelPreset(ch,static_cast<uint64_t>(id),bank,pc);}
 extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeFontPdta(JNIEnv* env,jobject,jlong id){const auto s=g_engine?g_engine->fontPdta(static_cast<uint64_t>(id)):std::string();return env->NewStringUTF(s.c_str());}
 extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeChannelBinding(JNIEnv* env,jobject,jint ch){const auto s=g_engine?g_engine->channelBinding(ch):std::string();return env->NewStringUTF(sanitizeUtf8ForJni(s.c_str()).c_str());}
 extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeDrumABReport(JNIEnv* env,jobject){const auto s=g_engine?g_engine->drumABReport():"DRUM_AB engine_absent";return env->NewStringUTF(sanitizeUtf8ForJni(s.c_str()).c_str());}
+
+extern "C" JNIEXPORT jint JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetBufferMode(JNIEnv*,jobject,jint mode){return g_engine?g_engine->setBufferMode(mode):-1;}
+extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeBufferStatus(JNIEnv* env,jobject){const auto s=g_engine?g_engine->bufferStatus():std::string("BUFFER engine_absent\n");return env->NewStringUTF(sanitizeUtf8ForJni(s.c_str()).c_str());}
+extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeBufferTick(JNIEnv*,jobject){if(g_engine)g_engine->bufferTick();}
+extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeRightOnsetReport(JNIEnv* env,jobject,jint channel,jint key){const auto s=g_engine?g_engine->sfRightOnsetReport(channel,key):std::string("ONSET engine_absent\n");return env->NewStringUTF(sanitizeUtf8ForJni(s.c_str()).c_str());}

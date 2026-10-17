@@ -65,6 +65,8 @@ public:
     std::string keyboardVoiceSnapshot() const;
     // RIGHT A/B diagnostic: read-only backend readback + forwarded-velocity histogram.
     std::string rightVoiceDiagnostic() const;
+    // Offline onset of the selected RIGHT preset (isolated decoder; call only while the style is stopped).
+    std::string onsetReport(int channel,int key);
     void resetRightVelocityStats();
     std::vector<unsigned char> diagnosticKeyboardReleaseWav(int channel,int key,int velocity);
     std::string keyboardReleaseProbeReport() const;

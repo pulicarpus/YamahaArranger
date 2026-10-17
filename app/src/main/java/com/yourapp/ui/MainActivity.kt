@@ -116,6 +116,12 @@ class MainActivity : ComponentActivity() {
                         androidx.compose.material3.Text("🎹 KEYBOARD", color = androidx.compose.ui.graphics.Color.White,
                             fontSize = 11.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                     }
+                    LatencyAbOverlay(
+                        viewModel = viewModel,
+                        modifier = androidx.compose.ui.Modifier
+                            .align(androidx.compose.ui.Alignment.BottomCenter)
+                            .padding(bottom = 6.dp + if (keyboardOpen.value) VirtualKeyboardPanelHeight else 0.dp)
+                    )
                     RightVoiceDiagOverlay(
                         viewModel = viewModel,
                         modifier = androidx.compose.ui.Modifier

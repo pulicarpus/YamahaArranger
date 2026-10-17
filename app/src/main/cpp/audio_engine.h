@@ -5,6 +5,9 @@
 #include <string>
 #include "voice.h"
 #include "bassmidi_player.h"
+#include "latency_probe.h"
+#include "buffer_policy.h"
+#include <atomic>
 // PCM_PATH_OBSERVER_BEGIN
 #if YAMAHA_ROLE_PCM_METERS
 #include "pcm_path_evidence.h"
@@ -46,6 +49,7 @@ public:
     void sfSetMasterGain(float gain);
     std::string sfPresetList() const;
     std::string sfKeyboardVoiceSnapshot() const { return soundFont_.keyboardVoiceSnapshot(); }
+    std::string sfRightOnsetReport(int channel,int key) { return soundFont_.onsetReport(channel,key); }
     std::string sfRightVoiceDiagnostic() const { return soundFont_.rightVoiceDiagnostic(); }
     void sfResetRightVelocityStats() { soundFont_.resetRightVelocityStats(); }
     std::vector<unsigned char> sfDiagnosticKeyboardReleaseWav(int ch,int key,int velocity) { return soundFont_.diagnosticKeyboardReleaseWav(ch,key,velocity); }
@@ -66,11 +70,23 @@ public:
     std::string sfDrumKitCoverage(const std::vector<drum_audit::Hit>& hits) const;
     std::string sfDrumCompatibilityReport(const std::vector<drum_compat::Demand>& demand, const std::vector<std::pair<int,int>>& comparisonKits = {}) const;
     oboe::DataCallbackResult onAudioReady(oboe::AudioStream*,void*,int32_t) override;
+    // LATENCY_PROBE: statistics plus a one-shot description of the output stream.
+    std::string latencyReport();
+    // Output-buffer A/B (see buffer_policy.h). Mode 0 = production (2 bursts). Never persisted.
+    int setBufferMode(int mode);
+    std::string bufferStatus();
+    void bufferTick(); // ADAPTIVE only; called from the app (never from the audio callback)
+    void latencyReset(){latency_probe::probe.reset();}
+    void latencySetEnabled(bool e){latency_probe::probe.enabled.store(e?1:0);}
 private:
     std::shared_ptr<oboe::AudioStream> stream_;
+    std::atomic<int> bufferMode_{buffer_policy::BASELINE_2X};
+    std::atomic<long> xrunBase_{0}, xrunLastTick_{0};
     std::array<Voice,kMaxPolyphony> voices_;
     std::mutex voiceMutex_;
     int outputSampleRate_=48000;
+    // Captured once at start(); read from the report thread only after start() returned.
+    struct StreamInfo {int sampleRate=0,channels=0,sharing=-1,perf=-1,api=-1,burst=0,capacity=0,bufferSize=0,framesPerCallback=0,deviceId=0;bool fallbackShared=false;} streamInfo_;
     BassMidiPlayer soundFont_;
 // PCM_PATH_OBSERVER_BEGIN
 #if YAMAHA_ROLE_PCM_METERS

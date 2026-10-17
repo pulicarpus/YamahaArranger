@@ -1,4 +1,5 @@
 #include "bassmidi_player.h"
+#include "latency_probe.h"
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
@@ -107,7 +108,48 @@ int main(int argc, char** argv) {
     check(b[2] == "PRIMARY", "after unpin the style request resolves on Colombo again");
     check(p.fontPdta(tyrosId).size() == 64, "font fingerprint available for drum pins");
 
-    // 7. The getter is read-only.
+    // 7. Latency probe: records queueing and render pairing, and never changes MIDI behaviour.
+    {
+        auto& probe = latency_probe::probe;
+        p.setChannelPreset(10, 0, 33);                      // style bass on Colombo
+        probe.reset();
+        float pcm[512];
+        const auto historyBefore = mock_bass::history.size();
+        p.noteOn(0, 60, 0.8f);                              // keyboard RIGHT1
+        p.noteOn(10, 40, 0.8f);                             // style channel
+        check(probe.keyLockWait.count.load() == 1 && probe.keyDispatch.count.load() == 1, "keyboard note timed once");
+        check(probe.styleLockWait.count.load() == 1 && probe.styleDispatch.count.load() == 1, "style note timed separately");
+        check(probe.noteToRender.count.load() == 0, "no render yet");
+        p.render(pcm, 256);
+        check(probe.renderDecode.count.load() == 1 && probe.renderLockWait.count.load() == 1, "render timed");
+        check(probe.noteToRender.count.load() == 1 && probe.noteToBuffer.count.load() == 1, "note paired with next render");
+        check(probe.noteToBuffer.sumUs.load() >= probe.noteToRender.sumUs.load(), "buffer-ready is not before render start");
+        p.render(pcm, 256);
+        check(probe.noteToRender.count.load() == 1, "a note is paired with exactly one render");
+        check(probe.pendingKeyNoteNs.load() == 0, "pending stamp consumed");
+        // Probe on vs off: identical MIDI event stream.
+        const auto onHistory = std::vector<decltype(mock_bass::history)::value_type>(mock_bass::history.begin() + historyBefore, mock_bass::history.end());
+        probe.enabled = 0;
+        const auto offStart = mock_bass::history.size();
+        p.noteOn(0, 60, 0.8f); p.noteOn(10, 40, 0.8f); p.render(pcm, 256);
+        probe.enabled = 1;
+        const std::vector<decltype(mock_bass::history)::value_type> offHistory(mock_bass::history.begin() + offStart, mock_bass::history.end());
+        std::vector<decltype(mock_bass::history)::value_type> onNotes, offNotes;
+        for (const auto& e : onHistory) if (std::get<2>(e) == MIDI_EVENT_NOTE) onNotes.push_back(e);
+        for (const auto& e : offHistory) if (std::get<2>(e) == MIDI_EVENT_NOTE) offNotes.push_back(e);
+        check(onNotes == offNotes && onNotes.size() == 2, "probe does not change NOTE events");
+        check(probe.keyLockWait.count.load() == 1, "disabled probe records nothing");
+        const auto text = probe.report();
+        check(text.find("stat=keyboardNoteQueuedToBufferReady") != std::string::npos, "report names the queue-to-buffer stat");
+        // Whole-callback bookkeeping.
+        probe.reset(); probe.budgetNs = 5333333;
+        probe.callbackDone(0, 1000000); probe.callbackDone(0, 5000000); probe.callbackDone(0, 6000000);
+        check(probe.callbacks.load() == 3 && probe.overBudget.load() == 1 && probe.overEightyPercent.load() == 2, "budget counters");
+        check(probe.callbackTotal.percentileUpperUs(0.5) == 8000 && probe.callbackTotal.maxUs.load() == 6000, "percentile and max");
+        std::cout << "CPV LATENCY PROBE OK\n";
+    }
+
+    // 8. The getter is read-only.
     const auto history = mock_bass::history;
     for (int ch = 0; ch < 16; ++ch) p.channelBinding(ch);
     check(mock_bass::history == history, "channelBinding must not send MIDI");

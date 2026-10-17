@@ -90,5 +90,23 @@ int main(int argc, char** argv) {
     check(q.setKeyboardPreset(0, bare.id, bare.bank, bare.pc), "bare selection verified");
     const auto b0 = row(q, 0);
     check(field(b0, "status") == "UNVERIFIED", "no INAM -> UNVERIFIED: " + b0);
+    // 7. Onset probe: isolated decoder, verified preset only, never writes to the production stream.
+    {
+        auto production = [] { size_t n = 0; for (const auto& h : mock_bass::history) if (std::get<0>(h) == 1) ++n; return n; };
+        const size_t before = production();
+        const auto report = p.onsetReport(0, 60);
+        check(report.find("ONSET part=RIGHT1") == 0 && report.find("sf2='colombo.sf2'") != std::string::npos, "onset header names the exact RIGHT preset: " + report);
+        check(report.find("ONSET velocity=40") != std::string::npos && report.find("ONSET velocity=127") != std::string::npos, "four velocities reported");
+        check(report.find("classification(v100)=NO_SIGNAL") != std::string::npos, "silent mock decoder -> NO_SIGNAL, never a made-up latency");
+        check(production() == before, "onset probe must not send events to the production stream (stream 1)");
+        check(p.onsetReport(2, 60).find("unavailable") != std::string::npos, "RIGHT3 without a verified selection is refused");
+        check(p.onsetReport(3, 60).find("unavailable") != std::string::npos && p.onsetReport(0, 200).find("unavailable") != std::string::npos, "LEFT and bad keys are refused");
+        mock_bass::mismatchPreset = true;
+        check(p.onsetReport(0, 60).find("not verified") != std::string::npos, "live readback mismatch is refused");
+        mock_bass::mismatchPreset = false;
+        mock_bass::failDecode = true;
+        check(p.onsetReport(0, 60).find("ONSET FAIL") != std::string::npos, "decoder failure is reported, not hidden");
+        mock_bass::failDecode = false;
+    }
     std::cout << "RIGHT VOICE DIAG NATIVE PASS\n";
 }

@@ -1065,6 +1065,34 @@ class MainViewModel @Inject constructor(
     val virtualKeyboardEpoch: StateFlow<Int> = _virtualKeyboardEpoch
     fun closeVirtualKeyboard() { virtualKeyboard.closePanel(); _virtualKeyboardEpoch.update { it + 1 } }
 
+    // ---- RIGHT latency A/B (docs/latency/RIGHT_LATENCY_AB.md). Nothing here is persisted: every launch starts at A. ----
+    private val _bufferMode = MutableStateFlow(0)
+    val bufferMode: StateFlow<Int> = _bufferMode
+    private var bufferTickJob: kotlinx.coroutines.Job? = null
+
+    fun setBufferMode(mode: Int) {
+        val clamped = mode.coerceIn(0, 3)
+        _bufferMode.value = clamped
+        bufferTickJob?.cancel(); bufferTickJob = null
+        viewModelScope.launch(Dispatchers.Default) {
+            val frames = audioEngine.setBufferMode(clamped)
+            DebugLog.add("LATENCY BUFFER mode=$clamped bufferNow=$frames")
+        }
+        if (clamped == 3) bufferTickJob = viewModelScope.launch(Dispatchers.Default) {
+            while (_bufferMode.value == 3) { audioEngine.bufferTick(); delay(250) }
+        }
+    }
+
+    suspend fun bufferStatusText(): String = withContext(Dispatchers.Default) { audioEngine.bufferStatus() }
+    suspend fun latencyReportText(): String = withContext(Dispatchers.Default) { audioEngine.bufferStatus() + audioEngine.latencyReport() }
+
+    /** Offline onset of the first enabled RIGHT part at C4 (MIDI 60). Needs the style stopped. */
+    suspend fun runOnsetTest(): String = withContext(Dispatchers.Default) {
+        val layer = _rightVoices.value.firstOrNull { it.layer in 0..2 && it.enabled }?.layer
+            ?: return@withContext "ONSET unavailable: no RIGHT part is ON"
+        audioEngine.rightOnsetReport(layer, 60) { !arrangerBrain.state.value.isPlaying }
+    }
+
     /** App-side (NOT backend-read) values for one RIGHT layer; the panel labels them as APP STATE. */
     data class RightDiagApp(
         val label: String, val enabled: Boolean, val voiceName: String, val soundFontName: String,
@@ -1276,6 +1304,9 @@ class MainViewModel @Inject constructor(
                 "bank=${b.bank} pc=${b.program} preset='${b.presetName}' reason=${b.reason}")
         }
     }
+    // LATENCY_PROBE: statistics only; both calls are safe during playback but belong off the realtime path.
+    fun latencyReport(): String = audioEngine.latencyReport()
+    fun latencyReset() = audioEngine.latencyReset()
     fun drumABResolved():Boolean = audioEngine.drumABResolved
     fun setDrumABMode(resolved:Boolean):Boolean = !uiState.value.isPlaying && arrangerBrain.setDrumABMode(resolved)
     fun markPcmSession(): Long {

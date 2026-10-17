@@ -2,7 +2,9 @@
 #include "keyboard_release_probe.h"
 #include "release_envelope_evidence.h"
 #include "voice_resolver.h"
+#include "latency_probe.h"
 #include "sf2_fingerprint.h"
+#include "onset_probe.h"
 #ifndef YAMAHA_COMPATIBLE_PERCUSSION
 #define YAMAHA_COMPATIBLE_PERCUSSION 0
 #endif
@@ -1205,7 +1207,9 @@ void BassMidiPlayer::logAudioPath(int channel, int key, int velocity, bool sent,
 }
 
 void BassMidiPlayer::noteOn(int channel, int key, float velocity, const AudioPathOrigin& origin) {
+    const uint64_t probeEnter = latency_probe::probe.on() ? latency_probe::now() : 0; // LATENCY_PROBE
     f12::SynthLock lock(mutex_,f12::NoteOn);
+    const uint64_t probeLocked = probeEnter ? latency_probe::now() : 0; // LATENCY_PROBE
     ++pcmSessionNotes_.attempts[std::clamp(channel,0,15)];
     if (!ensureEngine()) {
         logAudioPath(std::clamp(channel, 0, 15), std::clamp(key, 0, 127),
@@ -1256,6 +1260,7 @@ void BassMidiPlayer::noteOn(int channel, int key, float velocity, const AudioPat
     // on every note was one of the diagnostic build's major correctness bugs.
     const bool sent = send(channel, MIDI_EVENT_NOTE,
                            static_cast<DWORD>(key | (vel << 8)));
+    if (probeEnter && sent) latency_probe::probe.noteQueued(channel < 4, probeEnter, probeLocked, latency_probe::now()); // LATENCY_PROBE
     pcmSessionNotes_.sent[channel]+=sent;
     if (channel < 4) {
         auto& evidence=keyboardEvidence_[channel];
@@ -2090,6 +2095,20 @@ void BassMidiPlayer::resetRightVelocityStats() {
     for(auto& h:rightForwardedHist_) h.reset();
 }
 
+std::string BassMidiPlayer::onsetReport(int channel,int key) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if(channel<0||channel>2||key<0||key>127||!stream_) return "ONSET unavailable: select a RIGHT part first\n";
+    const auto& selection=keyboardPresets_[channel];const auto* p=keyboardPreset(selection);
+    BASS_MIDI_FONT actual{};
+    if(!p||!selection.verified||!BASS_MIDI_StreamGetPreset(stream_,channel,&actual)||
+       actual.font!=p->font||actual.bank!=p->nativeBank||actual.preset!=p->program)
+        return "ONSET unavailable: RIGHT preset not verified by BASS readback\n";
+    std::ostringstream head;
+    head<<"ONSET part=RIGHT"<<(channel+1)<<" sf2='"<<p->file<<"' preset='"<<p->name<<"' bank="<<p->bank<<" pc="<<p->program
+        <<" key="<<key<<" rate="<<sampleRate_<<'\n';
+    return head.str()+onset_probe::run(p->font,p->nativeBank,p->program,p->bank==127||p->bank==128,key,sampleRate_);
+}
+
 // Read-only. Every field is labelled by origin: BASS = read back from the live stream/font handle,
 // FILE = independent parse of the original SF2, APP = state held by the app. Nothing here writes to BASS.
 std::string BassMidiPlayer::rightVoiceDiagnostic() const {
@@ -2231,7 +2250,9 @@ std::string BassMidiPlayer::keyboardReleaseProbeReport() const {
 }
 
 void BassMidiPlayer::render(float* out, int numFrames) {
+    const uint64_t probeEnter = latency_probe::probe.on() ? latency_probe::now() : 0; // LATENCY_PROBE
     f12::SynthLock lock(mutex_,f12::Render);
+    const uint64_t probeLocked = probeEnter ? latency_probe::now() : 0; // LATENCY_PROBE
 // PCM_PATH_OBSERVER_BEGIN
 #if YAMAHA_ROLE_PCM_METERS
     ++pcmDecode_.calls;
@@ -2291,6 +2312,7 @@ void BassMidiPlayer::render(float* out, int numFrames) {
 #endif
 // HEADROOM_OBSERVER_END
     renderPercussion(out,numFrames);
+    if (probeEnter) latency_probe::probe.renderDone(probeEnter, probeLocked, latency_probe::now()); // LATENCY_PROBE
 // HEADROOM_OBSERVER_BEGIN
 #if YAMAHA_PCM_HEADROOM
     headroom_.finish(out,numFrames*2);
