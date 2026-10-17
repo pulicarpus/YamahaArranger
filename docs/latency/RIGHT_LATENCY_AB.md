@@ -48,3 +48,56 @@ No timbre, gain, filter, velocity, MIDI OUT, style, ACMP or CASM change. The aud
 3. Mode B and D the same way. Keep the mode with 0 new XRUN that feels better; if XRUN grows, go back to A.
 4. Repeat with STYLE ON, with Colombo and Tyros pianos. Run ONSET TEST (style stopped) for each voice.
 Success = you can feel the difference with no XRUN/crackle, not just a smaller number.
+
+---
+# Update: reading of the 20261017_213318 device report, and what was added
+
+## What the metrics really mean (verified in code)
+- `keyNotesOverwrittenBeforeRender=20` is NOT 20 lost notes. The timing probe keeps ONE pending timestamp; a keyboard NOTE_ON that
+  arrives while that stamp is still waiting for the next render only merges its *timing sample* into it. Every NOTE_ON goes
+  straight to `BASS_MIDI_StreamEvent` (no app-side MIDI queue exists; JNI call on the MIDI thread), BASSMIDI keeps them in order and
+  applies them at the start of the next decode. 20 of 336 means 20 notes shared a render period with an earlier note (chords / fast repeats).
+  Host test: chord of 4 + ON/OFF/ON on one key -> all 7 events reach BASSMIDI in order, 5 timing samples merged. The report now says so and
+  also prints `keyNoteOnsQueuedToBass`.
+- NOTE_ON followed by NOTE_OFF inside one 5.3 ms render period would be applied back to back (a blip); no real key press is that short.
+- `bufferNow=768` in mode D: the app's adaptive step needs `getXRunCount`, which was unavailable (`xruns=unavailable`), so the growth to
+  3 bursts was not made by the app's tick; 1 burst was not stable on this device in any case (callbacks over budget: 126 of 36690).
+  `estimatedOutputLatencyMs` was unavailable (ErrorInvalidState) in this report, so no output estimate exists for that session.
+
+## What the report proves
+| Stage (RIGHT, mean) | Value | Reading |
+|---|---|---|
+| USB -> onSend | 0.69 ms | negligible |
+| onSend thread: wall 247 us vs CPU 249 us | CPU-bound | not blocked/preempted; the thread is *computing* |
+| keyboard lock wait | 5 us | no contention in Kotlin |
+| lock -> startRightNote (RIGHT IN log) | 595 us | one log line |
+| engine entry -> JNI (traceAudio format+log) | 758 us | one log line |
+| JNI call incl. native lock | 276 us | native lock wait 197 us |
+| onSend -> all layers in native | 2.83 ms (p95 <=8 ms) | ~1.35 ms of it is two log lines |
+| note queued -> render start / buffer ready | 2.26 / 3.27 ms | half a render period + decode, as expected |
+A DebugLog.add costs ~1 us on a host JVM (bench in the session scratchpad), so 0.6 ms on the device is not the algorithm itself. The most likely
+explanation (NOT proven: no CPU-frequency or JIT data was collected) is that this thread runs cold: low CPU frequency and code that is rarely
+executed. Whatever the cause, the cost is CPU-bound and sits on the path of every note. Consequence for chords (derived, not measured
+separately): notes are handled one after another on that thread, so with ~2.8 ms per note the 4th note of a chord is handed to BASSMIDI
+up to ~8 ms after the 1st.
+Also proven: `renderLockWait` exceeded 2 ms 212 times (max 10.8 ms) and `styleNoteLockWait` p95 4 ms: somebody holds the synth mutex for
+milliseconds. With the style running, `logAudioPath` (native, under the mutex) calls `LOGI` -> JNI AttachCurrentThread + `DebugLog.add`
+for each style note. Not proven for RIGHT-only play; the new hold statistics will say who it is.
+
+## New tools (all off / baseline by default, never persisted)
+1. **LIVE vs ISOLATED (path A vs B)**: ARM, then play ONE RIGHT note (style stopped). The live callback output of the render block that consumed
+   the NOTE_ON is copied (500 ms, bounded memcpy, armed only) and compared with an isolated BASSMIDI decode of the same preset / key / velocity
+   with the controllers read back from the live channel (and with neutral controllers). Reports first-sample, -40/-20/-10 dB, 10-90 % rise,
+   and the sample-level error (dB) and correlation over the first 100 ms. `LIVE_PATH_ADDS_NOTHING` means the app/BASSMIDI live chain does not
+   alter the note: any "slow strings" character is then the preset itself or happens after the app (Oboe/AAudio/device), which only an
+   external recording can separate.
+2. **Synth mutex hold statistics** (`synthMutexHold_*` in the report): keyboard NOTE_ON, style NOTE_ON, NOTE_OFF, render, preset change,
+   mixer controller, font load, diagnostics.
+3. **NOTE LOG A/B**: B skips the log lines on the keyboard NOTE_ON/OFF path (MIDI parse log, RIGHT IN/OFF, engine NOTE_ON/OFF trace). No engine,
+   controller, MIDI OUT or style change. Expect `rightNoteOnSendToAllLayersHandedToNative` to drop by roughly the two measured log costs.
+
+## Procedure (Redmi Pad, PSR-E343, RIGHT1, STYLE OFF)
+1. LATENCY -> RESET STATS. NOTE LOG A. Play 60 notes incl. 4-note chords. Wait, SAVE REPORT.
+2. NOTE LOG B. RESET STATS. Same playing. SAVE REPORT. Judge chord tightness/feel.
+3. Colombo piano: ARM, play C4 (single note, velocity ~100). Repeat with Tyros 4 Grand. The panel shows PATH A / PATH B / COMPARE; SAVE REPORT.
+4. Send all reports.

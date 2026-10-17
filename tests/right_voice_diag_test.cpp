@@ -1,4 +1,5 @@
 #include "bassmidi_player.h"
+#include "latency_probe.h"
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
@@ -107,6 +108,55 @@ int main(int argc, char** argv) {
         mock_bass::failDecode = true;
         check(p.onsetReport(0, 60).find("ONSET FAIL") != std::string::npos, "decoder failure is reported, not hidden");
         mock_bass::failDecode = false;
+    }
+    // 8. The "overwritten" counter is a timing-sample merge, never a lost event.
+    {
+        latency_probe::probe.reset();
+        mock_bass::history.clear();
+        std::vector<float> out(256 * 2);
+        for (int key : {60, 64, 67, 72}) p.noteOn(0, key, 0.8f);                      // chord inside one render period
+        p.noteOn(0, 60, 0.8f); p.noteOff(0, 60); p.noteOn(0, 60, 0.8f);                // rapid repeat of the same key
+        size_t noteEventsToBass = 0; std::vector<std::string> order;
+        for (const auto& h : mock_bass::history) if (std::get<0>(h) == 1 && std::get<2>(h) == MIDI_EVENT_NOTE) {
+            ++noteEventsToBass; order.push_back((std::get<3>(h) >> 8) ? "on" : "off");
+        }
+        check(noteEventsToBass == 7, "all 7 keyboard note events reached BASSMIDI (4 chord ON + ON/OFF/ON)");
+        check((order == std::vector<std::string>{"on","on","on","on","on","off","on"}), "BASSMIDI receives them in the original order");
+        check(latency_probe::probe.keyNoteOnsQueued.load() == 6, "6 keyboard NOTE_ON queued");
+        check(latency_probe::probe.unconsumedKeyNotesOverwritten.load() == 5, "5 timing samples merged into the first stamp");
+        p.render(out.data(), 256);
+        check(latency_probe::probe.noteToRender.count.load() == 1, "one render consumed the single pending timing stamp");
+        check(latency_probe::probe.hold[latency_probe::HoldNoteKey].count.load() >= 6, "keyboard NOTE_ON mutex holds are measured");
+        check(latency_probe::probe.hold[latency_probe::HoldRender].count.load() >= 1, "render mutex hold is measured");
+    }
+
+    // 9. Live onset capture: armed only, first RIGHT note only, bounded, report compares path A with path B.
+    {
+        check(p.liveOnsetStatus() == "idle", "idle by default");
+        std::vector<float> out(256 * 2);
+        p.noteOn(0, 60, 0.8f); p.render(out.data(), 256);
+        check(p.liveOnsetStatus() == "idle", "notes and renders never capture unless armed");
+        check(p.armLiveOnset() && p.liveOnsetStatus().find("armed") == 0, "armed");
+        p.noteOn(11, 60, 0.8f);                                                         // style channel never starts a capture
+        p.noteOn(3, 60, 0.8f);                                                          // LEFT never starts a capture
+        check(p.liveOnsetStatus().find("armed") == 0, "style and LEFT notes are ignored");
+        check(p.liveOnsetReport().find("not ready") != std::string::npos, "report refuses before the capture is complete");
+        p.noteOn(0, 61, 0.5f);
+        check(p.liveOnsetStatus().find("capturing") == 0, "first RIGHT note starts the capture");
+        for (int blocks = 0; blocks < 200 && p.liveOnsetStatus() != "ready"; ++blocks) p.render(out.data(), 256);
+        check(p.liveOnsetStatus() == "ready", "500 ms captured");
+        const auto report = p.liveOnsetReport();
+        check(report.find("LIVE ONSET part=RIGHT1") == 0 && report.find("key=61 velocity=64") != std::string::npos, "report names the captured note: " + report);
+        check(report.find("PATH A live render") != std::string::npos && report.find("PATH B isolated, same ctl") != std::string::npos &&
+              report.find("PATH B isolated, neutral ctl") != std::string::npos && report.find("COMPARE live vs isolated(same ctl)") != std::string::npos, "both paths and the comparison are reported");
+        check(report.find("liveControllers cc7=") != std::string::npos, "live controllers are read back and listed");
+        check(p.liveOnsetReport() == report, "report is built once");
+        const size_t before = [&] { size_t n = 0; for (const auto& h : mock_bass::history) if (std::get<0>(h) == 1) ++n; return n; }();
+        p.noteOn(0, 62, 0.5f); p.render(out.data(), 256);
+        size_t after = 0; for (const auto& h : mock_bass::history) if (std::get<0>(h) == 1) ++after;
+        check(after == before + 1, "after the capture finished, notes behave exactly as before (one NOTE event, no extra events)");
+        check(p.liveOnsetStatus() == "ready", "a finished capture stays until re-armed");
+        check(p.armLiveOnset() && p.liveOnsetStatus().find("armed") == 0 && p.liveOnsetReport().find("not ready") != std::string::npos, "re-arm resets");
     }
     std::cout << "RIGHT VOICE DIAG NATIVE PASS\n";
 }

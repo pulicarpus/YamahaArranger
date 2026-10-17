@@ -196,3 +196,18 @@ object LatencyProbe {
         all.forEach { appendLine(it.line()) }
     }
 }
+
+/**
+ * A/B switch for the logging that runs on the keyboard NOTE_ON/OFF path (MIDI thread, before BASSMIDI sees the event).
+ * Measured on device: ~0.6 ms per DebugLog.add, 3-4 calls per note, CPU-bound, and chord notes are handled one after
+ * another on that thread. `lean` skips only those log lines; no engine call, controller or MIDI OUT message changes.
+ * Process-local, never persisted: every launch is normal (lean = false).
+ */
+object NoteLogTuning {
+    @Volatile var lean = false
+    private val suppressedCount = java.util.concurrent.atomic.AtomicLong()
+    val suppressed: Long get() = suppressedCount.get()
+    /** true = skip this log line. */
+    fun skip(): Boolean { if (!lean) return false; suppressedCount.incrementAndGet(); return true }
+    fun resetCounter() = suppressedCount.set(0)
+}

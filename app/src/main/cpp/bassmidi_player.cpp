@@ -378,6 +378,7 @@ bool BassMidiPlayer::publishedFontTableIntact() const {
 
 bool BassMidiPlayer::loadRole(const std::string& path, bool drum) {
     std::lock_guard<std::mutex> lock(mutex_);
+    latency_probe::Hold latencyHold_(latency_probe::HoldFonts);
     if (!ensureEngine()) return false;
 
     closeRolePcmWindows(); // measurement boundary only; no MIDI/resource routing writes
@@ -1209,6 +1210,7 @@ void BassMidiPlayer::logAudioPath(int channel, int key, int velocity, bool sent,
 void BassMidiPlayer::noteOn(int channel, int key, float velocity, const AudioPathOrigin& origin) {
     const uint64_t probeEnter = latency_probe::probe.on() ? latency_probe::now() : 0; // LATENCY_PROBE
     f12::SynthLock lock(mutex_,f12::NoteOn);
+    latency_probe::Hold latencyHold_(channel >= 0 && channel < 4 ? latency_probe::HoldNoteKey : latency_probe::HoldNoteStyle);
     const uint64_t probeLocked = probeEnter ? latency_probe::now() : 0; // LATENCY_PROBE
     ++pcmSessionNotes_.attempts[std::clamp(channel,0,15)];
     if (!ensureEngine()) {
@@ -1266,6 +1268,7 @@ void BassMidiPlayer::noteOn(int channel, int key, float velocity, const AudioPat
         auto& evidence=keyboardEvidence_[channel];
         ++evidence.ons;evidence.sent+=sent;evidence.key=key;evidence.velocity=vel;
         if (channel<3 && sent) rightForwardedHist_[channel].add(vel); // histogram of velocity actually sent to BASSMIDI
+        if (channel<3 && sent && liveCapture_.load(std::memory_order_relaxed)==1) beginLiveCapture(channel,key,vel);
         if (sent && evidence.needsReadback) {
             evidence.notePresetVerified=BASS_MIDI_StreamGetPreset(stream_,channel,&evidence.actual);
             evidence.release=BASS_MIDI_StreamGetEvent(stream_,channel,MIDI_EVENT_RELEASE);
@@ -1278,6 +1281,7 @@ void BassMidiPlayer::noteOn(int channel, int key, float velocity, const AudioPat
 
 void BassMidiPlayer::noteOff(int channel, int key, const AudioPathOrigin& origin) {
     f12::SynthLock lock(mutex_,f12::NoteOff);
+    latency_probe::Hold latencyHold_(latency_probe::HoldNoteOff);
     if (!stream_) return;
 
     channel = std::max(0, std::min(15, channel));
@@ -1302,6 +1306,7 @@ void BassMidiPlayer::noteOff(int channel, int key, const AudioPathOrigin& origin
 bool BassMidiPlayer::stopKeyboardPart(int channel) {
     if (channel < 0 || channel > 2) return false;
     f12::SynthLock lock(mutex_, f12::NoteOff);
+    latency_probe::Hold latencyHold_(latency_probe::HoldNoteOff);
     if (!stream_) return true;
     // Channel-scoped stop covers held notes and release tails without resetting controllers.
     return send(channel, MIDI_EVENT_SOUNDOFF, 0);
@@ -1322,6 +1327,7 @@ void BassMidiPlayer::allNotesOff() {
 
 void BassMidiPlayer::setChannelPreset(int channel, int bank, int program, const std::string& voiceName) {
     f12::SynthLock lock(mutex_,f12::Preset);
+    latency_probe::Hold latencyHold_(latency_probe::HoldPreset);
     if (!ensureEngine()) return;
 
     channel = std::max(0, std::min(15, channel));
@@ -1481,6 +1487,7 @@ void BassMidiPlayer::setChannelMixer(int channel, int volume, int pan,
                                      int expression, int reverbSend,
                                      int chorusSend) {
     f12::SynthLock lock(mutex_,f12::Mixer);
+    latency_probe::Hold latencyHold_(latency_probe::HoldMixer);
     if (!ensureEngine()) return;
 
     channel = std::max(0, std::min(15, channel));
@@ -1493,6 +1500,7 @@ void BassMidiPlayer::setChannelMixer(int channel, int volume, int pan,
 
 void BassMidiPlayer::setChannelExpression(int channel, int expression) {
     f12::SynthLock lock(mutex_,f12::Other);
+    latency_probe::Hold latencyHold_(latency_probe::HoldMixer);
     if (!ensureEngine()) return;
     send(channel, MIDI_EVENT_EXPRESSION, std::clamp(expression, 0, 127));
 }
@@ -2025,6 +2033,7 @@ bool BassMidiPlayer::restoreKeyboardPresets(int onlyChannel) {
 
 bool BassMidiPlayer::setKeyboardPreset(int channel, uint64_t fontId, int bank, int program) {
     f12::SynthLock lock(mutex_,f12::Preset);
+    latency_probe::Hold latencyHold_(latency_probe::HoldPreset);
     if (channel < 0 || channel > 3 || !fontId || !ensureEngine()) return false;
     const KeyboardPreset requested{fontId,bank,program,false};
     if (!keyboardPreset(requested)) return false; // Never enter the style/family fallback resolver.
@@ -2068,6 +2077,7 @@ std::string BassMidiPlayer::keyboardVoiceSnapshot() const {
     std::array<Row,4> rows;
     {
         std::lock_guard<std::mutex> lock(mutex_);
+        latency_probe::Hold latencyHold_(latency_probe::HoldDiagnostic);
         for(int ch=0;ch<4;++ch) {
             auto& r=rows[ch];r.request=keyboardPresets_[ch];r.evidence=keyboardEvidence_[ch];
             if(stream_) {r.ok=BASS_MIDI_StreamGetPreset(stream_,ch,&r.actual);r.release=BASS_MIDI_StreamGetEvent(stream_,ch,MIDI_EVENT_RELEASE);}
@@ -2095,8 +2105,88 @@ void BassMidiPlayer::resetRightVelocityStats() {
     for(auto& h:rightForwardedHist_) h.reset();
 }
 
+bool BassMidiPlayer::armLiveOnset() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    latency_probe::Hold latencyHold_(latency_probe::HoldDiagnostic);
+    if(!stream_) return false;
+    liveBuf_.assign(size_t(sampleRate_)/2*2,0.0f);
+    liveFrames_=0;liveChannel_=-1;liveKey_=-1;liveVelocity_=0;liveReport_.clear();
+    liveCapture_.store(1,std::memory_order_release);
+    return true;
+}
+
+// Called from noteOn under mutex_: the armed capture starts with the next RIGHT NOTE_ON that BASSMIDI accepted.
+void BassMidiPlayer::beginLiveCapture(int channel,int key,int velocity) {
+    liveChannel_=channel;liveKey_=key;liveVelocity_=velocity;
+    liveCtl_.cc7=int(BASS_MIDI_StreamGetEvent(stream_,channel,MIDI_EVENT_VOLUME));
+    liveCtl_.cc11=int(BASS_MIDI_StreamGetEvent(stream_,channel,MIDI_EVENT_EXPRESSION));
+    liveCtl_.reverb=int(BASS_MIDI_StreamGetEvent(stream_,channel,MIDI_EVENT_REVERB));
+    liveCtl_.chorus=int(BASS_MIDI_StreamGetEvent(stream_,channel,MIDI_EVENT_CHORUS));
+    liveCtl_.pan=int(BASS_MIDI_StreamGetEvent(stream_,channel,MIDI_EVENT_PAN));
+    liveCtl_.release=int(BASS_MIDI_StreamGetEvent(stream_,channel,MIDI_EVENT_RELEASE));
+    liveFrames_=0;
+    liveCapture_.store(2,std::memory_order_release);
+}
+
+// Called from render() under mutex_ while capturing. Bounded copy into a buffer sized at arm time; no allocation.
+void BassMidiPlayer::appendLiveCapture(const float* out,int numFrames) {
+    const size_t capacity=liveBuf_.size()/2;
+    const size_t take=std::min<size_t>(size_t(numFrames),capacity-liveFrames_);
+    std::memcpy(liveBuf_.data()+liveFrames_*2,out,take*2*sizeof(float));
+    liveFrames_+=take;
+    if(liveFrames_>=capacity) liveCapture_.store(3,std::memory_order_release);
+}
+
+std::string BassMidiPlayer::liveOnsetStatus() const {
+    switch(liveCapture_.load(std::memory_order_acquire)) {
+        case 1: return "armed: play ONE RIGHT note now (style stopped)";
+        case 2: return "capturing the live render...";
+        case 3: return "ready";
+        default: return "idle";
+    }
+}
+
+std::string BassMidiPlayer::liveOnsetReport() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    latency_probe::Hold latencyHold_(latency_probe::HoldDiagnostic);
+    const int state=liveCapture_.load(std::memory_order_acquire);
+    if(state!=3) return "LIVE ONSET not ready (state="+std::string(state==0?"idle":state==1?"armed":"capturing")+")\n";
+    if(!liveReport_.empty()) return liveReport_;
+    const int channel=liveChannel_;
+    const auto& selection=keyboardPresets_[channel];const auto* p=keyboardPreset(selection);
+    BASS_MIDI_FONT actual{};
+    if(!p||!selection.verified||!BASS_MIDI_StreamGetPreset(stream_,channel,&actual)||
+       actual.font!=p->font||actual.bank!=p->nativeBank||actual.preset!=p->program) {
+        liveReport_="LIVE ONSET unavailable: RIGHT preset not verified by BASS readback\n";return liveReport_;
+    }
+    const bool drum=p->bank==127||p->bank==128;
+    const auto live=onset_probe::analyze(liveBuf_,sampleRate_);
+    const auto same=onset_probe::render(p->font,p->nativeBank,p->program,drum,liveKey_,liveVelocity_,sampleRate_,liveCtl_);
+    const auto neutral=onset_probe::render(p->font,p->nativeBank,p->program,drum,liveKey_,liveVelocity_,sampleRate_,{});
+    std::ostringstream out;
+    out<<"LIVE ONSET part=RIGHT"<<(channel+1)<<" sf2='"<<p->file<<"' preset='"<<p->name<<"' key="<<liveKey_
+       <<" velocity="<<liveVelocity_<<" rate="<<sampleRate_<<" captureStartsAtRenderBlockThatConsumedTheNoteOn=1\n"
+       <<"LIVE ONSET liveControllers cc7="<<liveCtl_.cc7<<" cc11="<<liveCtl_.cc11<<" reverb="<<liveCtl_.reverb
+       <<" chorus="<<liveCtl_.chorus<<" pan="<<liveCtl_.pan<<" release="<<liveCtl_.release<<" (read back from the live stream)\n"
+       <<"PATH A live render            "<<onset_probe::line(liveVelocity_,live)<<" riseMs10to90="<<onset_probe::riseMs(liveBuf_,sampleRate_)<<"\n";
+    if(same.empty()||neutral.empty()) out<<"PATH B isolated decode FAILED\n";
+    else {
+        const auto sameOnset=onset_probe::analyze(same,sampleRate_),neutralOnset=onset_probe::analyze(neutral,sampleRate_);
+        const auto vsSame=onset_probe::compare(liveBuf_,same,sampleRate_,100),vsNeutral=onset_probe::compare(liveBuf_,neutral,sampleRate_,100);
+        out<<"PATH B isolated, same ctl     "<<onset_probe::line(liveVelocity_,sameOnset)<<" riseMs10to90="<<onset_probe::riseMs(same,sampleRate_)<<"\n"
+           <<"PATH B isolated, neutral ctl  "<<onset_probe::line(liveVelocity_,neutralOnset)<<" riseMs10to90="<<onset_probe::riseMs(neutral,sampleRate_)<<"\n"
+           <<"COMPARE live vs isolated(same ctl) first100ms errorDb="<<vsSame.errorDb<<" correlation="<<vsSame.correlation
+           <<" verdict="<<onset_probe::compareVerdict(vsSame)<<"\n"
+           <<"COMPARE live vs isolated(neutral ctl) first100ms errorDb="<<vsNeutral.errorDb<<" correlation="<<vsNeutral.correlation
+           <<" verdict="<<onset_probe::compareVerdict(vsNeutral)<<"\n";
+    }
+    out<<"LIVE ONSET evidence=real_BASSMIDI_live_stream_PCM_vs_isolated_decode;excludes_midi_transport_and_output_latency;style_must_be_stopped_for_a_clean_comparison\n";
+    liveReport_=out.str();return liveReport_;
+}
+
 std::string BassMidiPlayer::onsetReport(int channel,int key) {
     std::lock_guard<std::mutex> lock(mutex_);
+    latency_probe::Hold latencyHold_(latency_probe::HoldDiagnostic);
     if(channel<0||channel>2||key<0||key>127||!stream_) return "ONSET unavailable: select a RIGHT part first\n";
     const auto& selection=keyboardPresets_[channel];const auto* p=keyboardPreset(selection);
     BASS_MIDI_FONT actual{};
@@ -2124,6 +2214,7 @@ std::string BassMidiPlayer::rightVoiceDiagnostic() const {
     std::array<Row,3> rows;float streamVol=-1;bool streamVolOk=false;
     {
         std::lock_guard<std::mutex> lock(mutex_);
+        latency_probe::Hold latencyHold_(latency_probe::HoldDiagnostic);
         const bool tableIntact=publishedFontTableIntact();
         for(int ch=0;ch<3;++ch) {
             auto& r=rows[ch];r.request=keyboardPresets_[ch];r.fwd=rightForwardedHist_[ch];
@@ -2252,6 +2343,7 @@ std::string BassMidiPlayer::keyboardReleaseProbeReport() const {
 void BassMidiPlayer::render(float* out, int numFrames) {
     const uint64_t probeEnter = latency_probe::probe.on() ? latency_probe::now() : 0; // LATENCY_PROBE
     f12::SynthLock lock(mutex_,f12::Render);
+    latency_probe::Hold latencyHold_(latency_probe::HoldRender);
     const uint64_t probeLocked = probeEnter ? latency_probe::now() : 0; // LATENCY_PROBE
 // PCM_PATH_OBSERVER_BEGIN
 #if YAMAHA_ROLE_PCM_METERS
@@ -2312,6 +2404,7 @@ void BassMidiPlayer::render(float* out, int numFrames) {
 #endif
 // HEADROOM_OBSERVER_END
     renderPercussion(out,numFrames);
+    if (liveCapture_.load(std::memory_order_relaxed)==2) appendLiveCapture(out,numFrames); // diagnostic tap, armed only
     if (probeEnter) latency_probe::probe.renderDone(probeEnter, probeLocked, latency_probe::now()); // LATENCY_PROBE
 // HEADROOM_OBSERVER_BEGIN
 #if YAMAHA_PCM_HEADROOM

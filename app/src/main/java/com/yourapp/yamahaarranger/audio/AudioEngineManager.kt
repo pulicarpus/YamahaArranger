@@ -271,7 +271,7 @@ class AudioEngineManager @Inject constructor(
 
     fun noteOn(midiNote: Int, velocity01: Float) {
         val probeEntry = System.nanoTime() // LATENCY_PROBE
-        DebugLog.traceAudio("NOTE_ON ch=legacy note=$midiNote vel=${"%.3f".format(java.util.Locale.US, velocity01)} sf2=$soundFontLoaded")
+        if (!NoteLogTuning.skip()) DebugLog.traceAudio("NOTE_ON ch=legacy note=$midiNote vel=${"%.3f".format(java.util.Locale.US, velocity01)} sf2=$soundFontLoaded")
         if (soundFontLoaded) {
             val probeStart = System.nanoTime() // LATENCY_PROBE
             LatencyProbe.preJniLogging(probeEntry, probeStart)
@@ -284,13 +284,13 @@ class AudioEngineManager @Inject constructor(
     }
 
     fun noteOff(midiNote: Int) {
-        DebugLog.traceAudio("NOTE_OFF ch=legacy note=$midiNote sf2=$soundFontLoaded")
+        if (!NoteLogTuning.skip()) DebugLog.traceAudio("NOTE_OFF ch=legacy note=$midiNote sf2=$soundFontLoaded")
         if (soundFontLoaded) bridge.nativeSfNoteOffChannel(0, midiNote) else bridge.nativeNoteOff(midiNote)
     }
 
     fun noteOnChannel(channel: Int, midiNote: Int, velocity01: Float) {
         val probeEntry = System.nanoTime() // LATENCY_PROBE
-        DebugLog.traceAudio("NOTE_ON ch=$channel note=$midiNote vel=${"%.3f".format(java.util.Locale.US, velocity01)} sf2=$soundFontLoaded")
+        if (!NoteLogTuning.skip()) DebugLog.traceAudio("NOTE_ON ch=$channel note=$midiNote vel=${"%.3f".format(java.util.Locale.US, velocity01)} sf2=$soundFontLoaded")
         if (soundFontLoaded) {
             val probeStart = System.nanoTime() // LATENCY_PROBE
             if (channel < 4) LatencyProbe.preJniLogging(probeEntry, probeStart)
@@ -322,7 +322,7 @@ class AudioEngineManager @Inject constructor(
     }
 
     fun noteOffChannel(channel: Int, midiNote: Int) {
-        DebugLog.traceAudio("NOTE_OFF ch=$channel note=$midiNote sf2=$soundFontLoaded")
+        if (!NoteLogTuning.skip()) DebugLog.traceAudio("NOTE_OFF ch=$channel note=$midiNote sf2=$soundFontLoaded")
         if (soundFontLoaded) bridge.nativeSfNoteOffChannel(channel, midiNote)
         else noteOff(midiNote)
     }
@@ -485,6 +485,14 @@ class AudioEngineManager @Inject constructor(
     fun setBufferMode(mode: Int): Int = bridge.nativeSetBufferMode(mode)
     fun bufferStatus(): String = bridge.nativeBufferStatus()
     fun bufferTick() = bridge.nativeBufferTick()
+
+    /** Path A vs B: arm a capture of the live render of the next RIGHT note (style must be stopped). */
+    fun armLiveOnset(allowed: () -> Boolean): Boolean = allowed() && bridge.nativeArmLiveOnset()
+    fun liveOnsetStatus(): String = bridge.nativeLiveOnsetStatus()
+    /** Builds the live-vs-isolated comparison; output is paused while the isolated decodes run. */
+    fun liveOnsetReport(): String = runBlocking { readiness.operations.withLock {
+        withAudioStreamPausedUnsafe { bridge.nativeLiveOnsetReport() }
+    } }
 
     /** Offline onset of the selected RIGHT preset. Needs a stopped style; output is paused while it decodes. */
     fun rightOnsetReport(channel: Int, key: Int, allowed: () -> Boolean): String = runBlocking { readiness.operations.withLock {

@@ -165,8 +165,8 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
             // This lets us distinguish E343 RIGHT traffic from ACMP traffic without
             // changing routing behavior yet.
             when (type) {
-                0x90 -> DebugLog.traceMidi("RAW NOTE_ON status=0x" + status.toString(16).uppercase().padStart(2, '0') + " ch=" + channel + " note=" + d1 + " vel=" + d2)
-                0x80 -> DebugLog.traceMidi("RAW NOTE_OFF status=0x" + status.toString(16).uppercase().padStart(2, '0') + " ch=" + channel + " note=" + d1 + " vel=" + d2)
+                0x90 -> if (!com.yourapp.yamahaarranger.audio.NoteLogTuning.skip()) DebugLog.traceMidi("RAW NOTE_ON status=0x" + status.toString(16).uppercase().padStart(2, '0') + " ch=" + channel + " note=" + d1 + " vel=" + d2)
+                0x80 -> if (!com.yourapp.yamahaarranger.audio.NoteLogTuning.skip()) DebugLog.traceMidi("RAW NOTE_OFF status=0x" + status.toString(16).uppercase().padStart(2, '0') + " ch=" + channel + " note=" + d1 + " vel=" + d2)
                 0xB0 -> if (d1 == 64 && channel == chordInputChannel) {
                     val enabled = d2 >= 64
                     onSustainChange?.invoke(enabled)
@@ -179,15 +179,15 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
                     if (d2 > 0) {
                         com.yourapp.yamahaarranger.audio.LatencyProbe.noteOnParsed()
                         onNoteOn?.invoke(d1, d2)
-                        DebugLog.add("🎹 IN ch$channel NoteOn $d1 vel$d2")
+                        if (!com.yourapp.yamahaarranger.audio.NoteLogTuning.skip()) DebugLog.add("🎹 IN ch$channel NoteOn $d1 vel$d2")
                     } else {
                         onNoteOff?.invoke(d1)
-                        DebugLog.add("🎹 IN ch$channel NoteOff $d1")
+                        if (!com.yourapp.yamahaarranger.audio.NoteLogTuning.skip()) DebugLog.add("🎹 IN ch$channel NoteOff $d1")
                     }
                 }
                 0x80 -> if (channel == chordInputChannel) {
                     onNoteOff?.invoke(d1)
-                    DebugLog.add("🎹 IN ch$channel NoteOff $d1")
+                    if (!com.yourapp.yamahaarranger.audio.NoteLogTuning.skip()) DebugLog.add("🎹 IN ch$channel NoteOff $d1")
                 }
             }
         }

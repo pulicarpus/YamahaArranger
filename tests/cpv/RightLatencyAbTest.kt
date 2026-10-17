@@ -4,6 +4,7 @@ import com.yourapp.midi.MidiInputManager
 import com.yourapp.yamahaarranger.arranger.ArrangerBrain
 import com.yourapp.yamahaarranger.audio.AudioEngineManager
 import com.yourapp.yamahaarranger.audio.LatencyProbe
+import com.yourapp.yamahaarranger.audio.NoteLogTuning
 import com.yourapp.yamahaarranger.audio.NativeAudioBridge
 import com.yourapp.yamahaarranger.audio.NoteSample
 import com.yourapp.yamahaarranger.audio.SampleProvider
@@ -26,7 +27,7 @@ import org.mockito.Mockito.verifyNoInteractions
 import org.mockito.Mockito.`when`
 
 class RightLatencyAbTest {
-    @After fun restore() { LatencyProbe.enabled = true; LatencyProbe.reset() }
+    @After fun restore() { LatencyProbe.enabled = true; LatencyProbe.reset(); NoteLogTuning.lean = false; NoteLogTuning.resetCounter() }
 
     private fun brain(): Triple<ArrangerBrain, NativeAudioBridge, MidiInputManager> {
         val bridge = mock(NativeAudioBridge::class.java)
@@ -152,6 +153,62 @@ class RightLatencyAbTest {
         verify(bridge).nativeSfNoteOffChannel(0, 74)
         verify(bridge).nativeSfNoteOffChannel(0, 72)
         verify(midi, never()).sendNoteOn(1, 74, 100)
+    }
+
+    // ---- LEAN NOTE LOG (A/B): only log lines are skipped ---------------------------------------------------------
+
+    private fun playPhrase(brain: ArrangerBrain) {
+        brain.setRightVoiceEnabled(1, true)
+        brain.onKeyboardNoteOn(72, 100 / 127f); brain.onKeyboardNoteOn(76, 90 / 127f); brain.onKeyboardNoteOn(79, 80 / 127f)
+        brain.onKeyboardNoteOff(76); brain.onKeyboardNoteOff(72); brain.onKeyboardNoteOff(79)
+    }
+
+    private fun engineCalls(bridge: NativeAudioBridge) = org.mockito.Mockito.mockingDetails(bridge).invocations
+        .filter { it.method.name.startsWith("nativeSfNote") }.map { it.method.name + it.arguments.joinToString(",", "(", ")") }
+
+    @Test fun leanLogIsOffByDefaultAndChangesNoEngineOrMidiCall() {
+        assertFalse("every launch starts normal", NoteLogTuning.lean)
+        val (brainA, bridgeA, midiA) = brain()
+        NoteLogTuning.lean = false; NoteLogTuning.resetCounter()
+        playPhrase(brainA)
+        assertEquals("normal mode suppresses nothing", 0L, NoteLogTuning.suppressed)
+        val normalEngine = engineCalls(bridgeA)
+        val normalMidi = org.mockito.Mockito.mockingDetails(midiA).invocations.map { it.method.name + it.arguments.joinToString(",", "(", ")") }
+
+        val (brainB, bridgeB, midiB) = brain()
+        NoteLogTuning.lean = true; NoteLogTuning.resetCounter()
+        playPhrase(brainB)
+        assertTrue("lean mode does skip the per-note log lines", NoteLogTuning.suppressed >= 12)
+        assertEquals("identical engine calls, order and velocities", normalEngine, engineCalls(bridgeB))
+        val leanMidi = org.mockito.Mockito.mockingDetails(midiB).invocations.map { it.method.name + it.arguments.joinToString(",", "(", ")") }
+        assertEquals("MIDI OUT traffic is untouched", normalMidi, leanMidi)
+    }
+
+    @Test fun leanLogKeepsUsbParsingAndSustainIdentical() {
+        for (lean in listOf(false, true)) {
+            NoteLogTuning.lean = lean
+            val manager = MidiInputManager(mock(android.content.Context::class.java))
+            val events = mutableListOf<String>()
+            manager.onNoteOn = { n, v -> events += "on:$n:$v" }; manager.onNoteOff = { n -> events += "off:$n" }
+            val ch = manager.chordInputChannel
+            parse(manager, byteArrayOf((0x90 or ch).toByte(), 60, 100, 64, 90), byteArrayOf((0x80 or ch).toByte(), 60, 0))
+            assertEquals(listOf("on:60:100", "on:64:90", "off:60"), events)
+        }
+        val (brain, bridge, _) = brain()
+        NoteLogTuning.lean = true
+        brain.setKeyboardSustain(true)
+        for (note in 70..72) { brain.onKeyboardNoteOn(note, 0.6f); brain.onKeyboardNoteOff(note) }
+        verify(bridge, never()).nativeSfNoteOffChannel(org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt())
+        brain.setKeyboardSustain(false)
+        for (note in 70..72) verify(bridge).nativeSfNoteOffChannel(0, note)
+    }
+
+    @Test fun leanSwitchIsProcessLocalAndNeverPersisted() {
+        val probe = source("yamahaarranger/audio/PcmSessionControls.kt").readText()
+        val tuning = probe.substringAfter("object NoteLogTuning")
+        assertTrue(tuning.contains("@Volatile var lean = false"))
+        for (forbidden in listOf("SharedPreferences", "DataStore", "File("))
+            assertFalse(tuning.contains(forbidden) || source("ui/LatencyAbOverlay.kt").readText().contains(forbidden))
     }
 
     // ---- USB parsing: split packets, running status, realtime bytes, reconnect-safe parser state ----------------------

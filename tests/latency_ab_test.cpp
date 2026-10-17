@@ -43,6 +43,24 @@ int main() {
     check(onset_probe::line(100, silent).find("audible=0") != std::string::npos, "line for silence");
     check(onset_probe::line(100, ramp).find("minus10dBMs=") != std::string::npos, "line for signal");
 
+    // ---- live vs isolated comparison ----
+    {
+        auto a = envelope(0, 20.0, 0.5f), same = envelope(0, 20.0, 0.5f);
+        auto c = onset_probe::compare(a, same, kRate, 100);
+        check(c.valid && c.errorDb <= -100 && c.correlation > 0.9999, "identical renders compare as identical");
+        check(std::string(onset_probe::compareVerdict(c)).find("ADDS_NOTHING") != std::string::npos, "identical verdict");
+        auto quieter = envelope(0, 20.0, 0.495f);                         // 1 % lower gain -> ~ -40 dB error
+        c = onset_probe::compare(quieter, a, kRate, 100);
+        check(c.errorDb < -35 && c.errorDb > -45 && std::string(onset_probe::compareVerdict(c)).find("NEARLY_SAME") != std::string::npos, "1 % gain difference is NEARLY_SAME");
+        auto slower = envelope(0, 60.0, 0.5f);                            // a smeared attack is clearly different
+        c = onset_probe::compare(slower, a, kRate, 100);
+        check(c.errorDb > -30 && std::string(onset_probe::compareVerdict(c)).find("DIFFERS") != std::string::npos, "smeared attack is DIFFERENT");
+        check(!onset_probe::compare(std::vector<float>(100, 0.0f), a, kRate, 100).valid, "silent input is not comparable");
+        const double rise20 = onset_probe::riseMs(envelope(0, 20.0, 0.5f), kRate), rise60 = onset_probe::riseMs(envelope(0, 60.0, 0.5f), kRate);
+        check(rise20 > 14.0 && rise20 < 18.0 && rise60 > 44.0 && rise60 < 52.0, "10-90 % rise time follows the ramp length");
+        check(onset_probe::riseMs(std::vector<float>(1000, 0.0f), kRate) < 0, "no signal -> no rise time");
+    }
+
     // ---- buffer policy ----
     using namespace buffer_policy;
     check(framesFor(BASELINE_2X, 256, 1024) == 512, "baseline stays 2 bursts (production value)");

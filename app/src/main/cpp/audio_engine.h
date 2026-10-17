@@ -50,6 +50,9 @@ public:
     std::string sfPresetList() const;
     std::string sfKeyboardVoiceSnapshot() const { return soundFont_.keyboardVoiceSnapshot(); }
     std::string sfRightOnsetReport(int channel,int key) { return soundFont_.onsetReport(channel,key); }
+    bool sfArmLiveOnset() { return soundFont_.armLiveOnset(); }
+    std::string sfLiveOnsetStatus() const { return soundFont_.liveOnsetStatus(); }
+    std::string sfLiveOnsetReport() { return soundFont_.liveOnsetReport(); }
     std::string sfRightVoiceDiagnostic() const { return soundFont_.rightVoiceDiagnostic(); }
     void sfResetRightVelocityStats() { soundFont_.resetRightVelocityStats(); }
     std::vector<unsigned char> sfDiagnosticKeyboardReleaseWav(int ch,int key,int velocity) { return soundFont_.diagnosticKeyboardReleaseWav(ch,key,velocity); }

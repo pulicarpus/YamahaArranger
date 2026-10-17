@@ -1083,6 +1083,20 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    /** A/B: B skips the keyboard NOTE log lines (measured ~0.6 ms each on the MIDI thread). Not persisted. */
+    fun setLeanNoteLog(on: Boolean) {
+        com.yourapp.yamahaarranger.audio.NoteLogTuning.lean = on
+        com.yourapp.yamahaarranger.audio.NoteLogTuning.resetCounter()
+    }
+    fun leanNoteLog(): Boolean = com.yourapp.yamahaarranger.audio.NoteLogTuning.lean
+
+    /** Path A (live render) vs path B (isolated decode) for the next RIGHT note; style must be stopped. */
+    suspend fun armLiveOnset(): String = withContext(Dispatchers.Default) {
+        if (audioEngine.armLiveOnset { !arrangerBrain.state.value.isPlaying }) "armed" else "refused: stop the style first"
+    }
+    suspend fun liveOnsetStatusText(): String = withContext(Dispatchers.Default) { audioEngine.liveOnsetStatus() }
+    suspend fun liveOnsetReportText(): String = withContext(Dispatchers.Default) { audioEngine.liveOnsetReport() }
+
     suspend fun bufferStatusText(): String = withContext(Dispatchers.Default) { audioEngine.bufferStatus() }
     suspend fun latencyReportText(): String = withContext(Dispatchers.Default) { audioEngine.bufferStatus() + audioEngine.latencyReport() }
 

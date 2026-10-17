@@ -4,7 +4,9 @@
 #include <array>
 #include <vector>
 #include <memory>
+#include <atomic>
 #include "right_voice_diag.h"
+#include "onset_probe.h"
 #include "audio_path_diagnostic.h"
 #include "sf2_pdta_fingerprint.h"
 #include "role_pcm_meter.h"
@@ -67,6 +69,11 @@ public:
     std::string rightVoiceDiagnostic() const;
     // Offline onset of the selected RIGHT preset (isolated decoder; call only while the style is stopped).
     std::string onsetReport(int channel,int key);
+    // Path A vs B: capture the first 500 ms the LIVE stream renders for the next RIGHT NOTE_ON and compare it with an
+    // isolated decode of the same preset/key/velocity/controllers. Diagnostic; idle unless armed.
+    bool armLiveOnset();
+    std::string liveOnsetStatus() const;   // idle | armed | capturing | ready (lock-free)
+    std::string liveOnsetReport();         // builds the comparison once the capture is ready
     void resetRightVelocityStats();
     std::vector<unsigned char> diagnosticKeyboardReleaseWav(int channel,int key,int velocity);
     std::string keyboardReleaseProbeReport() const;
@@ -117,6 +124,16 @@ private:
     };
     std::array<KeyboardEvidence,4> keyboardEvidence_{};
     std::array<right_voice_diag::VelocityHist,3> rightForwardedHist_{};
+    // Live onset capture (0 idle, 1 armed, 2 capturing, 3 ready). Written under mutex_; the audio callback only
+    // does a relaxed load per block and a bounded memcpy while capturing.
+    std::atomic<int> liveCapture_{0};
+    std::vector<float> liveBuf_;
+    size_t liveFrames_=0;
+    int liveChannel_=-1, liveKey_=-1, liveVelocity_=0;
+    onset_probe::Controllers liveCtl_{};
+    std::string liveReport_;
+    void beginLiveCapture(int channel,int key,int velocity);
+    void appendLiveCapture(const float* out,int numFrames);
     std::string keyboardReleaseProbeReport_;
     struct ChannelState {
         int bankMsb = 0;

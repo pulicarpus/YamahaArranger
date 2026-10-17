@@ -257,7 +257,7 @@ class ArrangerBrain @Inject constructor(
             val velocity127 = (velocity * 127f).toInt().coerceIn(0, 127)
             val outputNote = (midiNote + keyboardTranspose).coerceIn(0, 127)
             if (midiNote > splitNote) {
-                DebugLog.add("🎹 RIGHT IN note=$midiNote → pitch=$outputNote vel=$velocity127")
+                if (!com.yourapp.yamahaarranger.audio.NoteLogTuning.skip()) DebugLog.add("🎹 RIGHT IN note=$midiNote → pitch=$outputNote vel=$velocity127")
                 startRightNote(midiNote, outputNote, velocity, velocity127)
                 return
             }
@@ -289,7 +289,7 @@ class ArrangerBrain @Inject constructor(
             }
             val outputNote = transposedNotes.remove(midiNote) ?: (midiNote + keyboardTranspose).coerceIn(0, 127)
             if (midiNote > splitNote) {
-                DebugLog.add("🎹 RIGHT OFF note=$midiNote → pitch=$outputNote → R1/R2/R3 OFF" +
+                if (!com.yourapp.yamahaarranger.audio.NoteLogTuning.skip()) DebugLog.add("🎹 RIGHT OFF note=$midiNote → pitch=$outputNote → R1/R2/R3 OFF" +
                     if (keyboardSustain) " (held by sustain)" else "")
                 releaseRightNote(midiNote)
                 return

@@ -52,6 +52,9 @@ fun LatencyAbOverlay(viewModel: MainViewModel, modifier: Modifier = Modifier) {
     var status by remember { mutableStateOf("") }
     var report by remember { mutableStateOf("") }
     var onset by remember { mutableStateOf("") }
+    var liveStatus by remember { mutableStateOf("idle") }
+    var liveReport by remember { mutableStateOf("") }
+    var leanLog by remember { mutableStateOf(viewModel.leanNoteLog()) }
     var saved by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -59,19 +62,21 @@ fun LatencyAbOverlay(viewModel: MainViewModel, modifier: Modifier = Modifier) {
         while (true) {
             status = try { viewModel.bufferStatusText() } catch (_: Exception) { status }
             report = try { viewModel.latencyReportText() } catch (_: Exception) { report }
+            liveStatus = try { viewModel.liveOnsetStatusText() } catch (_: Exception) { liveStatus }
+            if (liveStatus == "ready" && liveReport.isEmpty()) liveReport = try { viewModel.liveOnsetReportText() } catch (_: Exception) { "" }
             delay(700)
         }
     }
     val rows = report.lineSequence().filter { line ->
         line.isNotBlank() && listOf("section", "chord", "styleEvent", "scheduler").none { line.contains(it, ignoreCase = true) }
     }.toList()
-    Column(modifier.width(640.dp).heightIn(max = 340.dp).background(Color(0xEE10151B), RoundedCornerShape(6.dp)).padding(8.dp)) {
+    Column(modifier.width(720.dp).heightIn(max = 340.dp).background(Color(0xEE10151B), RoundedCornerShape(6.dp)).padding(8.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("RIGHT LATENCY A/B — diagnostic", color = Color(0xFFFFC857), fontSize = 10.sp, fontWeight = FontWeight.Bold)
             Chip("RESET STATS", Color(0xFF444C56)) { viewModel.latencyReset() }
             Chip("ONSET TEST (RIGHT, C4)", Color(0xFF3A5A8A)) { scope.launch { onset = viewModel.runOnsetTest() } }
             Chip("SAVE REPORT", Color(0xFF2E6B3A)) {
-                scope.launch { saved = saveLatencyReport(context, viewModel.latencyReportText(), onset) ?: "save failed" }
+                scope.launch { saved = saveLatencyReport(context, viewModel.latencyReportText(), onset + "\n" + liveReport) ?: "save failed" }
             }
             Chip("CLOSE", Color(0xFF7A2B2B)) { ToolPanels.latency = false }
         }
@@ -81,9 +86,20 @@ fun LatencyAbOverlay(viewModel: MainViewModel, modifier: Modifier = Modifier) {
                 Chip(label, if (mode == i) Color(0xFF1E8E3E) else Color(0xFF444C56)) { viewModel.setBufferMode(i) }
             }
         }
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 4.dp)) {
+            Text("NOTE LOG", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Chip("A: NORMAL", if (!leanLog) Color(0xFF1E8E3E) else Color(0xFF444C56)) { viewModel.setLeanNoteLog(false); leanLog = false }
+            Chip("B: LEAN (no NOTE logs)", if (leanLog) Color(0xFF1E8E3E) else Color(0xFF444C56)) { viewModel.setLeanNoteLog(true); leanLog = true }
+            Text("LIVE vs ISOLATED", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Chip("ARM", Color(0xFF3A5A8A)) { liveReport = ""; scope.launch { liveStatus = viewModel.armLiveOnset() } }
+            Text(liveStatus, color = Color(0xFFFFE08A), fontSize = 9.sp)
+        }
         Text(status.trim(), color = Color(0xFF7FDBFF), fontSize = 9.sp, fontFamily = FontFamily.Monospace)
         if (saved.isNotEmpty()) Text("saved: $saved", color = Color(0xFF4CD37B), fontSize = 9.sp)
         Column(Modifier.verticalScroll(rememberScrollState())) {
+            if (liveReport.isNotEmpty()) {
+                Text(liveReport.trim(), color = Color(0xFF9BE7A0), fontSize = 9.sp, fontFamily = FontFamily.Monospace)
+            }
             if (onset.isNotEmpty()) {
                 Text(onset.trim(), color = Color(0xFFFFE08A), fontSize = 9.sp, fontFamily = FontFamily.Monospace)
             }

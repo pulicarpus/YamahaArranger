@@ -80,8 +80,13 @@ struct Stat {
     }
 };
 
+// Who holds the synth mutex, and for how long (a long hold is what makes render or NOTE_ON wait).
+enum HoldKind : unsigned { HoldNoteKey = 0, HoldNoteStyle, HoldNoteOff, HoldRender, HoldPreset, HoldMixer, HoldFonts, HoldDiagnostic, HoldKindCount };
+inline constexpr const char* kHoldNames[HoldKindCount] = {"keyboardNoteOn", "styleNoteOn", "noteOff", "render", "presetChange", "mixerController", "fontLoad", "diagnostics"};
+
 struct Probe {
     std::atomic<uint32_t> enabled{1};
+    Stat hold[HoldKindCount];
     // Keyboard RIGHT/LEFT-voice parts (channels 0..3) and style channels (4..15) are separate.
     Stat keyLockWait, keyDispatch, styleLockWait, styleDispatch;
     Stat noteToRender, noteToBuffer;
@@ -91,17 +96,22 @@ struct Probe {
     // First keyboard NOTE_ON queued and not yet consumed by a render pass (0 = none).
     std::atomic<uint64_t> pendingKeyNoteNs{0};
     std::atomic<uint64_t> pendingStyleNoteNs{0};
+    // NOT lost notes: the timing probe tracks ONE pending stamp, so every extra keyboard NOTE_ON queued to BASSMIDI
+    // before the next render only merges its timing sample into the first. All events still reach BASSMIDI.
     std::atomic<uint64_t> unconsumedKeyNotesOverwritten{0};
+    std::atomic<uint64_t> keyNoteOnsQueued{0};
 
     bool on() const { return enabled.load(std::memory_order_relaxed) != 0; }
     void reset() {
         keyLockWait.reset(); keyDispatch.reset(); styleLockWait.reset(); styleDispatch.reset();
         noteToRender.reset(); noteToBuffer.reset(); renderLockWait.reset(); renderDecode.reset(); callbackTotal.reset();
         callbacks = 0; overBudget = 0; overEightyPercent = 0; pendingKeyNoteNs = 0; pendingStyleNoteNs = 0;
-        unconsumedKeyNotesOverwritten = 0;
+        unconsumedKeyNotesOverwritten = 0; keyNoteOnsQueued = 0;
+        for (auto& h : hold) h.reset();
     }
     // Called after BASS_MIDI_StreamEvent(NOTE) returned, with the earlier stamps.
     void noteQueued(bool keyboard, uint64_t enterNs, uint64_t lockedNs, uint64_t sentNs) {
+        if (keyboard) keyNoteOnsQueued.fetch_add(1, std::memory_order_relaxed);
         (keyboard ? keyLockWait : styleLockWait).record(lockedNs - enterNs);
         (keyboard ? keyDispatch : styleDispatch).record(sentNs - lockedNs);
         auto& pending = keyboard ? pendingKeyNoteNs : pendingStyleNoteNs;
@@ -136,7 +146,9 @@ struct Probe {
         out << "LATENCY_NATIVE clock=steady_monotonic_same_as_System.nanoTime enabled=" << enabled.load()
             << " callbacks=" << cb << " callbackBudgetUs=" << budgetNs.load() / 1000
             << " overBudget=" << overBudget.load() << " over80pct=" << overEightyPercent.load()
-            << " keyNotesOverwrittenBeforeRender=" << unconsumedKeyNotesOverwritten.load() << "\n";
+            << " keyNotesOverwrittenBeforeRender=" << unconsumedKeyNotesOverwritten.load()
+            << " keyNoteOnsQueuedToBass=" << keyNoteOnsQueued.load()
+            << " (overwritten = timing samples merged because >1 keyboard NOTE_ON shared one render period; NO event is dropped)\n";
         keyLockWait.print(out, "keyboardNoteLockWait");
         keyDispatch.print(out, "keyboardNoteDispatch");
         styleLockWait.print(out, "styleNoteLockWait");
@@ -146,10 +158,21 @@ struct Probe {
         renderLockWait.print(out, "renderLockWait");
         renderDecode.print(out, "renderDecode");
         callbackTotal.print(out, "callbackTotal");
+        for (unsigned k = 0; k < HoldKindCount; ++k) {
+            std::string name = std::string("synthMutexHold_") + kHoldNames[k];
+            hold[k].print(out, name.c_str());
+        }
         return out.str();
     }
 };
 
 inline Probe probe;
+
+// RAII: construct right after the synth lock is taken so the hold is measured before the lock is released.
+struct Hold {
+    unsigned kind; uint64_t start;
+    Hold(unsigned k) : kind(k), start(probe.on() ? now() : 0) {}
+    ~Hold() { if (start) probe.hold[kind].record(now() - start); }
+};
 
 } // namespace latency_probe
