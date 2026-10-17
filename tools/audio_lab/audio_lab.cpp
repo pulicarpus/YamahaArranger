@@ -5,6 +5,7 @@
 //   audio_lab raw    <outdir> <colombo.sf2> <tyros.sf2>
 //   audio_lab player <outdir> <colombo.sf2> <tyros.sf2>
 #include "bassmidi_player.h"
+#include <jni.h>
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
