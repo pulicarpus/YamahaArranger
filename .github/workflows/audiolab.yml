@@ -83,6 +83,13 @@ jobs:
         run: |
           set -euo pipefail
           python3 tools/audio_lab/analyze.py --in /tmp/lab --out /tmp/lab_report --tsf-dir /tmp/sf2 2>&1 | tee /tmp/lab_report_stdout.txt
+      - name: NOTE_ON to PCM timing (real BASSMIDI, relative evidence only)
+        run: |
+          set -euo pipefail
+          B=/tmp/bass-linux; M=/tmp/bassmidi-linux
+          g++ -std=c++17 -O2 -I $B/c -I $M/c tools/audio_lab/timing_lab.cpp \
+            -L $B/libs/x86_64 -L $M/libs/x86_64 -Wl,-rpath,$B/libs/x86_64 -Wl,-rpath,$M/libs/x86_64 -lbassmidi -lbass -o /tmp/timing_lab
+          /tmp/timing_lab /tmp/sf2/ColomboGMGS2_BM.sf2 "/tmp/sf2/yamaha tyros 4_just_t4_fixed.sf2" 2>&1 | tee /tmp/lab/timing.log
       - name: Summary (last lines of the log = the evidence)
         run: |
           python3 - <<'PY'
@@ -92,6 +99,7 @@ jobs:
           want = ('## T8', '## T7', '## T9', '## T10', '## T11', '## Automatic findings')
           print('=====SUMMARY-BEGIN=====')
           print(open('/tmp/lab/sf2_compare.log').read())
+          print(open('/tmp/lab/timing.log').read())
           for p in parts:
               if p.startswith(want): print(p)
           print('=====SUMMARY-END=====')
@@ -105,5 +113,6 @@ jobs:
             /tmp/lab/raw.log
             /tmp/lab/player.log
             /tmp/lab/sf2_compare.log
+            /tmp/lab/timing.log
             /tmp/lab/manifest_*.csv
           if-no-files-found: warn
