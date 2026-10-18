@@ -1,68 +1,88 @@
-# Investigasi akar masalah RIGHT PSR-E343: MIDI OUT vs BASSMIDI
+# Investigasi RIGHT PSR-E343: MIDI OUT vs BASSMIDI (revisi 2)
 
-Branch `investigate/midi-out-vs-bassmidi` (dari `lab/offline-audio`). Tidak ada perubahan kode produksi, tidak ada APK, tidak ada merge.
-Bukti: pembacaan kode (K) dan lab BASSMIDI nyata di CI, run 39051098282 (T9-T11 baru). Perangkat keras E343/Redmi tidak dapat diukur di cloud.
+Branch `investigate/midi-out-vs-bassmidi`. Tidak ada perubahan kode produksi, tidak ada APK, tidak ada merge.
+Setiap klaim diberi label sumber: **[KODE]** dibaca dari kode, **[LAB]** diukur di Offline Audio Lab (BASSMIDI Linux asli + SF2 Anda, CI), **[PERANGKAT]** diamati/diukur di perangkat nyata, **[HIPOTESIS]** belum terbukti.
 
-## 1. Tabel jalur data (dari kode)
+## 0. Koreksi: hipotesis Local ON / double trigger DIBATALKAN
+[PERANGKAT] Pengguna: Local = OFF. Local OFF + MIDI OUT app OFF -> E343 diam. Local OFF + MIDI OUT ON -> E343 berbunyi normal dan responsif; tidak ada pengaturan E343 yang berubah.
+Maka seluruh suara E343 pada pengujian itu berasal dari note yang dikirim app lewat USB. Hipotesis "suara lokal" dan "gema/double trigger" tidak berlaku dan tidak dipakai lagi. Setup ini justru isolasi yang bersih: Local OFF + MIDI OUT OFF = hanya BASSMIDI; Local OFF + MIDI OUT ON + RIGHT BASSMIDI di-mute = hanya tone generator (TG).
 
-| Aspek | MIDI OUT -> E343 | BASSMIDI -> Oboe -> AUX |
+## 1. Fakta dari kode [KODE]
+- Cabang: `ArrangerBrain.startRightNote`, per layer RIGHT (ch 0..2): `engineNoteOn` (BASSMIDI) lalu `midiInputManager.sendNoteOn` (USB), satu thread, berurutan. Karena MIDI OUT dikirim SETELAH panggilan BASSMIDI, blocking di sisi BASSMIDI akan ikut menunda MIDI OUT (yang terdengar responsif) -> blocking besar bukan penyebab dominan.
+- Data identik di kedua jalur: note, velocity (tanpa kurva), channel, durasi/sustain, CC7=127, CC11=100xmaster, CC10=64, CC91=40, CC93=0, release 64. CC71/74/73/1 tidak pernah dikirim. Tidak ada Bank/Program otomatis ke E343.
+- BASSMIDI: stream decode 48 kHz float (NOTEOFF1, SRC 2, 1000 voice, FONTEX2 satu-channel eksak). NOTE_ON dikirim dengan `BASS_MIDI_StreamEvent` di bawah `mutex_`; tidak ada ASYNC. PCM ditarik `BASS_ChannelGetData` di callback Oboe di bawah mutex yang sama, lalu clamp +-1.
+- Oboe: diminta LowLatency + Exclusive, fallback None + Shared; Float, stereo, 48 kHz, Usage Media, ContentType Music; buffer diset 2 x burst.
+- NORMAL mode (`NoteLogTuning.lean`) ada di branch `lab/offline-audio`, belum ada di APK yang pernah dites pengguna.
+
+## 2. Pengukuran Offline Audio Lab [LAB] (run 39084812276)
+Mikrodetik dari runner x86: hanya bukti RELATIF, bukan angka Redmi Pad.
+
+**E1 - NOTE_ON -> sampel PCM pertama, tergantung ukuran blok render?** Blok 32/64/128/256/512/1024 frame menghasilkan frame pertama IDENTIK (selisih 0 frame) pada 12 preset x 2 velocity. Jadi BASSMIDI menerapkan event tepat di awal blok yang memakainya; engine tidak menambah penundaan sendiri. Satu-satunya penundaan engine = menunggu awal blok callback berikutnya (0..5.3 ms pada blok 256, rata-rata ~2.7 ms; cocok dengan 2.26 ms yang diamati di perangkat).
+
+**Onset bawaan preset** (frame pertama di atas -60 dBFS / waktu mencapai -20 dB dan -10 dB puncak, velocity 100, C4):
+| Preset | Colombo | Tyros 4 |
 |---|---|---|
-| Titik cabang | `ArrangerBrain.startRightNote`, loop channel 0..2, satu thread, berurutan | sama |
-| Urutan | `engineNoteOn` (antre ke BASSMIDI) lalu `sendNoteOn` (tulis USB langsung) | |
-| Note | `outputNote` (+transpose) | sama |
-| Velocity | `RightVelocityTest.midiOutVelocity127(v)` = v apa adanya | `v/127f` -> `lround*127`, clamp 1..127 = sama |
-| Channel | ch1..3 (idx 0..2); keyboard E343 sendiri mengirim di ch1 (`chordInputChannel=0`) | idx 0..2 pada BASSMIDI |
-| Bank/Program | TIDAK dikirim otomatis (E343_NO_AUTO_KEYBOARD_BANK_PC); suara = panel E343 | preset SF2 pilihan app (default "Piano" 0/0) |
-| CC7 | 127 dikirim setelah `setChannelMixer` pertama | 127 |
-| CC11 | 100 x master/100 | 100 |
-| CC10 / CC91 / CC93 | 64 / 40 / 0 dikirim ke E343 | 64 / 40 / 0 (reverb BASSMIDI) |
-| CC72 | release 64 | release 64 |
-| CC64 sustain | tidak diteruskan; note-off ditunda app sama seperti BASSMIDI | sama |
-| CC71/74/73/1 | tidak pernah dikirim | tidak pernah dikirim |
-| Note-off/durasi | sama (`releaseKeyboardNote`) | sama |
-| Antrean | `MidiMixerOutput` sinkron, tulis `MidiInputPort.send` | decode stream ditarik callback Oboe |
-| Latensi perangkat lunak | ~0 (satu write USB) | 6-9 ms app + buffer Oboe + AUX (output latency tidak terukur) |
-| Level | di generator nada E343 (CC7 127 = di atas default 100) | -5 dB vs netral (CC11 100 + font 0.9), puncak 1 nada -19 dBFS |
+| Grand Piano | 0.35 ms / 1.0 / 3.3 ms | 3.7 ms / 7.2 / 8.8 ms |
+| E.Piano | 0.1 ms / 0.3 / 0.6 | 15.6 ms / 15.9 / 16.4 |
+| Steel Guitar | 0.04 ms / 0.6 / 2.7 | 3.1 ms / 4.9 / 8.4 |
+| Strings | 0.3 ms / 5.9 / 17.4 | 0 ms / 24.7 / 92 |
+| Organ | 0.4 ms / 6.1 / 10.6 | 6.9 ms / 10.5 / 12.7 |
+| Brass | 2.0 ms / 9.0 / 13.0 | 0.6 ms / 16.4 / 24.7 |
+Onset tidak bergantung pada velocity. Pada Tyros, piano/E.Piano/organ punya keterlambatan bawaan 4-16 ms sebelum suara muncul; pada Colombo piano/E.Piano/gitar < 1 ms.
 
-Kesimpulan jalur: velocity, note, channel, durasi, dan CC IDENTIK. Tidak ada transformasi data tambahan di sisi BASSMIDI. Yang berbeda hanya pembangkit nada, level, dan latensi.
+**E2 - biaya render 256 frame** (x86): idle ~0 us, 1 nada 20 us, blok yang memuat NOTE_ON 27-32 us, 16 voice 51-65 us, 48 voice 111-115 us (maks 209 us) dari anggaran 5333 us. Engine tidak punya biaya blok yang bisa menunda NOTE_ON secara berarti pada preset yang sudah di-preload.
 
-## 2. Temuan kunci dari kode (belum pernah diperhitungkan sebelumnya)
+**E3 - dingin vs preload:** blok pertama dengan NOTE_ON pada preset yang belum di-preload 1.1 ms (konstan di 12 kombinasi) vs 40-90 us setelah `BASS_MIDI_FontLoad`. Aplikasi sudah preload preset keyboard, jadi ini hanya pembenaran preload, bukan temuan baru; di ARM/UFS angka dingin akan lebih besar.
 
-1. **App tidak pernah menyentuh Local Control E343** (grep: tidak ada CC122). Saat tuts ditekan, E343 sudah memainkan suara panelnya sendiri secara lokal, tanpa latensi, apa pun status MIDI OUT. Karena MIDI OUT mengirim balik note ke ch1 (channel yang sama dengan keyboard E343), kemungkinan terjadi suara lokal + gema (double trigger) pada voice yang sama. [K dari kode; perilaku E343 = hipotesis]
-2. Maka "suara MIDI OUT yang tajam dan responsif" kemungkinan besar adalah **voice panel E343 (AWM hardware, latensi nol, kurva velocity bawaan Yamaha)**, bukan hasil jalur app. Pembanding itu bukan SF2 yang setara.
-3. App juga mengirim CC7=127, CC91=40, CC93=0, CC10=64 ke E343 ch1-3. Itu menaikkan level bagian (default GM 100) sementara BASSMIDI justru -5 dB. Selisih level kedua jalur dari konfigurasi saja bisa >=5-9 dB. Level lebih tinggi dipersepsi lebih "tajam".
-4. Panel E343 memilih voice sendiri; app memilih preset SF2 sendiri (default "Piano"). Tidak ada jaminan instrumen sama.
+**Dari tabel lama (T3, T7, T9-T11):**
+- Level: RIGHT app -5.0 dB vs netral; puncak satu nada -18.8 (Colombo) / -22.8 (Tyros) dBFS.
+- Velocity: v45->v100 = +13.9 dB di hampir semua preset (kurva SF2 standar, sama dengan FluidR3). Timbre ikut berubah hanya di Colombo piano/bright/steel/E.Piano2 (jenuh di v>=90). Tyros dan FluidR3 piano: nol kopling.
+- Punch pada level disamakan (T11, puncak 30 ms terhadap RMS 100-500 ms): grand piano Colombo 15.7 dB, Tyros 12.4, FluidR3 10.3; steel 15.6 / 14.4 / 14.1. Jadi "kurang menghentak" TIDAK didukung oleh bentuk serangan Colombo; pada Tyros E.Piano dan organ serangan lebih lambat.
+- Energi >4 kHz serangan grand: FluidR3 3.33%, Colombo 0.13%, Tyros 0.10%.
+- Pemutar produksi == BASSMIDI mentah (LSD 0.90 dB); tidak ada filter, gain, atau kontroler yang menggelapkan.
 
-## 3. Pisahkan masalah (data lab)
-
-| Dimensi | Bukti | Status |
+## 3. Pengamatan perangkat [PERANGKAT]
+Dari laporan Redmi Pad yang sudah ada (APK dengan log aktif):
+| Tahap | Nilai rata-rata | Catatan |
 |---|---|---|
-| Kenyaringan | RIGHT app -5.0 dB vs netral; 1 nada puncak -18.8 (Colombo) / -22.8 (Tyros) dBFS; headroom tumpukan 4 nada 12.6 dB | terukur |
-| Timbre | Colombo piano/steel kontras velocity: centroid +0.63/+1.25 oct dari v45 ke v100, jenuh v>=90; Tyros dan FluidR3 piano: 0 (hanya level). Energi >4 kHz grand: FluidR3 3.33%, Colombo 0.13%, Tyros 0.10% | terukur |
-| Serangan | -10 dB: Colombo grand 3 ms, Tyros 10.5 ms, E.Piano 18.5 ms, strings 80.5 ms. Punch level-sama (T11): Colombo grand 15.7 dB, Tyros 12.4, FluidR3 10.3 | terukur |
-| Respons velocity | v45->v100 = +13.9 dB di hampir semua preset (kurva SF2 standar, sama dengan FluidR3) | terukur |
-| Latensi input | USB->app 0.69 ms | terukur (perangkat) |
-| Latensi output | Oboe: Shared+LowLatency, burst 256; estimasi `calculateLatencyMillis` tidak pernah terekam di laporan; E343 lokal = ~0 | TIDAK terukur |
+| USB -> onSend | 0.69 ms | |
+| onSend -> semua layer di native | 2.83 ms | ~1.35 ms di antaranya dua baris log |
+| NOTE_ON antre -> awal render | 2.26 ms | sesuai setengah periode blok |
+| awal render -> buffer siap | ~1.0 ms | |
+| Total sampai PCM diserahkan ke Oboe | sekitar 6-7 ms | rata-rata, bukan batas atas |
+| Oboe: AAudio Shared + LowLatency, burst 256, buffer 512 (10.7 ms), 13 XRUN; 1 burst tidak stabil | | |
+| `calculateLatencyMillis` | 18.8 ms pada satu sesi, "unavailable (ErrorInvalidState)" pada sesi lain | ESTIMASI Oboe, bukan pengukuran akustik; tidak dipakai sebagai kesimpulan |
+| `renderLockWait` > 2 ms 212 kali (maks 10.8 ms) | penyebab belum diatribusikan | statistik hold ada di branch lab, belum pernah dijalankan di perangkat |
+Tidak ada pengukuran waktu fisik dari tombol ke telinga untuk kedua jalur.
 
-Skenario sentuhan E343 (T10, bobot ASUMSI): Colombo grand pada sentuhan lembut centroid 616 Hz, >4k 0.01%; pada keras 845 Hz. Jadi pada sentuhan lembut-sedang Colombo piano memang tertutup (SF2), tetapi FluidR3 pun tidak jauh lebih cerah di bawah 4 kHz.
+## 4. Jalur waktu NOTE_ON -> PCM -> output
+1. USB -> `onNoteOn` (0.69 ms, perangkat).
+2. `keyboardLock`, log, JNI -> `noteOn` di bawah `mutex_` (2.83 ms perangkat, ~1.35 ms log).
+3. Event antre di BASSMIDI; menunggu awal blok render berikutnya (0..5.3 ms, rata-rata 2.3-2.7 ms).
+4. Pada blok itu, sampel pertama sesuai onset preset (Colombo piano < 1 ms, Tyros 4-16 ms) - bukan penundaan engine, tetapi isi sampel/envelope SF2.
+5. PCM diserahkan ke Oboe; sisa (buffer Oboe, HAL Android, DAC, kabel AUX, penguat E343) belum terukur.
+Jalur MIDI OUT melewati tahap 1-2 (log juga) lalu satu tulis USB ke E343; tahap 3-5 tidak ada. TG E343 punya latensi sendiri yang tidak diketahui.
 
-## 4. Matriks kandidat penyebab
-
-| # | Kandidat | Bukti pendukung | Bukti penentang | Eksperimen pembeda | Dampak musikal | Risiko regresi |
+## 5. Kandidat penyebab (bukti mendukung / menentang / eksperimen / dampak / risiko)
+| # | Kandidat | Mendukung | Menentang | Eksperimen pembeda | Dampak | Risiko |
 |---|---|---|---|---|---|---|
-| A | Pembanding = suara lokal E343 (+gema), bukan jalur MIDI OUT app | Tidak ada kontrol Local; note dikirim balik ke ch1; latensi nol | Perilaku E343 belum diamati | Tanpa APK: Local Control OFF di E343 lalu bandingkan MIDI OUT ON vs BASSMIDI saja | Menjelaskan "punchy + responsif" sepenuhnya | Tidak ada (tanpa kode) |
-| B | Perbedaan latensi output (Oboe+AUX vs 0) | Terasa "kurang natural/responsif" | Perangkat lunak 6-9 ms; buffer sudah di-A/B | Ukur: ketuk tuts, rekam AUX vs lokal; atau catat `calculateLatencyMillis` | Tinggi untuk rasa main | Tinggi bila ubah buffer (sudah tidak stabil di 1 burst) |
-| C | Level -5 dB + puncak -19 dBFS vs E343 CC7 127 | Terhitung, terukur | Level tidak mengubah timbre | A/B level-sama (WAV T8/T11) | Sedang ("lemah") | Rendah (CC11 127 = +5 dB, headroom 7.6 dB) |
-| D | Isi SF2 (Colombo piano gelap di velocity rendah, Tyros lambat/gelap) | T3, T7, T9, T10 | FluidR3 melalui rantai sama juga tidak punya kontras velocity pada piano | Pilih preset lain / FluidR3 di RIGHT dan dengarkan | Tinggi untuk timbre | Sedang (pilihan preset, bukan engine) |
-| E | Konfigurasi engine BASSMIDI | Player == raw (LSD 0.90 dB) | Semua kontrol netral; SRC tidak mengubah | sudah diuji | Nol | - |
-| F | Efek audio Android / karakter AUX | Tidak dapat dibantah | Tidak ada bukti | Dengar WAV lab lewat media player vs app (tanpa log) | Tak diketahui | - |
-| G | Pembandingan tidak terisolasi (dua sumber terdengar bersamaan) | pengguna menurunkan volume BASSMIDI | | Mute RIGHT BASSMIDI di mixer app lalu dengar | Menentukan | Tidak ada |
+| 1 | Latensi akhir jalur BASSMIDI lebih besar dari TG (buffer Oboe + HAL + AUX) | Pembanding responsif TG tidak punya tahap 3-5; "kurang responsif" konsisten | Besarnya tidak terukur; estimasi Oboe tidak konsisten; MIDI OUT juga ikut log | Rekam satu mikrofon, dua kondisi (lihat 7) | Tinggi bagi rasa main | Tinggi jika buffer diperkecil (1 burst tidak stabil) |
+| 2 | Karakter jalur AUX/penguat/speaker E343 untuk sumber eksternal (TG biasanya melewati EQ/DSP internal; AUX tidak) | Dua jalur memakai penguat yang sama tetapi titik masuk berbeda | Tidak ada data | Mainkan rekaman piano pembanding lewat AUX vs TG, tanpa app | Tinggi bagi "tertutup" | Tidak ada (tanpa kode) |
+| 3 | Isi SF2: Tyros piano/E.Piano/organ lambat 4-16 ms, gelap, tanpa kopling velocity; Colombo piano gelap di velocity rendah | T3, T7, T9, T10 | Colombo piano onset < 1 ms dan punch level-sama tinggi; FluidR3 juga datar terhadap velocity | Bandingkan preset RIGHT: Colombo vs Tyros pada keyboard yang sama (lewat mixer, tanpa Program Change ke E343) | Sedang-tinggi, tergantung preset RIGHT yang dipakai | Rendah-sedang (pilihan preset, bukan engine) |
+| 4 | Level -5 dB dan puncak -19 dBFS vs TG | Terukur; level lebih tinggi dipersepsi lebih tajam | Level tidak mengubah timbre/onset | A/B level sama (lab sudah memisahkan) | Sedang | Rendah; headroom 7.6-12.6 dB |
+| 5 | Kecepatan velocity E343 -> SF2: kurva standar SF2 dan velocity masuk rendah-sedang | T9/T10 | Velocity yang masuk ke TG sama persis | Histogram velocity RIGHT (sudah ada di app, sekali baca) | Sedang | Sedang jika membuat kurva |
+| 6 | Blocking/kontensi `mutex_` atau log di thread MIDI | 212 tunggu > 2 ms; log 1.35 ms/nada; skew akor hingga ~8 ms | Jika dominan, MIDI OUT (dikirim sesudahnya) juga terasa lambat | NORMAL mode sudah ada; ukur ulang | Kecil-sedang (~2 ms/nada) | Rendah (sudah diuji regresi) |
+| 7 | Konfigurasi engine BASSMIDI (SRC, voice, kontroler) | - | LAB: pemutar == mentah, kontroler netral | sudah | Nol | - |
+| 8 | Efek audio Android | Tidak bisa dibantah | Tidak ada bukti | Bandingkan stream non-low-latency | Tak diketahui | - |
 
-## 5. Yang terbukti / hipotesis
+## 6. Terbukti vs hipotesis
+**Terbukti:** data MIDI identik; engine BASSMIDI tidak menambah penundaan sampel (E1); biaya render tidak berarti (E2); onset bawaan preset di atas; pemutar == BASSMIDI mentah; software sampai Oboe ~6-7 ms rata-rata di perangkat; Local OFF mengisolasi TG.
+**Hipotesis:** latensi fisik akhir jalur BASSMIDI; perlakuan EQ/DSP pada TG vs AUX; Tyros dipakai di RIGHT pengguna; pengaruh efek Android.
 
-Terbukti (kode atau terukur): data MIDI identik antar jalur; tidak ada Local Control di app; MIDI OUT mengirim CC7=127 CC11=100 CC91=40 CC93=0 CC10=64 CC72=64 tanpa Bank/PC; BASSMIDI RIGHT -5 dB vs netral; SF2 Colombo/Tyros properti timbre/onset di atas; player == BASSMIDI mentah.
-Hipotesis: suara "MIDI OUT" adalah suara lokal E343 (atau lokal+gema); latensi output Oboe/AUX membuat rasa main kurang responsif; efek Android.
+## 7. Keputusan
+**NO-GO** untuk patch pengubah suara dan APK baru. Tidak ada pengukuran yang menunjuk satu penyebab terkoreksi; satu-satunya perubahan dengan bukti terukur (NORMAL log mode, ~1.3-2 ms/nada dan skew akor lebih kecil, tanpa perubahan suara) terlalu kecil untuk menjelaskan keluhan dan sudah siap ikut APK berikutnya bila ada.
 
-## 6. Patch minimal?
-
-Tidak ada kandidat berbukti. Satu-satunya perubahan murah (RIGHT CC11 127, +5 dB) hanya mengubah level, tidak respons/timbre, dan belum ada bukti ia memperbaiki. Tidak dibuat APK. Tes tanpa kode (urut): G (mute RIGHT BASSMIDI, dengar E343 saja), lalu A (Local Control OFF), lalu B (ketuk-rekam).
+**Pengukuran yang menentukan (bukan log, tanpa APK):**
+1. Isolasi akustik: Local OFF. Rekam dengan satu ponsel di posisi tetap dekat speaker E343: (a) MIDI OUT OFF (hanya BASSMIDI), (b) MIDI OUT ON dan RIGHT BASSMIDI di-mute di mixer (hanya TG), nada staccato yang sama. Selisih waktu dari bunyi tuts mekanis ke onset suara di kedua rekaman memisahkan latensi (kandidat 1) dari karakter (kandidat 2-4). Pada pembagian ini: selisih > ~10 ms -> jalur output; selisih kecil tetapi tetap "tertutup" -> kandidat 2/3.
+2. Rekaman pembanding lewat AUX: putar rekaman piano/gitar yang dikenal baik dari Redmi Pad lewat AUX. Jika juga terdengar "tertutup" dibanding TG, penyebab ada di jalur AUX/E343, bukan app.
+3. Hanya jika (1) menunjukkan selisih besar: APK kecil yang membaca `getTimestamp` Oboe (latensi yang dilaporkan perangkat, bukan estimasi) sebelum menyentuh buffer.
