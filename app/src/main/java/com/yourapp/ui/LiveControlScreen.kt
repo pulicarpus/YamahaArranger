@@ -1,6 +1,9 @@
 package com.yourapp.yamahaarranger.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -29,6 +32,9 @@ private val LiveOrange=Color(0xFFFFAA48)
 private val LiveGreen=Color(0xFF27D887)
 private val LiveAmber=Color(0xFFFFC857)
 private val LivePanel=Color(0xFF171E26)
+private val LiveDim=Color(0xFF6B7783)
+private val LiveDimLed=Color(0xFF2A3139)
+private val LiveUnknown=Color(0xFF8AA0B5)
 
 /** UI only. Navigation, composition and bank changes never recall or change playback. */
 @Composable
@@ -36,6 +42,7 @@ fun LiveControlScreen(state: MainUiState, vm: MainViewModel, onArranger: () -> U
     val registrations by vm.liveRegistration.collectAsState()
     val external by vm.currentExternal.collectAsState()
     val library by vm.liveLibrary.collectAsState()
+    val inventory by vm.liveSectionInventory.collectAsState()
     var panel by remember { mutableStateOf("") }
     var externalPart by remember { mutableStateOf(0) }
     var bankName by remember { mutableStateOf("") }
@@ -67,64 +74,75 @@ fun LiveControlScreen(state: MainUiState, vm: MainViewModel, onArranger: () -> U
                     Text("LIVE requires landscape ≥ 960 × 600 dp",color=Color.White)
                     LiveButton("ARRANGER",onArranger,LiveBlue,Modifier.height(64.dp).width(160.dp))
                 }
-            } else Column(Modifier.fillMaxSize().padding(g.padding.dp),verticalArrangement=Arrangement.spacedBy(g.gap.dp)) {
-                Row(Modifier.fillMaxWidth().height(g.header.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                    LiveButton("ARRANGER",onArranger,LiveBlue,Modifier.width(112.dp).fillMaxHeight())
-                    LiveButton("MIXER",onMixer,LiveBlue,Modifier.width(96.dp).fillMaxHeight())
-                    Column(Modifier.weight(1f)) {
-                        Text("${state.styleName} • ${state.activeSection} • ${if(state.isPlaying) "PLAY" else "STOP"}  ♩${state.tempoBpm}  TR ${state.transpose}",color=Color.White,fontSize=14.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
-                        Text(registrations.message,color=if(registrations.warning) LiveAmber else LiveCyan,fontSize=12.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
-                        Text("FREEZE: ${liveFreezeLabel(registrations.freeze)}",color=LiveAmber,fontSize=11.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
+            } else Column(Modifier.fillMaxSize().padding(12.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
+                // ---- compact header: style, section, voices, tempo, transpose, ACMP / MIDI OUT (all from app state) ----
+                Row(Modifier.fillMaxWidth().height(72.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                    LiveButton("ARRANGER",onArranger,LiveBlue,Modifier.width(96.dp).fillMaxHeight())
+                    LiveButton("MIXER",onMixer,LiveBlue,Modifier.width(80.dp).fillMaxHeight())
+                    Column(Modifier.weight(1f).fillMaxHeight(),verticalArrangement=Arrangement.spacedBy(4.dp)) {
+                        Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+                            Text(state.styleName,color=Color.White,fontSize=17.sp,fontWeight=FontWeight.Bold,maxLines=1,overflow=TextOverflow.Ellipsis,modifier=Modifier.weight(1f,fill=false))
+                            Text(state.activeSection.uppercase(),color=LiveAmber,fontSize=16.sp,fontWeight=FontWeight.Bold,maxLines=1)
+                            Text(if(state.isPlaying) "PLAY" else "STOP",color=if(state.isPlaying) LiveGreen else LiveDim,fontSize=12.sp,fontWeight=FontWeight.Bold)
+                        }
+                        Row(Modifier.fillMaxWidth().weight(1f),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                            (0..3).forEach { ch ->
+                                val slot=state.rightVoices[ch]
+                                val enabled=if(ch==3) state.leftVoiceEnabled else slot.enabled
+                                val tag=if(ch==3) "L" else "R${ch+1}"
+                                val ext=external[ch]?.label
+                                LiveButton("$tag ${if(enabled) slot.displayName() else "OFF"}"+(if(ext!=null) "\nEXT $ext" else ""),
+                                    {if(ch==3) vm.toggleLeftVoice() else vm.toggleRightVoice(ch)},if(enabled) LiveBlue else LiveDim,
+                                    Modifier.weight(1f).fillMaxHeight(),selected=enabled,onLongClick={externalPart=ch;panel="EXTERNAL"})
+                            }
+                        }
                     }
-                    LiveButton("REG\nSETUP",{panel="BANK"},LiveCyan,Modifier.width(80.dp).height(64.dp))
-                    Column(Modifier.width(180.dp)) {
-                        Text("OUT: ${registrations.selectedMode?.name ?: "—"}",color=LiveCyan,fontSize=13.sp)
-                        Text(liveOutputStatus(registrations.selectedMode,state.midiOutEnabled,registrations.selectedHasExternal),color=if(state.midiOutEnabled) LiveBlue else LiveAmber,fontSize=11.sp)
+                    LiveStepper("TEMPO","${state.tempoBpm}",{ LiveTempoButton(-1,vm::nudgeTempo,40) },{ LiveTempoButton(1,vm::nudgeTempo,40) })
+                    LiveStepper("TRANSPOSE",if(state.transpose>0) "+${state.transpose}" else "${state.transpose}",
+                        { LiveButton("−",vm::onTransposeDown,LiveBlue,Modifier.size(40.dp)) },{ LiveButton("+",vm::onTransposeUp,LiveBlue,Modifier.size(40.dp)) })
+                    Column(Modifier.width(96.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
+                        LiveStatusLed("ACMP",state.acmpEnabled,LiveGreen)
+                        LiveStatusLed("MIDI OUT",state.midiOutEnabled,LiveBlue)
                     }
+                    LiveButton("REG\nSETUP",{panel="BANK"},LiveCyan,Modifier.width(76.dp).fillMaxHeight())
                 }
+                Text("${registrations.message}  •  FREEZE: ${liveFreezeLabel(registrations.freeze)}  •  ${liveOutputStatus(registrations.selectedMode,state.midiOutEnabled,registrations.selectedHasExternal)}",
+                    color=if(registrations.warning) LiveAmber else LiveCyan,fontSize=11.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
                 Box(Modifier.fillMaxWidth().weight(1f)) {
-                Row(Modifier.fillMaxSize().verticalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                    Column(Modifier.width(g.styleWidth.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
-                        Text("INTRO",color=LiveOrange,fontSize=13.sp)
-                        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) { (1..3).forEach { n -> LiveButton("$n",{vm.onSectionSelected("Intro $n")},LiveOrange,Modifier.size(64.dp)) } }
-                        LiveButton("FILL",vm::onLiveFill,LiveOrange,Modifier.fillMaxWidth().height(64.dp))
-                        Text("ENDING",color=LiveOrange,fontSize=13.sp)
-                        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) { (1..3).forEach { n -> LiveButton("$n",{vm.onSectionSelected("Ending $n")},LiveOrange,Modifier.size(64.dp)) } }
+                Row(Modifier.fillMaxSize(),horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+                    Column(Modifier.weight(1f).fillMaxHeight(),verticalArrangement=Arrangement.spacedBy(6.dp)) {
+                        // ---- section keys: LED from the loaded style's parsed section table ----
+                        LiveSectionGrid.rows.forEach { row ->
+                            Row(Modifier.fillMaxWidth().weight(1f),horizontalArrangement=Arrangement.spacedBy(6.dp),verticalAlignment=Alignment.CenterVertically) {
+                                Text(row.first().group,color=LiveOrange,fontSize=12.sp,fontWeight=FontWeight.Bold,modifier=Modifier.width(60.dp))
+                                row.forEach { b ->
+                                    val led=liveSectionLed(inventory,b,state.activeSection)
+                                    LedKey(b.caption,null,sectionLedColor(led),if(led==SectionLed.ACTIVE) LiveAmber else if(led==SectionLed.ABSENT) LiveDim else Color.White,
+                                        liveSectionEnabled(led),Modifier.weight(1f).fillMaxHeight()) { vm.onSectionSelected(b.label) }
+                                }
+                                repeat(4-row.size) { Spacer(Modifier.weight(1f)) }
+                            }
+                        }
+                        // ---- transport ----
+                        Row(Modifier.fillMaxWidth().height(76.dp),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                            LedKey(if(state.isPlaying) "STOP" else "START",if(!state.startReady && !state.isPlaying) state.readinessReason else null,
+                                if(state.isPlaying) Color(0xFFFF6A6A) else LiveGreen,Color.White,state.isPlaying||state.startReady,Modifier.weight(2f).fillMaxHeight(),vm::onStartStop)
+                            LedKey("ACMP",if(state.acmpEnabled) "ON" else "OFF",if(state.acmpEnabled) LiveGreen else LiveDimLed,Color.White,true,Modifier.weight(1f).fillMaxHeight(),vm::toggleAcmp)
+                            LedKey("AUTO FILL",if(state.autoFill) "ON" else "OFF",if(state.autoFill) LiveAmber else LiveDimLed,Color.White,true,Modifier.weight(1f).fillMaxHeight(),vm::toggleAutoFill)
+                            LedKey("RELEASE","${if(state.releaseEnabled) "ON" else "OFF"} ${state.releaseTime}",if(state.releaseEnabled) LiveBlue else LiveDimLed,Color.White,true,Modifier.weight(1f).fillMaxHeight(),vm::toggleRelease)
+                        }
                     }
-                    Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(16.dp)) {
-                        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                            listOf("A","B","C","D").forEach { letter -> LiveButton("MAIN $letter",{vm.onLiveMainSelected(letter)},LiveOrange,
-                                Modifier.weight(1f).height(g.mainButtonHeight.dp),selected=state.activeSection=="Main $letter") }
+                    // ---- independent live faders: existing per-part / style volume actions only ----
+                    Surface(color=LivePanel,shape=RoundedCornerShape(6.dp),modifier=Modifier.width(280.dp).fillMaxHeight()) {
+                        Column(Modifier.fillMaxSize().padding(8.dp)) {
+                            Text("LIVE MIXER",color=LiveCyan,fontSize=12.sp,fontWeight=FontWeight.Bold)
+                            Row(Modifier.fillMaxWidth().weight(1f),horizontalArrangement=Arrangement.SpaceEvenly) {
+                                LiveFader("R1",state.right1Volume,LiveBlue,vm::onRight1VolumeChange,Modifier.fillMaxHeight())
+                                LiveFader("R2",state.right2Volume,LiveCyan,vm::onRight2VolumeChange,Modifier.fillMaxHeight())
+                                LiveFader("R3",state.right3Volume,LiveGreen,vm::onRight3VolumeChange,Modifier.fillMaxHeight())
+                                LiveFader("STYLE",state.styleVolume,LiveOrange,vm::onStyleVolumeChange,Modifier.fillMaxHeight())
+                            }
                         }
-                        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp,Alignment.CenterHorizontally)) {
-                            LiveButton(if(state.isPlaying) "STOP" else "START",vm::onStartStop,if(state.isPlaying) Color(0xFFFF6A6A) else LiveGreen,Modifier.width(220.dp).height(96.dp),enabled=state.isPlaying||state.startReady)
-                            LiveButton("ACMP",vm::toggleAcmp,LiveBlue,Modifier.width(64.dp).height(96.dp),selected=state.acmpEnabled)
-                            LiveButton("SYNC\nN/A",{},LiveBlue,Modifier.width(64.dp).height(96.dp),enabled=false)
-                            LiveButton("TAP\nN/A",{},LiveBlue,Modifier.width(64.dp).height(96.dp),enabled=false)
-                        }
-                        LiveButton(if(state.autoFill) "AUTO FILL ON" else "AUTO FILL OFF",vm::toggleAutoFill,LiveOrange,Modifier.fillMaxWidth().height(64.dp),selected=state.autoFill)
-                        if(!state.startReady && !state.isPlaying) Text(state.readinessReason,color=LiveAmber,fontSize=13.sp)
-                    }
-                    Column(Modifier.width(g.partWidth.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                        (0..1).forEach { row ->
-                            Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) { (row*2..row*2+1).forEach { ch ->
-                                val label=if(ch==3) "LEFT" else "RIGHT${ch+1}"
-                                val enabled=if(ch==3) state.leftVoiceEnabled else state.rightVoices[ch].enabled
-                                LiveButton("$label ${if(enabled) "ON" else "OFF"}\nEXT: ${external[ch]?.label ?: "—"}\nSF2: ${state.rightVoices[ch].displayName()}",
-                                    {if(ch==3) vm.toggleLeftVoice() else vm.toggleRightVoice(ch)},LiveBlue,Modifier.width(g.partButtonWidth.dp).height(64.dp),selected=enabled,onLongClick={externalPart=ch;panel="EXTERNAL"})
-                            } }
-                        }
-                        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=Alignment.CenterVertically) {
-                            LiveTempoButton(-1,vm::nudgeTempo)
-                            Column(Modifier.weight(1f),horizontalAlignment=Alignment.CenterHorizontally) { Text("TEMPO",color=LiveBlue,fontSize=11.sp);Text("${state.tempoBpm}",color=Color.White,fontSize=20.sp) }
-                            LiveTempoButton(1,vm::nudgeTempo)
-                        }
-                        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp),verticalAlignment=Alignment.CenterVertically) {
-                            LiveButton("−",vm::onTransposeDown,LiveBlue,Modifier.size(64.dp))
-                            Column(Modifier.weight(1f),horizontalAlignment=Alignment.CenterHorizontally) { Text("TRANS",color=LiveBlue,fontSize=11.sp);Text("${state.transpose}",color=Color.White,fontSize=20.sp) }
-                            LiveButton("+",vm::onTransposeUp,LiveBlue,Modifier.size(64.dp))
-                        }
-                        LiveButton("RELEASE ${if(state.releaseEnabled) "ON" else "OFF"} • ${state.releaseTime}",vm::toggleRelease,LiveBlue,Modifier.fillMaxWidth().height(64.dp),selected=state.releaseEnabled)
                     }
                 }
                 if(panel.isNotEmpty()) Surface(color=LivePanel,modifier=Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures(onTap={}) }) {
@@ -133,12 +151,12 @@ fun LiveControlScreen(state: MainUiState, vm: MainViewModel, onArranger: () -> U
                 }
                 }
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                    if(library.undoUntil>System.nanoTime()/1_000_000) LiveButton("UNDO SAVE",vm::onLiveUndoSave,LiveAmber,Modifier.weight(1f).height(64.dp),enabled=!library.saving && !registrations.recalling)
+                    if(library.undoUntil>System.nanoTime()/1_000_000) LiveButton("UNDO SAVE",vm::onLiveUndoSave,LiveAmber,Modifier.weight(1f).height(52.dp),enabled=!library.saving && !registrations.recalling)
                     else LiveSaveHoldButton(enabled=library.loaded && !library.saving && !registrations.recalling,
                         armed=library.save.armed(System.nanoTime()/1_000_000),onArm=vm::onLiveSaveArm)
-                    LiveButton("SAVE OPTIONS",{panel="SAVE"},LiveCyan,Modifier.weight(1f).height(64.dp))
-                    LiveButton("FREEZE",{panel="FREEZE"},LiveAmber,Modifier.weight(1f).height(64.dp))
-                    LiveButton("EXT VOICE",{panel="EXTERNAL"},LiveBlue,Modifier.weight(1f).height(64.dp))
+                    LiveButton("SAVE OPTIONS",{panel="SAVE"},LiveCyan,Modifier.weight(1f).height(52.dp))
+                    LiveButton("FREEZE",{panel="FREEZE"},LiveAmber,Modifier.weight(1f).height(52.dp))
+                    LiveButton("EXT VOICE",{panel="EXTERNAL"},LiveBlue,Modifier.weight(1f).height(52.dp))
                 }
                 Row(Modifier.fillMaxWidth().height(g.regHeight.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                     Column(Modifier.width(g.bankWidth.dp).fillMaxHeight()) {
@@ -181,9 +199,9 @@ private fun LiveButton(label: String,onClick: () -> Unit,color: Color,modifier: 
     }
 }
 @Composable
-private fun LiveTempoButton(sign: Int,onDelta: (Int) -> Unit) {
+private fun LiveTempoButton(sign: Int,onDelta: (Int) -> Unit,sizeDp: Int=64) {
     val update by rememberUpdatedState(onDelta)
-    Surface(color=LivePanel,modifier=Modifier.size(64.dp).semantics {
+    Surface(color=LivePanel,modifier=Modifier.size(sizeDp.dp).semantics {
         contentDescription=if(sign>0) "Increase tempo" else "Decrease tempo"
         role=Role.Button
         onClick { update(sign);true }
@@ -200,7 +218,7 @@ private fun LiveTempoButton(sign: Int,onDelta: (Int) -> Unit) {
 
 @Composable
 private fun LiveSaveHoldButton(enabled: Boolean,armed: Boolean,onArm: (Long) -> Unit) {
-    Surface(color=if(armed) Color(0xFF802828) else LivePanel,modifier=Modifier.width(180.dp).height(64.dp)
+    Surface(color=if(armed) Color(0xFF802828) else LivePanel,modifier=Modifier.width(180.dp).height(52.dp)
         .semantics { contentDescription="Hold SAVE 600 milliseconds" }
         .pointerInput(enabled,onArm) {
             if(enabled) detectTapGestures(onPress={
@@ -276,5 +294,48 @@ private fun LivePhase4Panel(panel: String,library: RegistrationLibraryState,bank
             }
         }
         Text(library.message,color=LiveAmber)
+    }
+}
+
+private fun sectionLedColor(led: SectionLed): Color = when(led) {
+    SectionLed.AVAILABLE -> LiveBlue
+    SectionLed.ACTIVE -> LiveAmber
+    SectionLed.UNKNOWN -> LiveUnknown
+    SectionLed.ABSENT -> LiveDimLed
+}
+
+/** Dark arranger keycap with a thin LED bar on top. A disabled key does nothing; there are no placeholder keys. */
+@Composable
+private fun LedKey(label: String,sub: String?,led: Color,text: Color,enabled: Boolean,modifier: Modifier,onClick: () -> Unit) {
+    val shape=RoundedCornerShape(5.dp)
+    Column(modifier.background(if(enabled) Color(0xFF1B2229) else Color(0xFF12171C),shape)
+        .border(1.dp,if(enabled) Color(0xFF3A4550) else Color(0xFF222A32),shape)
+        .semantics { contentDescription=label+(if(sub!=null) " $sub" else "");role=Role.Button;if(!enabled) disabled() }
+        .clickable(enabled=enabled,onClick=onClick)) {
+        Box(Modifier.fillMaxWidth().height(6.dp).background(led,RoundedCornerShape(topStart=5.dp,topEnd=5.dp)))
+        Column(Modifier.fillMaxSize(),verticalArrangement=Arrangement.Center,horizontalAlignment=Alignment.CenterHorizontally) {
+            Text(label,color=text,fontSize=if(label.length>2) 17.sp else 26.sp,fontWeight=FontWeight.Bold,maxLines=1)
+            if(sub!=null) Text(sub,color=LiveDim,fontSize=11.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
+        }
+    }
+}
+
+@Composable
+private fun LiveStepper(title: String,value: String,minus: @Composable () -> Unit,plus: @Composable () -> Unit) {
+    Column(horizontalAlignment=Alignment.CenterHorizontally) {
+        Text(title,color=LiveBlue,fontSize=10.sp)
+        Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)) {
+            minus()
+            Text(value,color=Color.White,fontSize=20.sp,fontWeight=FontWeight.Bold,modifier=Modifier.widthIn(min=44.dp),textAlign=androidx.compose.ui.text.style.TextAlign.Center)
+            plus()
+        }
+    }
+}
+
+@Composable
+private fun LiveStatusLed(name: String,on: Boolean,color: Color) {
+    Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+        Box(Modifier.size(10.dp).background(if(on) color else LiveDimLed,RoundedCornerShape(5.dp)))
+        Text(name,color=if(on) Color.White else LiveDim,fontSize=12.sp,fontWeight=FontWeight.Bold)
     }
 }

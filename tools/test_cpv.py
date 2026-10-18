@@ -22,6 +22,7 @@ CPV_SOURCES = [
     MAIN / 'yamahaarranger/audio/VirtualKeyboard.kt',
     MAIN / 'yamahaarranger/registration/RegistrationCodec.kt',
     MAIN / 'yamahaarranger/registration/RegistrationModel.kt',
+    MAIN / 'ui/LiveV3Model.kt',
 ]
 CPV_TESTS = sorted((ROOT / 'tests/cpv').glob('*.kt'))
 

@@ -307,6 +307,12 @@ class MainViewModel @Inject constructor(
     fun onLiveFill() { onSectionSelected("Fill ${liveMainLetter.value}") }
     // END LIVE PHASE3 STATE
 
+    // BEGIN LIVE V3 STATE
+    /** Read-only: which sections the loaded style's parsed table contains. UNKNOWN until a style has been parsed. */
+    private val liveSectionInventoryState = MutableStateFlow(LiveSectionInventory.UNKNOWN)
+    val liveSectionInventory: StateFlow<LiveSectionInventory> = liveSectionInventoryState
+    // END LIVE V3 STATE
+
     // BEGIN LIVE PHASE4 ADDITIONS
     private var phase4Library: com.yourapp.yamahaarranger.registration.RegistrationLibraryController? = null
     private val phase4State = MutableStateFlow(com.yourapp.yamahaarranger.registration.RegistrationLibraryState())
@@ -1390,6 +1396,7 @@ class MainViewModel @Inject constructor(
                     catch(error:Exception) { DebugLog.add("R22 metadata unavailable: ${error.javaClass.simpleName}") }
                     drumAuditStyle = parsed
                     arrangerBrain.loadStyle(parsed)
+                    liveSectionInventoryState.value = LiveSectionInventory.from(parsed) // LIVE V3: read-only metadata
                     _voiceAssignments.value = voiceSlotsFromStyle(parsed)
                     // CPV: restore this style's saved manual voices (pins were cleared by loadStyle).
                     currentStyleSha = com.yourapp.yamahaarranger.style.StyleOverrideStore.sha256(bytes)
