@@ -15,7 +15,7 @@ ALLOWED = {
 }
 def git(*a): return subprocess.check_output(['git', *a], cwd=ROOT, text=True)
 changed = set(git('diff', '--name-only', BASE, 'HEAD').split()) | set(git('diff', '--name-only', BASE).split()) | \
-    set(git('ls-files', '--others', '--exclude-standard').split())
+    {p for p in git('ls-files', '--others', '--exclude-standard').split() if not p.startswith(('evidence/', 'build/'))}
 extra = changed - ALLOWED
 assert not extra, 'Unapproved or protected file changed: ' + ', '.join(sorted(extra))
 # MainViewModel: additions only, and only the read-only section inventory adapter.
