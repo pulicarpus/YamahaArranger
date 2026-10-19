@@ -60,7 +60,7 @@ class CpvOverrideStoreTest {
     @Test fun newerSchemaAndDamageAreReadOnly() {
         val dir = Files.createTempDirectory("cpv-store")
         val store = StyleOverrideStore(dir)
-        val text = StyleOverrideCodec.encode(StyleOverrideRecord(shaA, "A", emptyList())).replace("\"schema\":1", "\"schema\":2")
+        val text = StyleOverrideCodec.encode(StyleOverrideRecord(shaA, "A", emptyList())).replace("\"schema\":2", "\"schema\":3")
         Files.write(dir.resolve("style-$shaA.json"), text.toByteArray())
         val newer = store.read(shaA)
         assertEquals(OverrideReadStatus.NEWER_SCHEMA, newer.status); assertFalse(newer.writable)
@@ -80,8 +80,8 @@ class CpvOverrideStoreTest {
             StyleVoiceOverride(13, OverrideScope.SECTION, "Main A", bass)))
         val loaded = mapOf(Triple("ColomboGMGS2_BM.sf2", 0, 33) to "Finger Bass", Triple("ColomboGMGS2_BM.sf2", 0, 0) to "Grand Piano")
         val checks = StyleOverridePins.check(record) { f, b, p -> loaded[Triple(f, b, p)] }
-        assertEquals(listOf(10, 11, 12), checks.map { it.channel }) // SECTION scope not applied yet
-        assertEquals(listOf("VALID", "STALE_PRESET_NOT_LOADED", "STALE_PRESET_NAME_CHANGED"), checks.map { it.reason })
+        assertEquals(listOf(10, 11, 12, 13), checks.map { it.channel }) // SECTION entries are checked too
+        assertEquals(listOf("VALID", "STALE_PRESET_NOT_LOADED", "STALE_PRESET_NAME_CHANGED", "VALID"), checks.map { it.reason })
     }
 
     @Test fun plannerUsesColomboThenTyrosAndNeverPrime() {

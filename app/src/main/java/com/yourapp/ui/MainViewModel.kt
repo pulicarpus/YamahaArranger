@@ -991,7 +991,7 @@ class MainViewModel @Inject constructor(
         val checks = if (record == null) emptyList() else com.yourapp.yamahaarranger.style.StyleOverridePins.check(record) { sf2, bank, pc ->
             audioEngine.findLoadedPreset(com.yourapp.yamahaarranger.style.StyleVoicePin(sf2, bank, pc, "", false))?.name
         }
-        val status = checks.associate { c ->
+        val status = checks.filter { it.scope == com.yourapp.yamahaarranger.style.OverrideScope.ALL }.associate { c ->
             val applied = c.valid && arrangerBrain.setStyleVoicePin(c.channel, c.pin)
             if (!c.valid) arrangerBrain.setStyleVoicePin(c.channel, null)
             c.channel to (c.pin to (if (!c.valid) "STALE" else if (applied) "ACTIVE" else "UNVERIFIED"))

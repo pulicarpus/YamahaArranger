@@ -12,7 +12,8 @@ ALLOWED = {
     'app/src/main/java/com/yourapp/ui/MainActivity.kt',
     'app/src/main/java/com/yourapp/ui/MainViewModel.kt',
     'app/src/main/java/com/yourapp/ui/SxMainScreen.kt',
-    'tests/cpv/StyleVoiceInventoryTest.kt', 'tools/test_cpv.py', 'tools/test_style_voice_guard.py',
+    'app/src/main/java/com/yourapp/yamahaarranger/style/StyleOverrideStore.kt',
+    'tests/cpv/StyleVoiceInventoryTest.kt', 'tests/cpv/StyleVoiceOverrideProfileTest.kt', 'tests/cpv/CpvOverrideStoreTest.kt', 'tools/test_cpv.py', 'tools/test_style_voice_guard.py',
     '.github/workflows/style-voice-editor.yml', '.github/workflows/style-voice-editor-preview.yml',
     'docs/STYLE_VOICE_INSPECTOR_EDITOR_REPORT.md',
 }
