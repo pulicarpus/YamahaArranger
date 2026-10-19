@@ -90,6 +90,7 @@ class StyleVoiceEditorOpsTest {
         val dir = Files.createTempDirectory("ops")
         StyleOverrideStore(dir).write(r)
         val back = StyleOverrideStore(dir).read(sha).record!!
+        println("SAVED_PROFILE_BEGIN\n" + String(Files.readAllBytes(dir.resolve("style-$sha.json"))) + "\nSAVED_PROFILE_END")
         assertEquals(r, back)
         assertEquals(StyleOverrideCodec.encode(r), StyleOverrideCodec.encode(back))
         assertTrue(StyleVoiceEditorOps.diff(r, back).isEmpty())

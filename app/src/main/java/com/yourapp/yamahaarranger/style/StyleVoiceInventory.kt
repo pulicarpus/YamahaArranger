@@ -307,7 +307,7 @@ object StyleVoiceInventoryBuilder {
             return Classified(
                 if (missing) VoiceStatus.MISSING else VoiceStatus.UNKNOWN,
                 "Engine reports ${b.status}${if (b.reason.isNotBlank()) " (${b.reason})" else ""}.",
-                if (missing) "no Voice bound — notes are suppressed" else "binding not verified")
+                if (missing) "no Voice bound (silent)" else "binding not verified")
         }
         val bound = "${b.soundFontName} ${b.bank}:${b.program} '${b.presetName}'"
         val numberMatch = b.bank == wantBank && b.program == program

@@ -38,11 +38,25 @@ def test_classes():
     return names
 
 
+def rosita_tsv(out):
+    """ROSITA.STY through the unmodified production C++ parser; the JVM test rebuilds ParsedStyle from this dump."""
+    import subprocess, os
+    out = Path(out).resolve(); out.mkdir(parents=True, exist_ok=True)
+    exe = out / 'dump_style'
+    subprocess.run(['g++', '-std=c++17', '-O2', '-DANDROID_LOG_ERROR=6', '-Itests/mocks', '-Iapp/src/main/cpp',
+                    'tools/dump_style_shadow_fixture.cpp', 'app/src/main/cpp/style_parser.cpp', 'app/src/main/cpp/smf_reader.cpp',
+                    '-o', str(exe)], cwd=ROOT, check=True)
+    tsv = out / 'rosita.tsv'
+    tsv.write_bytes(subprocess.check_output([str(exe), str(ROOT / 'tests/fixtures/r23/ROSITA.STY')]))
+    os.environ['ROSITA_TSV'] = str(tsv)
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument('--suite', choices=['jvm'], required=True)
     p.add_argument('--out', required=True)
     a = p.parse_args()
+    rosita_tsv(Path(a.out) / 'rosita')
     import test_voice_release as old
     original = old.run
 

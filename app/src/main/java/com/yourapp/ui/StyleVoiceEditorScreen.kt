@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.yourapp.yamahaarranger.style.CatalogPreset
 import com.yourapp.yamahaarranger.style.EditScope
 import com.yourapp.yamahaarranger.style.ExternalVoice
@@ -268,8 +269,9 @@ private fun TableRow(r: StyleVoiceRow, selected: Boolean, onClick: () -> Unit) {
                 color = SvDim, fontSize = 10.sp, fontFamily = FontFamily.Monospace, maxLines = 1)
         }
         Column(Modifier.weight(1.2f)) {
-            Text(if (r.actualPresetName.isNotEmpty()) r.actualPresetName else r.actualDescription, color = SvText, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(if (r.actualSoundFont.isNotEmpty()) "${r.actualSoundFont} ${r.actualBank}:${r.actualProgram}" else provenanceText(r.resolutionProvenance),
+            Text(if (r.override != null) r.override.description else if (r.actualPresetName.isNotEmpty()) r.actualPresetName else r.actualDescription,
+                color = if (r.override != null) voiceStatusColor(VoiceStatus.OVERRIDDEN) else SvText, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(if (r.override != null) "replacement · ${r.override.state.lowercase()} · was ${r.actualPresetName.ifEmpty { "unresolved" }}" else if (r.actualSoundFont.isNotEmpty()) "${r.actualSoundFont} ${r.actualBank}:${r.actualProgram}" else provenanceText(r.resolutionProvenance),
                 color = SvDim, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Box(Modifier.width(colStatus)) { StatusBadge(r.status) }
@@ -339,7 +341,7 @@ private fun programLabel(v: ExternalVoice) = "MSB ${v.msb} LSB ${v.lsb} PC ${v.p
 
 @Composable
 private fun ReplaceDialog(row: StyleVoiceRow, actions: StyleVoiceEditorActions, onClose: () -> Unit, onToast: (String) -> Unit) {
-    Dialog(onDismissRequest = onClose) {
+    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         ReplacePanel(row, actions, onClose, onToast)
     }
 }
