@@ -11,7 +11,7 @@ ALLOWED = {
     'app/src/main/java/com/yourapp/ui/LiveFader.kt',
     'app/src/main/java/com/yourapp/ui/MainViewModel.kt',
     'tests/cpv/LiveV3Test.kt', 'tools/test_cpv.py', 'tools/test_live_v3_guard.py',
-    '.github/workflows/live-v3.yml', 'docs/LIVE_V3_REPORT.md',
+    '.github/workflows/live-v3.yml', 'docs/LIVE_V3_REPORT.md', 'docs/REG_TRANSPOSE_FIX.md',
     # Registration voice recall fix
     'app/src/main/java/com/yourapp/yamahaarranger/registration/RecallPlanner.kt',
     'app/src/main/java/com/yourapp/yamahaarranger/registration/Sf2ExternalMapping.kt',
