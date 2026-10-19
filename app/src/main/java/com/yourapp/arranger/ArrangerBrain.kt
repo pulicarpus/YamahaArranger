@@ -725,6 +725,11 @@ class ArrangerBrain @Inject constructor(
         ensureSequencer()
         return sequencer.setExternalVoice(section, channel, voice)
     }
+    /** Style Voice Editor audition (Style stopped only); see StyleSequencer.auditionBegin. */
+    fun auditionBegin(channel: Int, pin: com.yourapp.yamahaarranger.style.StyleVoicePin?, original: Triple<Int, Int, String?>?,
+        external: com.yourapp.yamahaarranger.style.ExternalVoice?): String? { ensureSequencer(); return sequencer.auditionBegin(channel, pin, original, external) }
+    fun auditionNote(channel: Int, note: Int, on: Boolean) { if (::sequencer.isInitialized) sequencer.auditionNote(channel, note, on) }
+    fun auditionEnd(channel: Int) { if (::sequencer.isInitialized) sequencer.auditionEnd(channel) }
     fun invalidateAppliedVoices() { if (::sequencer.isInitialized) sequencer.invalidateAppliedVoices() }
     fun styleVoicePin(channel: Int): com.yourapp.yamahaarranger.style.StyleVoicePin? =
         if (::sequencer.isInitialized) sequencer.voicePin(channel) else null

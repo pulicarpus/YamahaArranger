@@ -985,22 +985,62 @@ class MainViewModel @Inject constructor(
     private var currentOverrides: com.yourapp.yamahaarranger.style.StyleOverrideRecord? = null
     private var overridesWritable = true
 
-    /** Apply the saved whole-style pins that match the loaded presets; others are marked STALE. */
+    // Style Voice Editor state: working profile (currentOverrides) vs what is on disk (savedOverrides).
+    private var savedOverrides: com.yourapp.yamahaarranger.style.StyleOverrideRecord? = null
+    private val overrideStates = HashMap<String, String>()
+    private fun stateKey(external: Boolean, scope: com.yourapp.yamahaarranger.style.OverrideScope, section: String?, channel: Int) =
+        "${if (external) "X" else "S"}|$scope|${section ?: "*"}|$channel"
+    data class StyleEditorUiState(val dirty: Boolean = false, val writable: Boolean = true, val savedAt: Long = 0L,
+        val revision: Long = 0L, val message: String = "", val auditioning: Boolean = false)
+    private val _styleEditorUi = MutableStateFlow(StyleEditorUiState())
+    val styleEditorUi: StateFlow<StyleEditorUiState> = _styleEditorUi
+    private fun editorSnapshot(message: String = _styleEditorUi.value.message): StyleEditorUiState {
+        val empty = com.yourapp.yamahaarranger.style.StyleOverrideRecord(currentStyleSha ?: "0".repeat(64), currentStyleFileName, emptyList())
+        val w = currentOverrides ?: empty; val sv = savedOverrides ?: empty
+        val dirty = w.overrides != sv.overrides || w.externalOverrides != sv.externalOverrides
+        return StyleEditorUiState(dirty, overridesWritable, sv.savedAt, w.revision, message, _styleEditorUi.value.auditioning)
+    }
+    private fun loadedPdtaByFile(): Map<String, String> =
+        audioEngine.loadedSoundFontPresets().distinctBy { it.soundFontName }.associate { it.soundFontName to audioEngine.soundFontPdta(it.soundFontId) }
+
+    private fun refreshAssignmentsFromRecord() {
+        val record = currentOverrides
+        _voiceAssignments.value = _voiceAssignments.value.map { slot ->
+            val entry = record?.overrides?.firstOrNull { it.channel == slot.channel && it.scope == com.yourapp.yamahaarranger.style.OverrideScope.ALL }
+            slot.copy(overridePin = entry?.pin,
+                overrideStatus = entry?.let { overrideStates[stateKey(false, it.scope, it.section, it.channel)] ?: "UNVERIFIED" })
+        }
+        _styleEditorUi.value = editorSnapshot()
+    }
+
+    /** Apply the saved overrides that match the loaded presets; others stay visible as STALE with their reason. */
     private fun restoreStyleOverrides() {
         val record = currentOverrides
-        val checks = if (record == null) emptyList() else com.yourapp.yamahaarranger.style.StyleOverridePins.check(record) { sf2, bank, pc ->
-            audioEngine.findLoadedPreset(com.yourapp.yamahaarranger.style.StyleVoicePin(sf2, bank, pc, "", false))?.name
+        overrideStates.clear()
+        if (record != null) {
+            val pdta = loadedPdtaByFile()
+            val checks = com.yourapp.yamahaarranger.style.StyleOverridePins.check(record, { pdta[it] }) { sf2, bank, pc ->
+                audioEngine.findLoadedPreset(com.yourapp.yamahaarranger.style.StyleVoicePin(sf2, bank, pc, "", false))?.name
+            }
+            checks.forEach { c ->
+                val all = c.scope == com.yourapp.yamahaarranger.style.OverrideScope.ALL
+                val state = if (!c.valid) {
+                    if (all) arrangerBrain.setStyleVoicePin(c.channel, null) else arrangerBrain.setStyleSectionVoicePin(c.section!!, c.channel, null)
+                    c.reason
+                } else {
+                    val applied = if (all) arrangerBrain.setStyleVoicePin(c.channel, c.pin) else arrangerBrain.setStyleSectionVoicePin(c.section!!, c.channel, c.pin)
+                    if (applied) "ACTIVE" else "UNVERIFIED"
+                }
+                overrideStates[stateKey(false, c.scope, c.section, c.channel)] = state
+                DebugLog.add("CPV restore ch=${c.channel} ${c.scope} ${c.section ?: "*"} ${c.pin.soundFontName} ${c.pin.bank}:${c.pin.program} '${c.pin.presetName}' ${c.reason}")
+            }
+            record.externalOverrides.forEach { e ->
+                val ok = arrangerBrain.setStyleExternalVoice(e.section, e.channel, e.voice)
+                overrideStates[stateKey(true, e.scope, e.section, e.channel)] = if (ok) "ACTIVE" else "UNVERIFIED"
+                DebugLog.add("VOICE OVERRIDE restore ch=${e.channel} ${e.scope} ${e.section ?: "*"} ${e.voice.msb}:${e.voice.lsb}:${e.voice.program} ${if (ok) "ACTIVE" else "UNVERIFIED"}")
+            }
         }
-        val status = checks.filter { it.scope == com.yourapp.yamahaarranger.style.OverrideScope.ALL }.associate { c ->
-            val applied = c.valid && arrangerBrain.setStyleVoicePin(c.channel, c.pin)
-            if (!c.valid) arrangerBrain.setStyleVoicePin(c.channel, null)
-            c.channel to (c.pin to (if (!c.valid) "STALE" else if (applied) "ACTIVE" else "UNVERIFIED"))
-        }
-        checks.forEach { DebugLog.add("CPV restore ch=${it.channel} ${it.pin.soundFontName} ${it.pin.bank}:${it.pin.program} '${it.pin.presetName}' ${it.reason}") }
-        _voiceAssignments.value = _voiceAssignments.value.map { slot ->
-            val entry = status[slot.channel]
-            slot.copy(overridePin = entry?.first, overrideStatus = entry?.second)
-        }
+        refreshAssignmentsFromRecord()
     }
 
     /** After an SF2 (re)load the native font ids change: re-check and re-install pins. */
@@ -1015,6 +1055,7 @@ class MainViewModel @Inject constructor(
         val pin = com.yourapp.yamahaarranger.style.StyleVoicePin(preset.soundFontName, preset.bank, preset.program, preset.name, preset.isDrum)
         viewModelScope.launch {
             val ok = withContext(Dispatchers.Default) { arrangerBrain.setStyleVoicePin(channel, pin) }
+            overrideStates[stateKey(false, com.yourapp.yamahaarranger.style.OverrideScope.ALL, null, channel)] = if (ok) "ACTIVE" else "UNVERIFIED"
             _voiceAssignments.value = _voiceAssignments.value.map {
                 if (it.channel == channel) it.copy(overridePin = pin, overrideStatus = if (ok) "ACTIVE" else "UNVERIFIED") else it
             }
@@ -1033,6 +1074,7 @@ class MainViewModel @Inject constructor(
         val sha = currentStyleSha ?: return
         viewModelScope.launch {
             withContext(Dispatchers.Default) { arrangerBrain.setStyleVoicePin(channel, null) }
+            overrideStates.remove(stateKey(false, com.yourapp.yamahaarranger.style.OverrideScope.ALL, null, channel))
             _voiceAssignments.value = _voiceAssignments.value.map {
                 if (it.channel == channel) it.copy(overridePin = null, overrideStatus = null) else it
             }
@@ -1042,17 +1084,24 @@ class MainViewModel @Inject constructor(
 
     private suspend fun persistOverride(sha: String, channel: Int, pin: com.yourapp.yamahaarranger.style.StyleVoicePin?) {
         if (!overridesWritable) { DebugLog.add("CPV overrides not saved: stored file is newer or damaged (kept read-only)"); return }
-        val base = currentOverrides ?: com.yourapp.yamahaarranger.style.StyleOverrideRecord(sha, currentStyleFileName, emptyList())
-        val next = base.withAllSectionPin(channel, pin).copy(styleFileName = currentStyleFileName, savedAt = System.currentTimeMillis())
-        currentOverrides = next
+        val empty = com.yourapp.yamahaarranger.style.StyleOverrideRecord(sha, currentStyleFileName, emptyList())
+        val pdta = pin?.let { withContext(Dispatchers.Default) { loadedPdtaByFile()[it.soundFontName] } }.orEmpty()
+        fun change(r: com.yourapp.yamahaarranger.style.StyleOverrideRecord) =
+            if (pin == null) r.withAllSectionPin(channel, null)
+            else r.withSf2(com.yourapp.yamahaarranger.style.StyleVoiceOverride(channel, com.yourapp.yamahaarranger.style.OverrideScope.ALL, null, pin, pdta))
+        // The Mixer saves at once, but only its own change: unsaved Style Voice Editor edits stay unsaved.
+        currentOverrides = change(currentOverrides ?: savedOverrides ?: empty)
+        val next = change(savedOverrides ?: empty).copy(styleFileName = currentStyleFileName, savedAt = System.currentTimeMillis())
+        savedOverrides = next
         try {
             withContext(Dispatchers.IO) {
-                if (next.overrides.isEmpty()) overrideStore.delete(sha) else overrideStore.write(next)
+                if (next.isEmpty) overrideStore.delete(sha) else overrideStore.write(next)
             }
             DebugLog.add("CPV overrides saved style=$currentStyleFileName entries=${next.overrides.size}")
         } catch (error: Exception) {
             DebugLog.add("❌ CPV overrides save failed: ${error.javaClass.simpleName}")
         }
+        _styleEditorUi.value = editorSnapshot()
     }
 
     fun setStyleChannelVoice(channel: Int, program: Int, bank: Int) {
@@ -1341,29 +1390,150 @@ class MainViewModel @Inject constructor(
                 "bank=${b.bank} pc=${b.program} preset='${b.presetName}' reason=${b.reason}")
         }
     }
+    /** Loaded presets of every SoundFont with their content fingerprint (identity is never the name alone). */
+    suspend fun loadEditorCatalog(): List<com.yourapp.yamahaarranger.style.CatalogPreset> = withContext(Dispatchers.Default) {
+        val pdta = HashMap<Long, String>()
+        audioEngine.loadedSoundFontPresets().map {
+            com.yourapp.yamahaarranger.style.CatalogPreset(it.soundFontName, pdta.getOrPut(it.soundFontId) { audioEngine.soundFontPdta(it.soundFontId) },
+                it.bank, it.program, it.name, it.isDrum)
+        }
+    }
+
     /**
      * Style Voice Inspector snapshot. Reads the loaded-preset snapshot and the native channel bindings,
      * so it must run off the main thread. Read-only: nothing here sends MIDI or changes a binding.
      */
     suspend fun loadStyleVoiceInventory(): com.yourapp.yamahaarranger.style.StyleVoiceInventory? = withContext(Dispatchers.Default) {
         val style = drumAuditStyle ?: return@withContext null
-        val catalog = audioEngine.loadedSoundFontPresets().map {
-            com.yourapp.yamahaarranger.style.CatalogPreset(it.soundFontName, "", it.bank, it.program, it.name, it.isDrum)
-        }
+        val catalog = loadEditorCatalog()
         val observed = channelBindings().mapValues { (ch, b) ->
             com.yourapp.yamahaarranger.style.ObservedBinding(ch, b.status, b.source, b.soundFontName, b.pdta, b.bank, b.program, b.presetName, b.reason)
         }
         val activeKey = SECTION_BUTTON_MAP[uiState.value.activeSection]?.styleName
-        val states = _voiceAssignments.value.associate { it.channel to it.overrideStatus }
-        val overrides = HashMap<Pair<String, Int>, com.yourapp.yamahaarranger.style.RowOverride>()
-        currentOverrides?.overrides?.forEach { o ->
-            val sectionKey = o.section ?: com.yourapp.yamahaarranger.style.StyleVoiceInventoryBuilder.ALL_SECTIONS
-            overrides[sectionKey to o.channel] = com.yourapp.yamahaarranger.style.RowOverride(
-                "SF2", o.scope, "${o.pin.soundFontName} ${o.pin.bank}:${o.pin.program} '${o.pin.presetName}'",
-                states[o.channel] ?: "UNVERIFIED")
-        }
+        val overrides = com.yourapp.yamahaarranger.style.StyleVoiceEditorOps.rowOverrides(
+            currentOverrides, style.sections.keys, _midiOutEnabled.value,
+            { overrideStates[stateKey(false, it.scope, it.section, it.channel)] ?: "UNVERIFIED" },
+            { overrideStates[stateKey(true, it.scope, it.section, it.channel)] ?: "UNVERIFIED" })
         com.yourapp.yamahaarranger.style.StyleVoiceInventoryBuilder.build(style, catalog, observed, activeKey, overrides)
     }
+
+    /** External Voices the user has saved in the Registration EXT list (the only PSR-E343 numbers this app can offer). */
+    fun editorExternalChoices(): List<com.yourapp.yamahaarranger.style.ExternalVoice> =
+        liveLibrary.value.manifest.externalVoices.map { com.yourapp.yamahaarranger.style.ExternalVoice(it.voice.msb, it.voice.lsb, it.voice.program, it.voice.label) }
+
+    private fun executeOverrideChanges(old: com.yourapp.yamahaarranger.style.StyleOverrideRecord?, new: com.yourapp.yamahaarranger.style.StyleOverrideRecord?) {
+        for (c in com.yourapp.yamahaarranger.style.StyleVoiceEditorOps.diff(old, new)) {
+            val all = c.scope == com.yourapp.yamahaarranger.style.OverrideScope.ALL
+            val key = stateKey(c.external, c.scope, c.section, c.channel)
+            if (!c.external) {
+                val pin = c.sf2?.pin
+                val ok = if (all) arrangerBrain.setStyleVoicePin(c.channel, pin) else arrangerBrain.setStyleSectionVoicePin(c.section!!, c.channel, pin)
+                if (pin != null) overrideStates[key] = if (ok) "ACTIVE" else "UNVERIFIED" else overrideStates.remove(key)
+            } else {
+                val voice = c.externalEntry?.voice
+                val ok = arrangerBrain.setStyleExternalVoice(c.section, c.channel, voice)
+                if (voice != null) overrideStates[key] = if (ok) "ACTIVE" else "UNVERIFIED" else overrideStates.remove(key)
+            }
+        }
+    }
+
+    private fun emptyProfile() = com.yourapp.yamahaarranger.style.StyleOverrideRecord(currentStyleSha ?: "0".repeat(64), currentStyleFileName, emptyList())
+
+    /** APPLY: plays at once and marks the profile unsaved. [onResult] gets an error text or null. */
+    fun editorApply(section: String, channel: Int, original: com.yourapp.yamahaarranger.style.OriginalRef?,
+        scope: com.yourapp.yamahaarranger.style.EditScope, replacement: com.yourapp.yamahaarranger.style.Replacement, onResult: (String?) -> Unit) {
+        if (currentStyleSha == null) return onResult("No Style is loaded.")
+        if (!overridesWritable) return onResult("This Style's stored profile is newer or damaged; it is kept read-only.")
+        viewModelScope.launch(Dispatchers.Default) {
+            val old = currentOverrides ?: emptyProfile()
+            val next = try {
+                com.yourapp.yamahaarranger.style.StyleVoiceEditorOps.apply(old, com.yourapp.yamahaarranger.style.EditTarget(section, channel, original), scope, replacement)
+            } catch (e: IllegalArgumentException) { return@launch onResult(e.message ?: "Not allowed.") }
+            executeOverrideChanges(old, next)
+            currentOverrides = next
+            refreshAssignmentsFromRecord()
+            val problem = com.yourapp.yamahaarranger.style.StyleVoiceEditorOps.diff(old, next).firstOrNull { c ->
+                overrideStates[stateKey(c.external, c.scope, c.section, c.channel)] == "UNVERIFIED" }
+            onResult(if (problem != null) "Applied, but the engine could not verify it (preset not loaded?). It is kept and marked UNVERIFIED." else null)
+        }
+    }
+
+    private fun editorReset(change: (com.yourapp.yamahaarranger.style.StyleOverrideRecord) -> com.yourapp.yamahaarranger.style.StyleOverrideRecord) {
+        if (currentStyleSha == null) return
+        viewModelScope.launch(Dispatchers.Default) {
+            val old = currentOverrides ?: emptyProfile()
+            val next = change(old)
+            executeOverrideChanges(old, next)
+            currentOverrides = next
+            refreshAssignmentsFromRecord()
+        }
+    }
+    /** RESET PART: every level of one part; the Style's own request plays again. */
+    fun editorResetPart(channel: Int) = editorReset { it.withoutPart(channel) }
+    /** RESET SECTION: section-specific entries of one section; part-wide entries stay. */
+    fun editorResetSection(section: String) = editorReset { it.withoutSection(section) }
+    /** RESET ALL: the Style plays exactly as authored. Saving afterwards deletes the stored profile. */
+    fun editorResetAll() = editorReset { it.cleared() }
+
+    /** SAVE PROFILE: writes the working profile next to (not into) the Style file, keyed by its content hash. */
+    fun editorSave(onResult: (String) -> Unit) {
+        val sha = currentStyleSha ?: return onResult("No Style is loaded.")
+        if (!overridesWritable) return onResult("Not saved: the stored profile is newer or damaged and is kept read-only.")
+        viewModelScope.launch {
+            val record = (currentOverrides ?: emptyProfile()).copy(styleFileName = currentStyleFileName, savedAt = System.currentTimeMillis())
+            val message = try {
+                withContext(Dispatchers.IO) { if (record.isEmpty) overrideStore.delete(sha) else overrideStore.write(record) }
+                currentOverrides = record; savedOverrides = record
+                if (record.isEmpty) "Profile removed: the Style plays as authored." else "Profile saved (revision ${record.revision})."
+            } catch (error: Exception) { "Not saved: ${error.javaClass.simpleName}" }
+            _styleEditorUi.value = editorSnapshot(message)
+            onResult(message)
+        }
+    }
+
+    private var auditionJob: kotlinx.coroutines.Job? = null
+    /**
+     * AUDITION: four short test notes on the part's own Style channel, only while the Style is stopped.
+     * [replacement] null with [useOriginal] plays the Style's own request. Nothing is saved; the effective voice comes back at the end.
+     */
+    fun editorAudition(row: com.yourapp.yamahaarranger.style.StyleVoiceRow, replacement: com.yourapp.yamahaarranger.style.Replacement?,
+        useOriginal: Boolean, onResult: (String?) -> Unit) {
+        if (uiState.value.isPlaying) return onResult("Stop the Style first: audition uses this part's own channel.")
+        if (row.program == null && useOriginal) return onResult("The Style sends no Program Change for this part.")
+        val channel = row.destinationChannel
+        auditionJob?.cancel()
+        auditionJob = viewModelScope.launch(Dispatchers.Default) {
+            val pin = (replacement as? com.yourapp.yamahaarranger.style.Replacement.Sf2)?.preset?.let {
+                com.yourapp.yamahaarranger.style.StyleVoicePin(it.soundFontName, it.bank, it.program, it.name, false) }
+            val original = if (useOriginal) Triple(row.program!!, com.yourapp.yamahaarranger.style.StyleVoiceInventoryBuilder.requestedBank(row.msb, row.lsb), row.casmVoiceName.ifBlank { null }) else null
+            val external = when {
+                replacement is com.yourapp.yamahaarranger.style.Replacement.External -> replacement.voice
+                useOriginal -> com.yourapp.yamahaarranger.style.ExternalVoice(row.msb ?: 0, row.lsb ?: 0, row.program!!, "Style request")
+                else -> null
+            }
+            val refusal = arrangerBrain.auditionBegin(channel, pin, original, external)
+            if (refusal != null) return@launch onResult(refusal)
+            _styleEditorUi.value = _styleEditorUi.value.copy(auditioning = true)
+            var sounding = -1
+            try {
+                for (note in com.yourapp.yamahaarranger.style.StyleVoiceEditorOps.auditionNotes(channel)) {
+                    if (uiState.value.isPlaying) break
+                    arrangerBrain.auditionNote(channel, note, true); sounding = note
+                    kotlinx.coroutines.delay(380)
+                    arrangerBrain.auditionNote(channel, note, false); sounding = -1
+                    kotlinx.coroutines.delay(60)
+                }
+            } finally {
+                withContext(kotlinx.coroutines.NonCancellable) {
+                    if (sounding >= 0) arrangerBrain.auditionNote(channel, sounding, false)
+                    arrangerBrain.auditionEnd(channel)
+                    _styleEditorUi.value = _styleEditorUi.value.copy(auditioning = false)
+                }
+            }
+            onResult(null)
+        }
+    }
+    fun editorAuditionStop() { auditionJob?.cancel() }
 
     // LATENCY_PROBE: statistics only; both calls are safe during playback but belong off the realtime path.
     fun latencyReport(): String = audioEngine.latencyReport()
@@ -1444,6 +1614,7 @@ class MainViewModel @Inject constructor(
                     currentStyleFileName = fileName
                     val saved = withContext(Dispatchers.IO) { overrideStore.read(currentStyleSha!!) }
                     currentOverrides = saved.record
+                    savedOverrides = saved.record
                     overridesWritable = saved.writable
                     DebugLog.add("CPV overrides style=$fileName status=${saved.status} entries=${saved.record?.overrides?.size ?: 0}")
                     restoreStyleOverrides()

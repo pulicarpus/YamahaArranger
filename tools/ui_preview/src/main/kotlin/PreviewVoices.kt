@@ -10,6 +10,17 @@ import com.yourapp.yamahaarranger.style.StyleNoteEvent
 import com.yourapp.yamahaarranger.style.StylePartModel
 import com.yourapp.yamahaarranger.style.StyleSectionModel
 import com.yourapp.yamahaarranger.style.StyleVoiceInventoryBuilder
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import com.yourapp.yamahaarranger.style.ExternalVoice
+import com.yourapp.yamahaarranger.ui.ReplacePanel
+import com.yourapp.yamahaarranger.ui.StyleVoiceEditorActions
 import com.yourapp.yamahaarranger.ui.StyleVoiceInspectorContent
 import java.io.File
 
@@ -51,8 +62,29 @@ fun renderVoiceInspector(dir: File, render: (String, Int, Int, Float, @Composabl
         bound(14, 0, 61, "Brass Sect", "same_family"))
     val style = specimenStyle()
     val inv = StyleVoiceInventoryBuilder.build(style, listOf(CatalogPreset("Tyros.sf2", "", 112, 33, "Fingered Bass 2", false)), observed, "MainA")
+    val catalog = listOf(
+        CatalogPreset("Colombo.sf2", "a".repeat(64), 0, 33, "Finger Bass", false), CatalogPreset("Colombo.sf2", "a".repeat(64), 0, 40, "Violin", false),
+        CatalogPreset("Colombo.sf2", "a".repeat(64), 0, 48, "Strings Ensemble", false), CatalogPreset("Colombo.sf2", "a".repeat(64), 128, 0, "Standard Kit", true),
+        CatalogPreset("Tyros.sf2", "b".repeat(64), 112, 33, "Fingered Bass 2", false), CatalogPreset("Tyros.sf2", "b".repeat(64), 112, 61, "Brass Section", false),
+        CatalogPreset("Tyros.sf2", "b".repeat(64), 16256, 5, "Cool! Strings", false))
+    val ext = listOf(ExternalVoice(0, 112, 48, "My Strings"), ExternalVoice(0, 113, 61, "My Brass"))
+    fun actions(dirty: Boolean, playing: Boolean = false) = StyleVoiceEditorActions(catalog, ext, playing, true, dirty, true, "", "", false,
+        { _, _, _, _ -> }, { _, _, _, _ -> }, {}, {}, {}, {}, { })
+    val edited = StyleVoiceInventoryBuilder.build(style, catalog, observed, "MainA", mapOf(
+        ("MainA" to 10) to com.yourapp.yamahaarranger.style.RowOverride("INTERNAL + MIDI OUT", com.yourapp.yamahaarranger.style.OverrideScope.SECTION,
+            "INTERNAL Tyros.sf2 0:40 'Violin' · MIDI OUT 0:112:48 (display PC 49) 'My Strings'", "ACTIVE")))
+    val bassRow = edited.forSection("MainA").first { it.destinationChannel == 10 }
     render("04_voice_inspector_1280x800.png", 1280, 800, 1.6f) {
-        StyleVoiceInspectorContent(inv, true, "MIDI OUT + internal", {}, {}, "MainA", "MainA" to 3)
+        StyleVoiceInspectorContent(inv, true, "MIDI OUT + internal", {}, {}, "MainA", "MainA" to 3, actions(false))
     }
     render("05_voice_inspector_nostyle.png", 1280, 800, 1.0f) { StyleVoiceInspectorContent(null, true, "Internal (BASSMIDI)", {}, {}) }
+    render("06_voice_inspector_edited_unsaved.png", 1280, 800, 1.6f) {
+        StyleVoiceInspectorContent(edited, true, "MIDI OUT + internal", {}, {}, "MainA", "MainA" to 2, actions(true, playing = true))
+    }
+    render("07_replace_sf2.png", 900, 640, 1.6f) {
+        Box(Modifier.fillMaxSize().background(Color(0xFF080A0D)).padding(12.dp), contentAlignment = Alignment.Center) { ReplacePanel(bassRow, actions(false), {}, {}, 0, "") }
+    }
+    render("08_replace_external.png", 900, 640, 1.6f) {
+        Box(Modifier.fillMaxSize().background(Color(0xFF080A0D)).padding(12.dp), contentAlignment = Alignment.Center) { ReplacePanel(bassRow, actions(false), {}, {}, 1, "") }
+    }
 }

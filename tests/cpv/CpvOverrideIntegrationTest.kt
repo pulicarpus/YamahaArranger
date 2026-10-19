@@ -221,4 +221,43 @@ class CpvOverrideIntegrationTest {
         assertNull(r.seq.sectionVoicePin("Main A", 10))
         r.close()
     }
+
+    @Test fun auditionOwnsOnlyItsChannelAndRestoresTheEffectiveVoice() {
+        val r = Rig()
+        r.apply.invoke(r.seq, section("Main A"))                      // style voices known: Bass = Program 33
+        assertTrue(r.seq.setSectionVoicePin("Main A", 10, strings))
+        assertEquals(listOf<Any>(10, 2L, 0, 48), r.pins().last())
+        // Refusals: drums, RIGHT, unloaded preset.
+        assertTrue(r.seq.auditionBegin(8, null, Triple(0, 127, null), null) != null)
+        assertTrue(r.seq.auditionBegin(1, violin, null, null) != null)
+        assertTrue(r.seq.auditionBegin(10, StyleVoicePin("Gone.sf2", 0, 1, "x", false), null, null) != null)
+        // Candidate preset is heard on ch10; notes only play on the owned channel.
+        assertEquals(null, r.seq.auditionBegin(10, violin, null, com.yourapp.yamahaarranger.style.ExternalVoice(0, 112, 40, "Violin")))
+        assertEquals(listOf<Any>(10, 2L, 0, 40), r.pins().last())
+        assertTrue(r.seq.auditionBegin(10, violin, null, null) != null)   // no second audition at once
+        r.seq.auditionNote(11, 60, true)                                     // not owned: ignored
+        r.seq.auditionNote(10, 40, true); r.seq.auditionNote(10, 40, false)
+        val on = mockingDetails(r.midi).invocations.filter { it.method.name == "sendNoteOn" }
+        val off = mockingDetails(r.midi).invocations.filter { it.method.name == "sendNoteOff" }
+        assertEquals(listOf(10), on.map { it.arguments[0] }); assertEquals(listOf(10), off.map { it.arguments[0] })
+        assertTrue(mockingDetails(r.midi).invocations.none { it.method.name == "allNotesOff" })
+        r.seq.auditionEnd(10)
+        // Back to the section pin (not the candidate, not the Style's request), and the Style's voice goes to MIDI OUT again.
+        assertEquals(listOf<Any>(10, 2L, 0, 48), r.pins().last())
+        assertEquals(33, r.pcsTo(10).last()[0])
+        // Original audition: pin released, Style's request selected, then restored.
+        assertEquals(null, r.seq.auditionBegin(10, null, Triple(33, 0, "Bass"), null))
+        assertEquals(listOf<Any>(10, 0L, 0, 0), r.pins().last())
+        r.seq.auditionEnd(10)
+        assertEquals(listOf<Any>(10, 2L, 0, 48), r.pins().last())
+        r.seq.auditionNote(10, 40, true)                                     // after END: ignored
+        assertEquals(1, mockingDetails(r.midi).invocations.count { it.method.name == "sendNoteOn" })
+        r.close()
+    }
+
+    @Test fun auditionCodeNeverUsesGlobalResets() {
+        val src = java.io.File("app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt").readText()
+        val body = src.substring(src.indexOf("fun auditionBegin"), src.indexOf("/** Re-install every pin after an SF2 reload"))
+        assertTrue(!body.contains("allNotesOff")); assertTrue(!body.contains("sendRightPartSoundOff")); assertTrue(!body.contains("setKeyboard"))
+    }
 }

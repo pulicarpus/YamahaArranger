@@ -394,6 +394,8 @@ class AudioEngineManager @Inject constructor(
     fun latencyReport(): String = LatencyProbe.report() + bridge.nativeLatencyReport()
     fun latencyReset() { LatencyProbe.reset(); bridge.nativeLatencyReset() }
     fun channelBinding(channel: Int): ChannelBinding? = ChannelBinding.parse(bridge.nativeChannelBinding(channel))
+    /** SF2 preset-data fingerprint of a loaded font ("" when unavailable); identifies content, not just the file name. */
+    fun soundFontPdta(soundFontId: Long): String = if (soundFontId > 0) bridge.nativeFontPdta(soundFontId) else ""
 
     /** Loaded preset for a saved pin. Reads the cached native snapshot without the readiness lock. */
     fun findLoadedPreset(pin: com.yourapp.yamahaarranger.style.StyleVoicePin): SfPreset? =
