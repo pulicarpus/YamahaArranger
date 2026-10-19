@@ -122,52 +122,16 @@ fun LiveControlScreen(state: MainUiState, vm: MainViewModel, onArranger: () -> U
                 Box(Modifier.fillMaxWidth().weight(1f)) {
                 Row(Modifier.fillMaxSize(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                     BoxWithConstraints(Modifier.weight(1f).fillMaxHeight()) {
-                        val oneRow=LiveStyleLayout.oneRow(maxWidth.value)
-                        val keyFor: @Composable (LiveSectionButton,Boolean,Modifier) -> Unit = { b,big,mod ->
-                            val led=liveSectionLed(inventory,b,state.activeSection)
-                            HardwareLedButton(b.caption,null,sectionLedColor(led),if(led==SectionLed.ACTIVE) LiveAmber else if(led==SectionLed.ABSENT) LiveDim else Color.White,
-                                liveSectionEnabled(led),mod,big=big,active=led==SectionLed.ACTIVE) { vm.onSectionSelected(b.label) }
-                        }
-                        Column(Modifier.fillMaxSize(),verticalArrangement=Arrangement.spacedBy(6.dp)) {
-                            // ---- STYLE CONTROL: LED from the loaded style's parsed section table ----
-                            if(oneRow) Row(Modifier.fillMaxWidth().weight(1f),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                                LiveStyleGroup("INTRO",LiveSectionGrid.intro,false,keyFor,Modifier.weight(3f).fillMaxHeight())
-                                LiveStyleGroup("MAIN",LiveSectionGrid.main,true,keyFor,Modifier.weight(4f*LiveStyleLayout.MAIN_WEIGHT).fillMaxHeight())
-                                LiveStyleGroup("FILL",LiveSectionGrid.fill,false,keyFor,Modifier.weight(4f).fillMaxHeight())
-                                LiveStyleGroup("ENDING",LiveSectionGrid.ending,false,keyFor,Modifier.weight(3f).fillMaxHeight())
-                            } else Column(Modifier.fillMaxWidth().weight(1f),verticalArrangement=Arrangement.spacedBy(6.dp)) {
-                                Row(Modifier.fillMaxWidth().weight(1.25f),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                                    LiveStyleGroup("INTRO",LiveSectionGrid.intro,false,keyFor,Modifier.weight(3f).fillMaxHeight())
-                                    LiveStyleGroup("MAIN",LiveSectionGrid.main,true,keyFor,Modifier.weight(4f*LiveStyleLayout.MAIN_WEIGHT).fillMaxHeight())
-                                }
-                                Row(Modifier.fillMaxWidth().weight(1f),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                                    LiveStyleGroup("FILL",LiveSectionGrid.fill,false,keyFor,Modifier.weight(4f).fillMaxHeight())
-                                    LiveStyleGroup("ENDING",LiveSectionGrid.ending,false,keyFor,Modifier.weight(3f).fillMaxHeight())
-                                }
-                            }
-                            // ---- TRANSPORT ----
-                            Row(Modifier.fillMaxWidth().height(68.dp),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                                HardwareLedButton(if(state.isPlaying) "STOP" else "START",if(!state.startReady && !state.isPlaying) state.readinessReason else null,
-                                    if(state.isPlaying) Color(0xFFFF6A6A) else LiveGreen,Color.White,state.isPlaying||state.startReady,Modifier.weight(2f).fillMaxHeight(),big=false,active=state.isPlaying,onClick=vm::onStartStop)
-                                HardwareLedButton("ACMP",if(state.acmpEnabled) "ON" else "OFF",if(state.acmpEnabled) LiveGreen else LiveDimLed,Color.White,true,Modifier.weight(1f).fillMaxHeight(),big=false,active=false,onClick=vm::toggleAcmp)
-                                HardwareLedButton("AUTO FILL",if(state.autoFill) "ON" else "OFF",if(state.autoFill) LiveAmber else LiveDimLed,Color.White,true,Modifier.weight(1f).fillMaxHeight(),big=false,active=false,onClick=vm::toggleAutoFill)
-                                HardwareLedButton("RELEASE","${if(state.releaseEnabled) "ON" else "OFF"} ${state.releaseTime}",if(state.releaseEnabled) LiveBlue else LiveDimLed,Color.White,true,Modifier.weight(1f).fillMaxHeight(),big=false,active=false,onClick=vm::toggleRelease)
-                            }
+                        Column(Modifier.fillMaxSize(),verticalArrangement=Arrangement.SpaceEvenly) {
+                            // STYLE CONTROL (LED from the loaded style's parsed section table) and TRANSPORT: shared panels, existing actions only
+                            LiveStyleControlPanel(inventory,state.activeSection,maxWidth.value,{ label -> vm.onSectionSelected(label) },Modifier.fillMaxWidth())
+                            LiveTransportRow(state.isPlaying,state.startReady,state.readinessReason,state.acmpEnabled,state.autoFill,state.releaseEnabled,state.releaseTime,
+                                vm::onStartStop,vm::toggleAcmp,vm::toggleAutoFill,vm::toggleRelease)
                         }
                     }
-                    // ---- LIVE MIXER: four independent faders, existing per-part / style volume actions only ----
-                    LiveCard(Modifier.width(LIVE_FADER_PANEL_DP.dp).fillMaxHeight()) {
-                        Column(Modifier.fillMaxSize().padding(8.dp)) {
-                            Text("LIVE MIXER",color=LiveCyan,fontSize=11.sp,fontWeight=FontWeight.Bold,letterSpacing=1.sp)
-                            Spacer(Modifier.height(4.dp))
-                            Row(Modifier.fillMaxWidth().weight(1f),horizontalArrangement=Arrangement.spacedBy(4.dp)) {
-                                LiveFader("RIGHT1",state.right1Volume,LiveBlue,vm::onRight1VolumeChange,Modifier.weight(1f).fillMaxHeight())
-                                LiveFader("RIGHT2",state.right2Volume,LiveCyan,vm::onRight2VolumeChange,Modifier.weight(1f).fillMaxHeight())
-                                LiveFader("RIGHT3",state.right3Volume,LiveGreen,vm::onRight3VolumeChange,Modifier.weight(1f).fillMaxHeight())
-                                LiveFader("STYLE",state.styleVolume,LiveOrange,vm::onStyleVolumeChange,Modifier.weight(1f).fillMaxHeight())
-                            }
-                        }
-                    }
+                    // LIVE MIXER: four independent faders, existing per-part / style volume actions only
+                    LiveMixerPanel(state.right1Volume,state.right2Volume,state.right3Volume,state.styleVolume,
+                        vm::onRight1VolumeChange,vm::onRight2VolumeChange,vm::onRight3VolumeChange,vm::onStyleVolumeChange,Modifier.width(LIVE_FADER_PANEL_DP.dp).fillMaxHeight())
                 }
                 if(panel.isNotEmpty()) Surface(color=LivePanel,modifier=Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures(onTap={}) }) {
                     LivePhase4Panel(panel,library,bankName,{bankName=it},slotName,{slotName=it},externalPart,vm,
@@ -175,29 +139,18 @@ fun LiveControlScreen(state: MainUiState, vm: MainViewModel, onArranger: () -> U
                 }
                 }
                 // ---- REGISTRATION BANK: bank name/number, previous/next, exactly eight slots ----
-                LiveCard(Modifier.fillMaxWidth().height(g.regHeight.dp)) {
-                Row(Modifier.fillMaxSize().padding(6.dp),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                    Column(Modifier.width(g.bankWidth.dp).fillMaxHeight(),verticalArrangement=Arrangement.spacedBy(3.dp)) {
-                        Text("REG BANK ${if(registrations.banks.isEmpty()) "–" else "${registrations.bankIndex+1}/${registrations.banks.size}"}",color=LiveCyan,fontSize=10.sp,fontWeight=FontWeight.Bold,letterSpacing=1.sp,maxLines=1)
-                        Text(registrations.bank?.name ?: "NO BANK",color=Color.White,fontSize=14.sp,fontWeight=FontWeight.Bold,maxLines=1,overflow=TextOverflow.Ellipsis)
-                        Row(Modifier.weight(1f),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                            HardwareLedButton("◀",null,if(registrations.canPrevious) LiveBlue else LiveDimLed,Color.White,registrations.canPrevious,Modifier.weight(1f).fillMaxHeight(),fontSp=20) { vm.onLiveBankChange(-1) }
-                            HardwareLedButton("▶",null,if(registrations.canNext) LiveBlue else LiveDimLed,Color.White,registrations.canNext,Modifier.weight(1f).fillMaxHeight(),fontSp=20) { vm.onLiveBankChange(1) }
-                        }
-                    }
-                    (0..7).forEach { index ->
-                        val slot=registrations.slot(index)
-                        val selected=registrations.selectedBankId==registrations.bank?.id && registrations.selectedSlot==index
-                        val armed=library.save.armed(System.nanoTime()/1_000_000)
-                        val look=liveRegKeyLook(slot!=null,selected,armed)
-                        HardwareLedButton("${index+1}",if(slot!=null) "${liveModeBadge(slot.outputMode)} ${slot.name}${if(selected && registrations.missingVoice) " ⚠" else ""}" else if(armed) "SAVE HERE" else "EMPTY",
-                            when(look) { RegKeyLook.ACTIVE -> LiveAmber; RegKeyLook.FILLED -> LiveCyan; RegKeyLook.EMPTY -> LiveDimLed; RegKeyLook.SAVE_TARGET -> Color(0xFFFF6A6A) },
-                            if(look==RegKeyLook.EMPTY) LiveDim else Color.White,
-                            library.loaded && !library.saving && registrations.bank!=null && registrations.bank!!.id !in library.readOnly && (slot!=null || armed),
-                            Modifier.weight(1f).fillMaxHeight(),big=false,active=look==RegKeyLook.ACTIVE,empty=look==RegKeyLook.EMPTY) { vm.onLiveSlotTap(index,slotName) }
-                    }
+                val saveArmed=library.save.armed(System.nanoTime()/1_000_000)
+                val regSlots=(0..7).map { index ->
+                    val slot=registrations.slot(index)
+                    val selected=registrations.selectedBankId==registrations.bank?.id && registrations.selectedSlot==index
+                    val look=liveRegKeyLook(slot!=null,selected,saveArmed)
+                    LiveRegSlotView(index+1,
+                        if(slot!=null) "${liveModeBadge(slot.outputMode)} ${slot.name}${if(selected && registrations.missingVoice) " ⚠" else ""}" else if(saveArmed) "SAVE HERE" else "EMPTY",look,
+                        library.loaded && !library.saving && registrations.bank!=null && registrations.bank!!.id !in library.readOnly && (slot!=null || saveArmed))
                 }
-                }
+                LiveRegBankRow("REG BANK ${if(registrations.banks.isEmpty()) "–" else "${registrations.bankIndex+1}/${registrations.banks.size}"}",registrations.bank?.name ?: "NO BANK",
+                    registrations.canPrevious,registrations.canNext,{ vm.onLiveBankChange(-1) },{ vm.onLiveBankChange(1) },regSlots,{ index -> vm.onLiveSlotTap(index,slotName) },
+                    g.bankWidth.toInt(),Modifier.fillMaxWidth().height(g.regHeight.dp))
                 // ---- secondary: existing SAVE / FREEZE / EXT mechanisms, unchanged ----
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
                     if(library.undoUntil>System.nanoTime()/1_000_000) HardwareLedButton("UNDO SAVE",null,LiveAmber,Color.White,!library.saving && !registrations.recalling,Modifier.weight(1f).height(40.dp),fontSp=15,onClick=vm::onLiveUndoSave)
@@ -336,29 +289,8 @@ private fun LivePhase4Panel(panel: String,library: RegistrationLibraryState,bank
     }
 }
 
-private fun sectionLedColor(led: SectionLed): Color = when(led) {
-    SectionLed.AVAILABLE -> LiveBlue
-    SectionLed.ACTIVE -> LiveAmber
-    SectionLed.UNKNOWN -> LiveUnknown
-    SectionLed.ABSENT -> LiveDimLed
-}
-
-/** Brushed graphite panel (see HardwarePanel). */
 @Composable
 private fun LiveCard(modifier: Modifier,content: @Composable () -> Unit) = HardwarePanel(modifier,content)
-
-@Composable
-private fun LiveStyleGroup(title: String,buttons: List<LiveSectionButton>,big: Boolean,
-    key: @Composable (LiveSectionButton,Boolean,Modifier) -> Unit,modifier: Modifier) {
-    LiveCard(modifier) {
-        Column(Modifier.fillMaxSize().padding(8.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
-            Text(title,color=LiveOrange,fontSize=11.sp,fontWeight=FontWeight.Bold,letterSpacing=1.sp,maxLines=1)
-            Row(Modifier.fillMaxWidth().weight(1f),horizontalArrangement=Arrangement.spacedBy(4.dp)) {
-                buttons.forEach { b -> key(b,big,Modifier.weight(if(big) LiveStyleLayout.MAIN_WEIGHT else 1f).fillMaxHeight()) }
-            }
-        }
-    }
-}
 
 /** Voice summary chip: tap toggles the part, long press opens the external voice list (unchanged behaviour). */
 @Composable

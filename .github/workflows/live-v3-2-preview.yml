@@ -1,0 +1,39 @@
+name: LIVE V3.2 hardware UI render (PNG)
+# Renders the real Compose source of the hardware keys/panels with Skia (desktop, no Android) and publishes the PNGs on branch preview/live-v3-2.
+on:
+  push:
+    branches: [feature/live-control-v3-2-hardware-ui]
+    paths: ['tools/ui_preview/**', 'app/src/main/java/com/yourapp/ui/Hardware*.kt', 'app/src/main/java/com/yourapp/ui/LiveControlPanels.kt',
+            'app/src/main/java/com/yourapp/ui/LiveFader.kt', 'app/src/main/java/com/yourapp/ui/LiveV3Model.kt', '.github/workflows/live-v3-2-preview.yml']
+  workflow_dispatch: {}
+permissions:
+  contents: write
+concurrency:
+  group: livev32-preview
+  cancel-in-progress: true
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: '8.7' }
+      - name: Render PNGs
+        run: |
+          set -euo pipefail
+          sudo apt-get install -y -qq fontconfig fonts-dejavu-core >/dev/null || true
+          gradle -p tools/ui_preview --no-daemon renderPreview --stacktrace 2>&1 | tee /tmp/render.log
+          ls -la tools/ui_preview/build/png
+      - uses: actions/upload-artifact@v4
+        with: { name: live-v32-png-${{ github.sha }}, path: tools/ui_preview/build/png/*.png, if-no-files-found: error }
+      - name: Publish PNGs to preview/live-v3-2
+        run: |
+          set -euo pipefail
+          d=$(mktemp -d); cp tools/ui_preview/build/png/*.png "$d"/
+          printf 'Rendered from %s\n' "$GITHUB_SHA" > "$d"/SOURCE.txt
+          cd "$d"; git init -q; git config user.email ci@example.invalid; git config user.name ci
+          git add -A; git commit -qm "LIVE V3.2 render of $GITHUB_SHA"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:refs/heads/preview/live-v3-2

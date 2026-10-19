@@ -77,11 +77,15 @@ fun liveRegKeyLook(hasSlot: Boolean, selected: Boolean, saveArmed: Boolean): Reg
 
 /** Look tokens of the V3.2 hardware keys (dp). Pure so the numbers are testable. */
 object HardwareKeyStyle {
-    const val CORNER_DP = 5f
-    const val PRESS_DEPTH_DP = 1.5f
-    const val REST_ELEVATION_DP = 4f
-    const val PRESSED_ELEVATION_DP = 1f
+    const val CORNER_DP = 6f
+    const val BEZEL_DP = 3f
+    const val PRESS_DEPTH_DP = 2f
+    const val SHADOW_DROP_DP = 3f
     const val PRESS_ANIMATION_MS = 45
-    const val LED_HEIGHT_DP = 5f
-    const val LED_HEIGHT_BIG_DP = 7f
+    const val LED_HOUSING_W_DP = 26f
+    const val LED_HOUSING_BIG_W_DP = 32f
+    const val LED_HOUSING_H_DP = 9f
+    const val KEY_H_DP = 60f
+    const val MAIN_KEY_H_DP = 68f
+    const val TRANSPORT_KEY_H_DP = 66f
 }
