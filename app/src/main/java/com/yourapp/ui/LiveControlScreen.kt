@@ -28,17 +28,17 @@ import androidx.compose.ui.unit.sp
 import com.yourapp.yamahaarranger.registration.*
 import kotlinx.coroutines.*
 
-private val LiveBlue=Color(0xFF58B8FF)
+private val LiveBlue=Color(0xFF4DA3FF)
 private val LiveCyan=Color(0xFF45D9DB)
 private val LiveOrange=Color(0xFFFFAA48)
 private val LiveGreen=Color(0xFF27D887)
-private val LiveAmber=Color(0xFFFFC857)
+private val LiveAmber=Color(0xFFFFB431)
 private val LivePanel=Color(0xFF171E26)
 private val LiveDim=Color(0xFF6B7783)
 private val LiveDimLed=Color(0xFF2A3139)
 private val LiveUnknown=Color(0xFF8AA0B5)
-private val LiveBgTop=Color(0xFF0D1626)
-private val LiveBgBottom=Color(0xFF080E18)
+private val LiveBgTop=Color(0xFF17191D)
+private val LiveBgBottom=Color(0xFF0C0D0F)
 private const val LIVE_HEADER_DP=64
 private const val LIVE_FADER_PANEL_DP=236
 
@@ -125,7 +125,7 @@ fun LiveControlScreen(state: MainUiState, vm: MainViewModel, onArranger: () -> U
                         val oneRow=LiveStyleLayout.oneRow(maxWidth.value)
                         val keyFor: @Composable (LiveSectionButton,Boolean,Modifier) -> Unit = { b,big,mod ->
                             val led=liveSectionLed(inventory,b,state.activeSection)
-                            LedKey(b.caption,null,sectionLedColor(led),if(led==SectionLed.ACTIVE) LiveAmber else if(led==SectionLed.ABSENT) LiveDim else Color.White,
+                            HardwareLedButton(b.caption,null,sectionLedColor(led),if(led==SectionLed.ACTIVE) LiveAmber else if(led==SectionLed.ABSENT) LiveDim else Color.White,
                                 liveSectionEnabled(led),mod,big=big,active=led==SectionLed.ACTIVE) { vm.onSectionSelected(b.label) }
                         }
                         Column(Modifier.fillMaxSize(),verticalArrangement=Arrangement.spacedBy(6.dp)) {
@@ -147,11 +147,11 @@ fun LiveControlScreen(state: MainUiState, vm: MainViewModel, onArranger: () -> U
                             }
                             // ---- TRANSPORT ----
                             Row(Modifier.fillMaxWidth().height(68.dp),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                                LedKey(if(state.isPlaying) "STOP" else "START",if(!state.startReady && !state.isPlaying) state.readinessReason else null,
+                                HardwareLedButton(if(state.isPlaying) "STOP" else "START",if(!state.startReady && !state.isPlaying) state.readinessReason else null,
                                     if(state.isPlaying) Color(0xFFFF6A6A) else LiveGreen,Color.White,state.isPlaying||state.startReady,Modifier.weight(2f).fillMaxHeight(),big=false,active=state.isPlaying,onClick=vm::onStartStop)
-                                LedKey("ACMP",if(state.acmpEnabled) "ON" else "OFF",if(state.acmpEnabled) LiveGreen else LiveDimLed,Color.White,true,Modifier.weight(1f).fillMaxHeight(),big=false,active=false,onClick=vm::toggleAcmp)
-                                LedKey("AUTO FILL",if(state.autoFill) "ON" else "OFF",if(state.autoFill) LiveAmber else LiveDimLed,Color.White,true,Modifier.weight(1f).fillMaxHeight(),big=false,active=false,onClick=vm::toggleAutoFill)
-                                LedKey("RELEASE","${if(state.releaseEnabled) "ON" else "OFF"} ${state.releaseTime}",if(state.releaseEnabled) LiveBlue else LiveDimLed,Color.White,true,Modifier.weight(1f).fillMaxHeight(),big=false,active=false,onClick=vm::toggleRelease)
+                                HardwareLedButton("ACMP",if(state.acmpEnabled) "ON" else "OFF",if(state.acmpEnabled) LiveGreen else LiveDimLed,Color.White,true,Modifier.weight(1f).fillMaxHeight(),big=false,active=false,onClick=vm::toggleAcmp)
+                                HardwareLedButton("AUTO FILL",if(state.autoFill) "ON" else "OFF",if(state.autoFill) LiveAmber else LiveDimLed,Color.White,true,Modifier.weight(1f).fillMaxHeight(),big=false,active=false,onClick=vm::toggleAutoFill)
+                                HardwareLedButton("RELEASE","${if(state.releaseEnabled) "ON" else "OFF"} ${state.releaseTime}",if(state.releaseEnabled) LiveBlue else LiveDimLed,Color.White,true,Modifier.weight(1f).fillMaxHeight(),big=false,active=false,onClick=vm::toggleRelease)
                             }
                         }
                     }
@@ -181,8 +181,8 @@ fun LiveControlScreen(state: MainUiState, vm: MainViewModel, onArranger: () -> U
                         Text("REG BANK ${if(registrations.banks.isEmpty()) "–" else "${registrations.bankIndex+1}/${registrations.banks.size}"}",color=LiveCyan,fontSize=10.sp,fontWeight=FontWeight.Bold,letterSpacing=1.sp,maxLines=1)
                         Text(registrations.bank?.name ?: "NO BANK",color=Color.White,fontSize=14.sp,fontWeight=FontWeight.Bold,maxLines=1,overflow=TextOverflow.Ellipsis)
                         Row(Modifier.weight(1f),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                            LiveButton("◀",{vm.onLiveBankChange(-1)},LiveCyan,Modifier.weight(1f).fillMaxHeight(),enabled=registrations.canPrevious)
-                            LiveButton("▶",{vm.onLiveBankChange(1)},LiveCyan,Modifier.weight(1f).fillMaxHeight(),enabled=registrations.canNext)
+                            HardwareLedButton("◀",null,if(registrations.canPrevious) LiveBlue else LiveDimLed,Color.White,registrations.canPrevious,Modifier.weight(1f).fillMaxHeight(),fontSp=20) { vm.onLiveBankChange(-1) }
+                            HardwareLedButton("▶",null,if(registrations.canNext) LiveBlue else LiveDimLed,Color.White,registrations.canNext,Modifier.weight(1f).fillMaxHeight(),fontSp=20) { vm.onLiveBankChange(1) }
                         }
                     }
                     (0..7).forEach { index ->
@@ -190,7 +190,7 @@ fun LiveControlScreen(state: MainUiState, vm: MainViewModel, onArranger: () -> U
                         val selected=registrations.selectedBankId==registrations.bank?.id && registrations.selectedSlot==index
                         val armed=library.save.armed(System.nanoTime()/1_000_000)
                         val look=liveRegKeyLook(slot!=null,selected,armed)
-                        LedKey("${index+1}",if(slot!=null) "${liveModeBadge(slot.outputMode)} ${slot.name}${if(selected && registrations.missingVoice) " ⚠" else ""}" else if(armed) "SAVE HERE" else "EMPTY",
+                        HardwareLedButton("${index+1}",if(slot!=null) "${liveModeBadge(slot.outputMode)} ${slot.name}${if(selected && registrations.missingVoice) " ⚠" else ""}" else if(armed) "SAVE HERE" else "EMPTY",
                             when(look) { RegKeyLook.ACTIVE -> LiveAmber; RegKeyLook.FILLED -> LiveCyan; RegKeyLook.EMPTY -> LiveDimLed; RegKeyLook.SAVE_TARGET -> Color(0xFFFF6A6A) },
                             if(look==RegKeyLook.EMPTY) LiveDim else Color.White,
                             library.loaded && !library.saving && registrations.bank!=null && registrations.bank!!.id !in library.readOnly && (slot!=null || armed),
@@ -200,12 +200,12 @@ fun LiveControlScreen(state: MainUiState, vm: MainViewModel, onArranger: () -> U
                 }
                 // ---- secondary: existing SAVE / FREEZE / EXT mechanisms, unchanged ----
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                    if(library.undoUntil>System.nanoTime()/1_000_000) LiveButton("UNDO SAVE",vm::onLiveUndoSave,LiveAmber,Modifier.weight(1f).height(40.dp),enabled=!library.saving && !registrations.recalling)
+                    if(library.undoUntil>System.nanoTime()/1_000_000) HardwareLedButton("UNDO SAVE",null,LiveAmber,Color.White,!library.saving && !registrations.recalling,Modifier.weight(1f).height(40.dp),fontSp=15,onClick=vm::onLiveUndoSave)
                     else LiveSaveHoldButton(enabled=library.loaded && !library.saving && !registrations.recalling,
                         armed=library.save.armed(System.nanoTime()/1_000_000),onArm=vm::onLiveSaveArm,modifier=Modifier.weight(1f).height(40.dp))
-                    LiveButton("SAVE OPTIONS",{panel="SAVE"},LiveCyan,Modifier.weight(1f).height(40.dp))
-                    LiveButton("FREEZE",{panel="FREEZE"},LiveAmber,Modifier.weight(1f).height(40.dp))
-                    LiveButton("EXT VOICE",{panel="EXTERNAL"},LiveBlue,Modifier.weight(1f).height(40.dp))
+                    HardwareLedButton("SAVE OPTIONS",null,LiveDimLed,Color.White,true,Modifier.weight(1f).height(40.dp),fontSp=15) { panel="SAVE" }
+                    HardwareLedButton("FREEZE",null,if(liveFreezeLabel(library.manifest.freeze)!="NONE") LiveAmber else LiveDimLed,Color.White,true,Modifier.weight(1f).height(40.dp),fontSp=15) { panel="FREEZE" }
+                    HardwareLedButton("EXT VOICE",null,LiveDimLed,Color.White,true,Modifier.weight(1f).height(40.dp),fontSp=15) { panel="EXTERNAL" }
                 }
             }
         }
@@ -252,14 +252,19 @@ private fun LiveTempoButton(sign: Int,onDelta: (Int) -> Unit,sizeDp: Int=64) {
 
 @Composable
 private fun LiveSaveHoldButton(enabled: Boolean,armed: Boolean,onArm: (Long) -> Unit,modifier: Modifier) {
-    Surface(color=if(armed) Color(0xFF802828) else LivePanel,modifier=modifier
-        .semantics { contentDescription="Hold SAVE 600 milliseconds" }
+    var pressed by remember { mutableStateOf(false) }
+    Box(modifier.semantics { contentDescription="Hold SAVE 600 milliseconds" }
         .pointerInput(enabled,onArm) {
             if(enabled) detectTapGestures(onPress={
-                coroutineScope { val hold=launch { delay(600);onArm(600) }
-                    try { tryAwaitRelease() } finally { hold.cancel() } }
+                pressed=true
+                try { coroutineScope { val hold=launch { delay(600);onArm(600) }
+                    try { tryAwaitRelease() } finally { hold.cancel() } } } finally { pressed=false }
             })
-        }) { Box(contentAlignment=Alignment.Center) { Text(if(armed) "TAP SLOT TO SAVE" else "HOLD SAVE",color=if(enabled) Color(0xFFFF8C8C) else Color.Gray) } }
+        }) {
+        HardwareKeyFace(Modifier.fillMaxSize(),pressed && enabled,enabled,if(armed) Color(0xFFFF6A6A) else LiveDimLed,false,armed,false) {
+            Text(if(armed) "TAP SLOT TO SAVE" else "HOLD SAVE",color=if(enabled) Color(0xFFFF8C8C) else Color.Gray,fontSize=15.sp,fontWeight=FontWeight.Bold,maxLines=1,softWrap=false)
+        }
+    }
 }
 
 @Composable
@@ -338,31 +343,9 @@ private fun sectionLedColor(led: SectionLed): Color = when(led) {
     SectionLed.ABSENT -> LiveDimLed
 }
 
-/** Dark arranger keycap: soft gradient face, thin LED bar on top, restrained shadow. A disabled key does nothing; there are no placeholder keys. */
+/** Brushed graphite panel (see HardwarePanel). */
 @Composable
-private fun LedKey(label: String,sub: String?,led: Color,text: Color,enabled: Boolean,modifier: Modifier,big: Boolean=false,active: Boolean=false,empty: Boolean=false,onClick: () -> Unit) {
-    val shape=RoundedCornerShape(5.dp)
-    val face=if(!enabled) Brush.verticalGradient(listOf(Color(0xFF151B23),Color(0xFF10151B)))
-        else if(empty) Brush.verticalGradient(listOf(Color(0xFF1A222C),Color(0xFF131A22)))
-        else Brush.verticalGradient(listOf(Color(0xFF2B3746),Color(0xFF18212C)))
-    Column(modifier.shadow(if(enabled) 3.dp else 0.dp,shape).background(face,shape)
-        .border(if(active) 2.dp else 1.dp,if(active) led else if(enabled) Color(0xFF3A4757) else Color(0xFF1F2832),shape)
-        .semantics { contentDescription=label+(if(sub!=null) " $sub" else "");role=Role.Button;if(!enabled) disabled() }
-        .clickable(enabled=enabled,onClick=onClick)) {
-        Box(Modifier.fillMaxWidth().height(if(big) 7.dp else 5.dp).background(led,RoundedCornerShape(topStart=5.dp,topEnd=5.dp)))
-        Column(Modifier.fillMaxSize().padding(horizontal=3.dp),verticalArrangement=Arrangement.Center,horizontalAlignment=Alignment.CenterHorizontally) {
-            Text(label,color=text,fontSize=if(label.length>2) 17.sp else if(big) 34.sp else 26.sp,fontWeight=FontWeight.Bold,maxLines=1,softWrap=false)
-            if(sub!=null) Text(sub,color=LiveDim,fontSize=11.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
-        }
-    }
-}
-
-/** Raised dark-navy panel used for header, style groups, mixer and registration bank. */
-@Composable
-private fun LiveCard(modifier: Modifier,content: @Composable () -> Unit) {
-    val shape=RoundedCornerShape(7.dp)
-    Box(modifier.background(Brush.verticalGradient(listOf(Color(0xFF141F31),Color(0xFF0F1826))),shape).border(1.dp,Color(0xFF22324A),shape)) { content() }
-}
+private fun LiveCard(modifier: Modifier,content: @Composable () -> Unit) = HardwarePanel(modifier,content)
 
 @Composable
 private fun LiveStyleGroup(title: String,buttons: List<LiveSectionButton>,big: Boolean,

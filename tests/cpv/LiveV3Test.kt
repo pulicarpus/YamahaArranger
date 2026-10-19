@@ -3,6 +3,7 @@ package com.yourapp.yamahaarranger.cpv
 import com.yourapp.yamahaarranger.audio.mixerFaderValue
 import com.yourapp.yamahaarranger.style.ParsedStyle
 import com.yourapp.yamahaarranger.style.StyleSectionModel
+import com.yourapp.yamahaarranger.ui.HardwareKeyStyle
 import com.yourapp.yamahaarranger.ui.LiveSectionGrid
 import com.yourapp.yamahaarranger.ui.LiveSectionInventory
 import com.yourapp.yamahaarranger.ui.SectionLed
@@ -150,5 +151,50 @@ class LiveV3Test {
         // transport callbacks are the existing ViewModel actions
         for (action in listOf("vm::onStartStop", "vm::toggleAcmp", "vm::toggleAutoFill", "vm::toggleRelease"))
             assertTrue(action, screen.contains(action))
+    }
+
+    // ---- V3.2 hardware keys ----
+    @Test fun hardwareKeyTokensMatchTheDesignBrief() {
+        assertTrue("small rounded rectangle, not a capsule", HardwareKeyStyle.CORNER_DP in 4f..7f)
+        assertTrue("press moves the cap 1-2 dp", HardwareKeyStyle.PRESS_DEPTH_DP in 1f..2f)
+        assertTrue("shadow shrinks when pressed", HardwareKeyStyle.PRESSED_ELEVATION_DP < HardwareKeyStyle.REST_ELEVATION_DP)
+        assertTrue("short animation", HardwareKeyStyle.PRESS_ANIMATION_MS in 20..80)
+        assertTrue(HardwareKeyStyle.LED_HEIGHT_DP in 3f..8f && HardwareKeyStyle.LED_HEIGHT_BIG_DP >= HardwareKeyStyle.LED_HEIGHT_DP)
+    }
+
+    @Test fun hardwareButtonNeverDelaysOrDuplicatesTheCallback() {
+        val src = ui("HardwareLedButton.kt")
+        assertEquals("one clickable per key", 1, Regex("\\.clickable\\(").findAll(src).count())
+        assertTrue(src.contains("onClick = onClick"))
+        for (banned in listOf("delay(", "pointerInput", "LaunchedEffect", "await", "detectTapGestures", "Thread.sleep", "launch"))
+            assertFalse("no extra trigger/delay path: $banned", src.contains(banned))
+        assertTrue(src.contains("collectIsPressedAsState")); assertTrue(src.contains("animateDpAsState")); assertTrue(src.contains("graphicsLayer"))
+        // the animated offset moves the cap only; the clickable hit box is the outer, static Box
+        assertTrue(src.indexOf(".clickable(") < src.indexOf("HardwareKeyFace(Modifier.fillMaxSize()"))
+        for (forbidden in listOf("AudioEngineManager", "MidiInputManager", "ArrangerBrain", "NativeAudioBridge", "StyleSequencer", "MainViewModel"))
+            assertFalse(src.contains(forbidden))
+    }
+
+    @Test fun everyLiveKeyUsesTheHardwareButtonWithTheV31Callbacks() {
+        val screen = ui("LiveControlScreen.kt")
+        assertFalse("old keycap removed", screen.contains("LedKey("))
+        assertTrue("section, transport (4), registration, bank nav (2) and utility keys", Regex("HardwareLedButton\\(").findAll(screen).count() >= 12)
+        val found = Regex("vm(?:\\.|::)([A-Za-z0-9_]+)").findAll(screen).map { it.groupValues[1] }.toSortedSet()
+        val v31 = sortedSetOf("currentExternal", "initializeLiveLibrary", "liveLibrary", "liveRegistration", "liveSectionInventory", "onLiveAddExternal", "onLiveBankChange",
+            "onLiveCreateBank", "onLiveDefaultMode", "onLiveExternalSelected", "onLiveFreeze", "onLiveSaveOptions", "onLiveSlotTap", "onSectionSelected", "toggleLeftVoice",
+            "toggleRightVoice", "nudgeTempo", "onLiveSaveArm", "onLiveUndoSave", "onRight1VolumeChange", "onRight2VolumeChange", "onRight3VolumeChange", "onStartStop",
+            "onStyleVolumeChange", "onTransposeDown", "onTransposeUp", "toggleAcmp", "toggleAutoFill", "toggleRelease")
+        assertEquals("V3.2 wires exactly the V3.1 ViewModel surface", v31, found)
+        // still exactly four faders and eight registration slots
+        assertEquals(4, Regex("LiveFader\\(\"").findAll(screen).count())
+        assertEquals(1, Regex("\\(0\\.\\.7\\)\\.forEach \\{ index ->").findAll(screen).count())
+    }
+
+    @Test fun ledColoursComeFromRealStateOnly() {
+        val screen = ui("LiveControlScreen.kt")
+        // section LEDs are derived by the tested model; no hard-coded availability
+        assertTrue(screen.contains("liveSectionLed(inventory,b,state.activeSection)"))
+        assertTrue(screen.contains("sectionLedColor(led)"))
+        for (name in listOf("Dangdut", "Intro 3\"", "hasMainD")) assertFalse(screen.contains(name))
     }
 }
