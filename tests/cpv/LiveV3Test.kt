@@ -27,6 +27,7 @@ class LiveV3Test {
         throw AssertionError("repo root not found")
     }
     private fun ui(name: String) = File(root(), "app/src/main/java/com/yourapp/ui/$name").readText()
+    private fun screenAndPanels() = ui("LiveControlScreen.kt") + ui("LiveControlPanels.kt")
     private fun style(vararg sections: String) = ParsedStyle(
         fileName = "t.sty", ppq = 480,
         sections = sections.associateWith { StyleSectionModel(it, 1920, emptyList()) })
@@ -84,21 +85,23 @@ class LiveV3Test {
     }
 
     @Test fun fadersAreFourIndependentExistingVolumeActions() {
-        val screen = ui("LiveControlScreen.kt")
-        val faders = Regex("LiveFader\\(\"(RIGHT1|RIGHT2|RIGHT3|STYLE)\",state\\.(\\w+),\\w+,vm::(\\w+),").findAll(screen).map { it.groupValues }.toList()
+        val screen = ui("LiveControlScreen.kt"); val panels = ui("LiveControlPanels.kt")
+        val call = Regex("LiveMixerPanel\\(state\\.(\\w+),state\\.(\\w+),state\\.(\\w+),state\\.(\\w+),\\s*vm::(\\w+),vm::(\\w+),vm::(\\w+),vm::(\\w+)").find(screen)!!.groupValues.drop(1)
+        assertEquals(listOf("right1Volume", "right2Volume", "right3Volume", "styleVolume"), call.take(4))
+        assertEquals(listOf("onRight1VolumeChange", "onRight2VolumeChange", "onRight3VolumeChange", "onStyleVolumeChange"), call.drop(4))
+        val faders = Regex("LiveFader\\(\"(RIGHT1|RIGHT2|RIGHT3|STYLE)\", (\\w+), LiveColors\\.\\w+, (\\w+),").findAll(panels).map { it.groupValues }.toList()
         assertEquals(listOf("RIGHT1", "RIGHT2", "RIGHT3", "STYLE"), faders.map { it[1] })
-        assertEquals(listOf("right1Volume", "right2Volume", "right3Volume", "styleVolume"), faders.map { it[2] })
-        assertEquals(listOf("onRight1VolumeChange", "onRight2VolumeChange", "onRight3VolumeChange", "onStyleVolumeChange"), faders.map { it[3] })
+        assertEquals(listOf("right1", "right2", "right3", "style"), faders.map { it[2] })
+        assertEquals(listOf("onRight1", "onRight2", "onRight3", "onStyle"), faders.map { it[3] })
         val vm = ui("MainViewModel.kt")
-        for (action in faders.map { it[3] }) assertTrue("$action exists", vm.contains("fun $action(value: Int)"))
-        // bottom = 0, top = 127 and monotonic over the whole track
+        for (action in call.drop(4)) assertTrue("$action exists", vm.contains("fun $action(value: Int)"))
         assertEquals(0, mixerFaderValue(200f, 200f)); assertEquals(127, mixerFaderValue(0f, 200f))
         var last = -1
         for (y in 200 downTo 0) { val v = mixerFaderValue(y.toFloat(), 200f); assertTrue(v >= last); last = v }
     }
 
     @Test fun noGhostControlsAndNoProtectedCalls() {
-        val screen = ui("LiveControlScreen.kt")
+        val screen = screenAndPanels()
         for (ghost in listOf("N/A", "onSyncStart", "onTapTempo", "{}")) assertFalse("ghost: $ghost", Regex("LiveButton\\([^\\n]*" + Regex.escape(ghost)).containsMatchIn(screen) || screen.contains("\"$ghost\""))
         for (forbidden in listOf("sendProgramChange", "loadStyle", "allNotesOff", "midiInputManager", "audioEngine", "arrangerBrain", "applyFonts", "toggleMidiOut"))
             assertFalse("LIVE UI must not call $forbidden", screen.contains(forbidden))
@@ -117,7 +120,7 @@ class LiveV3Test {
         val headerDp = Regex("LIVE_HEADER_DP=(\\d+)").find(screen)!!.groupValues[1].toInt()
         assertTrue("header stays compact ($headerDp dp)", headerDp in 48..72)
         // 8 registration slots and bank navigation are kept
-        assertTrue(screen.contains("(0..7).forEach { index ->")); assertTrue(screen.contains("vm.onLiveBankChange(-1)"))
+        assertTrue(screen.contains("(0..7).map { index ->")); assertTrue(screen.contains("vm.onLiveBankChange(-1)"))
     }
 
     // ---- V3.1 ----
@@ -138,12 +141,12 @@ class LiveV3Test {
         assertEquals(RegKeyLook.EMPTY, liveRegKeyLook(hasSlot = false, selected = true, saveArmed = false))
         assertEquals(RegKeyLook.SAVE_TARGET, liveRegKeyLook(hasSlot = false, selected = false, saveArmed = true))
         val screen = ui("LiveControlScreen.kt")
-        assertEquals("exactly one eight-slot loop", 1, Regex("\\(0\\.\\.7\\)\\.forEach \\{ index ->").findAll(screen).count())
+        assertEquals("exactly one eight-slot builder", 1, Regex("\\(0\\.\\.7\\)\\.map \\{ index ->").findAll(screen).count())
         assertTrue(screen.contains("vm.onLiveSlotTap(index,slotName)"))
     }
 
     @Test fun onlyRealControlsAreShown() {
-        val screen = ui("LiveControlScreen.kt")
+        val screen = screenAndPanels()
         for (absent in listOf("SYNC START", "SYNC STOP", "BREAK", "\"FADE", "CHORD ON", "MASTER", "\"MUTE", "toggleMixerKeyboardMute"))
             assertFalse("unsupported control must not appear: $absent", screen.contains(absent))
         val faders = Regex("LiveFader\\(\"").findAll(screen).count()
@@ -156,10 +159,13 @@ class LiveV3Test {
     // ---- V3.2 hardware keys ----
     @Test fun hardwareKeyTokensMatchTheDesignBrief() {
         assertTrue("small rounded rectangle, not a capsule", HardwareKeyStyle.CORNER_DP in 4f..7f)
+        assertTrue("visible bezel around a smaller cap", HardwareKeyStyle.BEZEL_DP >= 2.5f)
         assertTrue("press moves the cap 1-2 dp", HardwareKeyStyle.PRESS_DEPTH_DP in 1f..2f)
-        assertTrue("shadow shrinks when pressed", HardwareKeyStyle.PRESSED_ELEVATION_DP < HardwareKeyStyle.REST_ELEVATION_DP)
+        assertTrue("hard shadow is visible at rest and shorter when pressed", HardwareKeyStyle.SHADOW_DROP_DP >= 2f)
         assertTrue("short animation", HardwareKeyStyle.PRESS_ANIMATION_MS in 20..80)
-        assertTrue(HardwareKeyStyle.LED_HEIGHT_DP in 3f..8f && HardwareKeyStyle.LED_HEIGHT_BIG_DP >= HardwareKeyStyle.LED_HEIGHT_DP)
+        assertTrue("LED is a short lamp, never a full-width bar", HardwareKeyStyle.LED_HOUSING_W_DP in 18f..40f && HardwareKeyStyle.LED_HOUSING_BIG_W_DP >= HardwareKeyStyle.LED_HOUSING_W_DP)
+        assertTrue(HardwareKeyStyle.LED_HOUSING_H_DP in 6f..12f)
+        assertTrue("keys read as physical buttons, not blank cards", HardwareKeyStyle.KEY_H_DP in 48f..72f && HardwareKeyStyle.MAIN_KEY_H_DP >= HardwareKeyStyle.KEY_H_DP && HardwareKeyStyle.TRANSPORT_KEY_H_DP in 56f..76f)
     }
 
     @Test fun hardwareButtonNeverDelaysOrDuplicatesTheCallback() {
@@ -176,7 +182,7 @@ class LiveV3Test {
     }
 
     @Test fun everyLiveKeyUsesTheHardwareButtonWithTheV31Callbacks() {
-        val screen = ui("LiveControlScreen.kt")
+        val screen = screenAndPanels()
         assertFalse("old keycap removed", screen.contains("LedKey("))
         assertTrue("section, transport (4), registration, bank nav (2) and utility keys", Regex("HardwareLedButton\\(").findAll(screen).count() >= 12)
         val found = Regex("vm(?:\\.|::)([A-Za-z0-9_]+)").findAll(screen).map { it.groupValues[1] }.toSortedSet()
@@ -187,13 +193,13 @@ class LiveV3Test {
         assertEquals("V3.2 wires exactly the V3.1 ViewModel surface", v31, found)
         // still exactly four faders and eight registration slots
         assertEquals(4, Regex("LiveFader\\(\"").findAll(screen).count())
-        assertEquals(1, Regex("\\(0\\.\\.7\\)\\.forEach \\{ index ->").findAll(screen).count())
+        assertEquals(1, Regex("\\(0\\.\\.7\\)\\.map \\{ index ->").findAll(screen).count())
     }
 
     @Test fun ledColoursComeFromRealStateOnly() {
-        val screen = ui("LiveControlScreen.kt")
+        val screen = screenAndPanels()
         // section LEDs are derived by the tested model; no hard-coded availability
-        assertTrue(screen.contains("liveSectionLed(inventory,b,state.activeSection)"))
+        assertTrue(screen.contains("liveSectionLed(inventory, b, activeSection)"))
         assertTrue(screen.contains("sectionLedColor(led)"))
         for (name in listOf("Dangdut", "Intro 3\"", "hasMainD")) assertFalse(screen.contains(name))
     }

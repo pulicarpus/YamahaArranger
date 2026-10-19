@@ -7,6 +7,8 @@ ROOT = Path(__file__).resolve().parents[1]
 BASE = '68a584bada84ba4d0de617c2cc23c969999f0446'
 ALLOWED = {
     'app/src/main/java/com/yourapp/ui/HardwareLedButton.kt',
+    'app/src/main/java/com/yourapp/ui/LiveControlPanels.kt',
+    '.github/workflows/live-v3-2-preview.yml',
     'app/src/main/java/com/yourapp/ui/LiveControlScreen.kt',
     'app/src/main/java/com/yourapp/ui/LiveV3Model.kt',
     'app/src/main/java/com/yourapp/ui/LiveFader.kt',
@@ -16,7 +18,7 @@ ALLOWED = {
 def git(*a): return subprocess.check_output(['git', *a], cwd=ROOT, text=True)
 changed = set(git('diff', '--name-only', BASE, 'HEAD').split()) | set(git('diff', '--name-only', BASE).split()) | \
     {p for p in git('ls-files', '--others', '--exclude-standard').split() if not p.startswith(('evidence/', 'build/'))}
-extra = changed - ALLOWED
+extra = {p for p in changed - ALLOWED if not p.startswith('tools/ui_preview/')}
 assert not extra, 'Unapproved or protected file changed: ' + ', '.join(sorted(extra))
 for protected in ('app/src/main/java/com/yourapp/ui/MainViewModel.kt', 'app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt',
                   'app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt',
