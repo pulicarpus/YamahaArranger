@@ -7,6 +7,8 @@ import com.yourapp.midi.MidiMixerOutput
 import com.yourapp.yamahaarranger.audio.*
 import com.yourapp.yamahaarranger.arranger.ArrangerBrain
 import com.yourapp.yamahaarranger.chord.ChordDetector
+import com.yourapp.yamahaarranger.arranger.StyleSequencer
+import com.yourapp.yamahaarranger.style.ParsedStyle
 import com.yourapp.yamahaarranger.ui.RecallViewModelHarness
 import java.io.File
 import java.util.Collections
@@ -175,6 +177,20 @@ class RegistrationVoiceRecallTest {
             r.vm.selectExternalVoice(KeyboardPart.RIGHT1, ExternalVoice(0, 0, 0, "List Piano"))
             r.select(KeyboardPart.RIGHT1, dist)
             assertEquals(30, r.vm.testSnapshot().parts[0].external!!.program)
+        } finally { r.close() }
+    }
+
+    @Test fun recallTransposeReachesTheStyleUnlessFrozen() = runBlocking<Unit> {
+        val r = Rig(); try {
+            r.brain.attachScope(r.scope); r.brain.loadStyle(ParsedStyle("t.sty", 480, emptyMap()))
+            val seq = ArrangerBrain::class.java.getDeclaredField("sequencer").apply { isAccessible = true }.get(r.brain) as StyleSequencer
+            val base = r.save(OutputMode.INTERNAL).copy(transpose = 3)
+            r.recall("T1", base, FreezeFlags(transpose = true))
+            assertEquals("FREEZE TRANSPOSE keeps the current value", 0, seq.masterTransposeValue())
+            delay(200); r.recall("T2", base, FreezeFlags(transpose = false))
+            assertEquals(3, seq.masterTransposeValue()); assertEquals(3, r.vm._transpose.value)
+            delay(200); r.recall("T3", base.copy(transpose = 0))
+            assertEquals("back to 0 restores the original pitch", 0, seq.masterTransposeValue())
         } finally { r.close() }
     }
 

@@ -63,6 +63,7 @@ jobs:
           set -euo pipefail
           python3 tools/test_cpv.py --suite jvm --out evidence/cpv-jvm 2>&1 | tee evidence/cpv-jvm.log
           python3 tools/test_r22_regressions.py --suite live --out evidence/live 2>&1 | tee evidence/live-reg.log
+          python3 tools/test_registration_recall.py 2>&1 | tee evidence/registration-recall.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:

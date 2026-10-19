@@ -152,8 +152,17 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         var policy:CasmPolicyModel,
         val policies:List<CasmPolicyModel>,
         val sourcePart:String, val sourceSection:String, val sourceBank:Int,
-        val sourceHeaderPC:Int, val sourceTick:Long, val onId:Long
+        val sourceHeaderPC:Int, val sourceTick:Long, val onId:Long,
+        /** Master Transpose folded into [outputNote]; removed again when a held root is re-derived. */
+        var masterApplied:Int=0
     )
+    /**
+     * Master Transpose in semitones. Added to the final pitch of melodic style output, after CASM (NTR/NTT/RTR) and the
+     * per-channel override, so source style data and chord recognition are untouched. Rhythm/drum output never uses it.
+     */
+    @Volatile private var masterTranspose=0
+    fun setMasterTranspose(semitones:Int){ masterTranspose=semitones.coerceIn(-12,12) }
+    fun masterTransposeValue():Int=masterTranspose
     private val partPresence = StylePartPresence()
     fun partPresenceReport(style:com.yourapp.yamahaarranger.style.ParsedStyle):String = partPresence.report(style)
     private val chordTrace = ChordChangeDiagnostic()
@@ -715,9 +724,11 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     }
 
     private fun updateHeldPitch(active:ActiveTransposedNote,chord:DetectedChord,rootOnly:Boolean,retrigger:Boolean,eventId:Long){
-        val target=if(rootOnly) rootPitchForHeld(active,chord) else CasmNoteTransformer.transform(active.sourceNote,chord,active.policy)
+        val base=if(rootOnly) rootPitchForHeld(active,chord) else CasmNoteTransformer.transform(active.sourceNote,chord,active.policy)
+        val master=masterTranspose
+        val target=base?.let { (it+master).coerceIn(0,127) }
         chordEvent(active,eventId,if(target==null) "TRANSFORM_NULL_NO_SEND" else if(target==active.outputNote) "UNCHANGED_NO_SEND" else "REPLACE",target?:-1)
-        if(target==null||target==active.outputNote)return
+        if(target==null||target==active.outputNote){ if(target!=null) active.masterApplied=master; return }
         if(!retrigger)com.yourapp.yamahaarranger.ui.DebugLog.add("🎹 RTR PITCH SHIFT src${active.sourceChannel}:${active.sourceNote} ${active.outputNote}→$target (note replacement)")
         else com.yourapp.yamahaarranger.ui.DebugLog.add("🎹 RTR RETRIGGER src${active.sourceChannel}:${active.sourceNote} ${active.outputNote}→$target")
         chordOff(active,eventId,1,"REPLACEMENT_OFF")
@@ -727,6 +738,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         else audioEngine.noteOnChannel(active.destinationChannel,target,active.velocity/127f)
         midiInputManager.sendNoteOn(active.destinationChannel,target,active.velocity)
         active.outputNote=target
+        active.masterApplied=master
     }
 
     private fun chordEvent(active:ActiveTransposedNote,id:Long,stage:String,target:Int) {
@@ -751,7 +763,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     }
 
     private fun rootPitchForHeld(active:ActiveTransposedNote,chord:DetectedChord):Int{
-        val oldOctave=active.outputNote/12
+        val oldOctave=(active.outputNote-active.masterApplied).coerceAtLeast(0)/12
         return (oldOctave*12+chord.rootNote.coerceIn(0,11)).coerceIn(0,127)
     }
 
@@ -1255,12 +1267,13 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                     chord?.let{CasmNoteTransformer.transform(s.event.note,it,policy)}?:s.event.note.coerceIn(0,127)
                 }else s.event.note.coerceIn(0,127)
                 if (transformed == null) { diagnostic("DROP_TRANSFORM_NULL"); return@lifecycle }
-                val note=(transformed+(channelOverride?.transpose?:0)).coerceIn(0,127)
+                val master=if(isDrumPart) 0 else masterTranspose
+                val note=(transformed+(channelOverride?.transpose?:0)+master).coerceIn(0,127)
                 val velocity=s.event.velocity.coerceIn(1,127)
 
                 if(policy!=null&&!isDrumPart){
                     val policyList=s.part.casmPolicies.ifEmpty{listOfNotNull(s.part.casm)}
-                    activeTransposedNotes[key]=ActiveTransposedNote(sourceChannel,s.event.note,destinationChannel,note,velocity,policy,policyList,s.part.name,section.name,diagBank,s.part.program,absoluteTick,diagId)
+                    activeTransposedNotes[key]=ActiveTransposedNote(sourceChannel,s.event.note,destinationChannel,note,velocity,policy,policyList,s.part.name,section.name,diagBank,s.part.program,absoluteTick,diagId,master)
                     if(destinationChannel==13)com.yourapp.yamahaarranger.ui.DebugLog.add("🎻 STRING NOTEON src"+sourceChannel+":"+s.event.note+" dst13 note="+note+" NTR="+(policy.ntr and 0x7f)+" NTT="+(policy.ntt and 0x7f)+" RTR="+(policy.rtr and 0x7f))
                     if(destinationChannel==13)com.yourapp.yamahaarranger.ui.DebugLog.add("🎼 CASM SELECT src"+sourceChannel+":"+s.event.note+" chord="+chord?.rootNote+"/"+chord?.quality+" → dst"+destinationChannel+" NTR="+(policy.ntr and 0x7f)+" NTT="+(policy.ntt and 0x7f)+" SRC="+policy.sourceChordRoot+"/"+policy.sourceChordType+" range="+policy.sourceNoteLow+"-"+policy.sourceNoteHigh+" RTR="+(policy.rtr and 0x7f))
                 }

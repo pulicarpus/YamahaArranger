@@ -117,6 +117,7 @@ class ArrangerBrain @Inject constructor(
         externalScope = scope
         if (::sequencer.isInitialized) sequencer.stop()
         sequencer = StyleSequencer(audioEngine, midiInputManager, scope)
+        sequencer.setMasterTranspose(keyboardTranspose)
         Timber.i("ArrangerBrain: scope attached")
     }
 
@@ -124,6 +125,7 @@ class ArrangerBrain @Inject constructor(
         if (!::sequencer.isInitialized) {
             val scope = externalScope ?: CoroutineScope(Dispatchers.Main + SupervisorJob())
             sequencer = StyleSequencer(audioEngine, midiInputManager, scope)
+            sequencer.setMasterTranspose(keyboardTranspose)
         }
     }
 
@@ -246,6 +248,8 @@ class ArrangerBrain @Inject constructor(
     fun setKeyboardTranspose(semitones: Int) {
         synchronized(keyboardLock) {
             keyboardTranspose = semitones.coerceIn(-12, 12)
+            // Master Transpose: the style follows the keyboard (melodic output only; drums and chord input are not transposed).
+            if (::sequencer.isInitialized) sequencer.setMasterTranspose(keyboardTranspose)
             DebugLog.add("🎹 TRANSPOSE = " + if (keyboardTranspose >= 0) "+$keyboardTranspose" else keyboardTranspose.toString())
         }
     }
