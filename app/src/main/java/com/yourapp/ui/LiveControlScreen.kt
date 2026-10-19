@@ -122,9 +122,10 @@ fun LiveControlScreen(state: MainUiState, vm: MainViewModel, onArranger: () -> U
                 Box(Modifier.fillMaxWidth().weight(1f)) {
                 Row(Modifier.fillMaxSize(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                     BoxWithConstraints(Modifier.weight(1f).fillMaxHeight()) {
+                        val areaWidthDp=maxWidth.value
                         Column(Modifier.fillMaxSize(),verticalArrangement=Arrangement.SpaceEvenly) {
                             // STYLE CONTROL (LED from the loaded style's parsed section table) and TRANSPORT: shared panels, existing actions only
-                            LiveStyleControlPanel(inventory,state.activeSection,maxWidth.value,{ label -> vm.onSectionSelected(label) },Modifier.fillMaxWidth())
+                            LiveStyleControlPanel(inventory,state.activeSection,areaWidthDp,{ label -> vm.onSectionSelected(label) },Modifier.fillMaxWidth())
                             LiveTransportRow(state.isPlaying,state.startReady,state.readinessReason,state.acmpEnabled,state.autoFill,state.releaseEnabled,state.releaseTime,
                                 vm::onStartStop,vm::toggleAcmp,vm::toggleAutoFill,vm::toggleRelease)
                         }

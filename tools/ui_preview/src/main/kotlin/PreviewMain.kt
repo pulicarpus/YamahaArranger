@@ -72,8 +72,9 @@ private val AMBER = Color(0xFFFFB431); private val BLUE = Color(0xFF4DA3FF); pri
         Box(Modifier.fillMaxWidth().weight(1f)) {
             Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 BoxWithConstraints(Modifier.weight(1f).fillMaxHeight()) {
+                    val areaWidthDp = maxWidth.value
                     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceEvenly) {
-                        LiveStyleControlPanel(inventory, "Main B", maxWidth.value, {}, Modifier.fillMaxWidth())
+                        LiveStyleControlPanel(inventory, "Main B", areaWidthDp, {}, Modifier.fillMaxWidth())
                         LiveTransportRow(false, true, null, true, true, true, 64, {}, {}, {}, {})
                     }
                 }
