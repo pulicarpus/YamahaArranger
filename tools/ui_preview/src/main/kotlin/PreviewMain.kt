@@ -45,12 +45,12 @@ private val AMBER = Color(0xFFFFB431); private val BLUE = Color(0xFF4DA3FF); pri
         Caption("BEFORE - V3.2 8b4526c (what the Redmi Pad showed)")
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             keys.forEach { k -> Box(Modifier.size(if (k.big) 84.dp else 72.dp, 66.dp)) {
-                PrevKeyFace(Modifier.fillMaxSize(), k.pressed, k.enabled, k.led, k.big, k.active, k.empty) { Text(k.label, color = WHITE, fontSize = 22.sp, fontWeight = FontWeight.Bold); if (k.sub != null) Text(k.sub, color = Color(0xFFB4BCC6), fontSize = 10.sp) } } }
+                PrevKeyFace(Modifier.fillMaxSize(), k.pressed, k.enabled, k.led, k.big, k.active, k.empty) { Text(k.label, color = WHITE, fontSize = 15.sp.takeIf { k.label.length > 2 } ?: 22.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false); if (k.sub != null) Text(k.sub, color = Color(0xFFB4BCC6), fontSize = 10.sp) } } }
         }
         Caption("AFTER - corrected (amber active, blue available, gray absent disabled, neutral unknown, START green, pressed, empty, active REG)")
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             keys.forEach { k -> Box(Modifier.size(if (k.big) 84.dp else 72.dp, 66.dp)) {
-                HardwareKeyFace(Modifier.fillMaxSize(), k.pressed, k.enabled, k.led, k.big, k.active, k.empty) { Text(k.label, color = WHITE, fontSize = if (k.big) 28.sp else 22.sp, fontWeight = FontWeight.Bold); if (k.sub != null) Text(k.sub, color = Color(0xFFB4BCC6), fontSize = 10.sp) } } }
+                HardwareKeyFace(Modifier.fillMaxSize(), k.pressed, k.enabled, k.led, k.big, k.active, k.empty) { Text(k.label, color = WHITE, fontSize = if (k.label.length > 2) 15.sp else if (k.big) 28.sp else 22.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false); if (k.sub != null) Text(k.sub, color = Color(0xFFB4BCC6), fontSize = 10.sp) } } }
         }
     }
 }

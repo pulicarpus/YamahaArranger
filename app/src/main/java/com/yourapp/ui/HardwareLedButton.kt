@@ -47,13 +47,13 @@ private val CapBottom = Color(0xFF16181C)
  */
 @Composable
 fun HardwareLedButton(label: String, sub: String?, led: Color, text: Color, enabled: Boolean, modifier: Modifier,
-    big: Boolean = false, active: Boolean = false, empty: Boolean = false, fontSp: Int? = null, onClick: () -> Unit) {
+    big: Boolean = false, active: Boolean = false, empty: Boolean = false, fontSp: Int? = null, lamp: Boolean = true, onClick: () -> Unit) {
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
     Box(modifier
         .semantics { contentDescription = label + (if (sub != null) " $sub" else ""); role = Role.Button; if (!enabled) disabled() }
         .clickable(interactionSource = source, indication = null, enabled = enabled, onClick = onClick)) {
-        HardwareKeyFace(Modifier.fillMaxSize(), pressed && enabled, enabled, led, big, active, empty) {
+        HardwareKeyFace(Modifier.fillMaxSize(), pressed && enabled, enabled, led, big, active, empty, lamp) {
             Text(label, color = text, fontSize = (fontSp ?: if (label.length > 2) 15 else if (big) 28 else 22).sp,
                 fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
             if (sub != null) Text(sub, color = Color(0xFFB4BCC6), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -63,7 +63,7 @@ fun HardwareLedButton(label: String, sub: String?, led: Color, text: Color, enab
 
 /** Visual key only (no input handling), so other gestures such as press-and-hold can reuse the same look. */
 @Composable
-fun HardwareKeyFace(modifier: Modifier, pressed: Boolean, enabled: Boolean, led: Color, big: Boolean, active: Boolean, empty: Boolean,
+fun HardwareKeyFace(modifier: Modifier, pressed: Boolean, enabled: Boolean, led: Color, big: Boolean, active: Boolean, empty: Boolean, lamp: Boolean = true,
     content: @Composable ColumnScope.() -> Unit) {
     val bezelShape = RoundedCornerShape((HardwareKeyStyle.CORNER_DP + 1f).dp)
     val capShape = RoundedCornerShape((HardwareKeyStyle.CORNER_DP - 1f).dp)
@@ -103,7 +103,7 @@ fun HardwareKeyFace(modifier: Modifier, pressed: Boolean, enabled: Boolean, led:
             .border(if (active) 1.5.dp else 1.dp,
                 if (active) led.copy(alpha = 0.95f) else if (flat) Color(0x33000000) else Color(0x40FFFFFF), capShape)) {
             Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-                HardwareLedLamp(led, enabled, big, Modifier.padding(top = 4.dp))
+                if (lamp) HardwareLedLamp(led, enabled, big, Modifier.padding(top = 4.dp))
                 Column(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 3.dp), verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally, content = content)
             }

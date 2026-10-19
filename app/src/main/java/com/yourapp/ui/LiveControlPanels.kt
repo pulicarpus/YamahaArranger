@@ -119,8 +119,8 @@ fun LiveRegBankRow(bankTitle: String, bankName: String, canPrevious: Boolean, ca
                 Text(bankTitle, color = LiveColors.Cyan, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp, maxLines = 1)
                 Text(bankName, color = LiveColors.Label, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    HardwareLedButton("◀", null, if (canPrevious) LiveColors.Blue else LedTone.Off, LiveColors.Label, canPrevious, Modifier.weight(1f).fillMaxHeight(), fontSp = 18, onClick = onPrevious)
-                    HardwareLedButton("▶", null, if (canNext) LiveColors.Blue else LedTone.Off, LiveColors.Label, canNext, Modifier.weight(1f).fillMaxHeight(), fontSp = 18, onClick = onNext)
+                    HardwareLedButton("◀", null, LedTone.Off, if (canPrevious) LiveColors.Blue else LiveColors.Dim, canPrevious, Modifier.weight(1f).fillMaxHeight(), fontSp = 18, lamp = false, onClick = onPrevious)
+                    HardwareLedButton("▶", null, LedTone.Off, if (canNext) LiveColors.Blue else LiveColors.Dim, canNext, Modifier.weight(1f).fillMaxHeight(), fontSp = 18, lamp = false, onClick = onNext)
                 }
             }
             slots.forEachIndexed { index, s ->
