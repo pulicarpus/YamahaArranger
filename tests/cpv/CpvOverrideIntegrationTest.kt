@@ -111,4 +111,114 @@ class CpvOverrideIntegrationTest {
         assertTrue(!engine.pinStyleChannel(8, StyleVoicePin("yamaha tyros 4.sf2", 0, 48, "Tyros Strings", false)))
         assertTrue(!engine.pinStyleChannel(2, StyleVoicePin("yamaha tyros 4.sf2", 0, 48, "Tyros Strings", false)))
     }
+
+    // ---- Style Voice Editor: section-level pins and external (MIDI OUT) voices ----
+    private class Rig {
+        val bridge: NativeAudioBridge = mock(NativeAudioBridge::class.java)
+        val midi: MidiInputManager = mock(MidiInputManager::class.java)
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val seq: StyleSequencer
+        val apply = StyleSequencer::class.java.getDeclaredMethod("applyVoicesFromCasm", StyleSectionModel::class.java).apply { isAccessible = true }
+        init {
+            `when`(bridge.nativeStart()).thenReturn(true)
+            `when`(bridge.nativePinChannelPreset(anyInt(), anyLong(), anyInt(), anyInt())).thenReturn(true)
+            `when`(bridge.nativeGetSoundFontPresets()).thenReturn(listOf(
+                "MELODY\u001f1\u001fColomboGMGS2_BM.sf2\u001f0\u001f33\u001fFinger Bass",
+                "MELODY\u001f2\u001fyamaha tyros 4.sf2\u001f0\u001f48\u001fTyros Strings",
+                "MELODY\u001f2\u001fyamaha tyros 4.sf2\u001f0\u001f40\u001fTyros Violin").joinToString("\u001e", postfix = "\u001e"))
+            `when`(bridge.nativeFontPdta(anyLong())).thenReturn("ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506")
+            seq = StyleSequencer(AudioEngineManager(bridge, mock(SampleProvider::class.java)), midi, scope)
+        }
+        fun pcsTo(ch: Int) = mockingDetails(midi).invocations.filter { it.method.name == "sendProgramChange" && it.arguments[0] == ch }
+            .map { listOf(it.arguments[1], it.arguments[2], it.arguments[3]) }
+        fun pins() = mockingDetails(bridge).invocations.filter { it.method.name == "nativePinChannelPreset" }.map { it.arguments.toList() }
+        fun close() = scope.cancel()
+    }
+    private val strings = StyleVoicePin("yamaha tyros 4.sf2", 0, 48, "Tyros Strings", false)
+    private val violin = StyleVoicePin("yamaha tyros 4.sf2", 0, 40, "Tyros Violin", false)
+
+    @Test fun sectionPinAppliesOnlyToItsSectionAndFollowsTransitions() {
+        val r = Rig()
+        assertTrue(r.seq.setSectionVoicePin("Main A", 10, strings))
+        assertEquals(emptyList<Any>(), r.pins())                      // not active yet: nothing installed
+        r.apply.invoke(r.seq, section("Main A"))
+        assertEquals(listOf<Any>(10, 2L, 0, 48), r.pins().last())      // installed when Main A starts
+        r.apply.invoke(r.seq, section("Fill AA"))                      // no pin for Fill AA: style voice returns
+        assertEquals(listOf<Any>(10, 0L, 0, 0), r.pins().last())
+        assertTrue(names(r.bridge, "nativeSetChannelPresetWithName").any { it.arguments[0] == 10 && it.arguments[2] == 33 })
+        val installs = r.pins().size
+        r.apply.invoke(r.seq, section("Main A"))                       // Fill -> Main: pinned again
+        assertEquals(listOf<Any>(10, 2L, 0, 48), r.pins().last()); assertTrue(r.pins().size > installs)
+        r.apply.invoke(r.seq, section("Main B"))
+        assertEquals(listOf<Any>(10, 0L, 0, 0), r.pins().last())
+        // Drums and RIGHT parts are never pinned from the editor.
+        assertTrue(!r.seq.setSectionVoicePin("Main A", 8, strings)); assertTrue(!r.seq.setSectionVoicePin("Main A", 2, strings))
+        r.close()
+    }
+
+    @Test fun sectionPinBeatsPartWidePinAndPartWideFillsTheRest() {
+        val r = Rig()
+        assertTrue(r.seq.setVoicePin(10, violin))
+        assertEquals(listOf<Any>(10, 2L, 0, 40), r.pins().last())
+        assertTrue(r.seq.setSectionVoicePin("Main A", 10, strings))
+        r.apply.invoke(r.seq, section("Main A"))
+        assertEquals(listOf<Any>(10, 2L, 0, 48), r.pins().last())      // section-specific wins
+        r.apply.invoke(r.seq, section("Main B"))
+        assertEquals(listOf<Any>(10, 2L, 0, 40), r.pins().last())      // part-wide elsewhere
+        assertEquals(violin, r.seq.voicePin(10))
+        r.close()
+    }
+
+    @Test fun dynamicProgramChangeIsSuppressedWhileAnOverrideHoldsTheSection() {
+        // The internal rule already existed for pins; the external rule mirrors it (see source guard below).
+        val src = java.io.File("app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt").readText()
+        assertTrue(src.contains("DYNAMIC_PC_SUPPRESSED_BY_OVERRIDE"))
+        assertTrue(src.contains("val dynamicExternal = if(drum) null else effectiveExternal(section.name,destination)"))
+    }
+
+    @Test fun externalVoiceReplacesOnlyTheMidiOutRequestAndNeverTouchesTheInternalSound() {
+        val r = Rig()
+        val e = com.yourapp.yamahaarranger.style.ExternalVoice(0, 112, 48, "Strings")
+        assertTrue(r.seq.setExternalVoice("Main A", 10, e))
+        val internalBefore = mockingDetails(r.bridge).invocations.size
+        r.apply.invoke(r.seq, section("Main A"))
+        assertEquals(listOf<Any>(48, 0, 112), r.pcsTo(10).last())
+        // Internal sound still resolves the Style's own request (Program 33), not the E343 voice.
+        assertTrue(names(r.bridge, "nativeSetChannelPresetWithName").any { it.arguments[0] == 10 && it.arguments[2] == 33 })
+        assertTrue(names(r.bridge, "nativePinChannelPreset").isEmpty())
+        // Other section: the Style's request reaches MIDI OUT unchanged.
+        r.apply.invoke(r.seq, section("Main B"))
+        assertEquals(listOf<Any>(33, 0, 0), r.pcsTo(10).last())
+        // Part-wide external applies everywhere; section-specific still wins.
+        assertTrue(r.seq.setExternalVoice(null, 10, com.yourapp.yamahaarranger.style.ExternalVoice(0, 112, 80, "Lead")))
+        r.apply.invoke(r.seq, section("Main B"))
+        assertEquals(80, r.pcsTo(10).last()[0])
+        r.apply.invoke(r.seq, section("Main A"))
+        assertEquals(48, r.pcsTo(10).last()[0])
+        assertTrue(internalBefore >= 0)
+        r.close()
+    }
+
+    @Test fun externalOverrideNeverTouchesDrumsAndRejectsBadNumbers() {
+        val r = Rig()
+        assertTrue(!r.seq.setExternalVoice(null, 8, com.yourapp.yamahaarranger.style.ExternalVoice(0, 0, 1, "x")))
+        assertTrue(!r.seq.setExternalVoice(null, 10, com.yourapp.yamahaarranger.style.ExternalVoice(0, 128, 1, "x")))
+        r.apply.invoke(r.seq, section("Main A"))
+        assertTrue(r.pcsTo(8).all { it[0] == 0 && it[1] == 127 })      // drum request unchanged
+        r.close()
+    }
+
+    @Test fun resettingAnExternalVoiceRestoresTheStyleRequestAndClearHasNoLeak() {
+        val r = Rig()
+        r.apply.invoke(r.seq, section("Main A"))
+        assertTrue(r.seq.setExternalVoice(null, 10, com.yourapp.yamahaarranger.style.ExternalVoice(0, 112, 48, "Strings")))
+        assertEquals(48, r.pcsTo(10).last()[0])                         // shown at once on the part in use
+        assertTrue(r.seq.setExternalVoice(null, 10, null))
+        assertEquals(33, r.pcsTo(10).last()[0])                         // the Style's own request is sent back
+        assertTrue(r.seq.setExternalVoice("Main A", 10, com.yourapp.yamahaarranger.style.ExternalVoice(0, 112, 48, "Strings")))
+        r.seq.clearVoicePins()
+        assertNull(r.seq.externalVoice("Main A", 10))
+        assertNull(r.seq.sectionVoicePin("Main A", 10))
+        r.close()
+    }
 }

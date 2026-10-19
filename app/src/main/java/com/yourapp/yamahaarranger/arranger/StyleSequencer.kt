@@ -112,6 +112,13 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     // CPV manual voice pins (internal sound only) and the last style request per channel,
     // so removing a pin restores the style's own voice immediately.
     private val voicePins = mutableMapOf<Int, com.yourapp.yamahaarranger.style.StyleVoicePin>()
+    // Style Voice Editor. voicePins above is the part-wide desire; these add the section level and the
+    // external (MIDI OUT) voices. Priority everywhere: section-specific, then part-wide, then the Style.
+    private val sectionVoicePins = mutableMapOf<String, MutableMap<Int, com.yourapp.yamahaarranger.style.StyleVoicePin>>()
+    private val installedPins = mutableMapOf<Int, com.yourapp.yamahaarranger.style.StyleVoicePin>()
+    private val partExternal = mutableMapOf<Int, com.yourapp.yamahaarranger.style.ExternalVoice>()
+    private val sectionExternal = mutableMapOf<String, MutableMap<Int, com.yourapp.yamahaarranger.style.ExternalVoice>>()
+    @Volatile private var voiceSection = ""
     private data class StyleVoiceState(val section: StyleSectionModel, val program: Int, val bank: Int,
         val voiceName: String?, val drum: Boolean, val msb: Int?, val lsb: Int?, val source: String)
     private val lastStyleVoice = mutableMapOf<Int, StyleVoiceState>()
@@ -272,31 +279,86 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         val old=channelOverride(channel)
         setChannelOverride(channel, old.copy(program=program.coerceIn(0,127), bank=bank.coerceIn(0,16383)))
     }
-    /** CPV: pin (or with null, release) the internal voice of one style channel 4..15. */
+    private fun effectivePin(section:String, channel:Int): com.yourapp.yamahaarranger.style.StyleVoicePin? =
+        sectionVoicePins[section]?.get(channel) ?: voicePins[channel]
+    private fun effectiveExternal(section:String, channel:Int): com.yourapp.yamahaarranger.style.ExternalVoice? =
+        sectionExternal[section]?.get(channel) ?: partExternal[channel]
+
+    /** Make the native pin of [channel] match the effective pin of [section]. */
+    private fun reconcilePin(channel:Int, section:String, restoreStyleVoice:Boolean): Boolean {
+        val want = effectivePin(section, channel)
+        val have = installedPins[channel]
+        if(want==have) return true
+        appliedChannelStates.remove(channel)
+        if(want==null) {
+            audioEngine.unpinStyleChannel(channel)
+            installedPins.remove(channel)
+            if(restoreStyleVoice) lastStyleVoice[channel]?.let { applyStyleVoice(channel,it) }
+            com.yourapp.yamahaarranger.ui.DebugLog.add("CPV PIN released ch$channel; style voice restored")
+            return true
+        }
+        val ok = audioEngine.pinStyleChannel(channel,want)
+        if(ok) installedPins[channel]=want else installedPins.remove(channel)
+        return ok
+    }
+
+    /** CPV: pin (or with null, release) the internal voice of one style channel 4..15 for every section. */
     fun setVoicePin(channel:Int, pin:com.yourapp.yamahaarranger.style.StyleVoicePin?):Boolean = lifecycle {
         if(channel !in 4..15) return@lifecycle false
         if(pin==null) {
             if(voicePins.remove(channel)==null) return@lifecycle true
-            audioEngine.unpinStyleChannel(channel)
-            appliedChannelStates.remove(channel)
-            lastStyleVoice[channel]?.let { applyStyleVoice(channel,it) }
-            com.yourapp.yamahaarranger.ui.DebugLog.add("CPV PIN released ch$channel; style voice restored")
+            reconcilePin(channel,voiceSection,true)
             true
         } else {
             voicePins[channel]=pin
-            appliedChannelStates.remove(channel)
-            audioEngine.pinStyleChannel(channel,pin)
+            if(sectionVoicePins[voiceSection]?.containsKey(channel)==true) true // the section-level pin still wins here
+            else { appliedChannelStates.remove(channel); val ok=audioEngine.pinStyleChannel(channel,pin); if(ok) installedPins[channel]=pin else installedPins.remove(channel); ok }
         }
     }
     fun voicePin(channel:Int):com.yourapp.yamahaarranger.style.StyleVoicePin? = voicePins[channel]
+    /** Style Voice Editor: internal voice for one section only (null releases). Melodic channels 4..7 excluded: Rhythm 8/9 stay with the Style. */
+    fun setSectionVoicePin(section:String, channel:Int, pin:com.yourapp.yamahaarranger.style.StyleVoicePin?):Boolean = lifecycle {
+        if(channel !in 10..15) return@lifecycle false
+        if(pin==null) { sectionVoicePins[section]?.remove(channel); if(sectionVoicePins[section]?.isEmpty()==true) sectionVoicePins.remove(section) }
+        else sectionVoicePins.getOrPut(section){mutableMapOf()}[channel]=pin
+        if(section==voiceSection) reconcilePin(channel,section,pin==null) else true
+    }
+    fun sectionVoicePin(section:String, channel:Int) = sectionVoicePins[section]?.get(channel)
+
+    /** Style Voice Editor: replace the Voice sent to MIDI OUT for a melodic channel. Internal sound is not touched. */
+    fun setExternalVoice(section:String?, channel:Int, voice:com.yourapp.yamahaarranger.style.ExternalVoice?):Boolean = lifecycle {
+        if(channel !in 10..15) return@lifecycle false
+        if(voice!=null && (voice.msb !in 0..127 || voice.lsb !in 0..127 || voice.program !in 0..127)) return@lifecycle false
+        if(section==null) { if(voice==null) partExternal.remove(channel) else partExternal[channel]=voice }
+        else if(voice==null) { sectionExternal[section]?.remove(channel); if(sectionExternal[section]?.isEmpty()==true) sectionExternal.remove(section) }
+        else sectionExternal.getOrPut(section){mutableMapOf()}[channel]=voice
+        // Explicit user action: show the new effective Voice on the module at once, only for the part that is in use now.
+        if(voiceSection.isNotEmpty() && (section==null || section==voiceSection)) resendMidiVoice(channel)
+        true
+    }
+    fun externalVoice(section:String?, channel:Int) = if(section==null) partExternal[channel] else sectionExternal[section]?.get(channel)
+
+    private fun resendMidiVoice(channel:Int) {
+        val ext = effectiveExternal(voiceSection,channel)
+        if(ext!=null) { midiInputManager.sendProgramChange(channel,ext.program,ext.msb,ext.lsb); return }
+        val v = lastStyleVoice[channel] ?: return
+        if(v.drum) return
+        midiInputManager.sendProgramChange(channel,v.program,(v.bank ushr 7).coerceIn(0,127),(v.bank and 127))
+    }
+
     /** Re-install every pin after an SF2 reload (native font ids change). */
-    fun reapplyVoicePins():Map<Int,Boolean> = lifecycle { voicePins.mapValues { (ch,pin) -> audioEngine.pinStyleChannel(ch,pin) } }
+    fun reapplyVoicePins():Map<Int,Boolean> = lifecycle {
+        val channels = voicePins.keys + (sectionVoicePins[voiceSection]?.keys ?: emptySet())
+        channels.associateWith { ch -> effectivePin(voiceSection,ch)?.let { pin -> audioEngine.pinStyleChannel(ch,pin).also { ok -> if(ok) installedPins[ch]=pin else installedPins.remove(ch) } } ?: false }
+    }
     /** After an SF2 reload every native channel is reset: re-apply all style voices at the next section. */
     fun invalidateAppliedVoices() = lifecycle { appliedChannelStates.clear(); lastAppliedSection="" }
     /** A new style starts with no pins; its own saved pins are restored afterwards. */
     fun clearVoicePins() = lifecycle {
-        voicePins.keys.toList().forEach { audioEngine.unpinStyleChannel(it); appliedChannelStates.remove(it) }
-        voicePins.clear(); lastStyleVoice.clear()
+        installedPins.keys.toList().forEach { audioEngine.unpinStyleChannel(it); appliedChannelStates.remove(it) }
+        voicePins.keys.toList().forEach { if(it !in installedPins) audioEngine.unpinStyleChannel(it) }
+        voicePins.clear(); sectionVoicePins.clear(); installedPins.clear(); partExternal.clear(); sectionExternal.clear()
+        lastStyleVoice.clear(); voiceSection=""
     }
     private fun applyStyleVoice(channel:Int, v:StyleVoiceState) {
         if(v.drum && audioEngine.drumABResolved) applyDrumAB(v.section,channel,v.msb,v.lsb,v.program,v.source)
@@ -792,6 +854,11 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         f12Timing.section(section.name)
         val startedAtNanos = System.nanoTime()
         com.yourapp.yamahaarranger.ui.DebugLog.add("⏱ CASM VOICE APPLY START section=${section.name}")
+        voiceSection = section.name
+        if(sectionVoicePins.isNotEmpty()) section.parts.forEach { part ->
+            val dest = (part.casmPolicies.firstOrNull() ?: part.casm)?.destinationChannel ?: return@forEach
+            if(dest in 10..15 && dest !in lockedChannels) reconcilePin(dest, section.name, false)
+        }
         val explicitByDestination = linkedMapOf<Int, StylePartModel>()
         section.parts.forEach { part ->
             val policies = part.casmPolicies.ifEmpty { listOfNotNull(part.casm) }
@@ -853,7 +920,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             // soundfont state is authoritative at every section activation.
             val forceNativePreset = stringVoice && destination in 13..14
             lastStyleVoice[destination] = StyleVoiceState(section, prog, audioBank, c.voiceName, drum, r22Msb, r22Lsb, r22Source)
-            val pin = voicePins[destination]
+            val pin = effectivePin(section.name, destination)
             if(pin!=null) com.yourapp.yamahaarranger.ui.DebugLog.add("CPV PIN keeps ch$destination=${pin.soundFontName} ${pin.bank}:${pin.program}; style request pc=$prog bank=$audioBank not applied to audio")
             if(pin==null && drum && audioEngine.drumABResolved) applyDrumAB(section,destination,r22Msb,r22Lsb,prog,r22Source)
             if (forceNativePreset || appliedChannelStates[destination] != nativeState) {
@@ -873,7 +940,11 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             // R22_OBSERVE_SETUP_BEGIN
             if(drum && DrumKitShadowRuntime.active) DrumKitShadowRuntime.observe(section,destination,r22Msb,r22Lsb,prog,r22Source,audioEngine.drumChannelSelection(destination))
             // R22_OBSERVE_SETUP_END
-            midiInputManager.sendProgramChange(destination, prog, midiMsb, midiLsb)
+            val external = if (drum) null else effectiveExternal(section.name, destination)
+            if (external != null) {
+                midiInputManager.sendProgramChange(destination, external.program, external.msb, external.lsb)
+                com.yourapp.yamahaarranger.ui.DebugLog.add("VOICE OVERRIDE MIDI OUT ch$destination ${external.msb}:${external.lsb}:${external.program} replaces style request $midiMsb:$midiLsb:$prog")
+            } else midiInputManager.sendProgramChange(destination, prog, midiMsb, midiLsb)
             applied += destination
             val source = if (override?.program != null) "STYLE OVERRIDE" else if (explicit != null) "actual MIDI setup" else "fallback name"
             com.yourapp.yamahaarranger.ui.DebugLog.add("🎼 dst$destination: ${c.voiceName} → PC=$prog MIDIbank=$midiMsb:$midiLsb SFbank=$audioBank mix=$volume/$pan/$expression/$reverb/$chorus ($source)")
@@ -1189,7 +1260,9 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                         val dynMsb=(styleBank ushr 7).takeIf { s.part.events.any { e->e.channel==s.event.channel && e.tick<=s.tick && e.isControlChange && e.note==0 } }
                         val dynLsb=(styleBank and 127).takeIf { s.part.events.any { e->e.channel==s.event.channel && e.tick<=s.tick && e.isControlChange && e.note==32 } }
                         lastStyleVoice[destination]=StyleVoiceState(section,program,bank,null,drum,dynMsb,dynLsb,"DYNAMIC_PC")
-                        if(voicePins.containsKey(destination)) com.yourapp.yamahaarranger.ui.DebugLog.add("CPV PIN keeps ch$destination; DYNAMIC_PC_SUPPRESSED_BY_OVERRIDE pc=$program bank=$bank")
+                        val dynamicPin = effectivePin(section.name,destination)
+                        val dynamicExternal = if(drum) null else effectiveExternal(section.name,destination)
+                        if(dynamicPin!=null) com.yourapp.yamahaarranger.ui.DebugLog.add("CPV PIN keeps ch$destination; DYNAMIC_PC_SUPPRESSED_BY_OVERRIDE pc=$program bank=$bank")
                         else if(drum && audioEngine.drumABResolved) applyDrumAB(section,destination,
                             (styleBank ushr 7).takeIf { s.part.events.any { e->e.channel==s.event.channel && e.tick<=s.tick && e.isControlChange && e.note==0 } },
                             (styleBank and 127).takeIf { s.part.events.any { e->e.channel==s.event.channel && e.tick<=s.tick && e.isControlChange && e.note==32 } },program,"DYNAMIC_PC")
@@ -1199,7 +1272,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                             (styleBank ushr 7).takeIf { s.part.events.any { e->e.channel==s.event.channel && e.tick<=s.tick && e.isControlChange && e.note==0 } },
                             (styleBank and 127).takeIf { s.part.events.any { e->e.channel==s.event.channel && e.tick<=s.tick && e.isControlChange && e.note==32 } },program,"DYNAMIC_PC",audioEngine.drumChannelSelection(destination))
                         // R22_OBSERVE_DYNAMIC_END
-                        midiInputManager.sendProgramChange(destination, program, msb, lsb)
+                        if(dynamicExternal!=null) com.yourapp.yamahaarranger.ui.DebugLog.add("VOICE OVERRIDE MIDI OUT ch$destination keeps ${dynamicExternal.msb}:${dynamicExternal.lsb}:${dynamicExternal.program}; DYNAMIC_PC_SUPPRESSED_BY_OVERRIDE pc=$program bank=$bank")
+                        else midiInputManager.sendProgramChange(destination, program, msb, lsb)
                         com.yourapp.yamahaarranger.ui.DebugLog.add(
                             "DYNAMIC PC src" + s.event.channel + " -> dst" + destination +
                                 " PC=" + program + " bank=" + msb + ":" + lsb + " SFbank=" + bank

@@ -715,6 +715,16 @@ class ArrangerBrain @Inject constructor(
         ensureSequencer()
         return sequencer.setVoicePin(channel, pin)
     }
+    /** Style Voice Editor: internal voice for one section only. */
+    fun setStyleSectionVoicePin(section: String, channel: Int, pin: com.yourapp.yamahaarranger.style.StyleVoicePin?): Boolean {
+        ensureSequencer()
+        return sequencer.setSectionVoicePin(section, channel, pin)
+    }
+    /** Style Voice Editor: Voice sent to MIDI OUT for a melodic channel (section null = every section). */
+    fun setStyleExternalVoice(section: String?, channel: Int, voice: com.yourapp.yamahaarranger.style.ExternalVoice?): Boolean {
+        ensureSequencer()
+        return sequencer.setExternalVoice(section, channel, voice)
+    }
     fun invalidateAppliedVoices() { if (::sequencer.isInitialized) sequencer.invalidateAppliedVoices() }
     fun styleVoicePin(channel: Int): com.yourapp.yamahaarranger.style.StyleVoicePin? =
         if (::sequencer.isInitialized) sequencer.voicePin(channel) else null

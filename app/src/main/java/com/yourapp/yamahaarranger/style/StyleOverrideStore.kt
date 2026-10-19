@@ -26,9 +26,6 @@ data class StyleVoiceOverride(
     val original: OriginalRef? = null
 )
 
-/** Raw MIDI numbers (0-based Program) sent to the external module in place of the Style's own request. */
-data class ExternalVoice(val msb: Int, val lsb: Int, val program: Int, val label: String)
-
 data class StyleExternalOverride(
     val channel: Int,
     val scope: OverrideScope,

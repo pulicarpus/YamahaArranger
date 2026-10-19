@@ -64,6 +64,9 @@ data class StyleVoicePin(
     val drum: Boolean
 )
 
+/** Raw MIDI numbers (0-based Program) sent to the external module in place of the Style's own request. */
+data class ExternalVoice(val msb: Int, val lsb: Int, val program: Int, val label: String)
+
 data class StylePartModel(
     val name: String,
     val events: List<StyleNoteEvent>,

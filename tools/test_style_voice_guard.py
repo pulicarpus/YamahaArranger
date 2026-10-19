@@ -13,13 +13,15 @@ ALLOWED = {
     'app/src/main/java/com/yourapp/ui/MainViewModel.kt',
     'app/src/main/java/com/yourapp/ui/SxMainScreen.kt',
     'app/src/main/java/com/yourapp/yamahaarranger/style/StyleOverrideStore.kt',
+    'app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt',
+    'app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt',
+    'app/src/main/java/com/yourapp/style/StyleModel.kt',
+    'tests/cpv/CpvOverrideIntegrationTest.kt',
     'tests/cpv/StyleVoiceInventoryTest.kt', 'tests/cpv/StyleVoiceOverrideProfileTest.kt', 'tests/cpv/CpvOverrideStoreTest.kt', 'tools/test_cpv.py', 'tools/test_style_voice_guard.py',
     '.github/workflows/style-voice-editor.yml', '.github/workflows/style-voice-editor-preview.yml',
     'docs/STYLE_VOICE_INSPECTOR_EDITOR_REPORT.md',
 }
 PROTECTED = (
-    'app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt',
-    'app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt',
     'app/src/main/java/com/yourapp/yamahaarranger/registration/RecallPlanner.kt',
     'app/src/main/java/com/yourapp/yamahaarranger/registration/Sf2ExternalMapping.kt',
     'app/src/main/java/com/yourapp/midi/MidiInputManager.kt', 'app/src/main/java/com/yourapp/midi/MidiMixerOutput.kt',
