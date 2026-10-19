@@ -19,3 +19,11 @@ StyleSequencer, CASM, ACMP, ArrangerBrain, BASSMIDI/Oboe (`app/src/main/cpp`), M
 
 ## Pengujian
 `tests/cpv/LiveV3Test.kt` (tersedia/absen/unknown/aktif, grid 3-4-4-3, setiap tombol punya aksi ViewModel nyata, empat fader independen dan monoton 0..127, tanpa tombol hantu/panggilan terlindungi, viewport landscape dan header ringkas) dijalankan bersama seluruh suite CPV JVM; `LiveControlLayoutTest` lama tetap lulus karena `LiveControlLayout.kt` tidak diubah.
+
+## V3.1 (redesign visual, fungsi V3 tidak berubah)
+- Gaya: latar navy bergradasi, panel kartu dengan garis tipis, tombol persegi panjang dengan permukaan gradasi, bayangan halus, LED tipis di atas; ACTIVE diberi bingkai amber.
+- STYLE CONTROL: empat kelompok INTRO / MAIN / FILL / ENDING dalam kartu masing-masing; MAIN A-D lebih besar (bobot 1,25 dan huruf 34 sp). Tata letak ditentukan `LiveStyleLayout` dari lebar area yang diukur Compose: satu baris empat kelompok bila tombol tersempit >= 52 dp, selain itu dua baris (INTRO+MAIN, lalu FILL+ENDING). Pada kelas lebar Redmi Pad (area kunci sekitar 735 dp) dipakai dua baris dengan tombol >= 77 dp.
+- Header 64 dp (sebelumnya 72): nama Style, chip section amber, empat chip voice (LED, nama, EXT bila ada; ketuk = toggle, tekan lama = daftar EXT), TEMPO dan TRANSPOSE kecil -/+, LED ACMP dan MIDI OUT, REG SETUP.
+- LIVE MIXER: empat fader RIGHT1, RIGHT2, RIGHT3, STYLE lebih ramping (jalur 6 dp, tutup 26 dp, tanda skala, kotak angka, garis aksen warna per channel). Binding V3 tidak berubah.
+- REGISTRATION BANK di bawah transport: "REG BANK n/N", nama bank, tombol sebelumnya/berikutnya, tepat delapan slot 1-8. LED amber = slot terpilih, cyan = terisi, redup "EMPTY" = kosong, merah "SAVE HERE" = target SAVE saat armed. Mekanisme recall/save/freeze tidak diubah; SAVE/OPTIONS/FREEZE/EXT tetap ada sebagai baris sekunder tipis (40 dp).
+- Sengaja tidak ditampilkan karena belum ada callback/state nyata: SYNC START/STOP, BREAK, FADE, CHORD ON/OFF, fader MASTER, tombol MUTE, indikator PENDING.

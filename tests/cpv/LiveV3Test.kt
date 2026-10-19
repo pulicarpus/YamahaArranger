@@ -6,7 +6,10 @@ import com.yourapp.yamahaarranger.style.StyleSectionModel
 import com.yourapp.yamahaarranger.ui.LiveSectionGrid
 import com.yourapp.yamahaarranger.ui.LiveSectionInventory
 import com.yourapp.yamahaarranger.ui.SectionLed
+import com.yourapp.yamahaarranger.ui.LiveStyleLayout
+import com.yourapp.yamahaarranger.ui.RegKeyLook
 import com.yourapp.yamahaarranger.ui.SectionPresence
+import com.yourapp.yamahaarranger.ui.liveRegKeyLook
 import com.yourapp.yamahaarranger.ui.liveSectionEnabled
 import com.yourapp.yamahaarranger.ui.liveSectionLed
 import java.io.File
@@ -81,8 +84,8 @@ class LiveV3Test {
 
     @Test fun fadersAreFourIndependentExistingVolumeActions() {
         val screen = ui("LiveControlScreen.kt")
-        val faders = Regex("LiveFader\\(\"(R1|R2|R3|STYLE)\",state\\.(\\w+),\\w+,vm::(\\w+),").findAll(screen).map { it.groupValues }.toList()
-        assertEquals(listOf("R1", "R2", "R3", "STYLE"), faders.map { it[1] })
+        val faders = Regex("LiveFader\\(\"(RIGHT1|RIGHT2|RIGHT3|STYLE)\",state\\.(\\w+),\\w+,vm::(\\w+),").findAll(screen).map { it.groupValues }.toList()
+        assertEquals(listOf("RIGHT1", "RIGHT2", "RIGHT3", "STYLE"), faders.map { it[1] })
         assertEquals(listOf("right1Volume", "right2Volume", "right3Volume", "styleVolume"), faders.map { it[2] })
         assertEquals(listOf("onRight1VolumeChange", "onRight2VolumeChange", "onRight3VolumeChange", "onStyleVolumeChange"), faders.map { it[3] })
         val vm = ui("MainViewModel.kt")
@@ -110,9 +113,42 @@ class LiveV3Test {
         // header: style name, section, voice chips, tempo and transpose steppers, ACMP and MIDI OUT status
         for (needle in listOf("state.styleName", "state.activeSection.uppercase()", "LiveStepper(\"TEMPO\"", "LiveStepper(\"TRANSPOSE\"", "LiveStatusLed(\"ACMP\"", "LiveStatusLed(\"MIDI OUT\""))
             assertTrue(needle, screen.contains(needle))
-        assertTrue("header stays compact", Regex("height\\((\\d+)\\.dp\\),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy\\(8.dp\\)\\) \\{\\s+LiveButton\\(\"ARRANGER\"")
-            .find(screen)!!.groupValues[1].toInt() <= 80)
+        val headerDp = Regex("LIVE_HEADER_DP=(\\d+)").find(screen)!!.groupValues[1].toInt()
+        assertTrue("header stays compact ($headerDp dp)", headerDp in 48..72)
         // 8 registration slots and bank navigation are kept
         assertTrue(screen.contains("(0..7).forEach { index ->")); assertTrue(screen.contains("vm.onLiveBankChange(-1)"))
+    }
+
+    // ---- V3.1 ----
+    @Test fun styleLayoutKeepsEveryKeyTouchSizedAndSwitchesByWidth() {
+        for (w in listOf(600f, 686f, 734f, 800f, 900f, 1014f, 1200f, 1500f)) {
+            val one = LiveStyleLayout.oneRow(w)
+            assertTrue("area $w oneRow=$one key=${LiveStyleLayout.minKeyWidth(w, one)}", LiveStyleLayout.minKeyWidth(w, one) >= LiveStyleLayout.MIN_TOUCH)
+        }
+        assertFalse("Redmi Pad class width (about 734 dp of key area) uses two rows", LiveStyleLayout.oneRow(734f))
+        assertTrue("wide landscape uses one row of four groups", LiveStyleLayout.oneRow(1100f))
+        assertTrue(LiveStyleLayout.MAIN_WEIGHT > 1f)
+    }
+
+    @Test fun registrationKeysLookDistinctAndEmptyIsDifferent() {
+        assertEquals(RegKeyLook.ACTIVE, liveRegKeyLook(hasSlot = true, selected = true, saveArmed = false))
+        assertEquals(RegKeyLook.FILLED, liveRegKeyLook(hasSlot = true, selected = false, saveArmed = false))
+        assertEquals(RegKeyLook.EMPTY, liveRegKeyLook(hasSlot = false, selected = false, saveArmed = false))
+        assertEquals(RegKeyLook.EMPTY, liveRegKeyLook(hasSlot = false, selected = true, saveArmed = false))
+        assertEquals(RegKeyLook.SAVE_TARGET, liveRegKeyLook(hasSlot = false, selected = false, saveArmed = true))
+        val screen = ui("LiveControlScreen.kt")
+        assertEquals("exactly one eight-slot loop", 1, Regex("\\(0\\.\\.7\\)\\.forEach \\{ index ->").findAll(screen).count())
+        assertTrue(screen.contains("vm.onLiveSlotTap(index,slotName)"))
+    }
+
+    @Test fun onlyRealControlsAreShown() {
+        val screen = ui("LiveControlScreen.kt")
+        for (absent in listOf("SYNC START", "SYNC STOP", "BREAK", "\"FADE", "CHORD ON", "MASTER", "\"MUTE", "toggleMixerKeyboardMute"))
+            assertFalse("unsupported control must not appear: $absent", screen.contains(absent))
+        val faders = Regex("LiveFader\\(\"").findAll(screen).count()
+        assertEquals("exactly four faders", 4, faders)
+        // transport callbacks are the existing ViewModel actions
+        for (action in listOf("vm::onStartStop", "vm::toggleAcmp", "vm::toggleAutoFill", "vm::toggleRelease"))
+            assertTrue(action, screen.contains(action))
     }
 }

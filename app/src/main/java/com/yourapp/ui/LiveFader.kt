@@ -24,10 +24,11 @@ fun LiveFader(name: String, value: Int, accent: Color, onChange: (Int) -> Unit, 
     val update by rememberUpdatedState(onChange)
     val shown = value.coerceIn(0, 127)
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("$shown", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(16.dp))
-        Box(Modifier.weight(1f).width(60.dp)
-            .background(Color(0xFF0B0F14), RoundedCornerShape(6.dp))
+        Box(Modifier.fillMaxWidth().background(Color(0xFF070B12), RoundedCornerShape(4.dp)).padding(vertical = 3.dp), contentAlignment = Alignment.Center) {
+            Text("$shown", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        }
+        Spacer(Modifier.height(14.dp))
+        Box(Modifier.weight(1f).width(40.dp)
             .semantics {
                 contentDescription = "$name volume"
                 progressBarRangeInfo = ProgressBarRangeInfo(shown.toFloat(), 0f..127f, 126)
@@ -42,17 +43,22 @@ fun LiveFader(name: String, value: Int, accent: Color, onChange: (Int) -> Unit, 
             }) {
             BoxWithConstraints(Modifier.fillMaxSize()) {
                 val h = maxHeight
-                val thumb = 30.dp
+                val thumb = 26.dp
                 val fraction = shown / 127f
-                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth(0.34f).fillMaxHeight(fraction).background(accent.copy(alpha = 0.55f)))
-                Box(Modifier.align(Alignment.TopCenter).width(4.dp).fillMaxHeight().background(Color(0xFF1E2630)))
+                // groove, level fill, tick marks, and a cap with a centre line in the channel accent colour
+                Box(Modifier.align(Alignment.TopCenter).width(6.dp).fillMaxHeight().background(Color(0xFF05080D), RoundedCornerShape(3.dp)))
+                Box(Modifier.align(Alignment.BottomCenter).width(6.dp).fillMaxHeight(fraction).background(accent.copy(alpha = 0.75f), RoundedCornerShape(3.dp)))
+                listOf(0f, 0.25f, 0.5f, 0.75f, 1f).forEach { t ->
+                    Box(Modifier.align(Alignment.BottomStart).offset(y = -(h * t) + 1.dp).width(7.dp).height(2.dp).background(Color(0xFF4A5868)))
+                }
                 Box(Modifier.align(Alignment.BottomCenter).offset(y = -(h * fraction - thumb / 2)).fillMaxWidth().height(thumb)
-                    .background(Color(0xFF39424C), RoundedCornerShape(4.dp))) {
-                    Box(Modifier.align(Alignment.Center).fillMaxWidth(0.8f).height(3.dp).background(accent))
+                    .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0xFF55616F), Color(0xFF2A333D))), RoundedCornerShape(4.dp))) {
+                    Box(Modifier.align(Alignment.Center).fillMaxWidth(0.75f).height(3.dp).background(accent))
                 }
             }
         }
-        Spacer(Modifier.height(16.dp))
-        Text(name, color = accent, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(14.dp))
+        Box(Modifier.fillMaxWidth().height(3.dp).background(accent))
+        Text(name, color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
     }
 }

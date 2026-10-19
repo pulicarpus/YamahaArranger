@@ -49,3 +49,28 @@ fun liveSectionEnabled(led: SectionLed): Boolean = led != SectionLed.ABSENT
 
 /** The four independent LIVE faders: label and the existing ViewModel volume action each one drives. */
 enum class LiveFaderId(val label: String) { RIGHT1("R1"), RIGHT2("R2"), RIGHT3("R3"), STYLE("STYLE") }
+
+/** Style-control layout plan (dp). One row of four groups when every key stays comfortably wide, otherwise two rows. */
+object LiveStyleLayout {
+    const val MAIN_WEIGHT = 1.25f
+    const val ONE_ROW_MIN_KEY = 52f
+    const val MIN_TOUCH = 48f
+    private const val KEY_GAP = 4f
+    private const val GROUP_GAP = 8f
+    private const val GROUP_PAD = 8f
+    /** Narrowest key (INTRO/FILL/ENDING caption keys) for an area of [areaWidthDp]. */
+    fun minKeyWidth(areaWidthDp: Float, oneRow: Boolean): Float =
+        if (oneRow) (areaWidthDp - 3 * GROUP_GAP - 8 * GROUP_PAD - 10 * KEY_GAP) / (3f + 4 * MAIN_WEIGHT + 4f + 3f)
+        else minOf((areaWidthDp - GROUP_GAP - 4 * GROUP_PAD - 5 * KEY_GAP) / (3f + 4 * MAIN_WEIGHT),
+                   (areaWidthDp - GROUP_GAP - 4 * GROUP_PAD - 5 * KEY_GAP) / 7f)
+    fun oneRow(areaWidthDp: Float): Boolean = minKeyWidth(areaWidthDp, true) >= ONE_ROW_MIN_KEY
+}
+
+/** Registration key appearance: exactly one of these per slot. */
+enum class RegKeyLook { ACTIVE, FILLED, EMPTY, SAVE_TARGET }
+fun liveRegKeyLook(hasSlot: Boolean, selected: Boolean, saveArmed: Boolean): RegKeyLook = when {
+    saveArmed -> RegKeyLook.SAVE_TARGET
+    selected && hasSlot -> RegKeyLook.ACTIVE
+    hasSlot -> RegKeyLook.FILLED
+    else -> RegKeyLook.EMPTY
+}
