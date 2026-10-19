@@ -30,9 +30,14 @@ object RecallPlanner {
                     if(catalog.count { it == new.sf2 } == 1) sf2.add(RecallStep.Sf2(part,new.sf2))
                     else issues.add(RecallIssue(part,if(catalog.none { it == new.sf2 }) "SF2_MISSING" else "SF2_AMBIGUOUS"))
                 }
-                if(target.outputMode != OutputMode.INTERNAL && new.external != null) {
-                    if(midiOutActive) ext.add(RecallStep.External(part,new.external))
-                    else issues.add(RecallIssue(part,"SKIPPED_MIDI_OUT_OFF"))
+                if(target.outputMode != OutputMode.INTERNAL) {
+                    // A slot saved after a normal voice selection carries no EXT-list entry: fall back to the identity the
+                    // selector itself sends for that SF2 voice, so the external keyboard follows the voice shown on screen.
+                    val voice=new.external ?: new.sf2?.let(Sf2ExternalMapping::voiceFor)
+                    if(voice != null) {
+                        if(midiOutActive) ext.add(RecallStep.External(part,voice))
+                        else if(new.external != null) issues.add(RecallIssue(part,"SKIPPED_MIDI_OUT_OFF"))
+                    }
                 }
             }
             if(!freeze.volumes && old.volume != new.volume) volume.add(RecallStep.Volume(part,new.volume.coerceIn(0,127)))

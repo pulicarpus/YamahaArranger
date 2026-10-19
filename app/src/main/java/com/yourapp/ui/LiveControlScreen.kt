@@ -101,7 +101,7 @@ fun LiveControlScreen(state: MainUiState, vm: MainViewModel, onArranger: () -> U
                                 val slot=state.rightVoices[ch]
                                 val enabled=if(ch==3) state.leftVoiceEnabled else slot.enabled
                                 val tag=if(ch==3) "LEFT" else "R${ch+1}"
-                                val ext=external[ch]?.label
+                                val ext=external[ch]?.takeUnless { com.yourapp.yamahaarranger.registration.Sf2ExternalMapping.isDerived(it) }?.label
                                 LiveVoiceChip(tag,if(enabled) slot.displayName() else "OFF",ext,enabled,Modifier.weight(1f).fillMaxHeight(),
                                     onClick={if(ch==3) vm.toggleLeftVoice() else vm.toggleRightVoice(ch)},onLong={externalPart=ch;panel="EXTERNAL"})
                             }

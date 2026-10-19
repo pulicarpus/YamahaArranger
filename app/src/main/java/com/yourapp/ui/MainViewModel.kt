@@ -419,6 +419,21 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    /**
+     * The normal voice selector's external side: remember the identity the external keyboard is told about (so SAVE stores
+     * what is on screen, never a stale EXT-list entry) and send exactly Bank MSB/LSB + Program, then the release time.
+     * Registration recall reuses [selectExternalVoice] with the same values; there is no second mapping.
+     */
+    fun mirrorKeyboardVoiceToExternal(layer: Int, bank: Int, program: Int, name: String) {
+        val voice=com.yourapp.yamahaarranger.registration.Sf2ExternalMapping.voiceFor(bank,program,name)
+        registrationExternal.update { list -> list.mapIndexed { i, old -> if(i==layer) voice else old } }
+        if(voice!=null && midiInputManager.midiOutEnabled) {
+            midiInputManager.sendProgramChange(layer,voice.program,voice.msb,voice.lsb)
+            // A voice change may restore the external voice's own release.
+            if(layer in 0..2) midiInputManager.sendReleaseTime(layer,_releaseControl.value.effectiveValue)
+        }
+    }
+
     /** Explicit external identity only. OFF stores the selection, never queues MIDI for reconnect. */
     fun selectExternalVoice(part: KeyboardPart, voice: com.yourapp.yamahaarranger.registration.ExternalVoice) {
         require(voice.msb in 0..127 && voice.lsb in 0..127 && voice.program in 0..127)
@@ -446,7 +461,13 @@ class MainViewModel @Inject constructor(
             if(!isCurrent()) return com.yourapp.yamahaarranger.registration.VoiceResult.SUPERSEDED
             val matches=audioEngine.loadedSoundFontPresets().filter { it.soundFontName==voice.sf2FileName && it.bank==voice.bank && it.program==voice.program && it.name==voice.presetName }
             val preset=matches.singleOrNull() ?: return com.yourapp.yamahaarranger.registration.VoiceResult.FAILED
-            return applyKeyboardVoice(KeyboardPart.fromChannel(part.channel),preset,mirrorToMidiOut=false,isCurrent=isCurrent)
+            val result=applyKeyboardVoice(KeyboardPart.fromChannel(part.channel),preset,mirrorToMidiOut=false,isCurrent=isCurrent)
+            // Keep the saved-external identity in step with the SF2 voice now on screen (no MIDI here: INTERNAL stays silent).
+            if(result==com.yourapp.yamahaarranger.registration.VoiceResult.APPLIED) {
+                val derived=com.yourapp.yamahaarranger.registration.Sf2ExternalMapping.voiceFor(preset.bank,preset.program,preset.name)
+                registrationExternal.update { list -> list.mapIndexed { i, old -> if(i==part.channel) derived else old } }
+            }
+            return result
         }
         override suspend fun awaitSf2Idle() = awaitRegistrationVoicesIdle()
         override suspend fun apply(step: com.yourapp.yamahaarranger.registration.RecallStep, isCurrent: () -> Boolean): com.yourapp.yamahaarranger.registration.VoiceResult {
@@ -455,6 +476,8 @@ class MainViewModel @Inject constructor(
                 is com.yourapp.yamahaarranger.registration.RecallStep.External -> {
                     if(!midiInputManager.midiOutEnabled) return com.yourapp.yamahaarranger.registration.VoiceResult.FAILED
                     selectExternalVoice(KeyboardPart.fromChannel(step.part.channel),step.voice)
+                    // Same follow-up as the normal selector (a voice change may restore the external voice's own release).
+                    if(step.part.channel in 0..2) midiInputManager.sendReleaseTime(step.part.channel,_releaseControl.value.effectiveValue)
                 }
                 is com.yourapp.yamahaarranger.registration.RecallStep.Enabled -> {
                     if(step.part.channel==3) setLeftVoiceEnabled(step.value)
@@ -817,13 +840,7 @@ class MainViewModel @Inject constructor(
                 } }
                 // An external MIDI device cannot receive an SF2 identity. Only
                 // mirror standard MIDI-sized values; never clamp a native preset.
-                if (midiInputManager.midiOutEnabled && preset.program in 0..127 && preset.bank in 0..16383) {
-                    val msb = if (preset.bank >= 128) preset.bank / 128 else preset.bank
-                    val lsb = if (preset.bank >= 128) preset.bank % 128 else 0
-                    midiInputManager.sendProgramChange(layer, preset.program, msb, lsb)
-                    // A voice change may restore the external voice's own release.
-                    if (layer in 0..2) midiInputManager.sendReleaseTime(layer, _releaseControl.value.effectiveValue)
-                }
+                mirrorKeyboardVoiceToExternal(layer, preset.bank, preset.program, preset.name)
             } else {
                 DebugLog.add("❌ VOICE selection unavailable/failed: ${preset.soundFontName} ${preset.bank}:${preset.program}")
             }
