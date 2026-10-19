@@ -18,7 +18,7 @@ ALLOWED = {
     'app/src/main/java/com/yourapp/style/StyleModel.kt',
     'app/src/main/java/com/yourapp/yamahaarranger/style/StyleVoiceEditorOps.kt',
     'app/src/main/java/com/yourapp/yamahaarranger/audio/AudioEngineManager.kt',
-    'tests/cpv/StyleVoiceEditorOpsTest.kt',
+    'tests/cpv/StyleVoiceEditorOpsTest.kt', 'tests/cpv/StyleVoiceRositaTest.kt',
     'tests/cpv/CpvOverrideIntegrationTest.kt',
     'tests/cpv/StyleVoiceInventoryTest.kt', 'tests/cpv/StyleVoiceOverrideProfileTest.kt', 'tests/cpv/CpvOverrideStoreTest.kt', 'tools/test_cpv.py', 'tools/test_style_voice_guard.py',
     '.github/workflows/style-voice-editor.yml', '.github/workflows/style-voice-editor-preview.yml',
