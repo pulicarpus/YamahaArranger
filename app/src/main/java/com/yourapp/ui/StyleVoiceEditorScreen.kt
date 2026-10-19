@@ -172,6 +172,7 @@ private fun Header(inv: StyleVoiceInventory?, loaded: Boolean, output: String, a
             Chip("PARTS", "${inv.partCount}")
             Chip("VOICES", "${inv.voiceCount} requests")
             Chip("ACTIVE", inv.activeSection?.let { StyleVoiceInventoryBuilder.sectionLabel(it) } ?: "—")
+            Chip("SESSION", if (inv.session.playing) "PLAYING" else "STOPPED")
             val overrides = inv.flat.count { it.status == VoiceStatus.OVERRIDDEN }
             Chip("PROFILE", if (actions == null) "$overrides override" else if (actions.dirty) "UNSAVED" else if (overrides > 0) "SAVED · $overrides" else "none")
         }
@@ -305,7 +306,7 @@ private fun DetailPanel(r: StyleVoiceRow?, inv: StyleVoiceInventory, actions: St
             if (r.hasCasm) "" else "  (no CASM entry; source used)", provenanceText(r.routingProvenance))
         Field("Style's own Voice name", r.casmVoiceName.ifBlank { "not carried by the file" }, "CASM table, as authored")
         Field("Resolved to", r.actualDescription, provenanceText(r.resolutionProvenance))
-        Field("Why", r.statusReason, null)
+        Field("Why", r.statusReason, if (r.reasonCode.isNotEmpty()) "code ${r.reasonCode}" else null)
         if (r.dynamicChanges.isNotEmpty()) Field("Later Program Changes in this section",
             r.dynamicChanges.joinToString("\n") { "tick ${it.tick}: ${it.msb ?: "-"}:${it.lsb ?: "-"}:${it.program}" } +
                 if (r.override != null) "\nHeld back while the replacement is active (the replacement holds for the whole section)." else "",

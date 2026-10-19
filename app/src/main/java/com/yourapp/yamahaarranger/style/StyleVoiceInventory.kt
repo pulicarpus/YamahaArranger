@@ -35,6 +35,29 @@ data class ObservedBinding(
     val reason: String
 )
 
+/** Why a row has the status it has, when that is more specific than the status itself. */
+object ReasonCode {
+    /** The engine has not reported a binding for this channel (yet). Says nothing about whether the part is audible. */
+    const val NO_BINDING_REPORTED = "NO_BINDING_REPORTED"
+    /** The engine explicitly reported that no preset can serve the request. */
+    const val PRESET_MISSING = "PRESET_MISSING"
+    /** The engine reported a binding but could not verify it by readback. */
+    const val BINDING_NOT_VERIFIED = "BINDING_NOT_VERIFIED"
+    /** The runtime reading belongs to another section. */
+    const val NOT_MEASURED_THIS_SECTION = "NOT_MEASURED_THIS_SECTION"
+    /** The Inspector never measures audio output, so AUDIO_SILENT is never produced; listed so tests can assert that. */
+    const val AUDIO_SILENT = "AUDIO_SILENT"
+}
+
+/** Engine reasons that are explicit evidence a preset is unavailable. Nothing else is read as MISSING. */
+private val EXPLICIT_MISSING_REASONS = setOf("no_compatible_candidate", "keyboard_preset_missing")
+
+/**
+ * What the Inspector knows about the playback session when the snapshot was taken.
+ * The engine binds channels when a section starts, so before START there is nothing to read.
+ */
+data class InspectorSession(val playing: Boolean = false)
+
 /** One preset of a loaded SoundFont. [pdta] is the SF2 preset-data fingerprint when known. */
 data class CatalogPreset(
     val soundFontName: String,
@@ -81,6 +104,8 @@ data class StyleVoiceRow(
     val requestProvenance: Provenance,
     val routingProvenance: Provenance,
     val resolutionProvenance: Provenance?,
+    /** See [ReasonCode]; empty when the status needs no extra code. */
+    val reasonCode: String,
     val override: RowOverride?,
     /** Edit is refused with this reason (drums, no Program Change, ...). Null when editable. */
     val readOnlyReason: String?
@@ -102,7 +127,8 @@ data class StyleVoiceInventory(
     val dialectEvidence: StyleDialectEvidence,
     val rows: List<StyleVoiceRequestRowGroup>,
     val activeSection: String?,
-    val runtimeObserved: Boolean
+    val runtimeObserved: Boolean,
+    val session: InspectorSession = InspectorSession()
 ) {
     val sections: List<String> get() = rows.map { it.section }
     val flat: List<StyleVoiceRow> get() = rows.flatMap { it.rows }
@@ -160,21 +186,23 @@ object StyleVoiceInventoryBuilder {
         observed: Map<Int, ObservedBinding>,
         activeSection: String?,
         overrides: Map<Pair<String, Int>, RowOverride> = emptyMap(),
-        requests: List<StyleVoiceRequest> = StyleVoiceRequests.extract(style)
+        requests: List<StyleVoiceRequest> = StyleVoiceRequests.extract(style),
+        session: InspectorSession = InspectorSession()
     ): StyleVoiceInventory {
         val activeKey = activeSection?.let { a -> style.sections.keys.firstOrNull { it.equals(a, true) } }
 
         // Requests that were observed live in the active section, keyed by what the resolver is asked.
         val observedByRequest = HashMap<RequestKey, ObservedBinding>()
         if (activeKey != null) requests.filter { it.section == activeKey && it.appliedToDestination }.forEach { r ->
-            observed[r.destinationChannel]?.let { observedByRequest[RequestKey.of(r)] = it }
+            // Only a real binding is carried to other sections; "nothing reported" says nothing about them.
+            observed[r.destinationChannel]?.takeIf { it.status == "BOUND" }?.let { observedByRequest[RequestKey.of(r)] = it }
         }
 
         val grouped = requests.groupBy { it.section }
         val ordered = grouped.keys.sortedWith(compareBy({ sectionRank(it) }, { it }))
         val groups = ordered.map { sectionName ->
             val rows = grouped.getValue(sectionName).map { r ->
-                row(r, sectionName == activeKey, catalog, observed, observedByRequest, overrides[sectionName to r.destinationChannel]
+                row(r, sectionName == activeKey, catalog, observed, observedByRequest, session, overrides[sectionName to r.destinationChannel]
                     ?: overrides[ALL_SECTIONS to r.destinationChannel])
             }.sortedWith(compareBy({ it.destinationChannel }, { it.partIndex }))
             StyleVoiceRequestRowGroup(sectionName, sectionLabel(sectionName), rows)
@@ -185,7 +213,8 @@ object StyleVoiceInventoryBuilder {
             dialectEvidence = style.dialectIdentity.evidence,
             rows = groups,
             activeSection = activeKey,
-            runtimeObserved = observed.isNotEmpty() && activeKey != null
+            runtimeObserved = observed.values.any { it.status == "BOUND" } && activeKey != null,
+            session = session
         )
     }
 
@@ -203,6 +232,7 @@ object StyleVoiceInventoryBuilder {
         catalog: List<CatalogPreset>,
         observed: Map<Int, ObservedBinding>,
         byRequest: Map<RequestKey, ObservedBinding>,
+        session: InspectorSession,
         override: RowOverride?
     ): StyleVoiceRow {
         val role = roleOf(r.destinationChannel) ?: "Channel ${r.destinationChannel + 1}"
@@ -223,11 +253,18 @@ object StyleVoiceInventoryBuilder {
             override != null -> VoiceStatus.OVERRIDDEN
             else -> c.status
         }
+        val noBinding = c.reasonCode == ReasonCode.NO_BINDING_REPORTED ||
+            (c.status == VoiceStatus.UNKNOWN && binding == null && isActiveSection && r.appliedToDestination && r.program != null)
+        val code = if (c.reasonCode.isNotEmpty()) c.reasonCode else if (noBinding) ReasonCode.NO_BINDING_REPORTED
+            else if (c.status == VoiceStatus.UNKNOWN && binding == null && !isActiveSection && r.program != null) ReasonCode.NOT_MEASURED_THIS_SECTION else ""
+        val sessionHint = if (!noBinding) "" else if (!session.playing)
+            " Style is stopped: the engine binds Voices when a section starts, so there is nothing to read yet. Start the Style, then REFRESH. This is not evidence that the part is silent."
+        else " Style is running but the engine has reported no binding for this channel. This is not evidence that the part is silent."
         val reason = when {
             override != null -> "Override ${override.state.lowercase()}: ${override.description}. Original request: ${c.reason}"
             inherited != null && c.status != VoiceStatus.UNKNOWN ->
                 "${c.reason} (same request was observed in the active section; not measured for this section)"
-            else -> c.reason
+            else -> (if (code.isNotEmpty() && c.status == VoiceStatus.UNKNOWN) "$code: " else "") + c.reason + sessionHint
         }
         val prov = when {
             c.status == VoiceStatus.UNKNOWN && binding == null && c.catalogMatch == null -> null
@@ -256,6 +293,7 @@ object StyleVoiceInventoryBuilder {
             requestProvenance = Provenance.AUTHORED,
             routingProvenance = if (r.hasCasm) Provenance.AUTHORED else Provenance.INTERPRETED,
             resolutionProvenance = prov,
+            reasonCode = code,
             override = override,
             readOnlyReason = readOnly
         )
@@ -265,7 +303,8 @@ object StyleVoiceInventoryBuilder {
         val status: VoiceStatus, val reason: String, val actualDescription: String,
         val actualBank: Int? = null, val actualProgram: Int? = null,
         val actualSoundFont: String = "", val actualPresetName: String = "",
-        val catalogMatch: CatalogPreset? = null
+        val catalogMatch: CatalogPreset? = null,
+        val reasonCode: String = ""
     )
 
     /** SF2 bank number the engine derives from a Yamaha MSB/LSB pair (bank = MSB*128 + LSB). */
@@ -303,11 +342,19 @@ object StyleVoiceInventoryBuilder {
 
     private fun classifyObserved(r: StyleVoiceRequest, b: ObservedBinding, wantBank: Int, program: Int): Classified {
         if (b.status != "BOUND") {
-            val missing = b.status == "UNRESOLVED"
-            return Classified(
-                if (missing) VoiceStatus.MISSING else VoiceStatus.UNKNOWN,
-                "Engine reports ${b.status}${if (b.reason.isNotBlank()) " (${b.reason})" else ""}.",
-                if (missing) "no Voice bound (silent)" else "binding not verified")
+            val engine = "Engine reports ${b.status}${if (b.reason.isNotBlank()) " (${b.reason})" else ""}."
+            return when {
+                // Explicit evidence that no preset can serve the request.
+                b.status == "UNRESOLVED" && b.reason in EXPLICIT_MISSING_REASONS ->
+                    Classified(VoiceStatus.MISSING, "$engine No loaded preset can serve this request.", "no preset available",
+                        reasonCode = ReasonCode.PRESET_MISSING)
+                // Nothing bound yet (drum binding not made, channel never initialised, unknown reason): not evidence of anything.
+                b.status == "UNINITIALIZED" || b.status == "UNRESOLVED" && (b.reason.isBlank() || b.reason == "no_verified_drum_binding") ->
+                    Classified(VoiceStatus.UNKNOWN, "The engine has not bound this channel. $engine", "no binding reported",
+                        reasonCode = ReasonCode.NO_BINDING_REPORTED)
+                else -> Classified(VoiceStatus.UNKNOWN, "$engine The binding is not verified, so nothing is claimed about the sound.",
+                    "binding not verified", reasonCode = ReasonCode.BINDING_NOT_VERIFIED)
+            }
         }
         val bound = "${b.soundFontName} ${b.bank}:${b.program} '${b.presetName}'"
         val numberMatch = b.bank == wantBank && b.program == program
@@ -332,10 +379,10 @@ object StyleVoiceInventoryBuilder {
 
     /** Plain-text dump used by the report and logs. */
     fun report(inv: StyleVoiceInventory): String = buildString {
-        appendLine("style='${inv.styleName}' format=${inv.dialectText} active=${inv.activeSection ?: "-"} runtime=${inv.runtimeObserved}")
+        appendLine("style='${inv.styleName}' format=${inv.dialectText} active=${inv.activeSection ?: "-"} runtime=${inv.runtimeObserved} playing=${inv.session.playing}")
         for (g in inv.rows) for (row in g.rows) {
             appendLine("${g.label} | ${row.partRole} (src ${row.sourceChannel + 1} -> dst ${row.destinationChannel + 1}) | " +
-                "${row.rawRequest} | ${row.actualDescription} | ${row.status}")
+                "${row.rawRequest} | ${row.actualDescription} | ${row.status}${if (row.reasonCode.isNotEmpty()) " [${row.reasonCode}]" else ""}")
         }
     }
 }

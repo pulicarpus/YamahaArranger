@@ -1403,9 +1403,9 @@ class MainViewModel @Inject constructor(
      * Style Voice Inspector snapshot. Reads the loaded-preset snapshot and the native channel bindings,
      * so it must run off the main thread. Read-only: nothing here sends MIDI or changes a binding.
      */
-    suspend fun loadStyleVoiceInventory(): com.yourapp.yamahaarranger.style.StyleVoiceInventory? = withContext(Dispatchers.Default) {
+    suspend fun loadStyleVoiceInventory(knownCatalog: List<com.yourapp.yamahaarranger.style.CatalogPreset>? = null): com.yourapp.yamahaarranger.style.StyleVoiceInventory? = withContext(Dispatchers.Default) {
         val style = drumAuditStyle ?: return@withContext null
-        val catalog = loadEditorCatalog()
+        val catalog = knownCatalog ?: loadEditorCatalog()
         val observed = channelBindings().mapValues { (ch, b) ->
             com.yourapp.yamahaarranger.style.ObservedBinding(ch, b.status, b.source, b.soundFontName, b.pdta, b.bank, b.program, b.presetName, b.reason)
         }
@@ -1414,7 +1414,8 @@ class MainViewModel @Inject constructor(
             currentOverrides, style.sections.keys, _midiOutEnabled.value,
             { overrideStates[stateKey(false, it.scope, it.section, it.channel)] ?: "UNVERIFIED" },
             { overrideStates[stateKey(true, it.scope, it.section, it.channel)] ?: "UNVERIFIED" })
-        com.yourapp.yamahaarranger.style.StyleVoiceInventoryBuilder.build(style, catalog, observed, activeKey, overrides)
+        com.yourapp.yamahaarranger.style.StyleVoiceInventoryBuilder.build(style, catalog, observed, activeKey, overrides,
+            session = com.yourapp.yamahaarranger.style.InspectorSession(playing = uiState.value.isPlaying))
     }
 
     /** External Voices the user has saved in the Registration EXT list (the only PSR-E343 numbers this app can offer). */

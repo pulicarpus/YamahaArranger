@@ -76,3 +76,11 @@ Inspector (`StyleVoiceInventoryTest`, `StyleVoiceRositaTest` fixture nyata), mod
 * Drum kit per-style tetap lewat picker Mixer lama (tidak diedit di editor ini).
 * Perubahan yang belum di-SAVE hilang saat style dimuat ulang; picker Mixer menyimpan hanya perubahannya sendiri.
 * Skrip guard historis (`test_drum_shadow_guards`, `test_mix_percussion_boundaries`, `test_f12_timing`, `test_production_regression_bypass`) sudah gagal pada baseline dan bukan bagian CI; tidak diubah.
+
+## Perbaikan setelah uji perangkat (Rhythm 1/2 tampil MISSING padahal terdengar)
+Akar masalah: sebelum START engine belum membuat binding (`UNRESOLVED/no_verified_drum_binding` untuk drum, `UNINITIALIZED` untuk melodi; perilaku yang disengaja, lihat `tests/cpv_native_test.cpp`). Inspector memetakan `UNRESOLVED` ke `MISSING (silent)` dan snapshot tidak dimuat ulang saat START.
+Perbaikan (hanya pelaporan Inspector; drum mapping, BASSMIDI, StyleSequencer, CASM, ACMP dan jalur audio tidak disentuh):
+* `UNRESOLVED/no_verified_drum_binding`, `UNINITIALIZED` → `UNKNOWN` dengan kode `NO_BINDING_REPORTED`. `MISSING` (`PRESET_MISSING`) hanya untuk bukti eksplisit engine (`no_compatible_candidate`, `keyboard_preset_missing`). Readback gagal → `UNKNOWN` (`BINDING_NOT_VERIFIED`). `AUDIO_SILENT` tidak pernah dihasilkan: Inspector tidak mengukur audio.
+* Snapshot membawa `InspectorSession(playing)`; alasan menjelaskan "Style berhenti: engine mengikat Voice saat section dimulai; ini bukan bukti bagian itu diam". Hasil "tidak ada binding" tidak diwariskan ke section lain (`NOT_MEASURED_THIS_SECTION`).
+* Muat ulang otomatis saat `isPlaying` berubah, dibatasi: maksimal 4 pembacaan berjarak 400 ms, hanya selama belum ada binding; katalog SoundFont dibaca sekali per pemicu, di luar loop.
+* Tes regresi: sebelum START, sesudah binding, sedang berjalan tanpa binding, bukti MISSING eksplisit, dan pergantian section.

@@ -22,10 +22,21 @@ fun StyleVoiceEditorOverlay(vm: MainViewModel) {
     var catalog by remember { mutableStateOf<List<CatalogPreset>>(emptyList()) }
     var loaded by remember { mutableStateOf(false) }
     var refresh by remember { mutableStateOf(0) }
-    LaunchedEffect(state.activeSection, state.styleName, state.voiceAssignments, state.midiOutEnabled, editor.revision, editor.dirty, refresh) {
-        inventory = vm.loadStyleVoiceInventory()
-        catalog = vm.loadEditorCatalog()
-        loaded = true
+    // Reload on style, section, MIDI OUT, profile edits and on START/STOP. The engine binds channels when a section
+    // starts, so after START the reading is retried a bounded number of times (at most 4 reads, 400 ms apart, only
+    // while nothing is bound yet); the SoundFont catalog is read once per trigger, never in the retry loop.
+    LaunchedEffect(state.activeSection, state.styleName, state.voiceAssignments, state.midiOutEnabled, editor.revision, editor.dirty, refresh, state.isPlaying) {
+        val cat = vm.loadEditorCatalog()
+        catalog = cat
+        var tries = 0
+        while (true) {
+            val inv = vm.loadStyleVoiceInventory(cat)
+            inventory = inv
+            loaded = true
+            val bound = inv?.runtimeObserved == true
+            if (!state.isPlaying || bound || ++tries >= 4) break
+            kotlinx.coroutines.delay(400)
+        }
     }
     val actions = StyleVoiceEditorActions(
         sf2Catalog = catalog,
