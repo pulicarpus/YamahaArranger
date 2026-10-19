@@ -360,6 +360,7 @@ private fun SxMixerPage(state: MainUiState, vm: MainViewModel, voices: List<Voic
                         Text("MIXER", color = SxGreen, fontWeight = FontWeight.Bold, fontSize = 17.sp)
                         Text("${voices.size} STYLE CHANNELS  •  SWIPE →", color = SxDim, fontSize = 10.sp)
                     }
+                    TextButton(onClick = { StyleVoiceEditorHost.open() }, modifier = Modifier.heightIn(min = 48.dp)) { Text("STYLE VOICES", color = SxMixerBlue) }
                     TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text(returnLabel, color = SxGreen) }
                 }
                 Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {

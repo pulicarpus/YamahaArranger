@@ -126,6 +126,7 @@ class MainActivity : ComponentActivity() {
                             .padding(top = 7.dp)
                     )
                 }
+                StyleVoiceEditorOverlay(viewModel)
                 if (showInspector.value) {
                     Sf2StyleInspectorDialog(
                         onDismiss = { showInspector.value = false },

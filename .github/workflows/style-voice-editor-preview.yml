@@ -1,0 +1,45 @@
+name: Style Voice Inspector render (PNG)
+# Renders the real Compose source of the Style Voice Inspector (plus LIVE panels) with Skia (desktop, no Android) and publishes the PNGs on branch preview/style-voice-editor.
+on:
+  push:
+    branches: [feature/style-voice-inspector-editor]
+    paths: ['tools/ui_preview/**', 'app/src/main/java/com/yourapp/ui/StyleVoice*.kt', 'app/src/main/java/com/yourapp/yamahaarranger/style/StyleVoice*.kt',
+            '.github/workflows/style-voice-editor-preview.yml']
+  workflow_dispatch: {}
+permissions:
+  contents: write
+concurrency:
+  group: stylevoice-preview
+  cancel-in-progress: true
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+      - name: Render PNGs
+        run: |
+          set -euo pipefail
+          sudo apt-get install -y -qq fontconfig fonts-dejavu-core >/dev/null || true
+          gradle -p tools/ui_preview --no-daemon renderPreview --stacktrace 2>&1 | tee /tmp/render.log
+          ls -la tools/ui_preview/build/png
+      - uses: actions/upload-artifact@v4
+        with:
+          name: style-voice-png-${{ github.sha }}
+          path: tools/ui_preview/build/png/*.png
+          if-no-files-found: error
+      - name: Publish PNGs to preview/style-voice-editor
+        run: |
+          set -euo pipefail
+          d=$(mktemp -d); cp tools/ui_preview/build/png/*.png "$d"/
+          printf 'Rendered from %s\n' "$GITHUB_SHA" > "$d"/SOURCE.txt
+          cd "$d"; git init -q; git config user.email ci@example.invalid; git config user.name ci
+          git add -A; git commit -qm "Style Voice render of $GITHUB_SHA"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:refs/heads/preview/style-voice-editor

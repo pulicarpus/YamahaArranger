@@ -1341,6 +1341,30 @@ class MainViewModel @Inject constructor(
                 "bank=${b.bank} pc=${b.program} preset='${b.presetName}' reason=${b.reason}")
         }
     }
+    /**
+     * Style Voice Inspector snapshot. Reads the loaded-preset snapshot and the native channel bindings,
+     * so it must run off the main thread. Read-only: nothing here sends MIDI or changes a binding.
+     */
+    suspend fun loadStyleVoiceInventory(): com.yourapp.yamahaarranger.style.StyleVoiceInventory? = withContext(Dispatchers.Default) {
+        val style = drumAuditStyle ?: return@withContext null
+        val catalog = audioEngine.loadedSoundFontPresets().map {
+            com.yourapp.yamahaarranger.style.CatalogPreset(it.soundFontName, "", it.bank, it.program, it.name, it.isDrum)
+        }
+        val observed = channelBindings().mapValues { (ch, b) ->
+            com.yourapp.yamahaarranger.style.ObservedBinding(ch, b.status, b.source, b.soundFontName, b.pdta, b.bank, b.program, b.presetName, b.reason)
+        }
+        val activeKey = SECTION_BUTTON_MAP[uiState.value.activeSection]?.styleName
+        val states = _voiceAssignments.value.associate { it.channel to it.overrideStatus }
+        val overrides = HashMap<Pair<String, Int>, com.yourapp.yamahaarranger.style.RowOverride>()
+        currentOverrides?.overrides?.forEach { o ->
+            val sectionKey = o.section ?: com.yourapp.yamahaarranger.style.StyleVoiceInventoryBuilder.ALL_SECTIONS
+            overrides[sectionKey to o.channel] = com.yourapp.yamahaarranger.style.RowOverride(
+                "SF2", o.scope, "${o.pin.soundFontName} ${o.pin.bank}:${o.pin.program} '${o.pin.presetName}'",
+                states[o.channel] ?: "UNVERIFIED")
+        }
+        com.yourapp.yamahaarranger.style.StyleVoiceInventoryBuilder.build(style, catalog, observed, activeKey, overrides)
+    }
+
     // LATENCY_PROBE: statistics only; both calls are safe during playback but belong off the realtime path.
     fun latencyReport(): String = audioEngine.latencyReport()
     fun latencyReset() = audioEngine.latencyReset()
