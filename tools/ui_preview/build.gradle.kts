@@ -19,7 +19,7 @@ sourceSets {
                 "*.kt",
                 "com/yourapp/ui/HardwareLedButton.kt", "com/yourapp/ui/LiveV3Model.kt", "com/yourapp/ui/LiveFader.kt", "com/yourapp/ui/LiveControlPanels.kt",
                 "com/yourapp/style/StyleModel.kt", "com/yourapp/ui/StyleVoiceEditorScreen.kt",
-                "com/yourapp/yamahaarranger/style/StyleVoiceInventory.kt", "com/yourapp/yamahaarranger/style/StyleVoiceEditorOps.kt", "com/yourapp/yamahaarranger/style/StyleVoiceRequests.kt",
+                "com/yourapp/yamahaarranger/style/StyleVoiceInventory.kt", "com/yourapp/yamahaarranger/style/StyleVoiceEditorOps.kt", "com/yourapp/yamahaarranger/browser/BrowserModel.kt", "com/yourapp/ui/BrowserLcd.kt", "com/yourapp/yamahaarranger/style/StyleVoiceRequests.kt",
                 "com/yourapp/yamahaarranger/style/StyleOverrideStore.kt",
                 "com/yourapp/yamahaarranger/registration/RegistrationCodec.kt", "com/yourapp/yamahaarranger/registration/RegistrationModel.kt", "com/yourapp/yamahaarranger/audio/MixerConsoleState.kt",
             )

@@ -77,7 +77,10 @@ class StyleVoiceEditorActions(
     val onResetPart: (Int) -> Unit,
     val onResetSection: (String) -> Unit,
     val onResetAll: () -> Unit,
-    val onSave: ((String) -> Unit) -> Unit
+    val onSave: ((String) -> Unit) -> Unit,
+    /** Browser memory for the Style Voice Editor context: last chosen preset key (SoundFont file|bank|program). */
+    val rememberedPick: String? = null,
+    val onRememberPick: (String) -> Unit = {}
 )
 
 private val SvBlack = Color(0xFF080A0D)
@@ -353,7 +356,8 @@ fun ReplacePanel(row: StyleVoiceRow, actions: StyleVoiceEditorActions, onClose: 
     var tab by remember { mutableStateOf(initialTab) }
     var scope by remember { mutableStateOf(EditScope.THIS_SECTION) }
     var query by remember { mutableStateOf(initialQuery) }
-    var pickedSf2 by remember { mutableStateOf<CatalogPreset?>(null) }
+    var pickedSf2 by remember { mutableStateOf<CatalogPreset?>(actions.rememberedPick?.let { k -> actions.sf2Catalog.firstOrNull { com.yourapp.yamahaarranger.browser.BrowserSources.voiceItemKey(it.soundFontName, it.bank, it.program) == k && !it.drum } }) }
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
     var pickedExt by remember { mutableStateOf<ExternalVoice?>(null) }
     var msb by remember { mutableStateOf("") }; var lsb by remember { mutableStateOf("") }
     var pc by remember { mutableStateOf("") }; var label by remember { mutableStateOf("") }
@@ -381,11 +385,12 @@ fun ReplacePanel(row: StyleVoiceRow, actions: StyleVoiceEditorActions, onClose: 
             if (tab == 0) Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 OutlinedTextField(query, { query = it }, singleLine = true, label = { Text("Search name, SoundFont or bank:program") }, modifier = Modifier.fillMaxWidth())
                 if (candidates.isEmpty()) Text(if (actions.sf2Catalog.isEmpty()) "No SoundFont presets are loaded." else "No loaded preset matches.", color = SvDim, fontSize = 12.sp)
-                LazyColumn(Modifier.fillMaxWidth().heightIn(max = 300.dp)) {
+                LaunchedEffect(candidates, pickedSf2) { pickedSf2?.let { p -> val i = candidates.indexOf(p); if (i >= 0) listState.scrollToItem(i) } }
+                LazyColumn(Modifier.fillMaxWidth().heightIn(max = 300.dp), state = listState) {
                     items(candidates, key = { "${it.soundFontName}/${it.pdta}/${it.bank}/${it.program}" }) { p ->
                         val on = pickedSf2 == p
                         Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).background(if (on) SvBlue.copy(alpha = 0.2f) else Color.Transparent)
-                            .clickable { pickedSf2 = p; error = null }.padding(horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            .clickable { pickedSf2 = p; error = null; actions.onRememberPick(com.yourapp.yamahaarranger.browser.BrowserSources.voiceItemKey(p.soundFontName, p.bank, p.program)) }.padding(horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text(p.name, color = SvText, fontSize = 13.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text("${p.soundFontName}  ${p.bank}:${p.program}", color = SvDim, fontSize = 10.sp, fontFamily = FontFamily.Monospace, maxLines = 1)
                         }

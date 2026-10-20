@@ -978,6 +978,22 @@ class MainViewModel @Inject constructor(
         DebugLog.add(if (muted) "🔇 STYLE CH$channel muted" else "🔊 STYLE CH$channel unmuted")
     }
 
+    // ---- Style / Voice browser memory (last folder + item per context; survives restart) ----
+    private val browserStore by lazy { com.yourapp.yamahaarranger.browser.BrowserMemoryStore(contentResolver.browserMemoryPath()) }
+    private val _browserMemory = MutableStateFlow<com.yourapp.yamahaarranger.browser.BrowserMemory?>(null)
+    /** Null until the file has been read, so a restore never races the load. */
+    val browserMemory: StateFlow<com.yourapp.yamahaarranger.browser.BrowserMemory?> = _browserMemory
+    private val browserWriteLock = kotlinx.coroutines.sync.Mutex()
+    init { viewModelScope.launch(Dispatchers.IO) { _browserMemory.value = browserStore.read() } }
+    private fun updateBrowserMemory(change: (com.yourapp.yamahaarranger.browser.BrowserMemory) -> com.yourapp.yamahaarranger.browser.BrowserMemory) {
+        val next = change(_browserMemory.value ?: com.yourapp.yamahaarranger.browser.BrowserMemory())
+        _browserMemory.value = next
+        viewModelScope.launch(Dispatchers.IO) { browserWriteLock.withLock { try { browserStore.write(next) } catch (e: Exception) { DebugLog.add("Browser memory not saved: ${e.javaClass.simpleName}") } } }
+    }
+    fun rememberStylePosition(p: com.yourapp.yamahaarranger.browser.SavedPosition?) = updateBrowserMemory { it.withStyle(p) }
+    /** [context] is RIGHT1, RIGHT2, RIGHT3, LEFT or STYLE_EDITOR; contexts never share a position. */
+    fun rememberVoicePosition(context: String, p: com.yourapp.yamahaarranger.browser.SavedPosition?) = updateBrowserMemory { it.withVoice(context, p) }
+
     // ---- CPV per-style manual voice overrides ----
     private val overrideStore by lazy { com.yourapp.yamahaarranger.style.StyleOverrideStore(contentResolver.styleOverrideDirectory()) }
     private var currentStyleSha: String? = null

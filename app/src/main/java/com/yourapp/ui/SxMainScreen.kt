@@ -103,6 +103,155 @@ fun SxMainScreen(
     var selectedStyleFolderUri by remember { mutableStateOf<Uri?>(null) }
     var selectedDataParameter by remember { mutableStateOf("TEMPO") }
 
+    // ---- Style / Voice browsers: highlight, page and remembered position (navigation never loads or applies by itself) ----
+    val browserMemory by viewModel.browserMemory.collectAsState()
+    var stylePage by remember { mutableStateOf(0) }
+    var styleRestorePending by remember { mutableStateOf(false) }
+    var styleNote by remember { mutableStateOf<String?>(null) }
+    val styleBrowserFolders = remember(state.styleFolders, state.styleFiles) {
+        val paths = HashMap<String, String?>()
+        com.yourapp.yamahaarranger.browser.BrowserSources.styleFolders(
+            state.styleFolders.map { it.uri.toString() to it.name }, state.styleFiles.map { it.first.toString() to it.second }
+        ) { key -> paths.getOrPut(key) { Uri.parse(key).path?.let(Uri::decode) } }
+    }
+    fun styleFolderKey() = selectedStyleFolderUri?.toString()
+    fun styleHighlightKey() = selectedStyleUri?.toString()
+    fun styleCurrent() = styleFolderKey()?.let { f -> styleHighlightKey()?.let { i -> com.yourapp.yamahaarranger.browser.BrowserPosition(f, i) } }
+    fun moveStyleHighlight(pos: com.yourapp.yamahaarranger.browser.BrowserPosition) {
+        val folder = styleBrowserFolders.firstOrNull { it.key == pos.folderKey } ?: return
+        selectedStyleFolderUri = Uri.parse(pos.folderKey); selectedStyleUri = Uri.parse(pos.itemKey)
+        stylePage = com.yourapp.yamahaarranger.browser.BrowserGrid.pageOf(com.yourapp.yamahaarranger.browser.BrowserNav.indexOf(folder, pos.itemKey))
+        viewModel.rememberStylePosition(com.yourapp.yamahaarranger.browser.SavedPosition(pos.folderKey, pos.itemKey, stylePage))
+    }
+    fun openStyleBrowser() { viewModel.refreshStyleList(); styleRestorePending = true; styleNote = null; lcdPage = "STYLE" }
+    LaunchedEffect(styleRestorePending, lcdPage, state.styleFolders, browserMemory) {
+        val memory = browserMemory
+        if (!styleRestorePending || lcdPage != "STYLE" || memory == null || state.styleFolders.isEmpty()) return@LaunchedEffect
+        val r = com.yourapp.yamahaarranger.browser.BrowserNav.restore(styleBrowserFolders, memory.style)
+        selectedStyleFolderUri = r.folderKey?.let(Uri::parse); selectedStyleUri = r.itemKey?.let(Uri::parse); stylePage = r.page
+        styleNote = when (r.status) {
+            com.yourapp.yamahaarranger.browser.RestoreStatus.FOLDER_MISSING -> "LAST STYLE FOLDER NOT AVAILABLE — SELECT A FOLDER"
+            com.yourapp.yamahaarranger.browser.RestoreStatus.ITEM_MISSING -> "LAST STYLE NOT FOUND IN THIS FOLDER"
+            else -> null
+        }
+        styleRestorePending = false
+    }
+    val styleFolderNow = styleBrowserFolders.firstOrNull { it.key == styleFolderKey() }
+    val styleUi = BrowserUi(
+        folders = styleBrowserFolders, folderKey = styleFolderKey(), highlightKey = styleHighlightKey(), markedKey = null, page = stylePage,
+        canPrev = if (styleBrowserFolders.all { it.items.isEmpty() }) false else com.yourapp.yamahaarranger.browser.BrowserNav.previous(styleBrowserFolders, styleCurrent()) != null,
+        canNext = if (styleBrowserFolders.all { it.items.isEmpty() }) false else com.yourapp.yamahaarranger.browser.BrowserNav.next(styleBrowserFolders, styleCurrent()) != null,
+        message = when {
+            styleFolderNow == null -> styleNote ?: "SELECT A STYLE FOLDER"
+            styleFolderNow.items.isEmpty() -> "NO STYLE FILES IN THIS FOLDER"
+            else -> null
+        },
+        subtitle = "${styleFolderNow?.items?.size ?: 0} STYLES", actionLabel = "LOAD", actionEnabled = selectedStyleUri != null,
+        onPage = { stylePage = it },
+        onCell = { key -> moveStyleHighlight(com.yourapp.yamahaarranger.browser.BrowserPosition(styleFolderKey() ?: return@BrowserUi, key)); viewModel.onStyleFilePicked(Uri.parse(key)); lcdPage = "HOME" },
+        onFolder = { key -> selectedStyleFolderUri = Uri.parse(key); selectedStyleUri = null; stylePage = 0; styleNote = null },
+        onPrev = { com.yourapp.yamahaarranger.browser.BrowserNav.previous(styleBrowserFolders, styleCurrent())?.let(::moveStyleHighlight) },
+        onNext = { com.yourapp.yamahaarranger.browser.BrowserNav.next(styleBrowserFolders, styleCurrent())?.let(::moveStyleHighlight) },
+        onAction = { selectedStyleUri?.let { viewModel.onStyleFilePicked(it); lcdPage = "HOME" } }
+    )
+
+    // Voice: one remembered position per part (RIGHT1/2/3/LEFT); changing RIGHT1 never moves RIGHT2.
+    var voiceFolderKey by remember { mutableStateOf<String?>(null) }
+    var voiceHighlightKey by remember { mutableStateOf<String?>(null) }
+    var voicePage by remember { mutableStateOf(0) }
+    var voiceSearch by remember { mutableStateOf("") }
+    var voiceRestorePending by remember { mutableStateOf(false) }
+    var voiceRestoreCategory by remember { mutableStateOf(true) }
+    var showVoiceSearch by remember { mutableStateOf(false) }
+    val voiceCategories = remember { listOf<String?>(null, "PIANO", "ORGAN", "GUITAR", "BASS", "STRINGS", "CHOIR/PAD", "BRASS", "SAX/WOODWIND", "SYNTH", "WORLD", "PERCUSSION") }
+    val voiceFilterCategory = voiceBrowser.category?.takeIf { it != "USER" }
+    val voicePart = voiceBrowser.part
+    val voiceByKey = remember(state.sf2Presets) {
+        val map = LinkedHashMap<String, AudioEngineManager.SfPreset>()
+        state.sf2Presets.forEach { map.putIfAbsent(com.yourapp.yamahaarranger.browser.BrowserSources.voiceItemKey(it.soundFontName, it.bank, it.program), it) }
+        map
+    }
+    val voiceFolders = remember(state.sf2Presets, voiceFilterCategory, voiceSearch) {
+        com.yourapp.yamahaarranger.browser.BrowserSources.voiceFolders(
+            state.sf2Presets.map { com.yourapp.yamahaarranger.browser.BrowserSources.VoiceLike(it.soundFontName, it.bank, it.program, it.name) }) { v ->
+            (voiceSearch.isBlank() || v.name.contains(voiceSearch.trim(), ignoreCase = true)) &&
+                (voiceFilterCategory == null || if (voiceFilterCategory == "PERCUSSION") (v.bank == 127 || v.bank == 128) else voiceCategoryMatches(v.program, voiceFilterCategory))
+        }
+    }
+    val activeVoiceKey = state.rightVoices.getOrNull(voicePart.channel)?.let { com.yourapp.yamahaarranger.browser.BrowserSources.voiceItemKey(it.soundFontName, it.bank, it.program) }
+    fun voiceCurrent() = voiceFolderKey?.let { f -> voiceHighlightKey?.let { i -> com.yourapp.yamahaarranger.browser.BrowserPosition(f, i) } }
+    fun rememberVoice() {
+        val f = voiceFolderKey ?: return; val i = voiceHighlightKey ?: return
+        viewModel.rememberVoicePosition(voicePart.name, com.yourapp.yamahaarranger.browser.SavedPosition(f, i, voicePage, voiceFilterCategory, voiceSearch))
+    }
+    fun moveVoiceHighlight(pos: com.yourapp.yamahaarranger.browser.BrowserPosition) {
+        val folder = voiceFolders.firstOrNull { it.key == pos.folderKey } ?: return
+        voiceFolderKey = pos.folderKey; voiceHighlightKey = pos.itemKey
+        voicePage = com.yourapp.yamahaarranger.browser.BrowserGrid.pageOf(com.yourapp.yamahaarranger.browser.BrowserNav.indexOf(folder, pos.itemKey))
+        rememberVoice()
+    }
+    fun openVoiceBrowser(part: KeyboardPart?, restoreCategory: Boolean) {
+        if (part != null) voiceBrowser = voiceBrowser.selectPart(part)
+        rightVoicePickerLayer = null
+        voiceRestoreCategory = restoreCategory; voiceRestorePending = true
+        lcdPage = "VOICE"
+    }
+    // Restore: category/search come from memory only when the browser is opened for a part (not from a category button).
+    LaunchedEffect(voiceRestorePending, lcdPage, voicePart, state.sf2Presets, browserMemory) {
+        val memory = browserMemory
+        if (!voiceRestorePending || lcdPage != "VOICE" || memory == null || state.sf2Presets.isEmpty()) return@LaunchedEffect
+        val saved = memory.voices[voicePart.name]
+        if (voiceRestoreCategory && saved != null) { voiceSearch = saved.search; voiceBrowser = voiceBrowser.selectCategory(saved.category) }
+        else if (voiceRestoreCategory) voiceSearch = ""
+        // The folder list is recomputed from the (possibly new) filter on the next composition; resolve against an unfiltered view here.
+        val all = com.yourapp.yamahaarranger.browser.BrowserSources.voiceFolders(state.sf2Presets.map { com.yourapp.yamahaarranger.browser.BrowserSources.VoiceLike(it.soundFontName, it.bank, it.program, it.name) })
+        val r = com.yourapp.yamahaarranger.browser.BrowserNav.restore(all, saved)
+        if (r.status == com.yourapp.yamahaarranger.browser.RestoreStatus.RESTORED) { voiceFolderKey = r.folderKey; voiceHighlightKey = r.itemKey; voicePage = r.page }
+        else {
+            // Nothing saved (or it is gone): start at the part's active Voice, never at a different SoundFont's preset.
+            val active = state.rightVoices.getOrNull(voicePart.channel)
+            val key = active?.let { com.yourapp.yamahaarranger.browser.BrowserSources.voiceItemKey(it.soundFontName, it.bank, it.program) }
+            val folder = all.firstOrNull { f -> f.items.any { it.key == key } } ?: all.firstOrNull { it.items.isNotEmpty() }
+            voiceFolderKey = folder?.key; voiceHighlightKey = key?.takeIf { k -> folder?.items?.any { it.key == k } == true }
+            voicePage = com.yourapp.yamahaarranger.browser.BrowserGrid.pageOf(com.yourapp.yamahaarranger.browser.BrowserNav.indexOf(folder, voiceHighlightKey))
+        }
+        voiceRestorePending = false
+    }
+    fun applyVoiceFromBrowser(part: KeyboardPart, preset: AudioEngineManager.SfPreset) {
+        viewModel.setKeyboardVoice(part, preset) { ok ->
+            if (ok) { if (voiceBrowser.part == part) { lcdPage = "HOME"; voiceBrowser = voiceBrowser.selectCategory(null) } }
+            else voiceSelectionError = "${preset.soundFontName} • ${preset.bank}/${preset.program} could not be selected. Refresh the SF2 list and try again."
+        }
+    }
+    val voiceFolderNow = voiceFolders.firstOrNull { it.key == voiceFolderKey }
+    val voiceUi = BrowserUi(
+        folders = voiceFolders, folderKey = voiceFolderKey, highlightKey = voiceHighlightKey, markedKey = activeVoiceKey, page = voicePage,
+        canPrev = voiceFolders.any { it.items.isNotEmpty() } && com.yourapp.yamahaarranger.browser.BrowserNav.previous(voiceFolders, voiceCurrent()) != null,
+        canNext = voiceFolders.any { it.items.isNotEmpty() } && com.yourapp.yamahaarranger.browser.BrowserNav.next(voiceFolders, voiceCurrent()) != null,
+        message = when {
+            state.soundFontName == "None" -> "LOAD SF2 FIRST"
+            state.sf2Presets.isEmpty() -> "No available SF2 presets"
+            voiceFolderNow == null -> "SELECT A SOUNDFONT"
+            voiceFolderNow.items.isEmpty() -> "NO VOICES MATCH THIS FILTER"
+            else -> null
+        },
+        subtitle = "${voiceFolders.sumOf { it.items.size }} VOICES", actionLabel = "APPLY", actionEnabled = voiceHighlightKey != null && voiceByKey.containsKey(voiceHighlightKey),
+        onPage = { voicePage = it },
+        onCell = { key ->
+            voiceHighlightKey = key; rememberVoice()
+            voiceByKey[key]?.let { preset -> applyVoiceFromBrowser(voicePart, preset) }
+        },
+        onFolder = { key -> voiceFolderKey = key; voiceHighlightKey = null; voicePage = 0 },
+        onPrev = { com.yourapp.yamahaarranger.browser.BrowserNav.previous(voiceFolders, voiceCurrent())?.let(::moveVoiceHighlight) },
+        onNext = { com.yourapp.yamahaarranger.browser.BrowserNav.next(voiceFolders, voiceCurrent())?.let(::moveVoiceHighlight) },
+        onAction = { voiceHighlightKey?.let { k -> voiceByKey[k]?.let { applyVoiceFromBrowser(voicePart, it) } } }
+    )
+    val voiceExtras = VoiceHeaderExtras("CAT: ${voiceFilterCategory ?: "ALL"}", voiceSearch.isNotBlank(),
+        onCategory = {
+            val next = voiceCategories[(voiceCategories.indexOf(voiceFilterCategory) + 1) % voiceCategories.size]
+            voiceBrowser = voiceBrowser.selectCategory(next); voiceHighlightKey = null; voicePage = 0; voiceFolderKey = null
+        }, onSearch = { showVoiceSearch = true })
+
     androidx.activity.compose.BackHandler(enabled = navigation.page != LivePage.HOME) { navigation = navigation.back() }
     LaunchedEffect(navigation.page) { onMixerVisibilityChanged(navigation.page != LivePage.HOME) }
 
@@ -119,11 +268,10 @@ fun SxMainScreen(
             Spacer(Modifier.height(gap))
             SxNavBar(
                 navH,
-                onStyle = { selectedStyleUri = null; selectedStyleFolderUri = null; viewModel.refreshStyleList(); lcdPage = "STYLE" },
+                onStyle = { openStyleBrowser() },
                 onVoice = {
                     voiceBrowser = voiceBrowser.selectCategory(null)
-                    rightVoicePickerLayer = null
-                    lcdPage = "VOICE"
+                    openVoiceBrowser(null, true)
                 },
                 onMixer = { navigation = navigation.mixer() },
                 onLive = { navigation = navigation.live() },
@@ -165,12 +313,8 @@ fun SxMainScreen(
                         state,
                         viewModel,
                         compact,
-                        onPickStyle = { selectedStyleUri = null; selectedStyleFolderUri = null; viewModel.refreshStyleList(); lcdPage = "STYLE" },
-                        onPickRightVoice = {
-                            voiceBrowser = voiceBrowser.selectPart(KeyboardPart.fromChannel(it))
-                            rightVoicePickerLayer = null
-                            lcdPage = "VOICE"
-                        },
+                        onPickStyle = { openStyleBrowser() },
+                        onPickRightVoice = { openVoiceBrowser(KeyboardPart.fromChannel(it), true) },
                         lcdPage = lcdPage,
                         selectedDataParameter = selectedDataParameter,
                         onDataParameterSelect = { selectedDataParameter = it },
@@ -179,8 +323,10 @@ fun SxMainScreen(
                         selectedStyleUri = selectedStyleUri,
                         selectedStyleFolderUri = selectedStyleFolderUri,
                         onStyleFolderSelect = { folder -> selectedStyleFolderUri = folder },
-                        onStyleSelect = { uri -> selectedStyleUri = uri; viewModel.onStyleFilePicked(uri); selectedStyleUri = null; lcdPage = "HOME" },
-                        onStyleLoad = { uri -> viewModel.onStyleFilePicked(uri); selectedStyleUri = null; lcdPage = "HOME" },
+                        onStyleSelect = { uri -> selectedStyleUri = uri; viewModel.onStyleFilePicked(uri); lcdPage = "HOME" },
+                        onStyleLoad = { uri -> viewModel.onStyleFilePicked(uri); lcdPage = "HOME" },
+                        styleUi = styleUi, voiceUi = voiceUi, voiceExtras = voiceExtras,
+                        voiceTitle = (if (voicePart == KeyboardPart.LEFT) "LEFT" else voicePart.label) + (voiceFolderNow?.let { " — " + it.name } ?: ""),
                         voicePresets = state.sf2Presets,
                         voiceCategory = selectedVoiceCategory,
                         selectedVoiceLayer = selectedVoiceLayer,
@@ -193,7 +339,7 @@ fun SxMainScreen(
                         },
                         onVoiceCategory = { category ->
                             voiceBrowser = voiceBrowser.selectCategory(category)
-                            lcdPage = "VOICE"
+                            openVoiceBrowser(null, false)
                         },
                         onBackHome = {
                             lcdPage = "HOME"
@@ -214,9 +360,9 @@ fun SxMainScreen(
                     onPickStyleFolder = { folder -> selectedStyleFolderUri = folder; lcdPage = "STYLE" },
                     onPickVoice = { category ->
                         voiceBrowser = voiceBrowser.selectCategory(category)
-                        rightVoicePickerLayer = null
-                        lcdPage = "VOICE"
-                    }
+                        openVoiceBrowser(null, false)
+                    },
+                    styleUi = styleUi, voiceUi = voiceUi
                 )
             }
             Spacer(Modifier.height(gap)); SxStyleControls(state, viewModel, controlH, compact)
@@ -258,6 +404,13 @@ fun SxMainScreen(
         }
     }
 
+    if (showVoiceSearch) {
+        var draft by remember { mutableStateOf(voiceSearch) }
+        AlertDialog(onDismissRequest = { showVoiceSearch = false }, title = { Text("SEARCH VOICE NAME") },
+            text = { OutlinedTextField(value = draft, onValueChange = { draft = it }, singleLine = true, placeholder = { Text("e.g. bass, suling") }) },
+            confirmButton = { TextButton(onClick = { voiceSearch = draft; voiceHighlightKey = null; voicePage = 0; voiceFolderKey = null; showVoiceSearch = false }) { Text("OK") } },
+            dismissButton = { TextButton(onClick = { draft = ""; voiceSearch = ""; voiceFolderKey = null; voicePage = 0; showVoiceSearch = false }) { Text("CLEAR") } })
+    }
     voiceSelectionError?.let { message ->
         AlertDialog(onDismissRequest = { voiceSelectionError = null },
             title = { Text("Voice unavailable") }, text = { Text(message) },
@@ -846,34 +999,17 @@ private fun SxCenterDisplay(
     onVoiceSelect: (KeyboardPart, AudioEngineManager.SfPreset) -> Unit,
     onVoiceCategory: (String) -> Unit,
     onBackHome: () -> Unit,
+    styleUi: BrowserUi,
+    voiceUi: BrowserUi,
+    voiceExtras: VoiceHeaderExtras,
+    voiceTitle: String,
     modifier: Modifier
 ) {
     Surface(color = Color(0xFF101419), shape = RoundedCornerShape(6.dp), modifier = modifier.border(2.dp, Color(0xFF39424C), RoundedCornerShape(6.dp))) {
         if (lcdPage == "STYLE") {
-            SxStyleLcdPage(
-                state = state,
-                styleFolders = styleFolders,
-                styleFiles = styleFiles,
-                selectedStyleUri = selectedStyleUri,
-                selectedStyleFolderUri = selectedStyleFolderUri,
-                compact = compact,
-                onFolderSelect = onStyleFolderSelect,
-                onSelect = onStyleSelect,
-                onLoad = onStyleLoad,
-                onBrowse = onPickStyle,
-                onBack = onBackHome
-            )
+            BrowserLcdPage(BrowserKind.STYLE, styleFolders.firstOrNull { it.uri == selectedStyleFolderUri }?.name ?: "STYLE SELECT", styleUi, compact, onBackHome)
         } else if (lcdPage == "VOICE") {
-            SxVoiceLcdPage(
-                state = state,
-                presets = voicePresets,
-                category = voiceCategory,
-                selectedLayer = selectedVoiceLayer,
-                compact = compact,
-                onCategory = onVoiceCategory,
-                onSelect = onVoiceSelect,
-                onBack = onBackHome
-            )
+            BrowserLcdPage(BrowserKind.VOICE, voiceTitle, voiceUi, compact, onBackHome, voiceExtras)
         } else {
         Column(Modifier.fillMaxSize().padding(if (compact) 5.dp else 7.dp)) {
             Row(Modifier.fillMaxWidth().height(if (compact) 26.dp else 30.dp).background(Color(0xFF080B0E), RoundedCornerShape(2.dp)), verticalAlignment = Alignment.CenterVertically) {
@@ -915,278 +1051,6 @@ private fun SxCenterDisplay(
         }
     }
 }
-}
-
-@Composable
-private fun SxStyleLcdPage(
-    state: MainUiState,
-    styleFolders: List<StyleFolder>,
-    styleFiles: List<Pair<Uri, String>>,
-    selectedStyleUri: Uri?,
-    selectedStyleFolderUri: Uri?,
-    compact: Boolean,
-    onFolderSelect: (Uri) -> Unit,
-    onSelect: (Uri) -> Unit,
-    onLoad: (Uri) -> Unit,
-    onBrowse: () -> Unit,
-    onBack: () -> Unit
-) {
-    val visibleStyleFiles = remember(selectedStyleFolderUri, styleFiles) {
-        val folderPath = selectedStyleFolderUri?.path?.let(Uri::decode)?.trimEnd('/')
-        if (folderPath == null) emptyList()
-        else styleFiles.filter { (uri, _) ->
-            val p = uri.path?.let(Uri::decode)?.trimEnd('/') ?: return@filter false
-            p.startsWith(folderPath + "/")
-        }
-    }
-    var page by remember(selectedStyleFolderUri) { mutableStateOf(0) }
-    val pageSize = 16
-    val pageCount = maxOf(1, (visibleStyleFiles.size + pageSize - 1) / pageSize)
-    val safePage = page.coerceIn(0, pageCount - 1)
-    val pageItems = visibleStyleFiles.drop(safePage * pageSize).take(pageSize)
-
-    Column(Modifier.fillMaxSize().padding(if (compact) 5.dp else 7.dp)) {
-        Row(Modifier.fillMaxWidth().height(if (compact) 27.dp else 32.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("STYLE", color = SxOrangeBright, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.width(7.dp))
-            Text(
-                styleFolders.firstOrNull { it.uri == selectedStyleFolderUri }?.name ?: "STYLE SELECT",
-                color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                maxLines = 1, overflow = TextOverflow.Ellipsis
-            )
-            Spacer(Modifier.weight(1f))
-            Text("${visibleStyleFiles.size} STYLES", color = SxDim, fontSize = 7.sp)
-            TextButton(onClick = onBack, contentPadding = PaddingValues(horizontal = 4.dp)) {
-                Text("HOME", color = SxGreen, fontSize = 8.sp)
-            }
-        }
-
-        when {
-            selectedStyleFolderUri == null -> Surface(
-                color = Color(0xFF151A20), shape = RoundedCornerShape(4.dp),
-                modifier = Modifier.fillMaxWidth().weight(1f)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text("SELECT A STYLE FOLDER", color = SxDim, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-            visibleStyleFiles.isEmpty() -> Surface(
-                color = Color(0xFF151A20), shape = RoundedCornerShape(4.dp),
-                modifier = Modifier.fillMaxWidth().weight(1f)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text("NO STYLE FILES IN THIS FOLDER", color = SxDim, fontSize = 9.sp)
-                }
-            }
-            else -> Surface(
-                color = Color(0xFF151A20), shape = RoundedCornerShape(4.dp),
-                modifier = Modifier.fillMaxWidth().weight(1f)
-                    .border(1.dp, Color(0xFF38424C), RoundedCornerShape(4.dp))
-            ) {
-                Column(
-                    Modifier.fillMaxSize().padding(if (compact) 4.dp else 5.dp),
-                    verticalArrangement = Arrangement.spacedBy(if (compact) 3.dp else 4.dp)
-                ) {
-                    pageItems.chunked(4).forEachIndexed { rowIndex, rowItems ->
-                        Row(
-                            Modifier.fillMaxWidth().weight(1f),
-                            horizontalArrangement = Arrangement.spacedBy(if (compact) 3.dp else 4.dp)
-                        ) {
-                            rowItems.forEachIndexed { colIndex, item ->
-                                val selected = selectedStyleUri == item.first
-                                Surface(
-                                    color = if (selected) SxBlue else Color(0xFF20262D),
-                                    shape = RoundedCornerShape(3.dp),
-                                    modifier = Modifier.weight(1f).fillMaxHeight()
-                                        .clickable { onSelect(item.first) }
-                                        .border(
-                                            1.dp,
-                                            if (selected) Color(0xFF58A9FF) else Color(0xFF38434E),
-                                            RoundedCornerShape(3.dp)
-                                        )
-                                ) {
-                                    Column(
-                                        Modifier.fillMaxSize().padding(horizontal = 6.dp, vertical = 3.dp),
-                                        verticalArrangement = Arrangement.Center
-                                    ) {
-                                        Text(
-                                            item.second.substringBeforeLast(".").take(22),
-                                            color = Color.White,
-                                            fontSize = if (compact) 8.sp else 9.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        Text(
-                                            "STYLE " + (safePage * pageSize + rowIndex * 4 + colIndex + 1),
-                                            color = if (selected) Color(0xFFC9E5FF) else SxDim,
-                                            fontSize = 5.sp, maxLines = 1
-                                        )
-                                    }
-                                }
-                            }
-                            repeat(4 - rowItems.size) { Spacer(Modifier.weight(1f)) }
-                        }
-                    }
-                }
-            }
-        }
-
-        Spacer(Modifier.height(4.dp))
-        Row(
-            Modifier.fillMaxWidth().height(if (compact) 34.dp else 39.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            (0..5).forEach { index ->
-                val enabled = index < pageCount
-                Surface(
-                    color = if (safePage == index) SxOrange else if (enabled) Color(0xFF303840) else Color(0xFF171B20),
-                    shape = RoundedCornerShape(2.dp),
-                    modifier = Modifier.weight(1f).fillMaxHeight()
-                        .clickable(enabled = enabled) { page = index }
-                        .border(
-                            1.dp,
-                            if (safePage == index) Color(0xFFFFB25A) else Color(0xFF444D56),
-                            RoundedCornerShape(2.dp)
-                        )
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text("P${index + 1}", color = if (enabled) Color.White else SxDim, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        }
-
-        Spacer(Modifier.height(4.dp))
-    }
-}
-
-@Composable
-private fun SxVoiceLcdPage(
-    state: MainUiState,
-    presets: List<AudioEngineManager.SfPreset>,
-    category: String?,
-    selectedLayer: Int,
-    compact: Boolean,
-    onCategory: (String) -> Unit,
-    onSelect: (KeyboardPart, AudioEngineManager.SfPreset) -> Unit,
-    onBack: () -> Unit
-) {
-    var search by remember { mutableStateOf("") }
-    var fontId by remember { mutableStateOf<Long?>(null) }
-    var allCategories by remember(category) { mutableStateOf(category == null || category == "USER") }
-    val filtered = SoundFontPresetCatalog.filter(presets, search, fontId)
-        .filter { allCategories || if (category == "PERCUSSION") it.isDrum else voiceCategoryMatches(it.program, category) }
-    var page by remember(category, selectedLayer, search, fontId, allCategories, presets) { mutableStateOf(0) }
-    val pageSize = 8
-    val pageCount = maxOf(1, (filtered.size + pageSize - 1) / pageSize)
-    val safePage = page.coerceIn(0, pageCount - 1)
-    val pageItems = filtered.drop(safePage * pageSize).take(pageSize)
-
-    Column(Modifier.fillMaxSize().padding(if (compact) 5.dp else 7.dp)) {
-        Row(Modifier.fillMaxWidth().height(if (compact) 27.dp else 32.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("VOICE", color = SxBlue, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.width(7.dp))
-            Text(if (selectedLayer == 3) "LEFT" else "RIGHT " + (selectedLayer + 1), color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.weight(1f))
-            Text("${filtered.size} VOICES", color = SxDim, fontSize = 7.sp)
-            TextButton(onClick = onBack, contentPadding = PaddingValues(horizontal = 4.dp)) {
-                Text("HOME", color = SxGreen, fontSize = 8.sp)
-            }
-        }
-
-        SxPresetFilters(presets, search, { search = it }, fontId, { fontId = it }, compact)
-        if (category != null && category != "USER") {
-            TextButton(onClick = { allCategories = !allCategories }, contentPadding = PaddingValues(0.dp)) {
-                Text(if (allCategories) "ALL PRESETS" else category, color = SxDim, fontSize = 8.sp)
-            }
-        }
-        if (state.soundFontName == "None") {
-            Surface(
-                color = Color(0xFF151A20), shape = RoundedCornerShape(4.dp),
-                modifier = Modifier.fillMaxWidth().weight(1f)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text("LOAD SF2 FIRST", color = SxOrangeBright, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-        } else if (presets.isEmpty()) {
-            Surface(
-                color = Color(0xFF151A20), shape = RoundedCornerShape(4.dp),
-                modifier = Modifier.fillMaxWidth().weight(1f)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text("No available SF2 presets", color = SxDim, fontSize = 12.sp)
-                }
-            }
-        } else {
-            Surface(
-                color = Color(0xFF151A20), shape = RoundedCornerShape(4.dp),
-                modifier = Modifier.fillMaxWidth().weight(1f)
-                    .border(1.dp, Color(0xFF38424C), RoundedCornerShape(4.dp))
-            ) {
-                LazyColumn(
-                    Modifier.fillMaxSize().padding(if (compact) 4.dp else 5.dp),
-                    verticalArrangement = Arrangement.spacedBy(if (compact) 3.dp else 4.dp)
-                ) {
-                    pageItems.chunked(4).forEachIndexed { rowIndex, rowItems ->
-                        item(key = "voice-row-$safePage-$rowIndex") {
-                            Row(
-                                Modifier.fillMaxWidth().height(if (compact) 48.dp else 58.dp),
-                                horizontalArrangement = Arrangement.spacedBy(if (compact) 3.dp else 4.dp)
-                            ) {
-                                rowItems.forEach { item ->
-                                    val selected = item.program == (state.rightVoices.getOrNull(selectedLayer)?.program ?: -1) &&
-                                        item.bank == (state.rightVoices.getOrNull(selectedLayer)?.bank ?: -1) &&
-                                        item.soundFontId == state.rightVoices.getOrNull(selectedLayer)?.soundFontId
-                                    Surface(
-                                        color = if (selected) SxBlue else Color(0xFF20262D),
-                                        shape = RoundedCornerShape(3.dp),
-                                        modifier = Modifier.weight(1f).fillMaxHeight()
-                                            .clickable { onSelect(KeyboardPart.fromChannel(selectedLayer), item) }
-                                            .border(
-                                                1.dp,
-                                                if (selected) Color(0xFF58A9FF) else Color(0xFF38434E),
-                                                RoundedCornerShape(3.dp)
-                                            )
-                                    ) {
-                                        Column(
-                                            Modifier.fillMaxSize().padding(horizontal = 7.dp, vertical = 4.dp),
-                                            verticalArrangement = Arrangement.Center
-                                        ) {
-                                            Text(
-                                                item.name.take(24),
-                                                color = Color.White,
-                                                fontSize = if (compact) 9.sp else 10.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                            Text(
-                                                item.soundFontName + " • " + item.bank + ":" + item.program,
-                                                color = if (selected) Color(0xFFC9E5FF) else SxDim,
-                                                fontSize = 6.sp, maxLines = 1
-                                            )
-                                        }
-                                    }
-                                }
-                                if (rowItems.size == 1) Spacer(Modifier.weight(1f))
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        Spacer(Modifier.height(4.dp))
-        Row(Modifier.fillMaxWidth().height(if (compact) 34.dp else 39.dp),
-            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-            TextButton(enabled = safePage > 0, onClick = { page = safePage - 1 }) { Text("◀") }
-            Text("${safePage + 1} / $pageCount", color = SxDim, fontSize = 10.sp)
-            TextButton(enabled = safePage + 1 < pageCount, onClick = { page = safePage + 1 }) { Text("▶") }
-        }
-
-    }
 }
 
 @Composable private fun SxStyleCard(state: MainUiState, onClick: () -> Unit, modifier: Modifier) {
@@ -1249,8 +1113,14 @@ private fun SxVoiceLcdPage(
     styleFolders: List<StyleFolder>,
     selectedStyleFolderUri: Uri?,
     onPickStyleFolder: (Uri) -> Unit,
-    onPickVoice: (String) -> Unit
+    onPickVoice: (String) -> Unit,
+    styleUi: BrowserUi,
+    voiceUi: BrowserUi
 ) {
+    if (lcdPage == "STYLE" || lcdPage == "VOICE") {
+        BrowserSidePanel(if (lcdPage == "STYLE") BrowserKind.STYLE else BrowserKind.VOICE, if (lcdPage == "STYLE") styleUi else voiceUi, compact, modifier)
+        return
+    }
     Surface(color = SxPanel, shape = RoundedCornerShape(5.dp), modifier = modifier.border(1.dp, Color(0xFF303942), RoundedCornerShape(5.dp))) {
         if (lcdPage == "STYLE") {
             Column(Modifier.fillMaxSize().padding(if (compact) 4.dp else 6.dp), verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 5.dp)) {

@@ -90,6 +90,7 @@ fun main(args: Array<String>) {
     render(dir, "01_specimen_before_after.png", 760, 300, 2.5f) { Specimen() }
     render(dir, "02_live_body_1000x600.png", 1000, 600, 2f) { LiveBody() }
     render(dir, "03_live_body_1280x800.png", 1280, 800, 1.6f) { LiveBody() }
+    renderBrowsers(dir)
     renderVoiceInspector(dir) { n, w, h, d, c -> render(dir, n, w, h, d, c) }
     println("PREVIEW OK " + dir.listFiles()!!.joinToString { it.name })
 }

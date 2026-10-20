@@ -24,6 +24,8 @@ class ContentResolverProvider @Inject constructor(
     fun r22CatalogInput(): java.io.InputStream = context.assets.open("r22/kits.tsv.bin")
     /** CPV per-style voice overrides live in app-private storage. */
     fun styleOverrideDirectory(): java.nio.file.Path = java.io.File(context.filesDir, "style_overrides").toPath()
+    /** Last Style / Voice browser positions (one small JSON file in app-private storage). */
+    fun browserMemoryPath(): java.nio.file.Path = java.io.File(context.filesDir, "browser_memory.json").toPath()
 
     private val sf2RootDir: File
         get() = File(Environment.getExternalStorageDirectory(), "YamahaArranger/SF2")
