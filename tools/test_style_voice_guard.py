@@ -24,7 +24,7 @@ ALLOWED = {
     '.github/workflows/style-voice-editor.yml', '.github/workflows/style-voice-editor-preview.yml',
     'docs/STYLE_VOICE_INSPECTOR_EDITOR_REPORT.md', 'docs/STYLE_VOICE_BROWSER_REPORT.md',
     'app/src/main/java/com/yourapp/ui/BrowserLcd.kt', 'app/src/main/java/com/yourapp/ui/ContentResolverProvider.kt',
-    'app/src/main/java/com/yourapp/yamahaarranger/browser/BrowserModel.kt', 'tests/cpv/BrowserModelTest.kt', 'docs/MULTI_SF2_VOICE_SELECTION_REPORT.md', 'docs/SX_PRIME_PRESET_INVENTORY.md',
+    'app/src/main/java/com/yourapp/yamahaarranger/browser/BrowserModel.kt', 'tests/cpv/BrowserModelTest.kt', 'tests/cpv/VoiceGroupsTest.kt', 'app/src/main/java/com/yourapp/yamahaarranger/browser/VoiceGroups.kt', 'docs/MULTI_SF2_VOICE_SELECTION_REPORT.md', 'docs/SX_PRIME_PRESET_INVENTORY.md',
     'app/src/main/cpp/bassmidi_player.cpp', 'app/src/main/cpp/bassmidi_player.h', 'app/src/main/cpp/audio_engine.cpp',
     'app/src/main/cpp/audio_engine.h', 'app/src/main/cpp/native_lib.cpp', 'tests/cpv_native_test.cpp',
     'app/src/main/java/com/yourapp/yamahaarranger/audio/NativeAudioBridge.kt',

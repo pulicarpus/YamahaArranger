@@ -81,17 +81,21 @@ fun renderBrowsers(dir: File) {
     fun crop(img: Image): ByteArray { val bmp = org.jetbrains.skia.Bitmap(); bmp.allocN32Pixels(cw, ch); val cv = org.jetbrains.skia.Canvas(bmp)
         cv.drawImageRect(img, org.jetbrains.skia.Rect.makeXYWH(x0.toFloat(), y0.toFloat(), cw.toFloat(), ch.toFloat()), org.jetbrains.skia.Rect.makeWH(cw.toFloat(), ch.toFloat())); return org.jetbrains.skia.Image.makeFromBitmap(bmp).encodeToData()!!.bytes }
     println("CELL_SIZE_IDENTICAL_4_vs_66=" + crop(four).contentEquals(crop(full)))
-    // Voice browser: SX Prime Melody specimen (names are the real phdr names of the owner's SF2; the ordering is bank, program).
-    val prime = listOf(0 to "Yamaha ConcertGrand", 1 to "Yamaha Bright Piano", 2 to "Yamaha EleckPiano", 3 to "Yamaha Honky Tonk", 7 to "Clavinet", 11 to "Vibraphone",
-        12 to "Marimba", 16 to "Church Organ1", 17 to "B3 Org", 19 to "Church Org", 20 to "Reed Org", 21 to "Accordion", 23 to " Accordian", 24 to "Clean Guitar Sweet",
-        25 to "RYTEM YAMAHA", 26 to "RYTEM PSR-SX", 27 to "Clean yamaha", 28 to "Electric Guitar (Cl", 29 to "Overdriven", 30 to "Overdriven", 31 to "Rock Hero",
-        32 to "elctrick bass", 33 to "BASS PSR", 34 to "BASS PSR", 40 to "Saleem Abdullah", 52 to "Suling S770", 72 to "Suling S770", 73 to "Suling S770", 74 to "Flute reza748", 75 to "Pan Flute")
-    val file = "MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2"
-    val voices = BrowserSources.voiceFolders(prime.map { BrowserSources.VoiceLike(file, 0, it.first, it.second) } +
-        List(40) { BrowserSources.VoiceLike("ColomboGMGS2_BM.sf2", 0, it, "Colombo voice ${it + 1}") })
-    val vu = ui(BrowserKind.VOICE, voices, file, BrowserSources.voiceItemKey(file, 0, 52), 1, BrowserSources.voiceItemKey(file, 0, 48))
-    shot(dir, "15_voice_browser_prime_p2.png", W, H, D) { Frame(BrowserKind.VOICE, "RIGHT 1 — $file", vu, VoiceHeaderExtras("CAT: ALL", false, {}, {})) }
-    shot(dir, "16_voice_browser_prime_p1.png", W, H, D) { Frame(BrowserKind.VOICE, "RIGHT 1 — $file", ui(BrowserKind.VOICE, voices, file, BrowserSources.voiceItemKey(file, 0, 32), 0), VoiceHeaderExtras("CAT: BASS", true, {}, {})) }
-    val long = BrowserFolder("Colombo", "ColomboGMGS2_BM.sf2", List(892) { BrowserItem("c$it", "Colombo preset ${it + 1}", "0:$it · PC${it + 1}") })
-    shot(dir, "17_voice_page_group_2.png", W, H, D) { Frame(BrowserKind.VOICE, "RIGHT 2 — Colombo", ui(BrowserKind.VOICE, listOf(long), "Colombo", "c600", 37), VoiceHeaderExtras("CAT: ALL", false, {}, {})) }
+    // Voice browser: ONE combined catalog of the owner's real Colombo + Tyros 4 + SX Prime Melody preset names (owner pdta export).
+    val real = object {}.javaClass.getResourceAsStream("/voices_sample.tsv")!!.bufferedReader().readLines().filter { it.isNotBlank() }.map {
+        val f = it.split('\t'); BrowserSources.VoiceLike(f[0], f[1].toInt(), f[2].toInt(), f[3]) }
+    val groups = BrowserSources.voiceGroupFolders(real)
+    val prime = "MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2"
+    fun group(id: String) = groups.first { it.key == id }
+    val bass = group("BASS"); val suling = group("FLUTE")
+    fun pageOfKey(g: BrowserFolder, key: String) = g.items.indexOfFirst { it.key == key } / 16
+    val bassKey = BrowserSources.voiceItemKey(prime, 0, 32)
+    shot(dir, "15_voice_group_bass.png", W, H, D) { Frame(BrowserKind.VOICE, "RIGHT 1 — Bass", ui(BrowserKind.VOICE, groups, "BASS", bassKey, pageOfKey(bass, bassKey)), VoiceHeaderExtras(false) {}) }
+    val sulKey = BrowserSources.voiceItemKey(prime, 0, 52)
+    shot(dir, "16_voice_group_flute.png", W, H, D) { Frame(BrowserKind.VOICE, "RIGHT 1 — Flute / Ethnic Wind", ui(BrowserKind.VOICE, groups, "FLUTE", sulKey, pageOfKey(suling, sulKey), BrowserSources.voiceItemKey(prime, 0, 48)), VoiceHeaderExtras(false) {}) }
+    val gtr = group("GUITAR")
+    shot(dir, "17_voice_group_guitar_p1.png", W, H, D) { Frame(BrowserKind.VOICE, "RIGHT 2 — Guitar", ui(BrowserKind.VOICE, groups, "GUITAR", null, 0), VoiceHeaderExtras(false) {}) }
+    val other = group("OTHER")
+    shot(dir, "18_voice_group_page_group_2.png", W, H, D) { Frame(BrowserKind.VOICE, "LEFT — Other / Unclassified", ui(BrowserKind.VOICE, groups, "OTHER", other.items[6 * 16 + 3].key, 6), VoiceHeaderExtras(true) {}) }
+    println("VOICE_GROUPS " + groups.joinToString { "${it.name}=${it.items.size}" } + " bassPage=${pageOfKey(bass, bassKey)} gtrItems=${gtr.items.size}")
 }

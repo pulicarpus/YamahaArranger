@@ -163,26 +163,31 @@ fun SxMainScreen(
     var voiceRestorePending by remember { mutableStateOf(false) }
     var voiceRestoreCategory by remember { mutableStateOf(true) }
     var showVoiceSearch by remember { mutableStateOf(false) }
-    val voiceCategories = remember { listOf<String?>(null, "PIANO", "ORGAN", "GUITAR", "BASS", "STRINGS", "CHOIR/PAD", "BRASS", "SAX/WOODWIND", "SYNTH", "WORLD", "PERCUSSION") }
-    val voiceFilterCategory = voiceBrowser.category?.takeIf { it != "USER" }
+    // The HOME category buttons open the matching instrument group; the group list itself is the only category navigation.
+    fun groupForCategory(category: String?): String? = when (category) {
+        "PIANO" -> com.yourapp.yamahaarranger.browser.VoiceGroup.PIANO.id; "ORGAN" -> com.yourapp.yamahaarranger.browser.VoiceGroup.ORGAN.id
+        "GUITAR" -> com.yourapp.yamahaarranger.browser.VoiceGroup.GUITAR.id; "STRINGS" -> com.yourapp.yamahaarranger.browser.VoiceGroup.STRINGS.id
+        "BRASS" -> com.yourapp.yamahaarranger.browser.VoiceGroup.BRASS.id; "SAX/WOODWIND" -> com.yourapp.yamahaarranger.browser.VoiceGroup.SAX_WOODWIND.id
+        "SYNTH" -> com.yourapp.yamahaarranger.browser.VoiceGroup.SYNTH_LEAD.id; "CHOIR/PAD" -> com.yourapp.yamahaarranger.browser.VoiceGroup.CHOIR.id
+        "BASS" -> com.yourapp.yamahaarranger.browser.VoiceGroup.BASS.id; "PERCUSSION" -> com.yourapp.yamahaarranger.browser.VoiceGroup.PERCUSSION.id
+        "WORLD" -> com.yourapp.yamahaarranger.browser.VoiceGroup.FLUTE_ETHNIC.id; else -> null
+    }
     val voicePart = voiceBrowser.part
     val voiceByKey = remember(state.sf2Presets) {
         val map = LinkedHashMap<String, AudioEngineManager.SfPreset>()
         state.sf2Presets.forEach { map.putIfAbsent(com.yourapp.yamahaarranger.browser.BrowserSources.voiceItemKey(it.soundFontName, it.bank, it.program), it) }
         map
     }
-    val voiceFolders = remember(state.sf2Presets, voiceFilterCategory, voiceSearch) {
-        com.yourapp.yamahaarranger.browser.BrowserSources.voiceFolders(
-            state.sf2Presets.map { com.yourapp.yamahaarranger.browser.BrowserSources.VoiceLike(it.soundFontName, it.bank, it.program, it.name) }) { v ->
-            (voiceSearch.isBlank() || v.name.contains(voiceSearch.trim(), ignoreCase = true)) &&
-                (voiceFilterCategory == null || if (voiceFilterCategory == "PERCUSSION") (v.bank == 127 || v.bank == 128) else voiceCategoryMatches(v.program, voiceFilterCategory))
-        }
+    // ONE combined catalog: every loaded SoundFont's presets, grouped by instrument family (display only).
+    val voiceLikes = remember(state.sf2Presets) { state.sf2Presets.map { com.yourapp.yamahaarranger.browser.BrowserSources.VoiceLike(it.soundFontName, it.bank, it.program, it.name) } }
+    val voiceFolders = remember(voiceLikes, voiceSearch) {
+        com.yourapp.yamahaarranger.browser.BrowserSources.voiceGroupFolders(voiceLikes) { v -> voiceSearch.isBlank() || v.name.contains(voiceSearch.trim(), ignoreCase = true) }
     }
     val activeVoiceKey = state.rightVoices.getOrNull(voicePart.channel)?.let { com.yourapp.yamahaarranger.browser.BrowserSources.voiceItemKey(it.soundFontName, it.bank, it.program) }
     fun voiceCurrent() = voiceFolderKey?.let { f -> voiceHighlightKey?.let { i -> com.yourapp.yamahaarranger.browser.BrowserPosition(f, i) } }
     fun rememberVoice() {
         val f = voiceFolderKey ?: return; val i = voiceHighlightKey ?: return
-        viewModel.rememberVoicePosition(voicePart.name, com.yourapp.yamahaarranger.browser.SavedPosition(f, i, voicePage, voiceFilterCategory, voiceSearch))
+        viewModel.rememberVoicePosition(voicePart.name, com.yourapp.yamahaarranger.browser.SavedPosition(f, i, voicePage, null, voiceSearch))
     }
     fun moveVoiceHighlight(pos: com.yourapp.yamahaarranger.browser.BrowserPosition) {
         val folder = voiceFolders.firstOrNull { it.key == pos.folderKey } ?: return
@@ -196,24 +201,29 @@ fun SxMainScreen(
         voiceRestoreCategory = restoreCategory; voiceRestorePending = true
         lcdPage = "VOICE"
     }
-    // Restore: category/search come from memory only when the browser is opened for a part (not from a category button).
+    // Restore: the group, item and page come from memory when the browser is opened for a part; a HOME category button
+    // opens its group instead. Nothing saved (or gone) starts at the part's active Voice, never at another SoundFont's preset.
     LaunchedEffect(voiceRestorePending, lcdPage, voicePart, state.sf2Presets, browserMemory) {
         val memory = browserMemory
         if (!voiceRestorePending || lcdPage != "VOICE" || memory == null || state.sf2Presets.isEmpty()) return@LaunchedEffect
         val saved = memory.voices[voicePart.name]
-        if (voiceRestoreCategory && saved != null) { voiceSearch = saved.search; voiceBrowser = voiceBrowser.selectCategory(saved.category) }
-        else if (voiceRestoreCategory) voiceSearch = ""
-        // The folder list is recomputed from the (possibly new) filter on the next composition; resolve against an unfiltered view here.
-        val all = com.yourapp.yamahaarranger.browser.BrowserSources.voiceFolders(state.sf2Presets.map { com.yourapp.yamahaarranger.browser.BrowserSources.VoiceLike(it.soundFontName, it.bank, it.program, it.name) })
-        val r = com.yourapp.yamahaarranger.browser.BrowserNav.restore(all, saved)
-        if (r.status == com.yourapp.yamahaarranger.browser.RestoreStatus.RESTORED) { voiceFolderKey = r.folderKey; voiceHighlightKey = r.itemKey; voicePage = r.page }
-        else {
-            // Nothing saved (or it is gone): start at the part's active Voice, never at a different SoundFont's preset.
-            val active = state.rightVoices.getOrNull(voicePart.channel)
-            val key = active?.let { com.yourapp.yamahaarranger.browser.BrowserSources.voiceItemKey(it.soundFontName, it.bank, it.program) }
-            val folder = all.firstOrNull { f -> f.items.any { it.key == key } } ?: all.firstOrNull { it.items.isNotEmpty() }
-            voiceFolderKey = folder?.key; voiceHighlightKey = key?.takeIf { k -> folder?.items?.any { it.key == k } == true }
-            voicePage = com.yourapp.yamahaarranger.browser.BrowserGrid.pageOf(com.yourapp.yamahaarranger.browser.BrowserNav.indexOf(folder, voiceHighlightKey))
+        if (voiceRestoreCategory) voiceSearch = saved?.search.orEmpty()
+        val all = com.yourapp.yamahaarranger.browser.BrowserSources.voiceGroupFolders(voiceLikes)
+        val active = state.rightVoices.getOrNull(voicePart.channel)
+        val activeKey = active?.let { com.yourapp.yamahaarranger.browser.BrowserSources.voiceItemKey(it.soundFontName, it.bank, it.program) }
+        val requestedGroup = if (voiceRestoreCategory) null else groupForCategory(voiceBrowser.category)
+        if (requestedGroup != null) {
+            voiceFolderKey = requestedGroup
+            voiceHighlightKey = activeKey?.takeIf { k -> all.firstOrNull { it.key == requestedGroup }?.items?.any { it.key == k } == true }
+            voicePage = com.yourapp.yamahaarranger.browser.BrowserGrid.pageOf(com.yourapp.yamahaarranger.browser.BrowserNav.indexOf(all.firstOrNull { it.key == requestedGroup }, voiceHighlightKey))
+        } else {
+            val r = com.yourapp.yamahaarranger.browser.BrowserNav.restore(all, if (voiceRestoreCategory) saved else null)
+            if (r.status == com.yourapp.yamahaarranger.browser.RestoreStatus.RESTORED) { voiceFolderKey = r.folderKey; voiceHighlightKey = r.itemKey; voicePage = r.page }
+            else {
+                val folder = all.firstOrNull { f -> f.items.any { it.key == activeKey } } ?: all.firstOrNull { it.items.isNotEmpty() }
+                voiceFolderKey = folder?.key; voiceHighlightKey = activeKey?.takeIf { k -> folder?.items?.any { it.key == k } == true }
+                voicePage = com.yourapp.yamahaarranger.browser.BrowserGrid.pageOf(com.yourapp.yamahaarranger.browser.BrowserNav.indexOf(folder, voiceHighlightKey))
+            }
         }
         voiceRestorePending = false
     }
@@ -231,8 +241,8 @@ fun SxMainScreen(
         message = when {
             state.soundFontName == "None" -> "LOAD SF2 FIRST"
             state.sf2Presets.isEmpty() -> "No available SF2 presets"
-            voiceFolderNow == null -> "SELECT A SOUNDFONT"
-            voiceFolderNow.items.isEmpty() -> "NO VOICES MATCH THIS FILTER"
+            voiceFolderNow == null -> "SELECT AN INSTRUMENT GROUP"
+            voiceFolderNow.items.isEmpty() -> "NO VOICES IN THIS GROUP"
             else -> null
         },
         subtitle = "${voiceFolders.sumOf { it.items.size }} VOICES", actionLabel = "APPLY", actionEnabled = voiceHighlightKey != null && voiceByKey.containsKey(voiceHighlightKey),
@@ -246,11 +256,7 @@ fun SxMainScreen(
         onNext = { com.yourapp.yamahaarranger.browser.BrowserNav.next(voiceFolders, voiceCurrent())?.let(::moveVoiceHighlight) },
         onAction = { voiceHighlightKey?.let { k -> voiceByKey[k]?.let { applyVoiceFromBrowser(voicePart, it) } } }
     )
-    val voiceExtras = VoiceHeaderExtras("CAT: ${voiceFilterCategory ?: "ALL"}", voiceSearch.isNotBlank(),
-        onCategory = {
-            val next = voiceCategories[(voiceCategories.indexOf(voiceFilterCategory) + 1) % voiceCategories.size]
-            voiceBrowser = voiceBrowser.selectCategory(next); voiceHighlightKey = null; voicePage = 0; voiceFolderKey = null
-        }, onSearch = { showVoiceSearch = true })
+    val voiceExtras = VoiceHeaderExtras(voiceSearch.isNotBlank()) { showVoiceSearch = true }
 
     androidx.activity.compose.BackHandler(enabled = navigation.page != LivePage.HOME) { navigation = navigation.back() }
     LaunchedEffect(navigation.page) { onMixerVisibilityChanged(navigation.page != LivePage.HOME) }
@@ -408,8 +414,8 @@ fun SxMainScreen(
         var draft by remember { mutableStateOf(voiceSearch) }
         AlertDialog(onDismissRequest = { showVoiceSearch = false }, title = { Text("SEARCH VOICE NAME") },
             text = { OutlinedTextField(value = draft, onValueChange = { draft = it }, singleLine = true, placeholder = { Text("e.g. bass, suling") }) },
-            confirmButton = { TextButton(onClick = { voiceSearch = draft; voiceHighlightKey = null; voicePage = 0; voiceFolderKey = null; showVoiceSearch = false }) { Text("OK") } },
-            dismissButton = { TextButton(onClick = { draft = ""; voiceSearch = ""; voiceFolderKey = null; voicePage = 0; showVoiceSearch = false }) { Text("CLEAR") } })
+            confirmButton = { TextButton(onClick = { voiceSearch = draft; voiceHighlightKey = null; voicePage = 0; showVoiceSearch = false }) { Text("OK") } },
+            dismissButton = { TextButton(onClick = { draft = ""; voiceSearch = ""; voicePage = 0; showVoiceSearch = false }) { Text("CLEAR") } })
     }
     voiceSelectionError?.let { message ->
         AlertDialog(onDismissRequest = { voiceSelectionError = null },

@@ -156,6 +156,22 @@ object BrowserSources {
             })
         }
 
+    /**
+     * Voice folders = instrument groups over ALL loaded SoundFonts (one combined catalog). Every preset lands in exactly one
+     * group; duplicates by name are kept. Item key stays SoundFont file + bank + program, so selection reaches the right preset.
+     */
+    fun voiceGroupFolders(presets: List<VoiceLike>, keep: (VoiceLike) -> Boolean = { true }): List<BrowserFolder> {
+        // GM-completeness is judged on the unfiltered SoundFont, so a search filter cannot change a preset's group.
+        val gmComplete = presets.groupBy { it.soundFontName }.mapValues { (_, l) -> VoiceGroups.isGmComplete(l.filter { it.bank == 0 }.map { it.program }.distinct().size) }
+        val byGroup = presets.filter(keep).groupBy { VoiceGroups.classify(it.bank, it.program, it.name, gmComplete[it.soundFontName] == true).group }
+        return VoiceGroup.entries.map { g ->
+            BrowserFolder(g.id, g.label, (byGroup[g].orEmpty()).sortedWith(compareBy({ it.name.trim().lowercase() }, { it.soundFontName.lowercase() }, { it.bank }, { it.program })).map {
+                BrowserItem(voiceItemKey(it.soundFontName, it.bank, it.program), it.name.trim(),
+                    "${VoiceGroups.sourceTag(it.soundFontName)} · ${it.bank}:${it.program} · PC${it.program + 1}")
+            })
+        }
+    }
+
     /** Style folder = top-level folder; items = the style files whose path lies under it (same rule the LCD always used). */
     fun styleFolders(folders: List<Pair<String, String>>, files: List<Pair<String, String>>, pathOf: (String) -> String?): List<BrowserFolder> =
         folders.map { (uri, name) ->

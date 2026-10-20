@@ -77,7 +77,7 @@ class BrowserUi(
 }
 
 /** Header extras only the Voice browser has (category filter, search). */
-class VoiceHeaderExtras(val categoryLabel: String, val searchActive: Boolean, val onCategory: () -> Unit, val onSearch: () -> Unit)
+class VoiceHeaderExtras(val searchActive: Boolean, val onSearch: () -> Unit)
 
 /** Centre LCD page: header, fixed 4x4 grid (16 equal slots whatever the item count), P buttons. */
 @Composable
@@ -87,15 +87,23 @@ fun BrowserLcdPage(kind: BrowserKind, title: String, ui: BrowserUi, compact: Boo
     val page = ui.safePage
     Column(modifier.padding(if (compact) 5.dp else 7.dp)) {
         Row(Modifier.fillMaxWidth().height(if (compact) 27.dp else 32.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(if (kind == BrowserKind.STYLE) "STYLE" else "VOICE", color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.width(7.dp))
-            Text(title, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-            extras?.let {
-                TextButton(onClick = it.onCategory, contentPadding = PaddingValues(horizontal = 4.dp)) { Text(it.categoryLabel, color = BrowserPalette.Dim, fontSize = 8.sp, maxLines = 1) }
-                TextButton(onClick = it.onSearch, contentPadding = PaddingValues(horizontal = 4.dp)) { Text(if (it.searchActive) "SEARCH •" else "SEARCH", color = if (it.searchActive) BrowserPalette.BlueBorder else BrowserPalette.Dim, fontSize = 8.sp, maxLines = 1) }
+            // Left and right halves have equal weight, so the two arrows sit exactly in the middle of the header
+            // without covering the title (left) or the count and HOME (right).
+            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                Text(if (kind == BrowserKind.STYLE) "STYLE" else "VOICE", color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.width(7.dp))
+                Text(title, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
             }
-            Text(ui.subtitle, color = BrowserPalette.Dim, fontSize = 7.sp)
-            TextButton(onClick = onHome, contentPadding = PaddingValues(horizontal = 4.dp)) { Text("HOME", color = BrowserPalette.Green, fontSize = 8.sp) }
+            HeaderArrow("◀", ui.canPrev, ui.onPrev)
+            Spacer(Modifier.width(10.dp))
+            HeaderArrow("▶", ui.canNext, ui.onNext)
+            Row(Modifier.weight(1f), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                extras?.let {
+                    TextButton(onClick = it.onSearch, contentPadding = PaddingValues(horizontal = 4.dp)) { Text(if (it.searchActive) "SEARCH •" else "SEARCH", color = if (it.searchActive) BrowserPalette.BlueBorder else BrowserPalette.Dim, fontSize = 8.sp, maxLines = 1) }
+                }
+                Text(ui.subtitle, color = BrowserPalette.Dim, fontSize = 7.sp, maxLines = 1)
+                TextButton(onClick = onHome, contentPadding = PaddingValues(horizontal = 4.dp)) { Text("HOME", color = BrowserPalette.Green, fontSize = 8.sp) }
+            }
         }
         if (ui.message != null) {
             Surface(color = BrowserPalette.Lcd, shape = RoundedCornerShape(4.dp), modifier = Modifier.fillMaxWidth().weight(1f)) {
@@ -160,7 +168,7 @@ fun BrowserSidePanel(kind: BrowserKind, ui: BrowserUi, compact: Boolean, modifie
     Surface(color = BrowserPalette.Panel, shape = RoundedCornerShape(5.dp), modifier = modifier.border(1.dp, BrowserPalette.PanelBorder, RoundedCornerShape(5.dp))) {
         Column(Modifier.fillMaxSize().padding(if (compact) 4.dp else 6.dp), verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 5.dp)) {
             Text(if (kind == BrowserKind.STYLE) "STYLE SELECT" else "VOICE SELECT", color = accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-            Text(if (kind == BrowserKind.STYLE) "STYLE FOLDER" else "SOUNDFONT", color = BrowserPalette.Dim, fontSize = 7.sp, fontWeight = FontWeight.Bold)
+            Text(if (kind == BrowserKind.STYLE) "STYLE FOLDER" else "INSTRUMENT GROUP", color = BrowserPalette.Dim, fontSize = 7.sp, fontWeight = FontWeight.Bold)
             LazyColumn(Modifier.fillMaxWidth().weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 items(ui.folders, key = { it.key }) { folder ->
                     val selected = folder.key == ui.folderKey
@@ -183,13 +191,21 @@ fun BrowserSidePanel(kind: BrowserKind, ui: BrowserUi, compact: Boolean, modifie
                     NavButton("P▶", start + BrowserGrid.PAGE_BUTTONS < ui.pageCount, Modifier.weight(1f).fillMaxHeight()) { ui.onPage(start + BrowserGrid.PAGE_BUTTONS) }
                 }
             }
-            Row(Modifier.fillMaxWidth().height(if (compact) 40.dp else 46.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                NavButton("◀", ui.canPrev, Modifier.weight(1f).fillMaxHeight(), 16.sp) { ui.onPrev() }
-                NavButton("▶", ui.canNext, Modifier.weight(1f).fillMaxHeight(), 16.sp) { ui.onNext() }
-                NavButton(ui.actionLabel, ui.actionEnabled, Modifier.weight(1.7f).fillMaxHeight(), 8.sp, accentFill = true) { ui.onAction() }
+            // LOAD / APPLY stays here; Previous/Next live in the LCD header.
+            Row(Modifier.fillMaxWidth().height(if (compact) 40.dp else 46.dp)) {
+                NavButton(ui.actionLabel, ui.actionEnabled, Modifier.fillMaxWidth().fillMaxHeight(), 9.sp, accentFill = true) { ui.onAction() }
             }
-            Text("◀ ▶ move the highlight only", color = BrowserPalette.Dim, fontSize = 6.sp, maxLines = 1)
+            Text(if (kind == BrowserKind.STYLE) "◀ ▶ in the header move the highlight" else "◀ ▶ in the header move the highlight", color = BrowserPalette.Dim, fontSize = 6.sp, maxLines = 1)
         }
+    }
+}
+
+@Composable
+private fun HeaderArrow(label: String, enabled: Boolean, onClick: () -> Unit) {
+    Surface(color = if (enabled) BrowserPalette.Page else BrowserPalette.PageOff, shape = RoundedCornerShape(3.dp),
+        modifier = Modifier.width(52.dp).fillMaxHeight().then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
+            .border(1.dp, if (enabled) BrowserPalette.PageBorder else BrowserPalette.PageOff, RoundedCornerShape(3.dp))) {
+        Box(contentAlignment = Alignment.Center) { Text(label, color = if (enabled) Color.White else BrowserPalette.Dim, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false) }
     }
 }
 
