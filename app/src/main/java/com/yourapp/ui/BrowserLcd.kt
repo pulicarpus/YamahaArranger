@@ -89,8 +89,7 @@ fun BrowserLcdPage(kind: BrowserKind, title: String, ui: BrowserUi, compact: Boo
         Row(Modifier.fillMaxWidth().height(if (compact) 27.dp else 32.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(if (kind == BrowserKind.STYLE) "STYLE" else "VOICE", color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.width(7.dp))
-            Text(title, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-            Spacer(Modifier.weight(1f))
+            Text(title, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             extras?.let {
                 TextButton(onClick = it.onCategory, contentPadding = PaddingValues(horizontal = 4.dp)) { Text(it.categoryLabel, color = BrowserPalette.Dim, fontSize = 8.sp, maxLines = 1) }
                 TextButton(onClick = it.onSearch, contentPadding = PaddingValues(horizontal = 4.dp)) { Text(if (it.searchActive) "SEARCH •" else "SEARCH", color = if (it.searchActive) BrowserPalette.BlueBorder else BrowserPalette.Dim, fontSize = 8.sp, maxLines = 1) }
