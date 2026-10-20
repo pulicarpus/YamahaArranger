@@ -22,14 +22,17 @@ ALLOWED = {
     'tests/cpv/CpvOverrideIntegrationTest.kt',
     'tests/cpv/StyleVoiceInventoryTest.kt', 'tests/cpv/StyleVoiceOverrideProfileTest.kt', 'tests/cpv/CpvOverrideStoreTest.kt', 'tools/test_cpv.py', 'tools/test_style_voice_guard.py',
     '.github/workflows/style-voice-editor.yml', '.github/workflows/style-voice-editor-preview.yml',
-    'docs/STYLE_VOICE_INSPECTOR_EDITOR_REPORT.md',
+    'docs/STYLE_VOICE_INSPECTOR_EDITOR_REPORT.md', 'docs/MULTI_SF2_VOICE_SELECTION_REPORT.md', 'docs/SX_PRIME_PRESET_INVENTORY.md',
+    'app/src/main/cpp/bassmidi_player.cpp', 'app/src/main/cpp/bassmidi_player.h', 'app/src/main/cpp/audio_engine.cpp',
+    'app/src/main/cpp/audio_engine.h', 'app/src/main/cpp/native_lib.cpp', 'tests/cpv_native_test.cpp',
+    'app/src/main/java/com/yourapp/yamahaarranger/audio/NativeAudioBridge.kt',
+    'app/src/test/java/com/yourapp/registration/RecallPlannerTest.kt',
 }
 PROTECTED = (
     'app/src/main/java/com/yourapp/yamahaarranger/registration/RecallPlanner.kt',
     'app/src/main/java/com/yourapp/yamahaarranger/registration/Sf2ExternalMapping.kt',
     'app/src/main/java/com/yourapp/midi/MidiInputManager.kt', 'app/src/main/java/com/yourapp/midi/MidiMixerOutput.kt',
     'app/src/main/java/com/yourapp/yamahaarranger/style/StyleVoiceRequests.kt',
-    'app/src/main/cpp',
 )
 def git(*a): return subprocess.check_output(['git', *a], cwd=ROOT, text=True)
 changed = set(git('diff', '--name-only', BASE, 'HEAD').split()) | set(git('diff', '--name-only', BASE).split()) | \

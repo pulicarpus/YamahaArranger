@@ -180,6 +180,13 @@ bool AudioEngine::loadMelodyFallbackSoundFont(const std::string& path) {
     return ok;
 }
 
+bool AudioEngine::loadMelodyManualSoundFont(const std::string& path) {
+    LOGI("loadMelodyManualSoundFont: %s", path.c_str());
+    const bool ok = soundFont_.loadMelodyFallback(path, true);
+    LOGI("loadMelodyManualSoundFont result: %s", ok ? "OK" : "FAILED");
+    return ok;
+}
+
 bool AudioEngine::loadDrumSoundFont(const std::string& path) {
     LOGI("loadDrumSoundFont: %s", path.c_str());
     const bool ok = soundFont_.loadDrum(path);

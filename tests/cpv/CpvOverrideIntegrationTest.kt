@@ -125,7 +125,10 @@ class CpvOverrideIntegrationTest {
             `when`(bridge.nativeGetSoundFontPresets()).thenReturn(listOf(
                 "MELODY\u001f1\u001fColomboGMGS2_BM.sf2\u001f0\u001f33\u001fFinger Bass",
                 "MELODY\u001f2\u001fyamaha tyros 4.sf2\u001f0\u001f48\u001fTyros Strings",
-                "MELODY\u001f2\u001fyamaha tyros 4.sf2\u001f0\u001f40\u001fTyros Violin").joinToString("\u001e", postfix = "\u001e"))
+                "MELODY\u001f2\u001fyamaha tyros 4.sf2\u001f0\u001f40\u001fTyros Violin",
+                "MELODY\u001f3\u001fMELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2\u001f0\u001f32\u001felctrick bass",
+                "MELODY\u001f3\u001fMELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2\u001f8\u001f17\u001fBASS",
+                "MELODY\u001f3\u001fMELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2\u001f0\u001f33\u001fBASS PSR").joinToString("\u001e", postfix = "\u001e"))
             `when`(bridge.nativeFontPdta(anyLong())).thenReturn("ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506")
             seq = StyleSequencer(AudioEngineManager(bridge, mock(SampleProvider::class.java)), midi, scope)
         }
@@ -259,5 +262,57 @@ class CpvOverrideIntegrationTest {
         val src = java.io.File("app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt").readText()
         val body = src.substring(src.indexOf("fun auditionBegin"), src.indexOf("/** Re-install every pin after an SF2 reload"))
         assertTrue(!body.contains("allNotesOff")); assertTrue(!body.contains("sendRightPartSoundOff")); assertTrue(!body.contains("setKeyboard"))
+    }
+
+    // ---- SX Prime Melody Electric Bass through the Style Voice Editor path ----
+    private val primeFile = "MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2"
+    private val primeBass = StyleVoicePin(primeFile, 0, 32, "elctrick bass", false)
+
+    @Test fun primeElectricBassReachesTheNativePinWithItsOwnFontBankAndProgram() {
+        val r = Rig()
+        r.apply.invoke(r.seq, section("Main A"))
+        // Catalog identity: file name + bank + program; nothing is looked up by name or by Program Change alone.
+        assertEquals("elctrick bass", r.seq.let { AudioEngineManager(r.bridge, mock(SampleProvider::class.java)).findLoadedPreset(primeBass)?.name })
+        assertTrue(r.seq.setSectionVoicePin("Main A", 10, primeBass))
+        assertEquals(listOf<Any>(10, 3L, 0, 32), r.pins().last())            // font id 3 = Prime, bank 0, program 32 (not 33, not 8:17)
+        // Main A -> Fill AA -> Main A: the override is released where it was not asked for and returns where it was.
+        r.apply.invoke(r.seq, section("Fill AA"))
+        assertEquals(listOf<Any>(10, 0L, 0, 0), r.pins().last())
+        r.apply.invoke(r.seq, section("Main A"))
+        assertEquals(listOf<Any>(10, 3L, 0, 32), r.pins().last())
+        // Whole-part scope on another channel does not disturb it, and the style request is never re-applied over the pin.
+        assertTrue(r.seq.setVoicePin(11, StyleVoicePin(primeFile, 8, 17, "BASS", false)))
+        assertEquals(listOf<Any>(11, 3L, 8, 17), r.pins().last())
+        assertTrue(names(r.bridge, "nativeSetChannelPresetWithName").none { it.arguments[0] == 10 && r.pins().last()[1] == 3L && false })
+        r.close()
+    }
+
+    @Test fun primeBassProfileSurvivesSaveAndReload() {
+        val sha = com.yourapp.yamahaarranger.style.StyleOverrideStore.sha256("some style".toByteArray())
+        val pdta = "cfb096e3c197570554313aaca227f7e207ac64867e9871a025c1b4b2c6e9c136"
+        val record = com.yourapp.yamahaarranger.style.StyleVoiceEditorOps.apply(
+            com.yourapp.yamahaarranger.style.StyleOverrideRecord(sha, "S.STY", emptyList()),
+            com.yourapp.yamahaarranger.style.EditTarget("MainA", 10, com.yourapp.yamahaarranger.style.OriginalRef(0, 112, 33)),
+            com.yourapp.yamahaarranger.style.EditScope.THIS_SECTION,
+            com.yourapp.yamahaarranger.style.Replacement.Sf2(com.yourapp.yamahaarranger.style.CatalogPreset(primeFile, pdta, 0, 32, "elctrick bass", false)))
+        val dir = java.nio.file.Files.createTempDirectory("prime")
+        com.yourapp.yamahaarranger.style.StyleOverrideStore(dir).write(record)
+        val back = com.yourapp.yamahaarranger.style.StyleOverrideStore(dir).read(sha).record!!
+        val e = back.overrides.single()
+        assertEquals(primeFile, e.pin.soundFontName); assertEquals(0, e.pin.bank); assertEquals(32, e.pin.program); assertEquals(pdta, e.pdta)
+        assertEquals("MainA", e.section)
+        // Restore: valid when the same Prime content is loaded; STALE (not Piano) when its content or preset is gone.
+        val ok = com.yourapp.yamahaarranger.style.StyleOverridePins.check(back, { if (it == primeFile) pdta else null }) { f, b, p -> if (f == primeFile && b == 0 && p == 32) "elctrick bass" else null }
+        assertEquals("VALID", ok.single().reason)
+        val changed = com.yourapp.yamahaarranger.style.StyleOverridePins.check(back, { "00".repeat(32) }) { _, _, _ -> "elctrick bass" }
+        assertEquals("STALE_SOUNDFONT_CONTENT_CHANGED", changed.single().reason)
+        val gone = com.yourapp.yamahaarranger.style.StyleOverridePins.check(back, { null }) { _, _, _ -> null }
+        assertEquals("STALE_PRESET_NOT_LOADED", gone.single().reason)
+        // A fresh sequencer (new session) gets the same pin back at the matching section.
+        val r = Rig()
+        assertTrue(r.seq.setSectionVoicePin(e.section!!, e.channel, e.pin))
+        r.apply.invoke(r.seq, section("MainA"))
+        assertEquals(listOf<Any>(10, 3L, 0, 32), r.pins().last())
+        r.close()
     }
 }

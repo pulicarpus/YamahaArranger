@@ -30,6 +30,8 @@ class NativeAudioBridge @Inject constructor() {
     external fun nativeLoadSoundFont(path: String): Boolean
     external fun nativeLoadMelodySoundFont(path: String): Boolean
     external fun nativeLoadMelodyFallbackSoundFont(path: String): Boolean
+    /** Attach an SF2 for explicit selection only; the automatic resolver never uses it. */
+    external fun nativeLoadMelodyManualSoundFont(path: String): Boolean
     external fun nativeLoadDrumSoundFont(path: String): Boolean
     external fun nativeIsSoundFontLoaded(): Boolean
     external fun nativeUnloadSoundFont()

@@ -208,7 +208,7 @@ class AudioEngineManager @Inject constructor(
      * The primary path also satisfies the readiness drum slot because it is
      * the drum source.
      */
-    fun loadColomboPrimaryStack(primaryPath: String, fallbackPath: String?, request: ReadyToPlayGate.Request? = null): Boolean =
+    fun loadColomboPrimaryStack(primaryPath: String, fallbackPath: String?, request: ReadyToPlayGate.Request? = null, manualPath: String? = null): Boolean =
         fontOperation(request, primaryPath, primaryPath) {
             val result = runBlocking { soundFontOperationMutex.withLock { withAudioStreamPausedUnsafe {
                 // Drop any previous stack, including a dedicated drum font.
@@ -218,6 +218,12 @@ class AudioEngineManager @Inject constructor(
                 if (!fallbackPath.isNullOrBlank()) {
                     val ok = bridge.nativeLoadMelodyFallbackSoundFont(fallbackPath)
                     DebugLog.add(if (ok) "✅ CPV fallback SF2 attached" else "⚠️ CPV fallback SF2 failed; primary remains active")
+                }
+                if (!manualPath.isNullOrBlank()) {
+                    // Third SF2 (SX Prime Melody): selectable by hand, invisible to the automatic resolver. Non-fatal.
+                    val ok = bridge.nativeLoadMelodyManualSoundFont(manualPath)
+                    DebugLog.add(if (ok) "✅ CPV manual-only SF2 attached (not used by the automatic resolver)"
+                        else "⚠️ CPV manual-only SF2 failed; established stack remains active")
                 }
                 val drums = bridge.nativeSetDrumABMode(true)
                 if (drums) drumABResolved = true

@@ -40,7 +40,7 @@ public:
     ~BassMidiPlayer();
     bool load(const std::string& path);
     bool loadMelody(const std::string& path);
-    bool loadMelodyFallback(const std::string& path);
+    bool loadMelodyFallback(const std::string& path, bool manualOnly = false);
     bool loadDrum(const std::string& path);
     void unload();
     bool isLoaded() const { return stream_ != 0 && (melodyFont_ != 0 || drumFont_ != 0); }
@@ -166,6 +166,7 @@ private:
     struct SecondaryMelody {
         HSOUNDFONT font = 0;
         uint64_t fontId = 0;
+        bool manualOnly = false;
         std::string path;
         std::string bassPath;
         std::vector<MelodicPresetEntry> presets;

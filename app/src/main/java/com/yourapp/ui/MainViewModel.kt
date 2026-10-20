@@ -1650,11 +1650,14 @@ class MainViewModel @Inject constructor(
             contentResolver.copySoundFontToCache(f.first, f.second, "ready-${request.generation}")
         } }
         if (primaryCache == null) { DebugLog.add("❌ CPV SF2 cache failed"); _soundFontName.value = "Load failed"; return true }
+        // SX Prime Melody joins as a manual-only SF2 so its presets can be chosen by hand (Voice Selector, Style Voice Editor).
+        val prime = plan.excluded.firstOrNull { com.yourapp.yamahaarranger.audio.SoundFontRolePlanner.kind(it.second) == com.yourapp.yamahaarranger.audio.SoundFontRolePlanner.Kind.PRIME_MELODY }
+        val primeCache = prime?.let { f -> withContext(Dispatchers.IO) { contentResolver.copySoundFontToCache(f.first, f.second, "ready-${request.generation}") } }
         val ok = withContext(Dispatchers.Default) {
-            audioEngine.loadColomboPrimaryStack(primaryCache.absolutePath, fallbackCache?.absolutePath, request)
+            audioEngine.loadColomboPrimaryStack(primaryCache.absolutePath, fallbackCache?.absolutePath, request, primeCache?.absolutePath)
         }
         fontRequestSucceeded = ok
-        _soundFontName.value = if (ok) primary.second + (plan.fallback?.let { " + " + it.second } ?: "") else "Load failed"
+        _soundFontName.value = if (ok) primary.second + (plan.fallback?.let { " + " + it.second } ?: "") + (prime?.let { " + " + it.second + " (manual)" } ?: "") else "Load failed"
         if (ok) withContext(Dispatchers.Default) { reapplyStyleVoicePins() }
         return true
     }

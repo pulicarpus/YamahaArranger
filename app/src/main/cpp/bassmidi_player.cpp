@@ -484,7 +484,7 @@ bool BassMidiPlayer::loadMelody(const std::string& path) {
     return loadRole(path, false);
 }
 
-bool BassMidiPlayer::loadMelodyFallback(const std::string& path) {
+bool BassMidiPlayer::loadMelodyFallback(const std::string& path, bool manualOnly) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (!ensureEngine() || path.empty() || !melodyFont_) return false;
     for (const auto& secondary : secondaryMelodies_) if (secondary.path == path) return true;
@@ -494,6 +494,7 @@ bool BassMidiPlayer::loadMelodyFallback(const std::string& path) {
     closeRolePcmWindows(); // prevent attribution across an SF2 resource change
     SecondaryMelody secondary;
     secondary.path = path;
+    secondary.manualOnly = manualOnly;
     secondary.bassPath = path + ".bassmidi-normalized.sf2";
     const auto primaryBanks = normalizedBanks_;
     normalizedBanks_.clear();
@@ -967,6 +968,9 @@ bool BassMidiPlayer::findMelodicPreset(
     if (melodyFont_) collect(0, melodyPath_, melodyPresetCache_);
     for (size_t i = 0; i < secondaryMelodies_.size(); ++i) {
         const auto& secondary = secondaryMelodies_[i];
+        // Manual-only fonts are attached for explicit selection (Voice Selector, Style Voice Editor pins);
+        // the automatic resolver never considers them, so automatic results are unchanged.
+        if (secondary.manualOnly) continue;
         collect(static_cast<int>(i + 1), secondary.path, secondary.presets);
     }
     const Request input{requestedBank, requestedProgram, voiceName};

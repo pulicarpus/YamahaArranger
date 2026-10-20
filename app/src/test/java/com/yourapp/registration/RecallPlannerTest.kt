@@ -12,6 +12,16 @@ class RecallPlannerTest {
         for(bank in listOf(1025,65535)) { val v=voice.copy(bank=bank); val p=plan(slot().copy(parts=List(4){PartSetup(v,null,true,100)}),catalog=listOf(voice.copy(bank=0),v))
             assertEquals(List(4){v},p.steps.filterIsInstance<RecallStep.Sf2>().map{it.voice}) }
     }
+    @Test fun R1b_sameBankProgramInTwoSoundFontsIsResolvedBySoundFontIdentity() {
+        val prime=Sf2VoiceRef("MELODI YAMAHA PSR-SX700 & SX900 PRIME.sf2",0,52,"Suling S770")
+        val colombo=Sf2VoiceRef("ColomboGMGS2_BM.sf2",0,52,"Choir Aahs")
+        val p=plan(slot().copy(parts=List(4){PartSetup(prime,null,true,100)}),catalog=listOf(colombo,prime))
+        assertEquals(List(4){prime},p.steps.filterIsInstance<RecallStep.Sf2>().map{it.voice})
+        assertTrue(p.issues.isEmpty())
+        // The Prime SoundFont missing is reported, never answered with the Colombo preset at the same bank/program.
+        val missing=plan(slot().copy(parts=List(4){PartSetup(prime,null,true,100)}),catalog=listOf(colombo))
+        assertTrue(missing.steps.none{it is RecallStep.Sf2}); assertEquals(4,missing.issues.size)
+    }
     @Test fun R2_missingOrAmbiguousSf2PreservesPartVoice() { for(cat in listOf(emptyList(),listOf(voice,voice))) { val p=plan(catalog=cat); assertEquals(4,p.issues.size); assertTrue(p.steps.none{it is RecallStep.Sf2}) } }
     @Test fun R3_identicalWithoutExternalHasNoSteps() { val s=slot(OutputMode.INTERNAL); assertTrue(plan(s,c=current().copy(parts=s.parts)).steps.isEmpty()) }
     @Test fun R4_externalHasZeroSf2Steps() { assertTrue(plan(slot(OutputMode.EXTERNAL)).steps.none{it is RecallStep.Sf2}) }

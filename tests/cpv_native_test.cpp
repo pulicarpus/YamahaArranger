@@ -149,6 +149,59 @@ int main(int argc, char** argv) {
         std::cout << "CPV LATENCY PROBE OK\n";
     }
 
+    // 9. SX Prime Melody (real pdta) attached as a manual-only SF2: selectable by hand, invisible to the automatic resolver.
+    {
+        const std::string prime = d + "/prime_melodi.sf2";
+        check(p.loadMelodyFallback(prime, true), "attach SX Prime Melody as manual-only");
+        // Enumerate exactly what BASSMIDI exposes for it (record: role, fontId, file, bank, program, name).
+        uint64_t primeId = 0; int primeCount = 0;
+        std::vector<std::vector<std::string>> rows;
+        {
+            std::stringstream in(p.presetList()); std::string rec;
+            while (std::getline(in, rec, '\x1e')) {
+                std::vector<std::string> f; std::stringstream r(rec); std::string x;
+                while (std::getline(r, x, '\x1f')) f.push_back(x);
+                if (f.size() == 6 && f[2].find("prime_melodi") != std::string::npos) { primeId = std::stoull(f[1]); ++primeCount; rows.push_back(f); }
+            }
+        }
+        std::cout << "CPV PRIME_MELODY presets exposed=" << primeCount << "\n";
+        for (const auto& f : rows) {
+            std::string ascii = f[5]; for (auto& ch : ascii) if (static_cast<unsigned char>(ch) > 126 || static_cast<unsigned char>(ch) < 32) ch = '?';
+            std::cout << "PRIME_PRESET bank=" << f[3] << " program0=" << f[4] << " program1=" << (std::stoi(f[4]) + 1) << " name='" << ascii << "'\n";
+        }
+        check(primeCount == 93, "all 93 SX Prime Melody presets are exposed");
+        auto find = [&](int bank, int program, const std::string& name) {
+            for (const auto& f : rows) if (std::stoi(f[3]) == bank && std::stoi(f[4]) == program && f[5] == name) return true;
+            return false;
+        };
+        check(find(0, 32, "elctrick bass"), "Prime 0:32 'elctrick bass' present with the pdta bank/program");
+        check(find(8, 17, "BASS"), "Prime 8:17 'BASS' present");
+        check(find(0, 52, "Suling S770") && find(0, 72, "Suling S770") && find(0, 73, "Suling S770"), "Prime Suling presets present");
+        // Automatic resolution never lands on the manual-only font.
+        int primeAuto = 0;
+        for (int pc = 0; pc < 128; ++pc) for (int bank : {0, 8 * 128 + 16, 104 * 128 + 5}) {
+            p.setChannelPreset(14, bank, pc);
+            const auto bb = fields(p.channelBinding(14));
+            if (bb[3].find("prime_melodi") != std::string::npos) ++primeAuto;
+        }
+        check(primeAuto == 0, "automatic resolver never chooses a manual-only SF2");
+        // Manual pin of the Style Bass channel to Prime 0:32 keeps SF2 identity, bank and program.
+        check(p.pinChannelPreset(10, primeId, 0, 32), "pin Style Bass to Prime 0:32");
+        auto pb = fields(p.channelBinding(10));
+        check(pb[1] == "BOUND" && pb[2] == "PINNED" && pb[3].find("prime_melodi") != std::string::npos && pb[5] == "0" && pb[6] == "32",
+              "binding reports Prime, bank 0, program 32");
+        BASS_MIDI_FONT liveP{};
+        check(BASS_MIDI_StreamGetPreset(1, 10, &liveP) && liveP.preset == 32 && mock_bass::fonts[liveP.font].find("prime_melodi") != std::string::npos,
+              "native stream plays the Prime preset, not a Colombo/Piano fallback");
+        // RIGHT1 can select Prime Suling through the keyboard path, independent of the Style pin.
+        check(p.setKeyboardPreset(0, primeId, 0, 52), "RIGHT1 selects Prime 'Suling S770' by font id + bank + program");
+        auto kb = fields(p.channelBinding(0));
+        check(kb[2] == "KEYBOARD" && kb[3].find("prime_melodi") != std::string::npos && kb[6] == "52", "RIGHT1 binding reports Prime Suling 0:52");
+        check(fields(p.channelBinding(10))[3].find("prime_melodi") != std::string::npos, "RIGHT selection did not touch the Style pin");
+        check(p.pinChannelPreset(10, 0, 0, 0), "unpin Style Bass");
+        std::cout << "CPV PRIME MANUAL OK\n";
+    }
+
     // 8. The getter is read-only.
     const auto history = mock_bass::history;
     for (int ch = 0; ch < 16; ++ch) p.channelBinding(ch);
