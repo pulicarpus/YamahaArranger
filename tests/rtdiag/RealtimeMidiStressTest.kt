@@ -274,4 +274,37 @@ class RealtimeMidiStressTest {
         assertEquals(7, ons)       // 60,62,64,65,67,71,73 (69 stray data and ch2 are not notes)
         assertEquals(0, r.oracle.stuckOnChannels(0..15)); r.close()
     }
+
+    // ---------------------------------------------------------------- chord transition breakdown (LatencyProbe hooks, wired in this branch)
+    private fun transitionRun(label: String, spreadMs: Long, waitUntilPhase: (RtRig) -> Unit, midiOut: Boolean, nativeUs: Long = 0, usbUs: Long = 0, fill: Boolean = false) {
+        val r = rig(midiOut, false, 120); r.nativeCallCostUs = nativeUs; r.usbWriteCostUs = usbUs
+        com.yourapp.yamahaarranger.audio.LatencyProbe.reset()
+        r.startStyle()
+        val chords = listOf(C, F, G, Am)
+        r.playChord(chords[0], spreadMs); Thread.sleep(600)
+        if (fill) { r.brain.selectMainVariation(ArrangerSection.MainB); Thread.sleep(300) }
+        for (n in 1..6) { waitUntilPhase(r); chords[(n - 1) % 4].forEach { r.noteOff(it) }; r.playChord(chords[n % 4], spreadMs); Thread.sleep(250) }
+        r.stopAndSettle()
+        val rows = com.yourapp.yamahaarranger.audio.LatencyProbe.report().lines()
+        fun stat(name: String) = rows.firstOrNull { it.contains("stat=$name") }?.substringAfter("count=")?.substringBefore(" buckets") ?: "NA"
+        report(label, "spreadMs" to spreadMs, "midiOut" to midiOut, "nativeUs" to nativeUs, "usbUs" to usbUs,
+            "firstKeyToRecognized" to stat("chordFirstKeyToRecognized_includesFingerSpread"), "recognizedToApply" to stat("chordRecognizedToApplyStart_settleAndMainQueue"),
+            "applyDuration" to stat("chordApplyDuration_handleChordChange"), "firstKeyToDone" to stat("chordFirstKeyToRetargetDone_synchronousJniAndUsb"),
+            "schedulerWakeLateness" to stat("styleEventWakeLatenessBeforeLifecycle"), "dispatchLateness" to stat("styleEventDispatchLatenessAfterLifecycle"),
+            "counters" to rows.firstOrNull { it.startsWith("LATENCY_KOTLIN_COUNTERS") }?.substringAfter("midiEventsIn="))
+        r.close()
+    }
+    /** Waits until the Style master tick is `phaseTicks` into the 1920-tick bar (PPQ 480, 4/4). */
+    private fun phase(phaseTicks: Long): (RtRig) -> Unit = { r ->
+        val src = r.brain.styleClockSource(); val bar = 1920L; var guard = 0
+        while (guard++ < 4000) { val t = src.masterTickNow(); val inBar = ((t % bar) + bar) % bar; val d = (phaseTicks - inBar + bar) % bar; if (d < 20) break; Thread.sleep(2) }
+    }
+    @Test fun chordTransitionBreakdownByBarPhase() {
+        transitionRun("chord_transition_midBeat_spread0", 0, phase(240), false)
+        transitionRun("chord_transition_midBeat_spread20", 20, phase(240), false)
+        transitionRun("chord_transition_nearBarLine_spread0", 0, phase(1860), false)
+        transitionRun("chord_transition_justAfterBarLine_spread0", 0, phase(30), false)
+        transitionRun("chord_transition_duringFill_spread0", 0, phase(240), false, fill = true)
+        transitionRun("chord_transition_midBeat_midiOut_model300us150us", 0, phase(240), true, 300, 150)
+    }
 }

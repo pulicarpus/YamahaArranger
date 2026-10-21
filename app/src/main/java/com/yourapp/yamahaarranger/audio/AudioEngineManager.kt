@@ -398,7 +398,15 @@ class AudioEngineManager @Inject constructor(
     fun bindDrumAB(ch: Int, pdta: String, bank: Int, pc: Int, section: String): Boolean = bridge.nativeBindDrumAB(ch,pdta,bank,pc,section)
     fun drumABReport(): String = bridge.nativeDrumABReport()
     /** LATENCY_PROBE report (Kotlin + native + Oboe stream). Call outside realtime paths. */
-    fun latencyReport(): String = LatencyProbe.report() + bridge.nativeLatencyReport()
+    // METRONOME: thin forwarders; the clock logic lives in MetronomeController / metronome_engine.h.
+    fun metronomeConfigure(enabled: Boolean, mode: Int, running: Boolean, bpmX100: Int, numerator: Int, denominator: Int, volumePermille: Int) =
+        bridge.nativeMetronomeConfigure(enabled, mode, running, bpmX100, numerator, denominator, volumePermille)
+    fun metronomePush(targetNs: Long, level: Int, generation: Int): Boolean = bridge.nativeMetronomePush(targetNs, level, generation)
+    fun metronomeGeneration(): Int = bridge.nativeMetronomeGeneration()
+    fun metronomeBumpGeneration(): Int = bridge.nativeMetronomeBumpGeneration()
+    fun metronomeBeat(): Long = bridge.nativeMetronomeBeat()
+
+    fun latencyReport(): String = LatencyProbe.report() + bridge.nativeLatencyReport() + bridge.nativeMetronomeReport()
     fun latencyReset() { LatencyProbe.reset(); bridge.nativeLatencyReset() }
     fun channelBinding(channel: Int): ChannelBinding? = ChannelBinding.parse(bridge.nativeChannelBinding(channel))
     /** SF2 preset-data fingerprint of a loaded font ("" when unavailable); identifies content, not just the file name. */

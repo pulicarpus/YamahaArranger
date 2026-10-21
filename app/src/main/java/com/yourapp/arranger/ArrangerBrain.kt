@@ -140,6 +140,18 @@ class ArrangerBrain @Inject constructor(
         Timber.i("Style loaded: ${style.fileName}, voices=${style.voiceMap.size}")
     }
 
+    /** METRONOME: read-only view of the Style's musical clock (never changes sequencer state). */
+    fun styleClockSource(): com.yourapp.yamahaarranger.audio.StyleClockSource = object : com.yourapp.yamahaarranger.audio.StyleClockSource {
+        override fun running() = ::sequencer.isInitialized && _state.value.isPlaying && sequencer.clockRunning()
+        override fun meter(): com.yourapp.yamahaarranger.audio.MetronomeMeter =
+            loadedStyle?.meter?.let { com.yourapp.yamahaarranger.audio.MetronomeMeter(it.numerator, it.denominator) } ?: com.yourapp.yamahaarranger.audio.MetronomeMeters.DEFAULT
+        override fun ppq() = loadedStyle?.ppq ?: 480
+        override fun loopOriginTick() = if (::sequencer.isInitialized) sequencer.loopOriginTick else 0L
+        override fun tickToNanos(tick: Long) = if (::sequencer.isInitialized) sequencer.tickToNanos(tick, ppq()) else null
+        override fun masterTickNow() = if (::sequencer.isInitialized) sequencer.masterTickNow(ppq()) else 0L
+        override fun tempoRevision() = if (::sequencer.isInitialized) sequencer.clockTempoRevision() else 0L
+    }
+
     fun setKeyboardReleaseTime(value: Int) {
         keyboardReleaseTime = value.coerceIn(0, 127)
         DebugLog.add("🎹 RELEASE TIME = $keyboardReleaseTime")
@@ -268,6 +280,7 @@ class ArrangerBrain @Inject constructor(
             if (acmpEnabled && leftVoiceEnabled) {
                 // ACMP/chord notes are deliberately not sustain-held.
                 DebugLog.add("🎹 LEFT IN note=$midiNote vel=$velocity127 → CHORD")
+                com.yourapp.yamahaarranger.audio.LatencyProbe.chordNoteParsed(); com.yourapp.yamahaarranger.audio.LatencyProbe.chordKeyDown() // LATENCY_PROBE
                 chordDetector.noteOn(midiNote)?.let(::onChordChanged)
             } else if (leftVoiceEnabled) {
                 transposedNotes[midiNote] = outputNote
@@ -405,6 +418,7 @@ class ArrangerBrain @Inject constructor(
         // Coalesce that short burst so CASM/RTR is retargeted only once.
         pendingChordJob?.cancel()
         pendingChord = chord
+        com.yourapp.yamahaarranger.audio.LatencyProbe.chordRecognized() // LATENCY_PROBE
         DebugLog.add("🎹 CHORD SETTLE " + chord.label() + " (" + chordSettleMs + "ms)")
         val scope = externalScope ?: CoroutineScope(Dispatchers.Main + SupervisorJob())
         pendingChordJob = scope.launch {
@@ -422,7 +436,9 @@ class ArrangerBrain @Inject constructor(
         ensureSequencer()
         pendingChord = null
         appliedChord = chord
+        val probeStart = com.yourapp.yamahaarranger.audio.LatencyProbe.chordApplyStart() // LATENCY_PROBE
         sequencer.currentChord = chord
+        com.yourapp.yamahaarranger.audio.LatencyProbe.chordApplyEnd(probeStart) // LATENCY_PROBE
         _state.update { it.copy(currentChordLabel = chord.label()) }
         DebugLog.add("🎼 ACMP chord → ${chord.label()}")
     }
@@ -467,6 +483,7 @@ class ArrangerBrain @Inject constructor(
         val wasPlaying = _state.value.isPlaying
         _state.update { it.copy(currentSection = target) }
         if (!wasPlaying) return
+        com.yourapp.yamahaarranger.audio.LatencyProbe.sectionRequested() // LATENCY_PROBE
 
         // If a Fill is already sounding, do NOT create a new transition job.
         // Keep the current Fill intact; replace only the pending tail with the
@@ -518,6 +535,7 @@ class ArrangerBrain @Inject constructor(
         val previous = activeSection
         _state.update { it.copy(currentSection = target) }
         if (!wasPlaying) return
+        com.yourapp.yamahaarranger.audio.LatencyProbe.sectionRequested() // LATENCY_PROBE
 
         when {
             target in setOf(ArrangerSection.IntroA, ArrangerSection.IntroB, ArrangerSection.IntroC) -> {

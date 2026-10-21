@@ -6,6 +6,7 @@
 #include "voice.h"
 #include "bassmidi_player.h"
 #include "latency_probe.h"
+#include "metronome_engine.h"
 #include "buffer_policy.h"
 #include <atomic>
 // PCM_PATH_OBSERVER_BEGIN
@@ -82,8 +83,11 @@ public:
     std::string bufferStatus();
     void bufferTick(); // ADAPTIVE only; called from the app (never from the audio callback)
     void latencyReset(){latency_probe::probe.reset();}
+    metronome::Engine& metronomeEngine(){return metronome_;}
+    std::string metronomeReport() const {return metronome_.report();}
     void latencySetEnabled(bool e){latency_probe::probe.enabled.store(e?1:0);}
 private:
+    metronome::Engine metronome_; // click generator mixed after BASSMIDI; see metronome_engine.h
     std::shared_ptr<oboe::AudioStream> stream_;
     std::atomic<int> bufferMode_{buffer_policy::BASELINE_2X};
     std::atomic<long> xrunBase_{0}, xrunLastTick_{0};

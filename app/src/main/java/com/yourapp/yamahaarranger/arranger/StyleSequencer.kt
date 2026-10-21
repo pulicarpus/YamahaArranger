@@ -674,7 +674,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                         rest.forEach { pendingSectionQueue.addLast(it) }
                         loopCount = 0
                         if (lastAppliedSection != active.section.name) {
-                            applyVoicesFromCasm(active.section)
+                            applyVoicesProbed(active.section)
                             lastAppliedSection = active.section.name
                         }
                         com.yourapp.yamahaarranger.ui.DebugLog.add(
@@ -695,7 +695,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                     remainingLoops = queued.loopLimit
                     loopCount = 0
                     if (lastAppliedSection != active.section.name) {
-                        applyVoicesFromCasm(active.section)
+                        applyVoicesProbed(active.section)
                         lastAppliedSection = active.section.name
                     }
                     com.yourapp.yamahaarranger.ui.DebugLog.add(
@@ -757,6 +757,15 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     }
 
     fun clockTempoRevision(): Long = synchronized(musicalClockLock) { tempoRevision }
+
+    // ---- METRONOME: read-only views of the musical clock. They change no state and send nothing. ----
+    @Volatile private var loopOriginTickValue = 0L
+    val loopOriginTick: Long get() = loopOriginTickValue
+    /** True while a playback job exists (Style started and not stopped / ended). */
+    fun clockRunning(): Boolean = masterClockStartedAtNanos != 0L && playbackJob?.isActive == true
+    /** CLOCK_MONOTONIC time at which `tick` is due, honouring all tempo changes so far; null when no clock is running. */
+    fun tickToNanos(tick: Long, ppq: Int): Long? = if (masterClockStartedAtNanos == 0L || ppq <= 0) null else tickDeadlineNanos(tick, ppq)
+    fun masterTickNow(ppq: Int): Long = currentMasterTick(ppq)
 
     suspend fun awaitMusicalTick(tick: Long, ppq: Int, requestTempoRevision: Long) {
         val clock = synchronized(musicalClockLock) { ensureTempoClock() }
@@ -844,6 +853,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         val master=masterTranspose
         val target=base?.let { (it+master).coerceIn(0,127) }
         chordEvent(active,eventId,if(target==null) "TRANSFORM_NULL_NO_SEND" else if(target==active.outputNote) "UNCHANGED_NO_SEND" else "REPLACE",target?:-1)
+        com.yourapp.yamahaarranger.audio.LatencyProbe.retargetDecision(target!=null&&target!=active.outputNote) // LATENCY_PROBE (observer)
         if(target==null||target==active.outputNote){ if(target!=null) active.masterApplied=master; return }
         if(!retrigger)com.yourapp.yamahaarranger.ui.DebugLog.add("🎹 RTR PITCH SHIFT src${active.sourceChannel}:${active.sourceNote} ${active.outputNote}→$target (note replacement)")
         else com.yourapp.yamahaarranger.ui.DebugLog.add("🎹 RTR RETRIGGER src${active.sourceChannel}:${active.sourceNote} ${active.outputNote}→$target")
@@ -901,6 +911,13 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         chordOff(active,active.onId,0,"SCHEDULED_OFF")
         midiInputManager.sendNoteOff(active.destinationChannel,active.outputNote)
         true
+    }
+
+    /** Observer-only wrapper: section boundary and voice-apply timing for LatencyProbe. Same call, same order. */
+    private fun applyVoicesProbed(section:StyleSectionModel) {
+        com.yourapp.yamahaarranger.audio.LatencyProbe.sectionBoundary(); com.yourapp.yamahaarranger.audio.LatencyProbe.voiceApplyStart()
+        applyVoicesFromCasm(section)
+        com.yourapp.yamahaarranger.audio.LatencyProbe.voiceApplyEnd()
     }
 
     private fun applyVoicesFromCasm(section:StyleSectionModel) {
@@ -1196,6 +1213,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
 
     private suspend fun playOnce(section:StyleSectionModel,ppq:Int,startAbsoluteTick:Long,phaseStartTick:Long): PlayOnceResult {
         loopCount++
+        loopOriginTickValue=startAbsoluteTick // METRONOME (read-only): bar-line origin of this section loop
         if(section.lengthTicks<=0) return PlayOnceResult(startAbsoluteTick, false)
 
         data class Scheduled(
@@ -1269,6 +1287,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             val targetNanos = tickDeadlineNanos(absoluteTick, ppq, clock)
 
             if(f12Timing.begin()!=0L) { val now=System.nanoTime(); f12Timing.record(2,now,0,((now-targetNanos)/1000).coerceIn(0,Int.MAX_VALUE.toLong()).toInt(),tick=absoluteTick.toInt()) }
+            if(com.yourapp.yamahaarranger.audio.LatencyProbe.enabled) com.yourapp.yamahaarranger.audio.LatencyProbe.schedulerWake(System.nanoTime(),targetNanos) // LATENCY_PROBE
             val chord=currentChord
             val isNote = isNoteEvent(s.event)
             val policy = if (isNote) {
@@ -1339,6 +1358,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
 
             lifecycle {
                 if(f12Timing.begin()!=0L) { val now=System.nanoTime(); f12Timing.record(6,now,0,((now-targetNanos)/1000).coerceIn(0,Int.MAX_VALUE.toLong()).toInt(),tick=absoluteTick.toInt()) }
+                if(com.yourapp.yamahaarranger.audio.LatencyProbe.enabled) com.yourapp.yamahaarranger.audio.LatencyProbe.styleEventDispatched(System.nanoTime(),targetNanos,s.event.isNoteOn) // LATENCY_PROBE
                 val diagChannel = policy?.destinationChannel ?: s.part.casmPolicies.ifEmpty { listOfNotNull(s.part.casm) }.map { it.destinationChannel }.distinct().singleOrNull() ?: s.event.channel
                 val diagId = if (s.event.isNoteOn) audioPath.observe(diagChannel) else 0L
                 val diagBank = dynamicBankBySource[s.event.channel] ?: (s.part.bankMsb * 128 + s.part.bankLsb)

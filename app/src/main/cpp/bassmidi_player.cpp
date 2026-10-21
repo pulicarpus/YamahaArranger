@@ -28,6 +28,9 @@
 #include <jni.h>
 
 #define LOG_TAG "BassMidiPlayer"
+#ifndef BASS_ATTRIB_MIDI_VOICES_ACTIVE
+#define BASS_ATTRIB_MIDI_VOICES_ACTIVE 0x12004 /* host mock headers only; the real header defines it */
+#endif
 
 // BassMidiPlayer is the layer that knows the real SF2/BASSMIDI mapping.
 // Route its diagnostics through the same DebugLog bridge as AudioEngine so
@@ -2382,6 +2385,7 @@ void BassMidiPlayer::render(float* out, int numFrames) {
         static_cast<DWORD>(numFrames * 2 * sizeof(float));
     const DWORD got = BASS_ChannelGetData(
         stream_, out, wanted | BASS_DATA_FLOAT);
+    if (probeEnter) { float active = 0; if (BASS_ChannelGetAttribute(stream_, BASS_ATTRIB_MIDI_VOICES_ACTIVE, &active) && active >= 0) latency_probe::probe.voices(uint32_t(active)); } // LATENCY_PROBE (cheap getter, probe armed only)
 
     if (got == static_cast<DWORD>(-1)) {
 // PCM_PATH_OBSERVER_BEGIN

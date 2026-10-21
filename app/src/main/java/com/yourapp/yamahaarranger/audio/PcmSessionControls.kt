@@ -94,11 +94,23 @@ object LatencyProbe {
     val chordMidiToApplyStart = Stat("chordLastNoteToApplyChordNow")
     val chordRetarget = Stat("chordApplyDuration_handleChordChange")
     val chordMidiToRetargetEnd = Stat("chordLastNoteToRetargetDone")
+    // Chord transition, measured from the FIRST key of the chord (finger spread + recognition + 15 ms settle + retarget).
+    val chordFirstKeyToRecognized = Stat("chordFirstKeyToRecognized_includesFingerSpread")
+    val chordFirstKeyToApplyStart = Stat("chordFirstKeyToApplyStart_includesSettle")
+    val chordFirstKeyToRetargetEnd = Stat("chordFirstKeyToRetargetDone_synchronousJniAndUsb")
+    val chordRecognizedToApplyStart = Stat("chordRecognizedToApplyStart_settleAndMainQueue")
+    // Plain counters (rates are computed at export time from `counterStartNs`).
+    private val midiEventsIn = java.util.concurrent.atomic.AtomicLong()
+    private val chordChanges = java.util.concurrent.atomic.AtomicLong()
+    private val retargetNotes = java.util.concurrent.atomic.AtomicLong()
+    private val retargetUnchanged = java.util.concurrent.atomic.AtomicLong()
+    @Volatile private var counterStartNs = 0L
 
     private val all = listOf(midiIngressLag, midiOnSendTotal, midiOnSendCpu, keyboardLockWait, rightLockToRouting, rightPreJniLogging, rightIngressToHandoff, jniKeyboardNote,
         sectionRequestToBoundary, sectionBoundaryToApplyStart, sectionApply, sectionApplyEndToFirstNote,
         sectionBoundaryToFirstNote, firstNoteLateness, schedulerWakeLateness, schedulerDispatchLateness,
-        chordMidiToApplyStart, chordRetarget, chordMidiToRetargetEnd)
+        chordMidiToApplyStart, chordRetarget, chordMidiToRetargetEnd,
+        chordFirstKeyToRecognized, chordRecognizedToApplyStart, chordFirstKeyToApplyStart, chordFirstKeyToRetargetEnd)
 
     // Single-writer stamps: the MIDI thread, the Main thread or the sequencer thread each own theirs.
     @Volatile private var onSendEnterNs = 0L
@@ -113,7 +125,40 @@ object LatencyProbe {
     @Volatile private var voiceApplyEndNs = 0L
     @Volatile private var awaitingFirstNote = false
 
-    fun reset() { all.forEach { it.reset() } }
+    fun reset() {
+        all.forEach { it.reset() }
+        midiEventsIn.set(0); chordChanges.set(0); retargetNotes.set(0); retargetUnchanged.set(0); counterStartNs = System.nanoTime()
+        ringN = 0; firstKeyNs = 0L; lastChordKeyNs = 0L; recognizedNs = 0L
+    }
+
+    // ---- Chord transition ring: fixed arrays, single writer per field, no allocation after init ----
+    private const val RING = 64
+    private val rFirst = LongArray(RING); private val rRecognized = LongArray(RING); private val rApply = LongArray(RING); private val rEnd = LongArray(RING)
+    private val rNotes = IntArray(RING); private val rChangedNotes = IntArray(RING)
+    @Volatile private var ringN = 0
+    @Volatile private var firstKeyNs = 0L
+    @Volatile private var lastChordKeyNs = 0L
+    @Volatile private var recognizedNs = 0L
+    private var applySlot = 0
+    private var applyNotesBase = 0L
+
+    /** Any parsed MIDI message on the keyboard channel (NOTE_ON/OFF, CC64). Counter only. */
+    fun midiEvent() { if (enabled) { if (counterStartNs == 0L) counterStartNs = System.nanoTime(); midiEventsIn.incrementAndGet() } }
+    /** A LEFT/ACMP key went down. A new chord burst starts when the previous chord key is older than 350 ms. */
+    fun chordKeyDown() {
+        if (!enabled) return
+        val now = System.nanoTime()
+        if (now - lastChordKeyNs > 350_000_000L) firstKeyNs = now
+        lastChordKeyNs = now
+    }
+    /** The detector produced a chord that differs from the applied/pending one (MIDI thread, inside keyboardLock). */
+    fun chordRecognized() {
+        if (!enabled) return
+        val now = System.nanoTime(); recognizedNs = now
+        val f = firstKeyNs; if (f != 0L && now >= f) chordFirstKeyToRecognized.record(now - f)
+    }
+    /** One retarget decision that actually sent NOTE_OFF+NOTE_ON (changed pitch) or was unchanged. */
+    fun retargetDecision(sent: Boolean) { if (enabled) { if (sent) retargetNotes.incrementAndGet() else retargetUnchanged.incrementAndGet() } }
 
     // ---- MIDI thread ----
     fun onSendEnter(timestampNs: Long) {
@@ -149,12 +194,21 @@ object LatencyProbe {
         if (!enabled) return 0L
         val now = System.nanoTime(); val t = chordArrivalNs
         if (t != 0L) chordMidiToApplyStart.record(now - t)
+        val f = firstKeyNs; val r = recognizedNs
+        if (f != 0L && now >= f) chordFirstKeyToApplyStart.record(now - f)
+        if (r != 0L && now >= r) chordRecognizedToApplyStart.record(now - r)
+        applySlot = ringN % RING
+        rFirst[applySlot] = f; rRecognized[applySlot] = r; rApply[applySlot] = now; rEnd[applySlot] = 0L
+        applyNotesBase = retargetNotes.get()
         return now
     }
     fun chordApplyEnd(startNs: Long) {
         if (!enabled || startNs == 0L) return
         val now = System.nanoTime(); chordRetarget.record(now - startNs)
         val t = chordArrivalNs; if (t != 0L) chordMidiToRetargetEnd.record(now - t)
+        val f = firstKeyNs; if (f != 0L && now >= f) chordFirstKeyToRetargetEnd.record(now - f)
+        rEnd[applySlot] = now; rNotes[applySlot] = (retargetNotes.get() - applyNotesBase).toInt()
+        chordChanges.incrementAndGet(); ringN = ringN + 1
     }
 
     // ---- Sections ----
@@ -194,6 +248,21 @@ object LatencyProbe {
     fun report(): String = buildString {
         appendLine("LATENCY_KOTLIN clock=System.nanoTime(=CLOCK_MONOTONIC) enabled=$enabled dispatch_is_not_audible_time=1")
         all.forEach { appendLine(it.line()) }
+        val elapsedS = if (counterStartNs != 0L) (System.nanoTime() - counterStartNs) / 1e9 else 0.0
+        val chords = chordChanges.get(); val notes = retargetNotes.get()
+        appendLine("LATENCY_KOTLIN_COUNTERS sinceResetS=${"%.1f".format(java.util.Locale.US, elapsedS)} midiEventsIn=${midiEventsIn.get()} " +
+            "midiEventsPerSec=${if (elapsedS > 0) "%.2f".format(java.util.Locale.US, midiEventsIn.get() / elapsedS) else "NOT_MEASURED"} chordChanges=$chords " +
+            "chordChangesPerSec=${if (elapsedS > 0) "%.3f".format(java.util.Locale.US, chords / elapsedS) else "NOT_MEASURED"} " +
+            "retargetNoteReplacements=$notes retargetUnchangedDecisions=${retargetUnchanged.get()} " +
+            "replacementsPerChordChange=${if (chords > 0) "%.1f".format(java.util.Locale.US, notes.toDouble() / chords) else "NOT_MEASURED"} " +
+            "midiQueueDepth=NOT_MEASURED(no_app_queue;android_midi_service_socket_is_not_observable;see_midiUsbTimestampToOnSend)")
+        val n = ringN; val shown = minOf(n, 16)
+        for (k in 0 until shown) {
+            val idx = ((n - 1 - k) % RING + RING) % RING
+            fun d(a: Long, b: Long) = if (a != 0L && b >= a) ((b - a) / 1000).toString() else "NA"
+            appendLine("CHORD_TRANSITION back=$k firstKeyToRecognizedUs=${d(rFirst[idx], rRecognized[idx])} recognizedToApplyUs=${d(rRecognized[idx], rApply[idx])} " +
+                "applyToRetargetDoneUs=${d(rApply[idx], rEnd[idx])} firstKeyToDoneUs=${d(rFirst[idx], rEnd[idx])} noteReplacements=${rNotes[idx]} applyAtNs=${rApply[idx]} doneAtNs=${rEnd[idx]}")
+        }
     }
 }
 

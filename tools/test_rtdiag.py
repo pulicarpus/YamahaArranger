@@ -47,6 +47,7 @@ def main():
            A / 'arranger/ArrangerBrain.kt', A / 'style/StyleModel.kt', A / 'midi/MidiInputManager.kt', A / 'midi/MidiMixerOutput.kt',
            A / 'yamahaarranger/audio/PcmSessionControls.kt']
     src += sorted((A / 'chord').glob('*.kt'))
+    src += [A / 'yamahaarranger/audio/MetronomeModel.kt', A / 'yamahaarranger/audio/MetronomeController.kt']
     arr = A / 'yamahaarranger/arranger'
     src += sorted(arr.glob('*.kt'))
     src += [q for q in sorted((ROOT / 'tests/sff5_jvm_stubs').glob('*.kt')) if q.name not in ['AudioEngineManager.kt', 'DebugLog.kt']]
@@ -54,8 +55,8 @@ def main():
     cp = ':'.join(map(str, jars)); jar = out / 'rtdiag.jar'
     subprocess.run(['java', '-Xmx1g', '-cp', cp, 'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler', '-no-stdlib', '-no-reflect', '-nowarn', '-jvm-target', '17',
                     '-classpath', cp, '-d', str(jar), *map(str, src)], check=True)
-    cls = 'com.yourapp.rtdiag.RealtimeMidiStressTest'
-    result = subprocess.run(['java', '-javaagent:' + str(deps / 'byte-buddy-agent.jar'), '-cp', str(jar) + ':' + cp, 'org.junit.runner.JUnitCore', cls],
+    classes = a.only.split(',') if a.only else ['com.yourapp.rtdiag.RealtimeMidiStressTest', 'com.yourapp.rtdiag.MetronomeFollowTest']
+    result = subprocess.run(['java', '-javaagent:' + str(deps / 'byte-buddy-agent.jar'), '-cp', str(jar) + ':' + cp, 'org.junit.runner.JUnitCore', *classes],
                             capture_output=True, text=True)
     (out / 'rtdiag.log').write_text(result.stdout + result.stderr)
     rows = [l[l.index('RTDIAG '):] for l in result.stdout.splitlines() if 'RTDIAG ' in l]

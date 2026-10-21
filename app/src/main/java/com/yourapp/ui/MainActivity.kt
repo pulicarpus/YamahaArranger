@@ -108,6 +108,12 @@ class MainActivity : ComponentActivity() {
                             .align(androidx.compose.ui.Alignment.BottomCenter)
                             .padding(bottom = ToolPanels.BAR_RESERVE)
                     )
+                    MetronomeOverlay(
+                        viewModel = viewModel,
+                        modifier = androidx.compose.ui.Modifier
+                            .align(androidx.compose.ui.Alignment.BottomEnd)
+                            .padding(end = 6.dp, bottom = ToolPanels.BAR_RESERVE + if (ToolPanels.keyboard) VirtualKeyboardPanelHeight else 0.dp)
+                    )
                     LatencyAbOverlay(
                         viewModel = viewModel,
                         modifier = androidx.compose.ui.Modifier

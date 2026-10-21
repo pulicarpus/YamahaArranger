@@ -22,6 +22,7 @@ sourceSets {
                 "com/yourapp/yamahaarranger/style/StyleVoiceInventory.kt", "com/yourapp/yamahaarranger/style/StyleVoiceEditorOps.kt", "com/yourapp/yamahaarranger/browser/BrowserModel.kt", "com/yourapp/yamahaarranger/browser/VoiceGroups.kt", "com/yourapp/ui/BrowserLcd.kt", "com/yourapp/yamahaarranger/style/StyleVoiceRequests.kt",
                 "com/yourapp/yamahaarranger/style/StyleOverrideStore.kt",
                 "com/yourapp/yamahaarranger/registration/RegistrationCodec.kt", "com/yourapp/yamahaarranger/registration/RegistrationModel.kt", "com/yourapp/yamahaarranger/audio/MixerConsoleState.kt",
+                "com/yourapp/ui/MetronomePanel.kt", "com/yourapp/yamahaarranger/audio/MetronomeModel.kt",
             )
         }
     }

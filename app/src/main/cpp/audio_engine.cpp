@@ -236,6 +236,10 @@ oboe::DataCallbackResult AudioEngine::onAudioReady(
         for (int i = 0; i < sampleCount; ++i) {
             out[i] = std::max(-1.0f, std::min(1.0f, out[i]));
         }
+        // METRONOME: after BASSMIDI and the clamp; one atomic load when off. Never reaches BASSMIDI, MIDI OUT or any note state.
+        if (metronome_.active() && metronome_.render(out, numFrames, outputSampleRate_, latency_probe::now())) {
+            for (int i = 0; i < sampleCount; ++i) out[i] = std::max(-1.0f, std::min(1.0f, out[i]));
+        }
 
 // PCM_PATH_OBSERVER_BEGIN
 #if YAMAHA_ROLE_PCM_METERS
@@ -260,6 +264,9 @@ oboe::DataCallbackResult AudioEngine::onAudioReady(
 
     for (int i = 0; i < sampleCount; ++i) {
         out[i] = std::max(-1.0f, std::min(1.0f, out[i]));
+    }
+    if (metronome_.active() && metronome_.render(out, numFrames, outputSampleRate_, latency_probe::now())) {
+        for (int i = 0; i < sampleCount; ++i) out[i] = std::max(-1.0f, std::min(1.0f, out[i]));
     }
 
 // PCM_PATH_OBSERVER_BEGIN

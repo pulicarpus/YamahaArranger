@@ -2,7 +2,7 @@ name: Style Voice Inspector & Editor APK
 # Isolated experiment branch. Host safety suites must pass before the APK is built.
 on:
   push:
-    branches: [feature/style-voice-inspector-editor, experiment/multi-sf2-voice-selection, experiment/style-voice-browser, experiment/custom-sf2-drum-kit]
+    branches: [feature/style-voice-inspector-editor, experiment/multi-sf2-voice-selection, experiment/style-voice-browser, experiment/custom-sf2-drum-kit, feature/realtime-audit-metronome]
   workflow_dispatch: {}
 permissions:
   contents: read
@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   host:
-    if: github.ref == 'refs/heads/feature/style-voice-inspector-editor' || github.ref == 'refs/heads/experiment/multi-sf2-voice-selection' || github.ref == 'refs/heads/experiment/style-voice-browser' || github.ref == 'refs/heads/experiment/custom-sf2-drum-kit'
+    if: github.ref == 'refs/heads/feature/style-voice-inspector-editor' || github.ref == 'refs/heads/experiment/multi-sf2-voice-selection' || github.ref == 'refs/heads/experiment/style-voice-browser' || github.ref == 'refs/heads/experiment/custom-sf2-drum-kit' || github.ref == 'refs/heads/feature/realtime-audit-metronome'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -47,7 +47,11 @@ jobs:
       - name: Style Voice isolation guard
         run: |
           set -euo pipefail
-          python3 tools/test_style_voice_guard.py 2>&1 | tee evidence/style-voice-guard.log
+          if [ "$GITHUB_REF" = "refs/heads/feature/realtime-audit-metronome" ]; then
+            python3 tools/test_realtime_guard.py 2>&1 | tee evidence/realtime-guard.log
+          else
+            python3 tools/test_style_voice_guard.py 2>&1 | tee evidence/style-voice-guard.log
+          fi
       - name: Native resolver, Policy C, R2-3 drum binding and ROSITA contracts
         run: |
           set -euo pipefail
@@ -64,6 +68,13 @@ jobs:
           python3 tools/test_cpv.py --suite jvm --out evidence/cpv-jvm 2>&1 | tee evidence/cpv-jvm.log
           python3 tools/test_r22_regressions.py --suite live --out evidence/live 2>&1 | tee evidence/live-reg.log
           python3 tools/test_registration_recall.py 2>&1 | tee evidence/registration-recall.log
+      - name: Realtime diagnostics and metronome host tests
+        if: github.ref == 'refs/heads/feature/realtime-audit-metronome'
+        run: |
+          set -euo pipefail
+          python3 tools/test_metronome.py --out evidence/metronome 2>&1 | tee evidence/metronome.log
+          python3 tools/test_rtdiag.py --out evidence/rtdiag-jvm 2>&1 | tee evidence/rtdiag-jvm.log
+          python3 tools/test_rtdiag_native.py --out evidence/rtdiag-native 2>&1 | tee evidence/rtdiag-native.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -74,7 +85,7 @@ jobs:
           if-no-files-found: error
   android:
     needs: host
-    if: github.ref == 'refs/heads/feature/style-voice-inspector-editor' || github.ref == 'refs/heads/experiment/multi-sf2-voice-selection' || github.ref == 'refs/heads/experiment/style-voice-browser' || github.ref == 'refs/heads/experiment/custom-sf2-drum-kit'
+    if: github.ref == 'refs/heads/feature/style-voice-inspector-editor' || github.ref == 'refs/heads/experiment/multi-sf2-voice-selection' || github.ref == 'refs/heads/experiment/style-voice-browser' || github.ref == 'refs/heads/experiment/custom-sf2-drum-kit' || github.ref == 'refs/heads/feature/realtime-audit-metronome'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -114,7 +125,7 @@ jobs:
           "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose evidence/YamahaArranger-STYLEVOICE.apk > evidence/apk-signature.txt
           "$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging evidence/YamahaArranger-STYLEVOICE.apk > evidence/apk-badging.txt
           python3 tools/verify_cpv_build.py --apk evidence/YamahaArranger-STYLEVOICE.apk --out evidence/apk-provenance.json
-          cp docs/CUSTOM_SF2_DRUM_KIT_REPORT.md evidence/DEVICE-TEST.txt
+          if [ "$GITHUB_REF" = "refs/heads/feature/realtime-audit-metronome" ]; then cp docs/REALTIME_AUDIT_METRONOME_REPORT.md evidence/DEVICE-TEST.txt; else cp docs/CUSTOM_SF2_DRUM_KIT_REPORT.md evidence/DEVICE-TEST.txt; fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:

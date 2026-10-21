@@ -776,7 +776,7 @@ class MainViewModel @Inject constructor(
     override fun onCleared() {
         audioEngine.onMixerControllers = null; audioEngine.onMixerMasterVolume = null
         midiInputManager.onOutputReady = null
-        midiInputManager.close(); audioEngine.stop(); super.onCleared()
+        metronome.release(); midiInputManager.close(); audioEngine.stop(); super.onCleared()
     }
 
     fun onKeyboardNoteOn(midiNote: Int, velocity: Float) = arrangerBrain.onKeyboardNoteOn(midiNote, velocity)
@@ -1179,6 +1179,26 @@ class MainViewModel @Inject constructor(
         com.yourapp.yamahaarranger.audio.NoteLogTuning.lean = on
         com.yourapp.yamahaarranger.audio.NoteLogTuning.resetCounter()
     }
+    // ---- METRONOME (click generator after BASSMIDI; Follow mode reads the Style clock; no MIDI, no Style/ACMP/ownership impact) ----
+    private val metronome = com.yourapp.yamahaarranger.audio.MetronomeController(
+        sink = com.yourapp.yamahaarranger.audio.AudioEngineMetronomeSink(audioEngine),
+        clock = { arrangerBrain.styleClockSource() },
+        threadSetup = { try { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO) } catch (_: Throwable) {} })
+    val metronomeState: StateFlow<com.yourapp.yamahaarranger.audio.MetronomeUiState> = metronome.state
+    init {
+        viewModelScope.launch(Dispatchers.Default) {
+            arrangerBrain.state.map { it.tempoBpm }.distinctUntilChanged().collect { metronome.setTempo(it) }
+        }
+    }
+    fun metronomeSetEnabled(on: Boolean) = metronome.setEnabled(on)
+    fun metronomeSetMode(mode: com.yourapp.yamahaarranger.audio.MetronomeMode) = metronome.setMode(mode)
+    fun metronomeSetRunning(running: Boolean) = metronome.setStandaloneRunning(running)
+    fun metronomeSetMeter(meter: com.yourapp.yamahaarranger.audio.MetronomeMeter) = metronome.setMeter(meter)
+    fun metronomeSetVolume(permille: Int) = metronome.setVolumePermille(permille)
+    fun metronomeRefresh() = metronome.refreshStyleFacts()
+    /** Packed beat counter (beatSeq shl 2 or accent level) for the visual indicator; one atomic read. */
+    fun metronomeBeat(): Long = audioEngine.metronomeBeat()
+
     fun leanNoteLog(): Boolean = com.yourapp.yamahaarranger.audio.NoteLogTuning.lean
 
     /** Path A (live render) vs path B (isolated decode) for the next RIGHT note; style must be stopped. */

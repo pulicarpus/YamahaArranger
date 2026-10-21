@@ -161,6 +161,7 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
             i++
             pendingData1 = -1
 
+            if (channel == chordInputChannel && (type == 0x90 || type == 0x80 || (type == 0xB0 && d1 == 64))) com.yourapp.yamahaarranger.audio.LatencyProbe.midiEvent()
             // RAW diagnostic before channel filtering: captures every MIDI channel.
             // This lets us distinguish E343 RIGHT traffic from ACMP traffic without
             // changing routing behavior yet.

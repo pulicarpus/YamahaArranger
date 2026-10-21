@@ -13,11 +13,13 @@ object ToolPanels {
     var keyboard by mutableStateOf(false)
     var latency by mutableStateOf(false)
     var diag by mutableStateOf(false)
+    var metronome by mutableStateOf(false)
 
     /** Space kept free at the bottom for the footer bar (footerH 28/32 dp + gap). */
     val BAR_RESERVE = 40.dp
 
     fun toggleKeyboard() { keyboard = !keyboard }
     fun toggleLatency() { latency = !latency; if (latency) diag = false }
+    fun toggleMetronome() { metronome = !metronome }
     fun toggleDiag() { diag = !diag; if (diag) latency = false }
 }

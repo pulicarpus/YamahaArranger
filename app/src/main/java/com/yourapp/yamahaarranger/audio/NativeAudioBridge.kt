@@ -79,5 +79,11 @@ class NativeAudioBridge @Inject constructor() {
     external fun nativeGetDrumKitCoverage(histogram: IntArray): String
     external fun nativeGetDrumCompatibilityReport(histogram: IntArray): String
     external fun nativeGetDrumCompatibilityComparison(histogram: IntArray, kits: IntArray): String
-}
 
+    external fun nativeMetronomeConfigure(enabled: Boolean, mode: Int, running: Boolean, bpmX100: Int, numerator: Int, denominator: Int, volumePermille: Int)
+    external fun nativeMetronomePush(targetNs: Long, level: Int, generation: Int): Boolean
+    external fun nativeMetronomeGeneration(): Int
+    external fun nativeMetronomeBumpGeneration(): Int
+    external fun nativeMetronomeBeat(): Long
+    external fun nativeMetronomeReport(): String
+}

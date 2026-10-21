@@ -90,6 +90,18 @@ struct Probe {
     // Keyboard RIGHT/LEFT-voice parts (channels 0..3) and style channels (4..15) are separate.
     Stat keyLockWait, keyDispatch, styleLockWait, styleDispatch;
     Stat noteToRender, noteToBuffer;
+    // Style channels (incl. chord retargets): first style NOTE_ON queued after the previous render -> start / end of the decode that consumes it.
+    Stat styleNoteToRender, styleNoteToBuffer;
+    // Callback start-to-start interval: a value far above the burst period means a late/missed callback (underrun proxy, not an Oboe xrun count).
+    Stat callbackInterval;
+    std::atomic<uint64_t> lastCallbackStartNs{0}, intervalOver150pct{0};
+    // Active BASSMIDI voices sampled once per callback (count, not time).
+    static constexpr unsigned kVoiceBuckets = 7;
+    static constexpr uint32_t kVoiceBounds[6] = {50, 100, 200, 400, 600, 800};
+    std::atomic<uint64_t> voiceSamples{0}, voiceSum{0}; std::atomic<uint32_t> voiceMax{0}; std::atomic<uint32_t> voiceBucket[kVoiceBuckets]{};
+    // Last callbacks: start (CLOCK_MONOTONIC ns) and duration, for offline correlation with Kotlin chord-transition stamps.
+    static constexpr unsigned kTimeline = 256;
+    std::atomic<uint64_t> tlStart[kTimeline]{}, tlDur[kTimeline]{}; std::atomic<uint32_t> tlN{0};
     Stat renderLockWait, renderDecode, callbackTotal;
     std::atomic<uint64_t> callbacks{0}, overBudget{0}, overEightyPercent{0};
     std::atomic<uint64_t> budgetNs{0};
@@ -105,6 +117,8 @@ struct Probe {
     void reset() {
         keyLockWait.reset(); keyDispatch.reset(); styleLockWait.reset(); styleDispatch.reset();
         noteToRender.reset(); noteToBuffer.reset(); renderLockWait.reset(); renderDecode.reset(); callbackTotal.reset();
+        styleNoteToRender.reset(); styleNoteToBuffer.reset(); callbackInterval.reset(); lastCallbackStartNs = 0; intervalOver150pct = 0;
+        voiceSamples = 0; voiceSum = 0; voiceMax = 0; for (auto& b : voiceBucket) b = 0; tlN = 0;
         callbacks = 0; overBudget = 0; overEightyPercent = 0; pendingKeyNoteNs = 0; pendingStyleNoteNs = 0;
         unconsumedKeyNotesOverwritten = 0; keyNoteOnsQueued = 0;
         for (auto& h : hold) h.reset();
@@ -127,12 +141,27 @@ struct Probe {
             const uint64_t noteNs = pending->exchange(0, std::memory_order_relaxed);
             if (noteNs && lockedNs >= noteNs) {
                 if (pending == &pendingKeyNoteNs) { noteToRender.record(lockedNs - noteNs); noteToBuffer.record(decodeEndNs - noteNs); }
+                else { styleNoteToRender.record(lockedNs - noteNs); styleNoteToBuffer.record(decodeEndNs - noteNs); }
             }
         }
+    }
+    void voices(uint32_t n) {
+        voiceSamples.fetch_add(1, std::memory_order_relaxed); voiceSum.fetch_add(n, std::memory_order_relaxed);
+        auto old = voiceMax.load(std::memory_order_relaxed);
+        while (old < n && !voiceMax.compare_exchange_weak(old, n, std::memory_order_relaxed)) {}
+        unsigned b = 0; while (b < kVoiceBuckets - 1 && n >= kVoiceBounds[b]) ++b;
+        voiceBucket[b].fetch_add(1, std::memory_order_relaxed);
     }
     void callbackDone(uint64_t startNs, uint64_t endNs) {
         const uint64_t total = endNs - startNs;
         callbackTotal.record(total);
+        {   // interval since the previous callback start; single writer (the audio thread)
+            const uint64_t prev = lastCallbackStartNs.exchange(startNs, std::memory_order_relaxed);
+            const uint64_t budget0 = budgetNs.load(std::memory_order_relaxed);
+            if (prev && startNs > prev) { callbackInterval.record(startNs - prev); if (budget0 && (startNs - prev) * 2 > budget0 * 3) intervalOver150pct.fetch_add(1, std::memory_order_relaxed); }
+            const uint32_t i = tlN.load(std::memory_order_relaxed) % kTimeline;
+            tlStart[i].store(startNs, std::memory_order_relaxed); tlDur[i].store(total, std::memory_order_relaxed); tlN.store(tlN.load(std::memory_order_relaxed) + 1, std::memory_order_relaxed);
+        }
         callbacks.fetch_add(1, std::memory_order_relaxed);
         const uint64_t budget = budgetNs.load(std::memory_order_relaxed);
         if (budget) {
@@ -155,9 +184,25 @@ struct Probe {
         styleDispatch.print(out, "styleNoteDispatch");
         noteToRender.print(out, "keyboardNoteQueuedToRenderStart");
         noteToBuffer.print(out, "keyboardNoteQueuedToBufferReady");
+        styleNoteToRender.print(out, "styleNoteQueuedToRenderStart_includesChordRetarget");
+        styleNoteToBuffer.print(out, "styleNoteQueuedToBufferReady_includesChordRetarget");
+        callbackInterval.print(out, "callbackStartToStartInterval");
+        out << "LATENCY_NATIVE stat=callbackIntervalOver150pctOfBudget count=" << intervalOver150pct.load() << " (late-callback proxy; Oboe xruns are in LATENCY_OUTPUT_LIVE)\n";
+        {
+            const uint64_t n = voiceSamples.load();
+            out << "LATENCY_NATIVE stat=activeBassVoices samples=" << n;
+            if (n) { out << " mean=" << voiceSum.load() / n << " max=" << voiceMax.load() << " buckets(<50,<100,<200,<400,<600,<800,>=800)=";
+                for (unsigned b = 0; b < kVoiceBuckets; ++b) out << (b ? "," : "") << voiceBucket[b].load(); }
+            out << "\n";
+        }
         renderLockWait.print(out, "renderLockWait");
         renderDecode.print(out, "renderDecode");
         callbackTotal.print(out, "callbackTotal");
+        {
+            const uint32_t n = tlN.load(); const uint32_t shown = n < 48 ? n : 48;
+            for (uint32_t k = 0; k < shown; ++k) { const uint32_t i = (n - 1 - k) % kTimeline;
+                out << "CALLBACK_TIMELINE back=" << k << " startNs=" << tlStart[i].load() << " durUs=" << tlDur[i].load() / 1000 << "\n"; }
+        }
         for (unsigned k = 0; k < HoldKindCount; ++k) {
             std::string name = std::string("synthMutexHold_") + kHoldNames[k];
             hold[k].print(out, name.c_str());

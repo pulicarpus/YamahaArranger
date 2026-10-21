@@ -92,5 +92,6 @@ fun main(args: Array<String>) {
     render(dir, "03_live_body_1280x800.png", 1280, 800, 1.6f) { LiveBody() }
     renderBrowsers(dir)
     renderVoiceInspector(dir) { n, w, h, d, c -> render(dir, n, w, h, d, c) }
+    renderMetronome(dir) { n, w, h, d, c -> render(dir, n, w, h, d, c) }
     println("PREVIEW OK " + dir.listFiles()!!.joinToString { it.name })
 }

@@ -295,3 +295,17 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_Nativ
 extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeArmLiveOnset(JNIEnv*,jobject){return g_engine&&g_engine->sfArmLiveOnset()?JNI_TRUE:JNI_FALSE;}
 extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeLiveOnsetStatus(JNIEnv* env,jobject){const auto s=g_engine?g_engine->sfLiveOnsetStatus():std::string("engine_absent");return env->NewStringUTF(sanitizeUtf8ForJni(s.c_str()).c_str());}
 extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeLiveOnsetReport(JNIEnv* env,jobject){const auto s=g_engine?g_engine->sfLiveOnsetReport():std::string("LIVE ONSET engine_absent\n");return env->NewStringUTF(sanitizeUtf8ForJni(s.c_str()).c_str());}
+
+// METRONOME (see metronome_engine.h). All calls are lock-free; nothing here touches BASSMIDI, the synth mutex or MIDI.
+extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeMetronomeConfigure(JNIEnv*,jobject,jboolean enabled,jint mode,jboolean running,jint bpmX100,jint numerator,jint denominator,jint volumePermille){
+    if(!g_engine)g_engine=std::make_unique<AudioEngine>();
+    g_engine->metronomeEngine().configure(enabled==JNI_TRUE,mode,running==JNI_TRUE,bpmX100,numerator,denominator,volumePermille);
+}
+extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeMetronomePush(JNIEnv*,jobject,jlong targetNs,jint level,jint generation){
+    return(g_engine&&g_engine->metronomeEngine().push(uint64_t(targetNs),level,uint32_t(generation)))?JNI_TRUE:JNI_FALSE;
+}
+extern "C" JNIEXPORT jint JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeMetronomeGeneration(JNIEnv*,jobject){return g_engine?jint(g_engine->metronomeEngine().generation()):0;}
+extern "C" JNIEXPORT jint JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeMetronomeBumpGeneration(JNIEnv*,jobject){if(!g_engine)return 0;g_engine->metronomeEngine().bumpGeneration();return jint(g_engine->metronomeEngine().generation());}
+/** Packed beat counter for the visual indicator: (beatSeq << 2) | lastLevel. */
+extern "C" JNIEXPORT jlong JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeMetronomeBeat(JNIEnv*,jobject){if(!g_engine)return 0;auto&m=g_engine->metronomeEngine();return jlong((m.beatSeq()<<2)|uint64_t(m.lastLevel()&3));}
+extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeMetronomeReport(JNIEnv* env,jobject){const auto s=g_engine?g_engine->metronomeReport():std::string("METRONOME engine_absent\n");return env->NewStringUTF(sanitizeUtf8ForJni(s.c_str()).c_str());}
