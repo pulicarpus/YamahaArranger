@@ -1180,9 +1180,10 @@ class MainViewModel @Inject constructor(
         com.yourapp.yamahaarranger.audio.NoteLogTuning.resetCounter()
     }
     // ---- METRONOME (click generator after BASSMIDI; Follow mode reads the Style clock; no MIDI, no Style/ACMP/ownership impact) ----
+    private val styleClock = com.yourapp.yamahaarranger.audio.ArrangerBrainClock(arrangerBrain)
     private val metronome = com.yourapp.yamahaarranger.audio.MetronomeController(
         sink = com.yourapp.yamahaarranger.audio.AudioEngineMetronomeSink(audioEngine),
-        clock = { arrangerBrain.styleClockSource() },
+        clock = { styleClock },
         threadSetup = { try { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO) } catch (_: Throwable) {} })
     val metronomeState: StateFlow<com.yourapp.yamahaarranger.audio.MetronomeUiState> = metronome.state
     init {

@@ -36,7 +36,7 @@ PROTECTED = (   # byte-identical to the baseline
 # Files that may only gain observer/metronome lines (every added or removed line must contain one of these markers).
 OBSERVER_ONLY = {
     'app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt': ('LatencyProbe', 'METRONOME', 'loopOriginTick', 'applyVoicesProbed', 'applyVoicesFromCasm(active.section)', 'applyVoicesFromCasm(section)', 'clockRunning', 'tickToNanos', 'masterTickNow', 'retargetDecision', 'private fun applyVoicesFromCasm', 'Observer-only wrapper', 'loopOriginTickValue', 'playback job exists', 'CLOCK_MONOTONIC', 'read-only', '^\\s*}\\s*$', '^\\s*$'),
-    'app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt': ('LatencyProbe', 'METRONOME', 'styleClockSource', 'StyleClockSource', 'MetronomeMeter', 'MetronomeMeters', 'override fun', 'probeStart', 'sequencer.clockRunning', 'sequencer.loopOriginTick', 'sequencer.tickToNanos', 'sequencer.masterTickNow', 'sequencer.clockTempoRevision', 'read-only view', '^\\s*}\\s*$', '^\\s*$'),
+    'app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt': ('LatencyProbe', 'METRONOME', 'fun clock', 'CLOCK_MONOTONIC', 'read-only views', 'probeStart', 'sequencer.clockRunning', 'sequencer.loopOriginTick', 'sequencer.tickToNanos', 'sequencer.masterTickNow', 'sequencer.clockTempoRevision', 'read-only view', '^\\s*}\\s*$', '^\\s*$'),
     'app/src/main/java/com/yourapp/midi/MidiInputManager.kt': ('LatencyProbe',),
     'app/src/main/cpp/bassmidi_player.cpp': ('LATENCY_PROBE', 'BASS_ATTRIB_MIDI_VOICES_ACTIVE', 'host mock headers', '#ifndef', '#endif', 'probe.voices'),
     'app/src/main/java/com/yourapp/yamahaarranger/audio/AudioEngineManager.kt': ('METRONOME', 'metronome', 'nativeMetronome', 'latencyReport', 'fun latencyReport', '^\\s*$'),

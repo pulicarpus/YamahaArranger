@@ -296,7 +296,7 @@ class RealtimeMidiStressTest {
     }
     /** Waits until the Style master tick is `phaseTicks` into the 1920-tick bar (PPQ 480, 4/4). */
     private fun phase(phaseTicks: Long): (RtRig) -> Unit = { r ->
-        val src = r.brain.styleClockSource(); val bar = 1920L; var guard = 0
+        val src = com.yourapp.yamahaarranger.audio.ArrangerBrainClock(r.brain); val bar = 1920L; var guard = 0
         while (guard++ < 4000) { val t = src.masterTickNow(); val inBar = ((t % bar) + bar) % bar; val d = (phaseTicks - inBar + bar) % bar; if (d < 20) break; Thread.sleep(2) }
     }
     @Test fun chordTransitionBreakdownByBarPhase() {

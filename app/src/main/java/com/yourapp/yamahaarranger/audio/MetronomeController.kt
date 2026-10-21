@@ -85,3 +85,14 @@ class AudioEngineMetronomeSink(private val engine: AudioEngineManager) : Metrono
     override fun bumpGeneration() = engine.metronomeBumpGeneration()
     override fun beatPacked() = engine.metronomeBeat()
 }
+
+/** Adapts ArrangerBrain's read-only clock views to the planner interface. */
+class ArrangerBrainClock(private val brain: com.yourapp.yamahaarranger.arranger.ArrangerBrain) : StyleClockSource {
+    override fun running() = brain.clockRunning()
+    override fun meter() = MetronomeMeter(brain.clockMeterNumerator(), brain.clockMeterDenominator())
+    override fun ppq() = brain.clockPpq()
+    override fun loopOriginTick() = brain.clockLoopOriginTick()
+    override fun tickToNanos(tick: Long): Long? = brain.clockTickToNanos(tick).takeIf { it >= 0L }
+    override fun masterTickNow() = brain.clockTickNow()
+    override fun tempoRevision() = brain.clockTempoRevision()
+}

@@ -104,7 +104,7 @@ class MetronomeFollowTest {
     private fun runFollowAgainstStyle(tempoChangeTo: Int?, transition: Boolean, label: String) {
         val r = RtRig(false, 120)
         val sink = RecSink()
-        val ctl = MetronomeController(sink, { r.brain.styleClockSource() })
+        val ctl = MetronomeController(sink, { com.yourapp.yamahaarranger.audio.ArrangerBrainClock(r.brain) })
         ctl.setMode(MetronomeMode.FOLLOW); ctl.setEnabled(true)
         r.brain.startStop(); Thread.sleep(150)
         if (tempoChangeTo != null) { Thread.sleep(1500); r.brain.setTempo(tempoChangeTo) }
@@ -138,7 +138,7 @@ class MetronomeFollowTest {
 
     @Test fun metronomeDoesNotChangeTheStyleEventStream() {
         fun trace(withMetronome: Boolean): List<String> {
-            val r = RtRig(false, 150); val sink = RecSink(); val ctl = MetronomeController(sink, { r.brain.styleClockSource() })
+            val r = RtRig(false, 150); val sink = RecSink(); val ctl = MetronomeController(sink, { com.yourapp.yamahaarranger.audio.ArrangerBrainClock(r.brain) })
             if (withMetronome) { ctl.setMode(MetronomeMode.FOLLOW); ctl.setEnabled(true) }
             r.brain.startStop(); Thread.sleep(4200); r.brain.startStop(); Thread.sleep(200); ctl.release()
             val seq = r.engineEvents.filter { it.kind != 'A' }.sortedBy { it.t }.map { "${it.kind}${it.ch}:${it.note}" }

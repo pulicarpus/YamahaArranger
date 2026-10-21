@@ -140,17 +140,16 @@ class ArrangerBrain @Inject constructor(
         Timber.i("Style loaded: ${style.fileName}, voices=${style.voiceMap.size}")
     }
 
-    /** METRONOME: read-only view of the Style's musical clock (never changes sequencer state). */
-    fun styleClockSource(): com.yourapp.yamahaarranger.audio.StyleClockSource = object : com.yourapp.yamahaarranger.audio.StyleClockSource {
-        override fun running() = ::sequencer.isInitialized && _state.value.isPlaying && sequencer.clockRunning()
-        override fun meter(): com.yourapp.yamahaarranger.audio.MetronomeMeter =
-            loadedStyle?.meter?.let { com.yourapp.yamahaarranger.audio.MetronomeMeter(it.numerator, it.denominator) } ?: com.yourapp.yamahaarranger.audio.MetronomeMeters.DEFAULT
-        override fun ppq() = loadedStyle?.ppq ?: 480
-        override fun loopOriginTick() = if (::sequencer.isInitialized) sequencer.loopOriginTick else 0L
-        override fun tickToNanos(tick: Long) = if (::sequencer.isInitialized) sequencer.tickToNanos(tick, ppq()) else null
-        override fun masterTickNow() = if (::sequencer.isInitialized) sequencer.masterTickNow(ppq()) else 0L
-        override fun tempoRevision() = if (::sequencer.isInitialized) sequencer.clockTempoRevision() else 0L
-    }
+    // METRONOME: read-only views of the Style's musical clock (primitives only, so no other module needs the metronome types).
+    fun clockRunning(): Boolean = ::sequencer.isInitialized && _state.value.isPlaying && sequencer.clockRunning()
+    fun clockMeterNumerator(): Int = loadedStyle?.meter?.numerator ?: 4
+    fun clockMeterDenominator(): Int = loadedStyle?.meter?.denominator ?: 4
+    fun clockPpq(): Int = loadedStyle?.ppq ?: 480
+    fun clockLoopOriginTick(): Long = if (::sequencer.isInitialized) sequencer.loopOriginTick else 0L
+    /** CLOCK_MONOTONIC ns at which `tick` is due, or -1 when no clock is running. */
+    fun clockTickToNanos(tick: Long): Long = if (::sequencer.isInitialized) (sequencer.tickToNanos(tick, clockPpq()) ?: -1L) else -1L
+    fun clockTickNow(): Long = if (::sequencer.isInitialized) sequencer.masterTickNow(clockPpq()) else 0L
+    fun clockTempoRevision(): Long = if (::sequencer.isInitialized) sequencer.clockTempoRevision() else 0L
 
     fun setKeyboardReleaseTime(value: Int) {
         keyboardReleaseTime = value.coerceIn(0, 127)
