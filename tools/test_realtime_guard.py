@@ -18,7 +18,7 @@ ALLOWED = {
     'app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt', 'app/src/main/java/com/yourapp/midi/MidiInputManager.kt',
     'app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt',
     # tests, tools, docs, workflows
-    'tests/metronome_engine_test.cpp', 'tests/rtdiag/MetronomeFollowTest.kt', 'tests/rtdiag/RealtimeMidiStressTest.kt', 'tests/rtdiag/RtRig.kt',
+    'tests/metronome_engine_test.cpp', 'tests/cpv/CpvLatencyProbeTest.kt', 'tests/cpv/RightLatencyAbTest.kt', 'tests/cpv/ToolBarLayoutTest.kt', 'tests/rtdiag/MetronomeFollowTest.kt', 'tests/rtdiag/RealtimeMidiStressTest.kt', 'tests/rtdiag/RtRig.kt',
     'tools/test_metronome.py', 'tools/test_rtdiag.py', 'tools/test_realtime_guard.py', 'tools/test_rtdiag_native.py', 'tools/test_rtdiag_real_bass.py',
     'tests/rtdiag_native_test.cpp', 'tests/rtdiag_real_bass_test.cpp', 'tools/test_cpv.py',
     'tools/ui_preview/build.gradle.kts', 'tools/ui_preview/src/main/kotlin/PreviewMain.kt', 'tools/ui_preview/src/main/kotlin/PreviewMetronome.kt',

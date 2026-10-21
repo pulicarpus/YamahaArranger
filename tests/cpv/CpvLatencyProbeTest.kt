@@ -98,7 +98,7 @@ class CpvLatencyProbeTest {
         LatencyProbe.enabled = true
         val text = LatencyProbe.report()
         assertTrue(text.contains("dispatch_is_not_audible_time=1"))
-        assertTrue(text.lines().count { it.startsWith("LATENCY_KOTLIN stat=") } == 19)
+        assertTrue(text.lines().count { it.startsWith("LATENCY_KOTLIN stat=") } == 23)
         LatencyProbe.reset()
         assertEquals(0, LatencyProbe.sectionApply.count())
     }

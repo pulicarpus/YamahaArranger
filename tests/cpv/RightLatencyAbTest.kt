@@ -78,11 +78,17 @@ class RightLatencyAbTest {
         }
     }
 
-    @Test fun styleAndChordCodeCarryNoLatencyHooks() {
-        val seq = source("yamahaarranger/arranger/StyleSequencer.kt").readText()
-        assertFalse("style engine untouched by latency work", seq.contains("LatencyProbe"))
-        val brain = source("arranger/ArrangerBrain.kt").readText()
-        assertFalse(brain.contains("chordNoteParsed") || brain.contains("chordApplyStart") || brain.contains("chordApplyEnd"))
+    @Test fun styleAndChordCodeCarryOnlyTheWhitelistedObserverHooks() {
+        // Policy of the realtime audit (docs/REALTIME_AUDIT_METRONOME_REPORT.md): the Style/ACMP code may call the observer-only
+        // LatencyProbe entry points below and nothing else; the CASM transformer and the chord detector stay hook-free.
+        val allowed = setOf("enabled", "schedulerWake", "styleEventDispatched", "retargetDecision", "sectionBoundary", "voiceApplyStart", "voiceApplyEnd",
+            "sectionRequested", "chordNoteParsed", "chordKeyDown", "chordRecognized", "chordApplyStart", "chordApplyEnd", "rightRoutingStart", "rightHandedOff", "keyboardLockAcquired")
+        for (file in listOf("yamahaarranger/arranger/StyleSequencer.kt", "arranger/ArrangerBrain.kt")) {
+            val used = Regex("LatencyProbe\\.(\\w+)").findAll(source(file).readText()).map { it.groupValues[1] }.toSet()
+            assertTrue("$file uses only whitelisted LatencyProbe calls, got $used", allowed.containsAll(used))
+        }
+        for (file in listOf("yamahaarranger/arranger/CasmNoteTransformer.kt", "chord/ChordDetector.kt"))
+            assertFalse("$file stays hook-free", source(file).readText().contains("LatencyProbe"))
     }
 
     @Test fun bufferModeIsNeverPersistedAndDefaultsToBaseline() {

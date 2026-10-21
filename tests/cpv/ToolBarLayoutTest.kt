@@ -15,11 +15,11 @@ class ToolBarLayoutTest {
     }
     private fun ui(name: String) = File(root(), "app/src/main/java/com/yourapp/ui/$name").readText()
 
-    @Test fun allFiveButtonsShareOneFooterRowInOrder() {
+    @Test fun allSixButtonsShareOneFooterRowInOrder() {
         val bar = ui("SxMainScreen.kt").lineSequence().first { it.contains("private fun SxMidiBar") }
-        val order = listOf("KEYBOARD", "\"LATENCY\"", "\"RIGHT DIAG\"", "\"CONNECT\"", "\"MIDI OUT\"").map { bar.indexOf(it) }
+        val order = listOf("KEYBOARD", "\"LATENCY\"", "\"RIGHT DIAG\"", "\"METRONOME\"", "\"CONNECT\"", "\"MIDI OUT\"").map { bar.indexOf(it) }
         assertTrue("every button is in SxMidiBar: $order", order.all { it >= 0 })
-        assertEquals("order KEYBOARD, LATENCY, RIGHT DIAG, CONNECT, MIDI OUT", order.sorted(), order)
+        assertEquals("order KEYBOARD, LATENCY, RIGHT DIAG, METRONOME, CONNECT, MIDI OUT", order.sorted(), order)
         val between = bar.substring(order[0], order[1])
         assertTrue("KEYBOARD sits directly next to LATENCY", !between.contains("OutlinedButton(") && Regex("SxToolButton\\(").findAll(between).count() == 1)
     }
@@ -27,7 +27,8 @@ class ToolBarLayoutTest {
     @Test fun noFloatingChipsOverTheMainScreen() {
         val activity = ui("MainActivity.kt")
         assertFalse(activity.contains("KEYBOARD"))
-        assertFalse(activity.contains("BottomEnd"))
+        // The metronome panel may sit at BottomEnd only because it is drawn ABOVE the footer (BAR_RESERVE); no chip over CONNECT / MIDI OUT.
+        assertTrue(Regex("BottomEnd").findAll(activity).count() == 1 && activity.substring(activity.indexOf("BottomEnd"), activity.indexOf("BottomEnd") + 160).contains("BAR_RESERVE"))
         for (file in listOf("LatencyAbOverlay.kt", "RightVoiceDiagOverlay.kt"))
             for (chip in listOf("\"LATENCY\", color", "\"RIGHT DIAG\", color"))
                 assertFalse("$file keeps no floating open-chip", ui(file).contains(chip))
@@ -35,7 +36,7 @@ class ToolBarLayoutTest {
 
     @Test fun panelsAreDrawnAboveTheFooterNeverOverIt() {
         val activity = ui("MainActivity.kt")
-        assertEquals(3, Regex("ToolPanels\\.BAR_RESERVE").findAll(activity).count())
+        assertEquals(4, Regex("ToolPanels\\.BAR_RESERVE").findAll(activity).count())
         val tp = ui("ToolPanels.kt")
         assertTrue(tp.contains("val BAR_RESERVE = 40.dp"))
         assertTrue("footer is 28/32 dp", ui("SxMainScreen.kt").contains("val footerH = if (compact) 28.dp else 32.dp"))
