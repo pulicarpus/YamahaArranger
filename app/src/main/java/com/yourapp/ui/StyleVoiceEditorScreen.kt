@@ -456,7 +456,7 @@ private fun noteLabel(n: Int) = "$n (${noteNames[n % 12]}${n / 12 - 1})"
 
 /** Rhythm 1 / Rhythm 2: choose the drum KIT of any loaded SoundFont. Kit only: the Style's own drum notes are never remapped. */
 @Composable
-private fun KitPicker(row: StyleVoiceRow, actions: StyleVoiceEditorActions, kits: List<CatalogPreset>, picked: CatalogPreset?, query: String,
+private fun androidx.compose.foundation.layout.ColumnScope.KitPicker(row: StyleVoiceRow, actions: StyleVoiceEditorActions, kits: List<CatalogPreset>, picked: CatalogPreset?, query: String,
     note: Int, error: String?, onQuery: (String) -> Unit, onPick: (CatalogPreset) -> Unit, onNote: (Int) -> Unit,
     onClose: () -> Unit, onToast: (String) -> Unit, onError: (String?) -> Unit, replacement: Replacement?) {
     Text("DRUM KIT · ${row.partRole.uppercase()}", color = SvGreen, fontWeight = FontWeight.Bold, fontSize = 15.sp)
