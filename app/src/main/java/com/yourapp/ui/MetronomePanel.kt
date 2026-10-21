@@ -55,7 +55,7 @@ fun MetronomePanel(
             Spacer(Modifier.weight(1f))
             PulseDots(meter, if (state.enabled) activePulse else -1, activeLevel)
             Spacer(Modifier.weight(1f))
-            Chip("CLOSE", false, onClose)
+            Chip("CLOSE", false, onClick = onClose)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("MODE", color = MnDim, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(54.dp))
