@@ -9,6 +9,8 @@ sealed interface Replacement {
     data class Sf2(val preset: CatalogPreset) : Replacement
     /** Bank/Program sent to the external module. Numbers are raw MIDI values (Program 0-based). */
     data class External(val voice: ExternalVoice) : Replacement
+    /** Rhythm 1/2 kit from any loaded SoundFont (raw drum bank 127/128). Whole Style only; drum note mapping is not touched. */
+    data class DrumKit(val preset: CatalogPreset) : Replacement
 }
 
 data class EditTarget(val section: String, val channel: Int, val original: OriginalRef?)
@@ -21,21 +23,32 @@ data class OverrideChange(
 
 /** Pure editing rules for the Style Voice Editor; the view model only executes what this returns. */
 object StyleVoiceEditorOps {
-    /** Melodic style parts only. Rhythm 1/2 (8,9) carry the drum note map and stay with the Style. */
+    /** Melodic style parts. */
     fun editable(channel: Int) = channel in 10..15
+    /** Rhythm 1/2: the KIT can be chosen; the drum note map stays exactly as the Style authored it. */
+    fun editableKit(channel: Int) = channel in 8..9
 
     fun apply(record: StyleOverrideRecord, target: EditTarget, scope: EditScope, replacement: Replacement): StyleOverrideRecord {
-        require(editable(target.channel)) { "Channel ${target.channel} is not editable" }
         val level = if (scope == EditScope.ALL_SECTIONS) OverrideScope.ALL else OverrideScope.SECTION
         val section = if (level == OverrideScope.SECTION) target.section else null
         return when (replacement) {
+            is Replacement.DrumKit -> {
+                require(editableKit(target.channel)) { "A drum kit can only replace Rhythm 1 or Rhythm 2" }
+                require(scope == EditScope.ALL_SECTIONS) { "Drum kits apply to the whole Style in this version" }
+                val p = replacement.preset
+                require(p.drum && (p.bank == 127 || p.bank == 128)) { "Not a drum kit preset" }
+                record.withSf2(StyleVoiceOverride(target.channel, OverrideScope.ALL, null,
+                    StyleVoicePin(p.soundFontName, p.bank, p.program, p.name, true), p.pdta, target.original))
+            }
             is Replacement.Sf2 -> {
+                require(editable(target.channel)) { "Channel ${target.channel} is not editable" }
                 val p = replacement.preset
                 require(!p.drum) { "A kit cannot replace a melodic part" }
                 record.withSf2(StyleVoiceOverride(target.channel, level, section,
                     StyleVoicePin(p.soundFontName, p.bank, p.program, p.name, false), p.pdta, target.original))
             }
             is Replacement.External -> {
+                require(editable(target.channel)) { "Channel ${target.channel} is not editable" }
                 val v = replacement.voice
                 require(v.msb in 0..127 && v.lsb in 0..127 && v.program in 0..127) { "MIDI numbers out of range" }
                 record.withExternal(StyleExternalOverride(target.channel, level, section, v, target.original))
@@ -64,6 +77,14 @@ object StyleVoiceEditorOps {
             .sortedWith(compareBy({ it.soundFontName.lowercase() }, { it.bank }, { it.program }))
     }
 
+    /** Drum kits of every loaded SoundFont (raw drum banks 127/128 only); never mixed with melodic presets. */
+    fun drumKitCandidates(catalog: List<CatalogPreset>, query: String): List<CatalogPreset> {
+        val q = query.trim().lowercase()
+        return catalog.filter { it.drum && (it.bank == 127 || it.bank == 128) }
+            .filter { q.isEmpty() || it.name.lowercase().contains(q) || it.soundFontName.lowercase().contains(q) || "${it.bank}:${it.program}".contains(q) }
+            .sortedWith(compareBy({ it.soundFontName.lowercase() }, { it.bank }, { it.program }))
+    }
+
     /** Typed external voice. Program is entered 1-based, as on the instrument's data list. Null + reason on bad input. */
     fun parseExternal(msb: String, lsb: String, program1Based: String, label: String): Pair<ExternalVoice?, String?> {
         val m = msb.trim().toIntOrNull(); val l = lsb.trim().toIntOrNull(); val p = program1Based.trim().toIntOrNull()
@@ -74,7 +95,7 @@ object StyleVoiceEditorOps {
     }
 
     /** SF2 override states for display: ACTIVE, STALE_* (from [StyleOverridePins]) or UNVERIFIED. */
-    fun describePin(pin: StyleVoicePin) = "${pin.soundFontName} ${pin.bank}:${pin.program} '${pin.presetName}'"
+    fun describePin(pin: StyleVoicePin) = (if (pin.drum) "KIT " else "") + "${pin.soundFontName} ${pin.bank}:${pin.program} '${pin.presetName}'"
 
     fun describeExternal(v: ExternalVoice) = "MIDI OUT ${v.msb}:${v.lsb}:${v.program} (display PC ${v.program + 1}) '${v.label}'"
 
@@ -110,6 +131,7 @@ object StyleVoiceEditorOps {
 
     /** Test notes for AUDITION by role; fixed, short, in the part's natural register. */
     fun auditionNotes(channel: Int): List<Int> = when (channel) {
+        8, 9 -> listOf(36, 38, 42, 46)    // Rhythm: kick, snare, closed/open hat (GM positions; the kit's own map is not changed)
         10 -> listOf(36, 43, 48, 43)      // Bass
         else -> listOf(60, 64, 67, 72)    // Chord / Pad / Phrase
     }

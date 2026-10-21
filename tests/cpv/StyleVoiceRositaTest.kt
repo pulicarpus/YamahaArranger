@@ -72,6 +72,6 @@ class StyleVoiceRositaTest {
         }
         // The production parser's Rhythm requests are Bank 127 (kit) with the PC the fixture audit expects.
         val rhythm = inv.forSection("MainA").filter { it.destinationChannel == 8 || it.destinationChannel == 9 }
-        assertTrue(rhythm.isNotEmpty()); assertTrue(rhythm.all { it.drum && it.readOnlyReason != null && it.msb == 127 })
+        assertTrue(rhythm.isNotEmpty()); assertTrue(rhythm.all { it.drum && it.readOnlyReason == null && it.msb == 127 })
     }
 }

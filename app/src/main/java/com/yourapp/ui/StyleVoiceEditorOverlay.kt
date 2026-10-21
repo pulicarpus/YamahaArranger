@@ -19,6 +19,7 @@ fun StyleVoiceEditorOverlay(vm: MainViewModel) {
     val editor by vm.styleEditorUi.collectAsState()
     val library by vm.liveLibrary.collectAsState()
     val memory by vm.browserMemory.collectAsState()
+    val attachments by vm.sf2Attachments.collectAsState()
     var inventory by remember { mutableStateOf<StyleVoiceInventory?>(null) }
     var catalog by remember { mutableStateOf<List<CatalogPreset>>(emptyList()) }
     var loaded by remember { mutableStateOf(false) }
@@ -58,6 +59,8 @@ fun StyleVoiceEditorOverlay(vm: MainViewModel) {
         onResetSection = vm::editorResetSection,
         onResetAll = vm::editorResetAll,
         onSave = { done -> vm.editorSave(done) },
+        onAuditionNote = { row, replacement, original, note, done -> vm.editorAudition(row, replacement, original, done, listOf(note)) },
+        attachments = attachments,
         rememberedPick = memory?.voices?.get("STYLE_EDITOR")?.itemKey,
         onRememberPick = { key -> vm.rememberVoicePosition("STYLE_EDITOR", com.yourapp.yamahaarranger.browser.SavedPosition(key.substringBefore('|'), key)) }
     )

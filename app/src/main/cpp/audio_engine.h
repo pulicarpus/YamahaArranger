@@ -61,6 +61,7 @@ public:
     std::string drumChannelSelection(int ch)const{return soundFont_.drumChannelSelection(ch);}
     bool setDrumABMode(bool r){return soundFont_.setDrumABMode(r);}
     bool bindDrumAB(int ch,const std::string& fp,int bank,int pc,const std::string& section){return soundFont_.bindDrumAB(ch,fp,bank,pc,section);}
+    bool bindDrumManual(int ch,uint64_t fontId,int bank,int pc,const std::string& section){return soundFont_.bindDrumManual(ch,fontId,bank,pc,section);}
     std::string drumABReport()const{return soundFont_.drumABReport();}
     std::string channelBinding(int ch)const{return soundFont_.channelBinding(ch);}
     void setSourceTiered(bool t){soundFont_.setSourceTiered(t);}

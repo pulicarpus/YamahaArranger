@@ -202,6 +202,56 @@ int main(int argc, char** argv) {
         std::cout << "CPV PRIME MANUAL OK\n";
     }
 
+    // 10. SX Prime Drum (real pdta) attached as a second manual-only SF2: its drum presets are listed apart from melodic ones and can
+    // be bound to Rhythm 1 / Rhythm 2 by exact font id + raw bank + program, independently, without touching other channels.
+    {
+        const std::string drum = d + "/prime_drum.sf2";
+        check(p.loadMelodyFallback(drum, true), "attach SX Prime Drum as second manual-only SF2 (pool allows Tyros + 3)");
+        uint64_t drumId = 0; int drumCount = 0, drumBank128 = 0;
+        std::vector<std::vector<std::string>> rows;
+        {
+            std::stringstream in(p.presetList()); std::string rec;
+            while (std::getline(in, rec, '\x1e')) {
+                std::vector<std::string> f; std::stringstream r(rec); std::string x;
+                while (std::getline(r, x, '\x1f')) f.push_back(x);
+                if (f.size() == 6 && f[2].find("prime_drum") != std::string::npos) { drumId = std::stoull(f[1]); ++drumCount; rows.push_back(f); if (f[3] == "128") ++drumBank128; }
+            }
+        }
+        std::cout << "CPV PRIME_DRUM presets exposed=" << drumCount << " bank128=" << drumBank128 << "\n";
+        for (const auto& f : rows) {
+            std::string ascii = f[5]; for (auto& ch : ascii) if (static_cast<unsigned char>(ch) > 126 || static_cast<unsigned char>(ch) < 32) ch = '?';
+            std::cout << "PRIME_DRUM_PRESET bank=" << f[3] << " program0=" << f[4] << " name='" << ascii << "'\n";
+        }
+        check(drumCount == 21 && drumBank128 == 21, "all 21 SX Prime Drum presets are drum-bank presets");
+        auto has = [&](int bank, int program, const std::string& name) {
+            for (const auto& f : rows) if (std::stoi(f[3]) == bank && std::stoi(f[4]) == program && f[5] == name) return true;
+            return false;
+        };
+        check(has(128, 8, "Kendang Alex") && has(128, 36, "KENDANG DHIDI"), "Kendang Alex 128:8 and KENDANG DHIDI 128:36 present");
+        // Rhythm 1 and Rhythm 2 take different kits independently.
+        const auto beforeKeys = fields(p.channelBinding(0));
+        check(p.bindDrumManual(8, drumId, 128, 8, "OVERRIDE"), "Rhythm 1 binds Kendang Alex");
+        check(p.bindDrumManual(9, drumId, 128, 36, "OVERRIDE"), "Rhythm 2 binds KENDANG DHIDI");
+        auto r1 = fields(p.channelBinding(8)), r2 = fields(p.channelBinding(9));
+        check(r1[1] == "BOUND" && r1[3].find("prime_drum") != std::string::npos && r1[6] == "8", "Rhythm 1 reports Prime Drum program 8");
+        check(r2[1] == "BOUND" && r2[3].find("prime_drum") != std::string::npos && r2[6] == "36", "Rhythm 2 reports Prime Drum program 36");
+        BASS_MIDI_FONT l1{}, l2{};
+        check(BASS_MIDI_StreamGetPreset(1, 8, &l1) && l1.preset == 8 && mock_bass::fonts[l1.font].find("prime_drum") != std::string::npos, "stream ch8 plays Prime Drum 8");
+        check(BASS_MIDI_StreamGetPreset(1, 9, &l2) && l2.preset == 36 && mock_bass::fonts[l2.font].find("prime_drum") != std::string::npos, "stream ch9 plays Prime Drum 36");
+        check(fields(p.channelBinding(0)) == beforeKeys, "keyboard channels untouched by drum kit binding");
+        // Refusals: melodic bank, absent program, wrong channel, unknown font. Nothing is substituted.
+        check(!p.bindDrumManual(8, drumId, 0, 8, "OVERRIDE"), "melodic bank refused");
+        check(!p.bindDrumManual(8, drumId, 128, 127, "OVERRIDE"), "absent program refused");
+        check(!p.bindDrumManual(10, drumId, 128, 8, "OVERRIDE"), "non-rhythm channel refused");
+        check(!p.bindDrumManual(8, 999999, 128, 8, "OVERRIDE"), "unknown font refused");
+        // The automatic resolver still never chooses the manual-only drum font.
+        int drumAuto = 0;
+        for (int pc = 0; pc < 128; ++pc) { p.setChannelPreset(14, 0, pc); if (fields(p.channelBinding(14))[3].find("prime_drum") != std::string::npos) ++drumAuto; }
+        check(drumAuto == 0, "automatic resolver never chooses SX Prime Drum");
+        // Pool limit: Tyros + three manual-only fonts; a fifth font is refused.
+        std::cout << "CPV PRIME DRUM KIT OK\n";
+    }
+
     // 8. The getter is read-only.
     const auto history = mock_bass::history;
     for (int ch = 0; ch < 16; ++ch) p.channelBinding(ch);

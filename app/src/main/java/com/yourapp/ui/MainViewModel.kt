@@ -983,6 +983,9 @@ class MainViewModel @Inject constructor(
     private val _browserMemory = MutableStateFlow<com.yourapp.yamahaarranger.browser.BrowserMemory?>(null)
     /** Null until the file has been read, so a restore never races the load. */
     val browserMemory: StateFlow<com.yourapp.yamahaarranger.browser.BrowserMemory?> = _browserMemory
+    private val _sf2Attachments = MutableStateFlow<List<Pair<String, String>>>(emptyList())
+    /** Per SF2 file in the managed folder beyond Colombo/Tyros: attached manual-only, or not attached and why. */
+    val sf2Attachments: StateFlow<List<Pair<String, String>>> = _sf2Attachments
     private val browserWriteLock = kotlinx.coroutines.sync.Mutex()
     init { viewModelScope.launch(Dispatchers.IO) { _browserMemory.value = browserStore.read() } }
     private fun updateBrowserMemory(change: (com.yourapp.yamahaarranger.browser.BrowserMemory) -> com.yourapp.yamahaarranger.browser.BrowserMemory) {
@@ -1514,14 +1517,19 @@ class MainViewModel @Inject constructor(
      * [replacement] null with [useOriginal] plays the Style's own request. Nothing is saved; the effective voice comes back at the end.
      */
     fun editorAudition(row: com.yourapp.yamahaarranger.style.StyleVoiceRow, replacement: com.yourapp.yamahaarranger.style.Replacement?,
-        useOriginal: Boolean, onResult: (String?) -> Unit) {
+        useOriginal: Boolean, onResult: (String?) -> Unit, notes: List<Int>? = null) {
         if (uiState.value.isPlaying) return onResult("Stop the Style first: audition uses this part's own channel.")
         if (row.program == null && useOriginal) return onResult("The Style sends no Program Change for this part.")
         val channel = row.destinationChannel
         auditionJob?.cancel()
         auditionJob = viewModelScope.launch(Dispatchers.Default) {
-            val pin = (replacement as? com.yourapp.yamahaarranger.style.Replacement.Sf2)?.preset?.let {
-                com.yourapp.yamahaarranger.style.StyleVoicePin(it.soundFontName, it.bank, it.program, it.name, false) }
+            val pin = when (replacement) {
+                is com.yourapp.yamahaarranger.style.Replacement.Sf2 -> replacement.preset.let {
+                    com.yourapp.yamahaarranger.style.StyleVoicePin(it.soundFontName, it.bank, it.program, it.name, false) }
+                is com.yourapp.yamahaarranger.style.Replacement.DrumKit -> replacement.preset.let {
+                    com.yourapp.yamahaarranger.style.StyleVoicePin(it.soundFontName, it.bank, it.program, it.name, true) }
+                else -> null
+            }
             val original = if (useOriginal) Triple(row.program!!, com.yourapp.yamahaarranger.style.StyleVoiceInventoryBuilder.requestedBank(row.msb, row.lsb), row.casmVoiceName.ifBlank { null }) else null
             val external = when {
                 replacement is com.yourapp.yamahaarranger.style.Replacement.External -> replacement.voice
@@ -1533,7 +1541,7 @@ class MainViewModel @Inject constructor(
             _styleEditorUi.value = _styleEditorUi.value.copy(auditioning = true)
             var sounding = -1
             try {
-                for (note in com.yourapp.yamahaarranger.style.StyleVoiceEditorOps.auditionNotes(channel)) {
+                for (note in notes ?: com.yourapp.yamahaarranger.style.StyleVoiceEditorOps.auditionNotes(channel)) {
                     if (uiState.value.isPlaying) break
                     arrangerBrain.auditionNote(channel, note, true); sounding = note
                     kotlinx.coroutines.delay(380)
@@ -1666,14 +1674,20 @@ class MainViewModel @Inject constructor(
             contentResolver.copySoundFontToCache(f.first, f.second, "ready-${request.generation}")
         } }
         if (primaryCache == null) { DebugLog.add("❌ CPV SF2 cache failed"); _soundFontName.value = "Load failed"; return true }
-        // SX Prime Melody joins as a manual-only SF2 so its presets can be chosen by hand (Voice Selector, Style Voice Editor).
-        val prime = plan.excluded.firstOrNull { com.yourapp.yamahaarranger.audio.SoundFontRolePlanner.kind(it.second) == com.yourapp.yamahaarranger.audio.SoundFontRolePlanner.Kind.PRIME_MELODY }
-        val primeCache = prime?.let { f -> withContext(Dispatchers.IO) { contentResolver.copySoundFontToCache(f.first, f.second, "ready-${request.generation}") } }
+        // Every other .sf2 in the folder (SX Prime Melody/Drum, custom) may join as manual-only within a count and size budget.
+        val managed = com.yourapp.yamahaarranger.audio.ManagedSf2Policy.plan(files.map { f ->
+            com.yourapp.yamahaarranger.audio.ManagedSf2Policy.Candidate(f, f.second, f.first.path?.let { java.io.File(Uri.decode(it)).length() } ?: 0L)
+        })
+        managed.skipped.forEach { DebugLog.add("⚠️ SF2 not attached: ${it.candidate.name} (${it.reason})") }
+        _sf2Attachments.value = managed.manual.map { it.name to "ATTACHED (manual-only)" } + managed.skipped.map { it.candidate.name to "NOT ATTACHED: ${it.reason}" }
+        val manualCaches = managed.manual.mapNotNull { c -> withContext(Dispatchers.IO) { contentResolver.copySoundFontToCache(c.item.first, c.item.second, "ready-${request.generation}") } }
         val ok = withContext(Dispatchers.Default) {
-            audioEngine.loadColomboPrimaryStack(primaryCache.absolutePath, fallbackCache?.absolutePath, request, primeCache?.absolutePath)
+            audioEngine.loadColomboPrimaryStack(primaryCache.absolutePath, fallbackCache?.absolutePath, request, manualCaches.map { it.absolutePath })
         }
+        // Stale copies of earlier loads (each holds the SF2 plus its normalised twin) are deleted once this stack is live.
+        if (ok) withContext(Dispatchers.IO) { contentResolver.deleteOldSoundFontCaches("ready-${request.generation}") }
         fontRequestSucceeded = ok
-        _soundFontName.value = if (ok) primary.second + (plan.fallback?.let { " + " + it.second } ?: "") + (prime?.let { " + " + it.second + " (manual)" } ?: "") else "Load failed"
+        _soundFontName.value = if (ok) primary.second + (plan.fallback?.let { " + " + it.second } ?: "") + managed.manual.joinToString("") { " + " + it.name + " (manual)" } else "Load failed"
         if (ok) withContext(Dispatchers.Default) { reapplyStyleVoicePins() }
         return true
     }

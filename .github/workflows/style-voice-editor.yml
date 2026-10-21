@@ -2,7 +2,7 @@ name: Style Voice Inspector & Editor APK
 # Isolated experiment branch. Host safety suites must pass before the APK is built.
 on:
   push:
-    branches: [feature/style-voice-inspector-editor, experiment/multi-sf2-voice-selection, experiment/style-voice-browser]
+    branches: [feature/style-voice-inspector-editor, experiment/multi-sf2-voice-selection, experiment/style-voice-browser, experiment/custom-sf2-drum-kit]
   workflow_dispatch: {}
 permissions:
   contents: read
@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   host:
-    if: github.ref == 'refs/heads/feature/style-voice-inspector-editor' || github.ref == 'refs/heads/experiment/multi-sf2-voice-selection' || github.ref == 'refs/heads/experiment/style-voice-browser'
+    if: github.ref == 'refs/heads/feature/style-voice-inspector-editor' || github.ref == 'refs/heads/experiment/multi-sf2-voice-selection' || github.ref == 'refs/heads/experiment/style-voice-browser' || github.ref == 'refs/heads/experiment/custom-sf2-drum-kit'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -74,7 +74,7 @@ jobs:
           if-no-files-found: error
   android:
     needs: host
-    if: github.ref == 'refs/heads/feature/style-voice-inspector-editor' || github.ref == 'refs/heads/experiment/multi-sf2-voice-selection' || github.ref == 'refs/heads/experiment/style-voice-browser'
+    if: github.ref == 'refs/heads/feature/style-voice-inspector-editor' || github.ref == 'refs/heads/experiment/multi-sf2-voice-selection' || github.ref == 'refs/heads/experiment/style-voice-browser' || github.ref == 'refs/heads/experiment/custom-sf2-drum-kit'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -114,7 +114,7 @@ jobs:
           "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose evidence/YamahaArranger-STYLEVOICE.apk > evidence/apk-signature.txt
           "$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging evidence/YamahaArranger-STYLEVOICE.apk > evidence/apk-badging.txt
           python3 tools/verify_cpv_build.py --apk evidence/YamahaArranger-STYLEVOICE.apk --out evidence/apk-provenance.json
-          cp docs/STYLE_VOICE_BROWSER_REPORT.md evidence/DEVICE-TEST.txt
+          cp docs/CUSTOM_SF2_DRUM_KIT_REPORT.md evidence/DEVICE-TEST.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:

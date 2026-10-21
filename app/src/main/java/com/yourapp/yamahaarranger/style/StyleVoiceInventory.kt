@@ -237,7 +237,9 @@ object StyleVoiceInventoryBuilder {
     ): StyleVoiceRow {
         val role = roleOf(r.destinationChannel) ?: "Channel ${r.destinationChannel + 1}"
         val readOnly = when {
-            r.drum -> "Drum kit selection stays with the Style: the Rhythm parts also define the drum note map, which is not edited here."
+            // Rhythm 1/2: the KIT is selectable (whole Style); the drum note map is never edited here.
+            r.drum && r.destinationChannel in 8..9 && r.appliedToDestination -> null
+            r.drum -> "Drum kits can only replace Rhythm 1 or Rhythm 2 where the Style defines them."
             r.program == null -> "This part sends no Program Change at tick 0, so there is no Voice request to replace."
             !r.appliedToDestination -> "Another part owns this channel's Voice in this section."
             else -> null

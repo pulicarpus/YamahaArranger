@@ -328,6 +328,12 @@ class ContentResolverProvider @Inject constructor(
     fun sf2MetadataSources(): com.yourapp.audio.Sf2SemanticInventory.Discovery =
         com.yourapp.audio.Sf2SemanticInventory.discover(sf2RootDir)
 
+    /** Remove SF2 copies of earlier loads (cache/sf2/ready-*), keeping only [keep]. Safe once the new stack is loaded. */
+    fun deleteOldSoundFontCaches(keep: String) {
+        try { File(context.cacheDir, "sf2").listFiles { f -> f.isDirectory && f.name.startsWith("ready-") && f.name != keep }?.forEach { it.deleteRecursively() } }
+        catch (e: Exception) { Timber.w(e, "SF2 cache cleanup failed") }
+    }
+
     fun copySoundFontToCache(uri: Uri, displayName: String, requestDirectory: String? = null): File? {
         val root = File(context.cacheDir, "sf2")
         val dir = (if (requestDirectory == null) root else File(root, requestDirectory)).apply { mkdirs() }

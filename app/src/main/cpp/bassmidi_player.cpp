@@ -305,6 +305,9 @@ bool BassMidiPlayer::applyFonts() {
     }
 
     for (const auto& secondary : secondaryMelodies_) {
+        // Manual-only fonts are reached only through channel-specific mappings (keyboard preset, pin, drum bind),
+        // never through the generic all-preset mapping the automatic path falls back to.
+        if (secondary.manualOnly) continue;
         for (const auto& m : secondary.banks) {
             if (m.midiMsb > 127) continue;
             BASS_MIDI_FONTEX2 fallback{};
@@ -490,7 +493,9 @@ bool BassMidiPlayer::loadMelodyFallback(const std::string& path, bool manualOnly
     for (const auto& secondary : secondaryMelodies_) if (secondary.path == path) return true;
     // Bounded pool: primary Yamaha + Colombo + optional Tyros. Optional
     // allocation failure cannot discard the established melody/drum pair.
-    if (secondaryMelodies_.size() >= 2) return false;
+    // Bounded pool: Tyros fallback plus up to three manual-only SoundFonts (SX Prime Melody/Drum, custom). The Kotlin
+    // ManagedSf2Policy decides which files are attached and enforces the byte budget.
+    if (secondaryMelodies_.size() >= 4) return false;
     closeRolePcmWindows(); // prevent attribution across an SF2 resource change
     SecondaryMelody secondary;
     secondary.path = path;
@@ -3174,6 +3179,34 @@ bool BassMidiPlayer::bindDrumAB(int ch,const std::string& pdta,int bank,int pc,c
     BASS_MIDI_FONT live{};
     b.verified=ok && BASS_MIDI_StreamGetPreset(stream_,ch,&live) && live.font==b.font && live.bank==b.nativeBank && live.preset==pc;
     auto& o=drumSelections_[ch];o.generation=++drumSelectionGeneration_;o.bank=bank;o.pc=pc;o.pdta=pdta;o.reason=b.verified?state.resolverReason:"r23_binding_readback_failed";
+    if(b.verified)BASS_MIDI_FontLoadEx(b.font,pc,b.nativeBank,-1,BASS_MIDI_FONTLOAD_NOWAIT);
+    return b.verified;
+}
+// Manual drum kit for Rhythm 1/2 from ANY loaded SoundFont (custom or SX Prime Drum). The reviewed-namespace gate of
+// bindDrumAB is intentionally not applied: the user chose this exact preset (font id + raw bank + program), and the
+// preset must exist in the loaded font. Readback verifies it; an unverified bind never sounds (same rule as R2-3).
+bool BassMidiPlayer::bindDrumManual(int ch, uint64_t fontId, int bank, int pc, const std::string& section) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if(!drumABResolved_ || !stream_ || ch<8 || ch>9)return false;
+    auto& b=drumABBindings_[ch-8];b={};b.section=section;
+    if(!fontId || pc<0 || pc>127 || (bank!=127 && bank!=128))return false;
+    HSOUNDFONT font=0;std::string path;
+    if(melodyFont_ && fontId==melodyFontId_){font=melodyFont_;path=melodyPath_;}
+    for(const auto& s:secondaryMelodies_) if(s.fontId==fontId){font=s.font;path=s.path;}
+    if(!font)return false;
+    bool listed=false;
+    for(const auto& p:browserPresets_) if(p.fontId==fontId && p.nativeBank==bank && p.program==pc)listed=true;
+    if(!listed || !BASS_MIDI_FontGetPreset(font,pc,bank))return false;
+    const auto fp=pdtaFingerprints_.find(path);
+    b={font,bank,bank,pc,(fp!=pdtaFingerprints_.end() && fp->second.valid)?fp->second.sha256:std::string(),section,false};
+    auto& state=channels_[ch];state.drum=true;state.initialized=true;state.bankMsb=128;state.bankLsb=0;state.program=pc;
+    state.resolverReason="manual_drum_kit";
+    bool ok=applyFonts();
+    ok=send(ch,MIDI_EVENT_DRUMS,1)&&ok;ok=send(ch,MIDI_EVENT_BANK,128)&&ok;
+    ok=send(ch,MIDI_EVENT_BANK_LSB,0)&&ok;ok=send(ch,MIDI_EVENT_PROGRAM,pc)&&ok;
+    BASS_MIDI_FONT live{};
+    b.verified=ok && BASS_MIDI_StreamGetPreset(stream_,ch,&live) && live.font==b.font && live.bank==b.nativeBank && live.preset==pc;
+    auto& o=drumSelections_[ch];o.generation=++drumSelectionGeneration_;o.bank=bank;o.pc=pc;o.pdta=b.pdta;o.reason=b.verified?state.resolverReason:"manual_drum_binding_readback_failed";
     if(b.verified)BASS_MIDI_FontLoadEx(b.font,pc,b.nativeBank,-1,BASS_MIDI_FONTLOAD_NOWAIT);
     return b.verified;
 }

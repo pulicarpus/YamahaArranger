@@ -2,7 +2,7 @@ name: Style Voice Inspector render (PNG)
 # Renders the real Compose source of the Style Voice Inspector (plus LIVE panels) with Skia (desktop, no Android) and publishes the PNGs on branch preview/style-voice-editor.
 on:
   push:
-    branches: [feature/style-voice-inspector-editor, experiment/style-voice-browser]
+    branches: [feature/style-voice-inspector-editor, experiment/style-voice-browser, experiment/custom-sf2-drum-kit]
     paths: ['tools/ui_preview/**', 'app/src/main/java/com/yourapp/ui/StyleVoice*.kt', 'app/src/main/java/com/yourapp/ui/Browser*.kt', 'app/src/main/java/com/yourapp/yamahaarranger/browser/**', 'app/src/main/java/com/yourapp/yamahaarranger/style/StyleVoice*.kt',
             '.github/workflows/style-voice-editor-preview.yml']
   workflow_dispatch: {}

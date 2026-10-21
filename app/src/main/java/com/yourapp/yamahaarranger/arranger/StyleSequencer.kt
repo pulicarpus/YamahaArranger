@@ -355,9 +355,21 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
      */
     fun auditionBegin(channel:Int, pin:com.yourapp.yamahaarranger.style.StyleVoicePin?, original:Triple<Int,Int,String?>?,
         external:com.yourapp.yamahaarranger.style.ExternalVoice?):String? = lifecycle {
-        if(channel !in 10..15) return@lifecycle "Only melodic Style parts can be auditioned; Rhythm and keyboard channels are left alone."
+        if(channel !in 8..15) return@lifecycle "Only Style parts can be auditioned; keyboard channels are left alone."
         if(playbackJob?.isActive==true) return@lifecycle "Stop the Style first: audition uses this part's own channel."
         if(auditionChannel!=-1) return@lifecycle "Another audition is still running."
+        if(channel<10) {
+            // Rhythm 1/2: internal kit only (never MIDI OUT). A candidate kit binds like a manual kit; "original" re-binds the
+            // Style's own kit, which is only known once the Style has played.
+            if(pin!=null) { if(!pin.drum || !audioEngine.pinStyleChannel(channel,pin)) return@lifecycle "That kit is not loaded or could not be bound, so it cannot be heard."; installedPins[channel]=pin }
+            else if(original!=null) {
+                val known = lastStyleVoice[channel] ?: return@lifecycle "Play the Style once so its own kit is known, or audition the replacement."
+                audioEngine.unpinStyleChannel(channel); installedPins.remove(channel); applyStyleVoice(channel,known)
+            }
+            appliedChannelStates.remove(channel)
+            auditionChannel=channel
+            return@lifecycle null
+        }
         if(pin!=null) {
             if(!audioEngine.pinStyleChannel(channel,pin)) return@lifecycle "That preset is not loaded, so it cannot be heard."
             installedPins[channel]=pin
@@ -373,8 +385,9 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     /** One test note on the audition channel. Ignored unless that channel is owned by the audition and the Style is stopped. */
     fun auditionNote(channel:Int, note:Int, on:Boolean) = lifecycle {
         if(channel!=auditionChannel || playbackJob?.isActive==true || note !in 0..127) return@lifecycle
-        if(on) { audioEngine.noteOnChannel(channel,note,0.7f); midiInputManager.sendNoteOn(channel,note,90) }
-        else { audioEngine.noteOffChannel(channel,note); midiInputManager.sendNoteOff(channel,note) }
+        // Rhythm audition stays internal: no note goes to the external keyboard.
+        if(on) { audioEngine.noteOnChannel(channel,note,0.7f); if(channel>=10) midiInputManager.sendNoteOn(channel,note,90) }
+        else { audioEngine.noteOffChannel(channel,note); if(channel>=10) midiInputManager.sendNoteOff(channel,note) }
     }
     /** Return the channel to its effective voice (section pin, part-wide pin or the Style's request; same for MIDI OUT). */
     fun auditionEnd(channel:Int) = lifecycle {
@@ -384,7 +397,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         val want = effectivePin(voiceSection,channel)
         if(want!=null) { if(audioEngine.pinStyleChannel(channel,want)) installedPins[channel]=want }
         else lastStyleVoice[channel]?.let { applyStyleVoice(channel,it) }
-        resendMidiVoice(channel)
+        if(channel>=10) resendMidiVoice(channel)
     }
 
     /** Re-install every pin after an SF2 reload (native font ids change). */

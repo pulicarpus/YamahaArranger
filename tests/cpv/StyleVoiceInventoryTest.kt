@@ -135,10 +135,10 @@ class StyleVoiceInventoryTest {
         assertEquals(VoiceStatus.UNKNOWN, build(catalog = similarName).forSection("MainA").first { it.destinationChannel == 10 }.status)
     }
 
-    @Test fun drumsAreReadOnlyAndClassifiedByDrumEvidence() {
+    @Test fun drumRhythmKitsAreEditableAndClassifiedByDrumEvidence() {
         val rows = build(mapOf(8 to bound(8, 128, 0, "r23_exact_fingerprint_namespace_coverage", source = "DRUM_R23")), active = "MainA")
         val d = rows.forSection("MainA").first { it.destinationChannel == 8 }
-        assertTrue(d.drum); assertNotNull(d.readOnlyReason); assertEquals(VoiceStatus.EXACT, d.status)
+        assertTrue(d.drum); assertNull(d.readOnlyReason); assertEquals(VoiceStatus.EXACT, d.status)
         assertEquals("Rhythm 1", d.partRole)
         val legacy = build(mapOf(8 to bound(8, 128, 0, "legacy_first_cached_kit_fallback", source = "DRUM_LEGACY")), active = "MainA")
         assertEquals(VoiceStatus.FALLBACK, legacy.forSection("MainA").first { it.destinationChannel == 8 }.status)

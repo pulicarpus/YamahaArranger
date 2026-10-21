@@ -6,6 +6,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 BASE = 'f9c95a8'
 ALLOWED = {
+    'app/src/main/java/com/yourapp/yamahaarranger/audio/ManagedSf2Policy.kt',
+    'docs/CUSTOM_SF2_DRUM_KIT_REPORT.md',
+    'tests/cpv/ManagedSf2PolicyTest.kt',
     'app/src/main/java/com/yourapp/yamahaarranger/style/StyleVoiceInventory.kt',
     'app/src/main/java/com/yourapp/ui/StyleVoiceEditorScreen.kt',
     'app/src/main/java/com/yourapp/ui/StyleVoiceEditorOverlay.kt',

@@ -99,5 +99,55 @@ class StyleVoiceEditorOpsTest {
     @Test fun auditionNotesAreFixedAndRoleBased() {
         assertEquals(listOf(36, 43, 48, 43), StyleVoiceEditorOps.auditionNotes(10))
         assertEquals(listOf(60, 64, 67, 72), StyleVoiceEditorOps.auditionNotes(13))
+        assertEquals(listOf(36, 38, 42, 46), StyleVoiceEditorOps.auditionNotes(8))
+    }
+
+    // ---- Custom SF2 drum kits (Stage 1) ----
+    private val kendang = CatalogPreset("PRIME DRUM.sf2", "d".repeat(64), 128, 8, "Kendang Alex", true)
+    private val dhidi = CatalogPreset("PRIME DRUM.sf2", "d".repeat(64), 128, 36, "KENDANG DHIDI", true)
+
+    @Test fun rhythmOneAndTwoTakeIndependentKitsKeepingSourceBankProgram() {
+        var r = StyleVoiceEditorOps.apply(base, target.copy(channel = 8), EditScope.ALL_SECTIONS, Replacement.DrumKit(kendang))
+        r = StyleVoiceEditorOps.apply(r, target.copy(channel = 9), EditScope.ALL_SECTIONS, Replacement.DrumKit(dhidi))
+        val a = r.overrides.single { it.channel == 8 }; val b = r.overrides.single { it.channel == 9 }
+        assertEquals(listOf("PRIME DRUM.sf2", 128, 8, true), listOf(a.pin.soundFontName, a.pin.bank, a.pin.program, a.pin.drum))
+        assertEquals(listOf("PRIME DRUM.sf2", 128, 36, true), listOf(b.pin.soundFontName, b.pin.bank, b.pin.program, b.pin.drum))
+        assertEquals("d".repeat(64), a.pdta)
+        val reset = r.without(8, OverrideScope.ALL, null)
+        assertEquals(listOf(9), reset.overrides.map { it.channel })          // Rhythm 2 untouched by resetting Rhythm 1
+        assertTrue(r.overrides.none { it.channel in 10..15 || it.channel < 8 }) // nothing for RIGHT/LEFT or other parts
+        assertEquals("KIT PRIME DRUM.sf2 128:8 'Kendang Alex'", StyleVoiceEditorOps.describePin(a.pin))
+    }
+
+    @Test fun kitsAreRefusedOnMelodicPartsOrSectionScopeAndMelodicPresetsOnRhythm() {
+        assertTrue(runCatching { StyleVoiceEditorOps.apply(base, target, EditScope.ALL_SECTIONS, Replacement.DrumKit(kendang)) }.isFailure)
+        assertTrue(runCatching { StyleVoiceEditorOps.apply(base, target.copy(channel = 8), EditScope.THIS_SECTION, Replacement.DrumKit(kendang)) }.isFailure)
+        assertTrue(runCatching { StyleVoiceEditorOps.apply(base, target.copy(channel = 8), EditScope.ALL_SECTIONS, Replacement.DrumKit(violin)) }.isFailure)
+        assertTrue(runCatching { StyleVoiceEditorOps.apply(base, target.copy(channel = 9), EditScope.ALL_SECTIONS, Replacement.Sf2(violin)) }.isFailure)
+        assertTrue(StyleVoiceEditorOps.editableKit(8) && StyleVoiceEditorOps.editableKit(9) && !StyleVoiceEditorOps.editableKit(10))
+    }
+
+    @Test fun drumCandidatesNeverMixWithMelodicPresets() {
+        val cat = listOf(violin, kit, kendang, dhidi, CatalogPreset("PRIME DRUM.sf2", "", 16256, 3, "Odd", false))
+        val kits = StyleVoiceEditorOps.drumKitCandidates(cat, "")
+        assertEquals(listOf("Standard Kit", "Kendang Alex", "KENDANG DHIDI"), kits.map { it.name })
+        assertEquals(listOf("KENDANG DHIDI"), StyleVoiceEditorOps.drumKitCandidates(cat, "128:36").map { it.name })
+        assertEquals(listOf("Kendang Alex"), StyleVoiceEditorOps.drumKitCandidates(cat, "prime drum.sf2 ").filter { it.program == 8 }.map { it.name })
+        assertTrue(StyleVoiceEditorOps.sf2Candidates(cat, "").none { it.drum })
+    }
+
+    @Test fun kitProfileSurvivesSaveReloadAndGoesStaleWhenTheSoundFontIsMissingOrChanged() {
+        var r = StyleVoiceEditorOps.apply(base, target.copy(channel = 8), EditScope.ALL_SECTIONS, Replacement.DrumKit(kendang)).copy(savedAt = 5)
+        val dir = Files.createTempDirectory("kit")
+        StyleOverrideStore(dir).write(r)
+        val back = StyleOverrideStore(dir).read(sha).record!!
+        assertEquals(r, back)
+        val ok = com.yourapp.yamahaarranger.style.StyleOverridePins.check(back, { "d".repeat(64) }) { f, b, p -> if (f == "PRIME DRUM.sf2" && b == 128 && p == 8) "Kendang Alex" else null }
+        assertTrue(ok.single().valid)
+        val missing = com.yourapp.yamahaarranger.style.StyleOverridePins.check(back, { null }) { _, _, _ -> null }
+        assertEquals("STALE_PRESET_NOT_LOADED", missing.single().reason)
+        val changed = com.yourapp.yamahaarranger.style.StyleOverridePins.check(back, { "e".repeat(64) }) { _, _, _ -> "Kendang Alex" }
+        assertEquals("STALE_SOUNDFONT_CONTENT_CHANGED", changed.single().reason)
+        assertEquals(back, r)   // a stale check never rewrites or substitutes the stored kit
     }
 }

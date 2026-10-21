@@ -208,7 +208,7 @@ class AudioEngineManager @Inject constructor(
      * The primary path also satisfies the readiness drum slot because it is
      * the drum source.
      */
-    fun loadColomboPrimaryStack(primaryPath: String, fallbackPath: String?, request: ReadyToPlayGate.Request? = null, manualPath: String? = null): Boolean =
+    fun loadColomboPrimaryStack(primaryPath: String, fallbackPath: String?, request: ReadyToPlayGate.Request? = null, manualPaths: List<String> = emptyList()): Boolean =
         fontOperation(request, primaryPath, primaryPath) {
             val result = runBlocking { soundFontOperationMutex.withLock { withAudioStreamPausedUnsafe {
                 // Drop any previous stack, including a dedicated drum font.
@@ -219,11 +219,12 @@ class AudioEngineManager @Inject constructor(
                     val ok = bridge.nativeLoadMelodyFallbackSoundFont(fallbackPath)
                     DebugLog.add(if (ok) "✅ CPV fallback SF2 attached" else "⚠️ CPV fallback SF2 failed; primary remains active")
                 }
-                if (!manualPath.isNullOrBlank()) {
-                    // Third SF2 (SX Prime Melody): selectable by hand, invisible to the automatic resolver. Non-fatal.
+                // Manual-only SoundFonts (SX Prime Melody/Drum, custom): selectable by hand, invisible to the automatic
+                // resolver. One at a time, each non-fatal; the file list was already limited by ManagedSf2Policy.
+                for (manualPath in manualPaths) {
                     val ok = bridge.nativeLoadMelodyManualSoundFont(manualPath)
-                    DebugLog.add(if (ok) "✅ CPV manual-only SF2 attached (not used by the automatic resolver)"
-                        else "⚠️ CPV manual-only SF2 failed; established stack remains active")
+                    DebugLog.add(if (ok) "✅ CPV manual-only SF2 attached: ${manualPath.substringAfterLast('/')}"
+                        else "⚠️ CPV manual-only SF2 failed: ${manualPath.substringAfterLast('/')}; established stack remains active")
                 }
                 val drums = bridge.nativeSetDrumABMode(true)
                 if (drums) drumABResolved = true
@@ -421,8 +422,11 @@ class AudioEngineManager @Inject constructor(
         val drum = channel == 8 || channel == 9
         val ok = when {
             preset == null -> false
+            // Reviewed Colombo/Tyros kits keep the original exact-namespace route; any other loaded SoundFont
+            // (SX Prime Drum, custom) binds by exact font id + raw bank + program after the user chose it.
             drum -> drumABResolved && pin.drum &&
-                bridge.nativeBindDrumAB(channel, bridge.nativeFontPdta(preset.soundFontId), pin.bank, pin.program, section)
+                (bridge.nativeBindDrumAB(channel, bridge.nativeFontPdta(preset.soundFontId), pin.bank, pin.program, section) ||
+                    bridge.nativeBindDrumManual(channel, preset.soundFontId, pin.bank, pin.program, section))
             else -> !pin.drum && bridge.nativePinChannelPreset(channel, preset.soundFontId, pin.bank, pin.program)
         }
         DebugLog.add("CPV OVERRIDE ch=$channel sf2=${pin.soundFontName} bank=${pin.bank} pc=${pin.program} " +

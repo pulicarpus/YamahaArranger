@@ -80,7 +80,11 @@ class StyleVoiceEditorActions(
     val onSave: ((String) -> Unit) -> Unit,
     /** Browser memory for the Style Voice Editor context: last chosen preset key (SoundFont file|bank|program). */
     val rememberedPick: String? = null,
-    val onRememberPick: (String) -> Unit = {}
+    val onRememberPick: (String) -> Unit = {},
+    /** Rhythm audition of one chosen note (Style stopped, internal only): row, kit (null = current), original?, note, result. */
+    val onAuditionNote: (StyleVoiceRow, Replacement?, Boolean, Int, (String?) -> Unit) -> Unit = { _, _, _, _, _ -> },
+    /** Attached/skipped SoundFont files of the managed folder: file name to status text. */
+    val attachments: List<Pair<String, String>> = emptyList()
 )
 
 private val SvBlack = Color(0xFF080A0D)
@@ -315,10 +319,11 @@ private fun DetailPanel(r: StyleVoiceRow?, inv: StyleVoiceInventory, actions: St
                 if (r.override != null) "\nHeld back while the replacement is active (the replacement holds for the whole section)." else "",
             "authored in file")
         r.override?.let { Field("Replacement", "${it.kind} · ${it.scope} · ${it.state}\n${it.description}", "profile") }
-        Field("Editing", r.readOnlyReason ?: "Replace this part's Voice for this section or for the whole Style.", null)
+        val kitRow = StyleVoiceEditorOps.editableKit(r.destinationChannel) && r.drum
+        Field("Editing", r.readOnlyReason ?: if (kitRow) "Choose the drum KIT for this Rhythm part (whole Style). The Style's drum notes are not changed." else "Replace this part's Voice for this section or for the whole Style.", null)
         if (actions != null) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                if (r.readOnlyReason == null) HeaderButton("REPLACE", enabled = actions.writable) { onReplace(r) }
+                if (r.readOnlyReason == null) HeaderButton(if (kitRow) "CHOOSE KIT" else "REPLACE", enabled = actions.writable) { onReplace(r) }
                 if (r.override != null || inv.flat.any { it.destinationChannel == r.destinationChannel && it.override != null }) {
                     HeaderButton("RESET PART") { actions.onResetPart(r.destinationChannel) }
                 }
@@ -362,14 +367,22 @@ fun ReplacePanel(row: StyleVoiceRow, actions: StyleVoiceEditorActions, onClose: 
     var msb by remember { mutableStateOf("") }; var lsb by remember { mutableStateOf("") }
     var pc by remember { mutableStateOf("") }; var label by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
+    val kitMode = StyleVoiceEditorOps.editableKit(row.destinationChannel)
+    var pickedKit by remember { mutableStateOf<CatalogPreset?>(null) }
+    var auditionNote by remember { mutableStateOf(36) }
+    val kits = remember(actions.sf2Catalog, query) { StyleVoiceEditorOps.drumKitCandidates(actions.sf2Catalog, query) }
     val candidates = remember(actions.sf2Catalog, query) { StyleVoiceEditorOps.sf2Candidates(actions.sf2Catalog, query) }
     val typed = remember(msb, lsb, pc, label) {
         if (msb.isBlank() && lsb.isBlank() && pc.isBlank()) null else StyleVoiceEditorOps.parseExternal(msb, lsb, pc, label)
     }
-    val replacement: Replacement? = if (tab == 0) pickedSf2?.let { Replacement.Sf2(it) }
+    val replacement: Replacement? = if (kitMode) pickedKit?.let { Replacement.DrumKit(it) }
+        else if (tab == 0) pickedSf2?.let { Replacement.Sf2(it) }
         else (typed?.first ?: pickedExt)?.let { Replacement.External(it) }
     Column(Modifier.widthIn(max = 820.dp).heightIn(max = 560.dp).background(SvPanel, RoundedCornerShape(10.dp)).padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (kitMode) { KitPicker(row, actions, kits, pickedKit, query, auditionNote, error, onQuery = { query = it },
+            onPick = { pickedKit = it; error = null }, onNote = { auditionNote = it.coerceIn(0, 127) }, onClose = onClose, onToast = onToast,
+            onError = { error = it }, replacement = replacement); return@Column }
         Text("REPLACE · ${row.partRole.uppercase()} · ${row.sectionLabel}", color = SvGreen, fontWeight = FontWeight.Bold, fontSize = 15.sp)
         Text("Style asks for ${row.displayRequest} (raw ${row.rawRequest})" + (if (row.casmVoiceName.isNotBlank()) " · '${row.casmVoiceName}'" else ""), color = SvDim, fontSize = 11.sp)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -435,6 +448,59 @@ fun ReplacePanel(row: StyleVoiceRow, actions: StyleVoiceEditorActions, onClose: 
             HeaderButton("CANCEL") { actions.onAuditionStop(); onClose() }
         }
         if (actions.isPlaying) Text("Audition plays four test notes on this part's own channel, so it needs the Style stopped. APPLY works while playing.", color = SvDim, fontSize = 10.sp)
+    }
+}
+
+private val noteNames = arrayOf("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
+private fun noteLabel(n: Int) = "$n (${noteNames[n % 12]}${n / 12 - 1})"
+
+/** Rhythm 1 / Rhythm 2: choose the drum KIT of any loaded SoundFont. Kit only: the Style's own drum notes are never remapped. */
+@Composable
+private fun KitPicker(row: StyleVoiceRow, actions: StyleVoiceEditorActions, kits: List<CatalogPreset>, picked: CatalogPreset?, query: String,
+    note: Int, error: String?, onQuery: (String) -> Unit, onPick: (CatalogPreset) -> Unit, onNote: (Int) -> Unit,
+    onClose: () -> Unit, onToast: (String) -> Unit, onError: (String?) -> Unit, replacement: Replacement?) {
+    Text("DRUM KIT · ${row.partRole.uppercase()}", color = SvGreen, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+    Text("Style asks for ${row.displayRequest} (raw ${row.rawRequest})" + (if (row.casmVoiceName.isNotBlank()) " · '${row.casmVoiceName}'" else "") +
+        "  ·  applies to the whole Style, internal sound only", color = SvDim, fontSize = 11.sp)
+    OutlinedTextField(query, onQuery, singleLine = true, label = { Text("Search kit, SoundFont or bank:program") }, modifier = Modifier.fillMaxWidth())
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    if (kits.isEmpty()) Text(if (actions.sf2Catalog.isEmpty()) "No SoundFont presets are loaded." else "No loaded drum kit matches.", color = SvDim, fontSize = 12.sp)
+    Box(Modifier.weight(1f, fill = false)) {
+        LazyColumn(Modifier.fillMaxWidth().heightIn(max = 230.dp), state = listState) {
+            items(kits, key = { "${it.soundFontName}/${it.pdta}/${it.bank}/${it.program}" }) { p ->
+                Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).background(if (picked == p) SvBlue.copy(alpha = 0.2f) else Color.Transparent)
+                    .clickable { onPick(p) }.padding(horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(p.name, color = SvText, fontSize = 13.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("${p.soundFontName}  ${p.bank}:${p.program}", color = SvDim, fontSize = 10.sp, fontFamily = FontFamily.Monospace, maxLines = 1)
+                }
+            }
+        }
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text("TEST NOTE", color = SvDim, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        HeaderButton("−") { onNote(note - 1) }
+        Text(noteLabel(note), color = SvText, fontSize = 13.sp, fontFamily = FontFamily.Monospace)
+        HeaderButton("+") { onNote(note + 1) }
+        HeaderButton("PLAY NOTE", enabled = !actions.isPlaying && !actions.auditioning) {
+            actions.onAuditionNote(row, replacement, false, note) { it?.let(onToast) }
+        }
+    }
+    if (actions.attachments.isNotEmpty()) Text("SoundFont folder: " + actions.attachments.joinToString(" · ") { "${it.first} ${it.second}" }, color = SvDim, fontSize = 9.sp)
+    Text("Kit only. A preset name does not prove the kit has samples for every note this Style plays; use the test note to listen. Drum note mapping is not changed in this version.", color = SvDim, fontSize = 10.sp)
+    error?.let { Text(it, color = voiceStatusColor(VoiceStatus.MISSING), fontSize = 12.sp) }
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        HeaderButton("AUDITION KIT", enabled = replacement != null && !actions.isPlaying && !actions.auditioning) {
+            actions.onAudition(row, replacement, false) { it?.let(onToast) }
+        }
+        HeaderButton("AUDITION ORIGINAL", enabled = row.program != null && !actions.isPlaying && !actions.auditioning) {
+            actions.onAudition(row, null, true) { it?.let(onToast) }
+        }
+        if (actions.auditioning) HeaderButton("STOP") { actions.onAuditionStop() }
+        Box(Modifier.weight(1f))
+        HeaderButton("APPLY", enabled = replacement != null) {
+            actions.onApply(row, EditScope.ALL_SECTIONS, replacement!!) { err -> if (err == null) { onToast("Kit applied — press SAVE PROFILE to keep it."); onClose() } else onError(err) }
+        }
+        HeaderButton("CANCEL") { actions.onAuditionStop(); onClose() }
     }
 }
 

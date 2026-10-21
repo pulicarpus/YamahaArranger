@@ -66,10 +66,13 @@ fun renderVoiceInspector(dir: File, render: (String, Int, Int, Float, @Composabl
         CatalogPreset("Colombo.sf2", "a".repeat(64), 0, 33, "Finger Bass", false), CatalogPreset("Colombo.sf2", "a".repeat(64), 0, 40, "Violin", false),
         CatalogPreset("Colombo.sf2", "a".repeat(64), 0, 48, "Strings Ensemble", false), CatalogPreset("Colombo.sf2", "a".repeat(64), 128, 0, "Standard Kit", true),
         CatalogPreset("Tyros.sf2", "b".repeat(64), 112, 33, "Fingered Bass 2", false), CatalogPreset("Tyros.sf2", "b".repeat(64), 112, 61, "Brass Section", false),
-        CatalogPreset("Tyros.sf2", "b".repeat(64), 16256, 5, "Cool! Strings", false))
+        CatalogPreset("Tyros.sf2", "b".repeat(64), 16256, 5, "Cool! Strings", false),
+        CatalogPreset("SX Prime Drum.sf2", "d".repeat(64), 128, 8, "Kendang Alex", true), CatalogPreset("SX Prime Drum.sf2", "d".repeat(64), 128, 36, "KENDANG DHIDI", true),
+        CatalogPreset("SX Prime Drum.sf2", "d".repeat(64), 128, 0, "STANDAR PSR-SX", true), CatalogPreset("MyKendang.sf2", "e".repeat(64), 128, 0, "Kendang Jaipong", true))
     val ext = listOf(ExternalVoice(0, 112, 48, "My Strings"), ExternalVoice(0, 113, 61, "My Brass"))
     fun actions(dirty: Boolean, playing: Boolean = false) = StyleVoiceEditorActions(catalog, ext, playing, true, dirty, true, "", "", false,
-        { _, _, _, _ -> }, { _, _, _, _ -> }, {}, {}, {}, {}, { })
+        { _, _, _, _ -> }, { _, _, _, _ -> }, {}, {}, {}, {}, { }, null, {}, { _, _, _, _, _ -> },
+        listOf("SX Prime Drum.sf2" to "ATTACHED (manual-only)", "MyKendang.sf2" to "ATTACHED (manual-only)", "Huge.sf2" to "NOT ATTACHED: OVER_BUDGET_1000MB"))
     val edited = StyleVoiceInventoryBuilder.build(style, catalog, observed, "MainA", mapOf(
         ("MainA" to 10) to com.yourapp.yamahaarranger.style.RowOverride("INTERNAL + MIDI OUT", com.yourapp.yamahaarranger.style.OverrideScope.SECTION,
             "INTERNAL Tyros.sf2 0:40 'Violin' · MIDI OUT 0:112:48 (display PC 49) 'My Strings'", "ACTIVE")))
@@ -86,5 +89,20 @@ fun renderVoiceInspector(dir: File, render: (String, Int, Int, Float, @Composabl
     }
     render("08_replace_external.png", 900, 640, 1.6f) {
         Box(Modifier.fillMaxSize().background(Color(0xFF080A0D)).padding(12.dp), contentAlignment = Alignment.Center) { ReplacePanel(bassRow, actions(false), {}, {}, 1, "") }
+    }
+    val rhythmRow = inv.forSection("MainA").first { it.destinationChannel == 8 }
+    render("09_drum_kit_picker.png", 900, 640, 1.6f) {
+        Box(Modifier.fillMaxSize().background(Color(0xFF080A0D)).padding(12.dp), contentAlignment = Alignment.Center) { ReplacePanel(rhythmRow, actions(false), {}, {}, 0, "") }
+    }
+    render("10_drum_kit_picker_search.png", 900, 640, 1.6f) {
+        Box(Modifier.fillMaxSize().background(Color(0xFF080A0D)).padding(12.dp), contentAlignment = Alignment.Center) { ReplacePanel(rhythmRow, actions(false), {}, {}, 0, "kendang") }
+    }
+    val kitEdited = StyleVoiceInventoryBuilder.build(style, catalog, observed, "MainA", mapOf(
+        ("MainA" to 8) to com.yourapp.yamahaarranger.style.RowOverride("INTERNAL", com.yourapp.yamahaarranger.style.OverrideScope.ALL,
+            "KIT SX Prime Drum.sf2 128:8 'Kendang Alex'", "ACTIVE"),
+        ("MainA" to 9) to com.yourapp.yamahaarranger.style.RowOverride("INTERNAL", com.yourapp.yamahaarranger.style.OverrideScope.ALL,
+            "KIT SX Prime Drum.sf2 128:36 'KENDANG DHIDI'", "STALE_PRESET_NOT_LOADED")))
+    render("11_inspector_drum_kits.png", 1280, 800, 1.6f) {
+        StyleVoiceInspectorContent(kitEdited, true, "Internal (BASSMIDI)", {}, {}, "MainA", "MainA" to 0, actions(true))
     }
 }

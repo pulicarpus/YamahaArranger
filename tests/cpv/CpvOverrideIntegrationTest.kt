@@ -112,6 +112,90 @@ class CpvOverrideIntegrationTest {
         assertTrue(!engine.pinStyleChannel(2, StyleVoicePin("yamaha tyros 4.sf2", 0, 48, "Tyros Strings", false)))
     }
 
+    // ---- Custom SF2 drum kits: SX Prime Drum / custom file chosen by hand for Rhythm 1 / Rhythm 2 ----
+    private val primeDrum = "DRUM YAMAHA PSR-SX700 & SX900 PRIME.sf2"
+    private val kitPresets = (presets.trimEnd('\u001e') + "\u001e" +
+        "MELODY\u001f3\u001f$primeDrum\u001f128\u001f8\u001fKendang Alex\u001e" +
+        "MELODY\u001f3\u001f$primeDrum\u001f128\u001f36\u001fKENDANG DHIDI\u001e" +
+        "MELODY\u001f3\u001f$primeDrum\u001f0\u001f5\u001fSome Melodic\u001e")
+
+    private class KitRig(catalog: String) {
+        val bridge: NativeAudioBridge = mock(NativeAudioBridge::class.java)
+        val midi: MidiInputManager = mock(MidiInputManager::class.java)
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val engine: AudioEngineManager
+        val seq: StyleSequencer
+        val apply = StyleSequencer::class.java.getDeclaredMethod("applyVoicesFromCasm", StyleSectionModel::class.java).apply { isAccessible = true }
+        init {
+            `when`(bridge.nativeStart()).thenReturn(true)
+            `when`(bridge.nativeLoadMelodySoundFont(anyString())).thenReturn(true)
+            `when`(bridge.nativeLoadMelodyFallbackSoundFont(anyString())).thenReturn(true)
+            `when`(bridge.nativeSetDrumABMode(anyBoolean())).thenReturn(true)
+            `when`(bridge.nativeBindDrumAB(anyInt(), anyString(), anyInt(), anyInt(), anyString())).thenReturn(false)
+            `when`(bridge.nativeBindDrumManual(anyInt(), anyLong(), anyInt(), anyInt(), anyString())).thenReturn(true)
+            `when`(bridge.nativePinChannelPreset(anyInt(), anyLong(), anyInt(), anyInt())).thenReturn(true)
+            `when`(bridge.nativeGetSoundFontPresets()).thenReturn(catalog)
+            `when`(bridge.nativeFontPdta(anyLong())).thenReturn("")
+            engine = AudioEngineManager(bridge, mock(SampleProvider::class.java))
+            engine.loadColomboPrimaryStack("ColomboGMGS2_BM.sf2", "yamaha tyros 4.sf2")
+            seq = StyleSequencer(engine, midi, scope)
+        }
+        fun manual() = mockingDetails(bridge).invocations.filter { it.method.name == "nativeBindDrumManual" }.map { it.arguments.toList() }
+    }
+
+    @Test fun primeDrumKitsBindManuallyByFontBankProgramAndRhythmChannelsAreIndependent() {
+        val r = KitRig(kitPresets)
+        val kendang = StyleVoicePin(primeDrum, 128, 8, "Kendang Alex", true)
+        val dhidi = StyleVoicePin(primeDrum, 128, 36, "KENDANG DHIDI", true)
+        val midiBefore = mockingDetails(r.midi).invocations.size
+        assertTrue(r.seq.setVoicePin(8, kendang))
+        assertEquals(listOf<Any>(8, 3L, 128, 8, "OVERRIDE"), r.manual().last())
+        assertTrue(r.seq.setVoicePin(9, dhidi))
+        assertEquals(listOf<Any>(9, 3L, 128, 36, "OVERRIDE"), r.manual().last())
+        assertEquals(midiBefore, mockingDetails(r.midi).invocations.size)                 // nothing to the E343
+        // Part-wide kit follows MAIN -> FILL -> MAIN, never re-bound to the Style's own kit.
+        val bindsBefore = r.manual().size
+        for (name in listOf("Main A", "Fill AA", "Main A")) r.apply.invoke(r.seq, section(name))
+        assertEquals(kendang, r.seq.voicePin(8)); assertEquals(dhidi, r.seq.voicePin(9))
+        assertTrue(r.manual().size >= bindsBefore)
+        assertTrue(mockingDetails(r.bridge).invocations.none { it.method.name == "nativePinChannelPreset" && it.arguments[0] in listOf(1, 2, 3) })  // RIGHT parts untouched
+        // Resetting Rhythm 1 leaves Rhythm 2.
+        assertTrue(r.seq.setVoicePin(8, null)); assertNull(r.seq.voicePin(8)); assertEquals(dhidi, r.seq.voicePin(9))
+        r.scope.cancel()
+    }
+
+    @Test fun missingOrMelodicKitIsRefusedAndNeverSubstituted() {
+        val r = KitRig(kitPresets)
+        assertTrue(!r.engine.pinStyleChannel(8, StyleVoicePin("Gone.sf2", 128, 8, "Kendang Alex", true)))
+        assertTrue(!r.engine.pinStyleChannel(8, StyleVoicePin(primeDrum, 0, 5, "Some Melodic", false)))
+        assertTrue(!r.engine.pinStyleChannel(10, StyleVoicePin(primeDrum, 128, 8, "Kendang Alex", true)))
+        assertTrue(r.manual().isEmpty())
+        r.scope.cancel()
+    }
+
+    @Test fun rhythmAuditionIsInternalOnlyAndLeavesNoActiveNotes() {
+        val r = KitRig(kitPresets)
+        val kendang = StyleVoicePin(primeDrum, 128, 8, "Kendang Alex", true)
+        assertNull(r.seq.auditionBegin(8, kendang, null, null))
+        assertTrue(r.seq.auditionBegin(9, kendang, null, null) != null)                  // one audition at a time
+        for (n in listOf(36, 38, 42)) { r.seq.auditionNote(8, n, true); r.seq.auditionNote(8, n, false) }
+        r.seq.auditionNote(9, 36, true)                                                    // not owned
+        val on = mockingDetails(r.bridge).invocations.count { it.method.name == "nativeNoteOnChannel" || it.method.name == "noteOnChannel" }
+        assertTrue(mockingDetails(r.midi).invocations.none { it.method.name in listOf("sendNoteOn", "sendNoteOff", "sendProgramChange", "allNotesOff") })
+        r.seq.auditionEnd(8)
+        r.seq.auditionNote(8, 36, true)                                                    // after END: ignored
+        assertEquals(on, mockingDetails(r.bridge).invocations.count { it.method.name == "nativeNoteOnChannel" || it.method.name == "noteOnChannel" })
+        r.scope.cancel()
+    }
+
+    @Test fun styleWithoutAnOverrideIsBoundExactlyAsBefore() {
+        val r = KitRig(kitPresets)
+        r.apply.invoke(r.seq, section("Main A"))
+        assertTrue(r.manual().isEmpty())                                                   // the manual route is never taken without a kit pin
+        assertNull(r.seq.voicePin(8)); assertNull(r.seq.voicePin(9))
+        r.scope.cancel()
+    }
+
     // ---- Style Voice Editor: section-level pins and external (MIDI OUT) voices ----
     private class Rig {
         val bridge: NativeAudioBridge = mock(NativeAudioBridge::class.java)
@@ -231,7 +315,7 @@ class CpvOverrideIntegrationTest {
         assertTrue(r.seq.setSectionVoicePin("Main A", 10, strings))
         assertEquals(listOf<Any>(10, 2L, 0, 48), r.pins().last())
         // Refusals: drums, RIGHT, unloaded preset.
-        assertTrue(r.seq.auditionBegin(8, null, Triple(0, 127, null), null) != null)
+        assertTrue(r.seq.auditionBegin(8, violin, null, null) != null)       // a melodic preset cannot be auditioned on a Rhythm channel
         assertTrue(r.seq.auditionBegin(1, violin, null, null) != null)
         assertTrue(r.seq.auditionBegin(10, StyleVoicePin("Gone.sf2", 0, 1, "x", false), null, null) != null)
         // Candidate preset is heard on ch10; notes only play on the owned channel.

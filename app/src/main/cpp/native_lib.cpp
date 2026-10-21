@@ -270,6 +270,11 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_Nativ
 }
 
 extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetDrumABMode(JNIEnv*,jobject,jboolean resolved){return g_engine && g_engine->setDrumABMode(resolved);}
+extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeBindDrumManual(JNIEnv* env,jobject,jint ch,jlong fontId,jint bank,jint pc,jstring section){
+    if(!g_engine)return JNI_FALSE;
+    const char* b=env->GetStringUTFChars(section,nullptr);
+    const bool ok=g_engine->bindDrumManual(ch,static_cast<uint64_t>(fontId),bank,pc,b);env->ReleaseStringUTFChars(section,b);return ok?JNI_TRUE:JNI_FALSE;
+}
 extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeBindDrumAB(JNIEnv* env,jobject,jint ch,jstring fp,jint bank,jint pc,jstring section){
     if(!g_engine || !fp || !section)return false;
     const char* a=env->GetStringUTFChars(fp,nullptr);const char* b=env->GetStringUTFChars(section,nullptr);

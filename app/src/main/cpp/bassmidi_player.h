@@ -84,6 +84,7 @@ public:
     std::string drumChannelSelection(int channel) const; // R22 cached metadata only
     bool setDrumABMode(bool resolved);
     bool bindDrumAB(int channel,const std::string& pdta,int bank,int pc,const std::string& section);
+    bool bindDrumManual(int channel,uint64_t fontId,int bank,int pc,const std::string& section);
     std::string drumABReport() const;
     // CPV read-only per-channel binding snapshot for the Style Voice Inspector.
     std::string channelBinding(int channel) const;

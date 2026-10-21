@@ -13,6 +13,8 @@ class NativeAudioBridge @Inject constructor() {
     external fun nativeDrumChannelSelection(channel: Int): String
     external fun nativeSetDrumABMode(resolved: Boolean): Boolean
     external fun nativeBindDrumAB(channel: Int, pdta: String, bank: Int, pc: Int, section: String): Boolean
+    /** Manual Rhythm 1/2 kit from any loaded SoundFont: exact font id + raw drum bank + program. */
+    external fun nativeBindDrumManual(channel: Int, fontId: Long, bank: Int, pc: Int, section: String): Boolean
     external fun nativeDrumABReport(): String
     external fun nativeChannelBinding(channel: Int): String
     external fun nativeSetSourceTiered(tiered: Boolean)

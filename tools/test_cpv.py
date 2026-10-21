@@ -22,6 +22,7 @@ CPV_SOURCES = [
     MAIN / 'yamahaarranger/browser/VoiceGroups.kt',
     MAIN / 'yamahaarranger/style/StyleVoiceEditorOps.kt',
     MAIN / 'yamahaarranger/audio/SoundFontRolePlanner.kt',
+    MAIN / 'yamahaarranger/audio/ManagedSf2Policy.kt',
     MAIN / 'yamahaarranger/audio/RightVoiceDiag.kt',
     MAIN / 'yamahaarranger/audio/VirtualKeyboard.kt',
     MAIN / 'yamahaarranger/registration/RegistrationCodec.kt',
