@@ -257,4 +257,21 @@ class RealtimeMidiStressTest {
             r.stopAndSettle(); r.close()
         }
     }
+
+    // ---------------------------------------------------------------- parser robustness: running status, realtime bytes, split packets, SysEx, other channels
+    @Test fun parserHandlesRunningStatusRealtimeBytesAndSplitPackets() {
+        val r = rig()
+        r.feed(0x90, 60, 90, 62, 90, 64, 90)                       // running status: three NOTE_ONs in one packet
+        r.feed(0x90, 65, 0xFE, 90)                                 // Active Sensing between data bytes
+        r.feed(0x90, 67); r.feed(90)                               // data split across two packets
+        r.feed(0xF0, 0x7E, 0x7F, 0x09, 0x01, 0xF7, 69, 90)         // SysEx, then stray data (must be ignored, no status)
+        r.feed(0x90, 71, 90, 0x80, 71, 0)                          // two messages in one packet
+        r.feed(0x91, 72, 90)                                       // other channel: ignored by design (chordInputChannel = 0)
+        r.feed(0x90, 73, 90, 0x90, 73, 0)                          // NOTE_ON velocity 0 == NOTE_OFF
+        val ons = r.count('O', 0..0); val offs = r.count('F', 0..0)
+        listOf(60, 62, 64, 65, 67).forEach { r.noteOff(it) }
+        report("parser_robustness", "engineOn" to ons, "engineOffBeforeCleanup" to offs, "stuckAfterCleanup" to r.oracle.stuckOnChannels(0..15), "orphanOff" to r.oracle.orphanOffs)
+        assertEquals(7, ons)       // 60,62,64,65,67,71,73 (69 stray data and ch2 are not notes)
+        assertEquals(0, r.oracle.stuckOnChannels(0..15)); r.close()
+    }
 }
