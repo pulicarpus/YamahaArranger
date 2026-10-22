@@ -177,7 +177,8 @@ class MasterTransposeTest {
             brain.setKeyboardTranspose(-5)
             for (n in listOf(36, 40, 43)) brain.onKeyboardNoteOn(n, 0.8f)    // C major played on the ACMP side
             val deadline = System.nanoTime() + 3_000_000_000L
-            while (seq.currentChord == null && System.nanoTime() < deadline) Thread.sleep(5)
+            // applyChordNow sets the sequencer chord first and publishes the display label right after: wait for both, otherwise the assertion races the label update
+            while ((seq.currentChord == null || brain.state.value.currentChordLabel.isEmpty()) && System.nanoTime() < deadline) Thread.sleep(5)
             assertTrue("display shows the chord as played: ${brain.state.value.currentChordLabel}", brain.state.value.currentChordLabel.startsWith("C"))
             assertEquals("the Style receives G (C -5)", 7, seq.currentChord?.rootNote)
         } finally { scope.cancel() }
