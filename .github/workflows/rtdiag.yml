@@ -2,7 +2,7 @@ name: Realtime MIDI & audio stress diagnostic
 # DIAGNOSTIC ONLY: host/mock measurements and real-BASSMIDI (Linux x86) cost curves. Builds no APK and changes no production file.
 on:
   push:
-    branches: [diag/realtime-midi-stress]
+    branches: [diag/realtime-midi-stress, diag/chord-change-stutter]
   workflow_dispatch: {}
 permissions:
   contents: read
@@ -36,6 +36,12 @@ jobs:
               subprocess.run(['curl','-fsSL','--retry','3',entry['url'],'-o',str(path)],check=True)
               assert hashlib.sha256(path.read_bytes()).hexdigest()==entry['sha256'],entry['filename']
           PY
+      - name: Chord-change stutter guard (audit only, no production change)
+        if: github.ref == 'refs/heads/diag/chord-change-stutter'
+        run: python3 tools/test_chord_stutter_guard.py 2>&1 | tee evidence/chord-stutter-guard.log
+      - name: Chord-change stutter harness (production chain, ROSITA, model costs; HOST evidence only)
+        if: github.ref == 'refs/heads/diag/chord-change-stutter'
+        run: python3 tools/test_rtdiag.py --out evidence/chord-stutter --rosita --only com.yourapp.rtdiag.ChordChangeStutterTest 2>&1 | tee evidence/chord-stutter.log
       - name: Host JVM stress (production MIDI parser -> Brain -> Sequencer -> Engine, fake ports/JNI)
         run: python3 tools/test_rtdiag.py --out evidence/rtdiag-jvm 2>&1 | tee evidence/rtdiag-jvm.log
       - name: Native production note/render code with MOCK BASS (overhead + mutex contention model)

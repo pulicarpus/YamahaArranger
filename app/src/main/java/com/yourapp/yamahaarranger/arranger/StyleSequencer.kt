@@ -1,5 +1,6 @@
 package com.yourapp.yamahaarranger.arranger
 
+import kotlinx.coroutines.currentCoroutineContext
 import com.yourapp.yamahaarranger.audio.AudioEngineManager
 import com.yourapp.yamahaarranger.chord.ChordQuality
 import com.yourapp.yamahaarranger.chord.DetectedChord
@@ -198,13 +199,23 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     private val noteLifecycleLock=Any()
     // F12_TIMING_BEGIN
     private val f12Timing=F12Timing()
+    // P1: the monitor now guards ONLY owner identity + the ledger. Engine/MIDI OUT/log work is staged (with per-key tickets) while the monitor is held and
+    // executed by the same thread after the monitor is released (outermost lifecycle exit), strictly in ticket order per (channel,pitch).
+    private val io=OrderedNoteIo()
     private inline fun <T> lifecycle(block:()->T):T {
-        val requested=f12Timing.begin()
-        return synchronized(noteLifecycleLock) {
-            val acquired=if(requested!=0L) System.nanoTime() else 0L
-            try { block() } finally { f12Timing.finish(0,requested,acquired) }
+        val batch=io.batch(); batch.depth++
+        try {
+            val requested=f12Timing.begin()
+            return synchronized(noteLifecycleLock) {
+                val acquired=if(requested!=0L) System.nanoTime() else 0L
+                try { block() } finally { f12Timing.finish(0,requested,acquired) }
+            }
+        } finally {
+            if(--batch.depth==0) io.flush(batch)
         }
     }
+    private fun stageIo(dst:Int,note:Int,run:()->Unit){ val b=io.batch(); if(b.depth>0) io.stage(b,dst,note,run) else run() }
+    private fun dlog(msg:String){ val b=io.batch(); if(b.depth>0) io.stageLog(b){ com.yourapp.yamahaarranger.ui.DebugLog.add(msg) } else com.yourapp.yamahaarranger.ui.DebugLog.add(msg) }
     // F12_TIMING_END
     private val activeTransposedNotes=mutableMapOf<String,ActiveTransposedNote>()
     private fun activeNoteSnapshot()=lifecycle { activeTransposedNotes.values.toList() }
@@ -741,11 +752,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         masterTimelineTick=0L
         barClockStartedAtNanos=0L
         if(stringTraceEnabled && synchronized(stringTraceLock){stringTrace.isNotEmpty()}) dumpStringTrace()
-        lifecycle {
-            audioEngine.allNotesOff()
-            midiInputManager.allNotesOff()
-            activeTransposedNotes.clear()
-        }
+        // New session identity: staged-but-unexecuted note commands of the old session are skipped, in-flight ones finish before the global kill.
+        io.stopSession(noteLifecycleLock,{ activeTransposedNotes.clear() },{ audioEngine.allNotesOff(); midiInputManager.allNotesOff() })
         com.yourapp.yamahaarranger.ui.DebugLog.add("⏹ STOP")
     }
 
@@ -833,7 +841,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             stringTrace("POLICY_MISS src"+active.sourceChannel+":"+active.sourceNote+" chord="+newChord.rootNote+"/"+newChord.quality+" -> RELEASE")
             chordEvent(active,eventId,"POLICY_MISS_RELEASE",-1)
             releaseActive(active,eventId)
-            com.yourapp.yamahaarranger.ui.DebugLog.add(
+            dlog(
                 "🔇 CASM CHORD MUTE src${active.sourceChannel}:${active.sourceNote} chord=${newChord.rootNote}/${newChord.quality}"
             )
             return@lifecycle
@@ -841,24 +849,23 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         chordTrace.record { "RETARGET_SELECT id=$eventId chordId=${chordTrace.chordId()} src=${active.sourceChannel} original=${active.sourceNote} oldDst=${active.destinationChannel} newDst=${selectedPolicy.destinationChannel} oldVoice='${active.policy.voiceName}' voice='${selectedPolicy.voiceName}' NTR=${selectedPolicy.ntr and 0x7f} NTT=${selectedPolicy.ntt and 0x7f} RTR=${selectedPolicy.rtr and 0x7f} locked=${selectedPolicy.destinationChannel in lockedChannels} muted=${channelOverrides[selectedPolicy.destinationChannel]?.muted} reserved=${selectedPolicy.destinationChannel in 0..3} decision=existing_policy_selected" }
         if(selectedPolicy.destinationChannel!=active.destinationChannel){
             chordOff(active,eventId,1,"DESTINATION_CHANGE_OFF")
-            midiInputManager.sendNoteOff(active.destinationChannel,active.outputNote)
             active.destinationChannel=selectedPolicy.destinationChannel
         }
         active.policy=selectedPolicy
         if(selectedPolicy.destinationChannel==13 || active.destinationChannel==13){
             stringTrace("RETARGET src"+active.sourceChannel+":"+active.sourceNote+" chord="+newChord.rootNote+"/"+newChord.quality+" dst="+selectedPolicy.destinationChannel+" NTR="+(selectedPolicy.ntr and 0x7f)+" NTT="+(selectedPolicy.ntt and 0x7f)+" RTR="+(selectedPolicy.rtr and 0x7f)+" range="+selectedPolicy.sourceNoteLow+"-"+selectedPolicy.sourceNoteHigh+" mask="+selectedPolicy.chordMuteMask)
         }
-        com.yourapp.yamahaarranger.ui.DebugLog.add(
+        dlog(
             "🎼 CASM RETARGET src${active.sourceChannel}:${active.sourceNote} chord=${newChord.rootNote}/${newChord.quality} → dst${selectedPolicy.destinationChannel} NTR=${selectedPolicy.ntr and 0x7f} NTT=${selectedPolicy.ntt and 0x7f} RTR=${selectedPolicy.rtr and 0x7f}"
         )
         val rtr=active.policy.rtr and 0x7f
         when(rtr){
-            0->{chordEvent(active,eventId,"RTR_STOP",-1);releaseActive(active,eventId);com.yourapp.yamahaarranger.ui.DebugLog.add("🎹 RTR STOP src${active.sourceChannel}:${active.sourceNote}")}
+            0->{chordEvent(active,eventId,"RTR_STOP",-1);releaseActive(active,eventId);dlog("🎹 RTR STOP src${active.sourceChannel}:${active.sourceNote}")}
             1->updateHeldPitch(active,newChord,rootOnly=false,retrigger=false,eventId=eventId)
             2->updateHeldPitch(active,newChord,rootOnly=true,retrigger=false,eventId=eventId)
             3->updateHeldPitch(active,newChord,rootOnly=false,retrigger=true,eventId=eventId)
             4->updateHeldPitch(active,newChord,rootOnly=true,retrigger=true,eventId=eventId)
-            5->{chordEvent(active,eventId,"RTR_DEFERRED_NO_SEND",active.outputNote);com.yourapp.yamahaarranger.ui.DebugLog.add("ℹ RTR NOTE GENERATOR src${active.sourceChannel}:${active.sourceNote}: deferred")}
+            5->{chordEvent(active,eventId,"RTR_DEFERRED_NO_SEND",active.outputNote);dlog("ℹ RTR NOTE GENERATOR src${active.sourceChannel}:${active.sourceNote}: deferred")}
             else->updateHeldPitch(active,newChord,rootOnly=false,retrigger=true,eventId=eventId)
         }
     }
@@ -869,14 +876,19 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         chordEvent(active,eventId,if(target==null) "TRANSFORM_NULL_NO_SEND" else if(target==active.outputNote) "UNCHANGED_NO_SEND" else "REPLACE",target?:-1)
         com.yourapp.yamahaarranger.audio.LatencyProbe.retargetDecision(target!=null&&target!=active.outputNote) // LATENCY_PROBE (observer)
         if(target==null||target==active.outputNote) return
-        if(!retrigger)com.yourapp.yamahaarranger.ui.DebugLog.add("🎹 RTR PITCH SHIFT src${active.sourceChannel}:${active.sourceNote} ${active.outputNote}→$target (note replacement)")
-        else com.yourapp.yamahaarranger.ui.DebugLog.add("🎹 RTR RETRIGGER src${active.sourceChannel}:${active.sourceNote} ${active.outputNote}→$target")
+        if(!retrigger)dlog("🎹 RTR PITCH SHIFT src${active.sourceChannel}:${active.sourceNote} ${active.outputNote}→$target (note replacement)")
+        else dlog("🎹 RTR RETRIGGER src${active.sourceChannel}:${active.sourceNote} ${active.outputNote}→$target")
         chordOff(active,eventId,1,"REPLACEMENT_OFF")
-        midiInputManager.sendNoteOff(active.destinationChannel,active.outputNote)
-        if(chordTrace.active()) audioEngine.noteOnStyleChannel(active.destinationChannel,target,active.velocity/127f,
-            active.sourceChannel,active.sourceNote,active.sourceBank,active.sourceTick,eventId,false,chordTrace.chordId(),1)
-        else audioEngine.noteOnChannel(active.destinationChannel,target,active.velocity/127f)
-        midiInputManager.sendNoteOn(active.destinationChannel,target,active.velocity)
+        run {
+            val dst=active.destinationChannel; val vel=active.velocity
+            val traced=chordTrace.active(); val chordId=if(traced) chordTrace.chordId() else 0L
+            val sc=active.sourceChannel; val sn=active.sourceNote; val bank=active.sourceBank; val tick=active.sourceTick
+            stageIo(dst,target){
+                if(traced) audioEngine.noteOnStyleChannel(dst,target,vel/127f,sc,sn,bank,tick,eventId,false,chordId,1)
+                else audioEngine.noteOnChannel(dst,target,vel/127f)
+                midiInputManager.sendNoteOn(dst,target,vel)
+            }
+        }
         active.outputNote=target
     }
 
@@ -894,11 +906,16 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         val targetPeers=peers.filter { it.outputNote==target }
         return "oldPeers=${peers.count { it.outputNote==old }} targetPeers=${targetPeers.size} owners='${targetPeers.take(4).joinToString(",") { "${it.sourceChannel}:${it.sourceNote}:${it.onId}" }}'"
     }
+    /** Ledger decision made here (under the monitor); engine NOTE_OFF + MIDI OUT NOTE_OFF are staged as ONE ordered command. */
     private fun chordOff(active:ActiveTransposedNote,id:Long,operation:Int,stage:String) {
         chordEvent(active,id,stage,active.outputNote)
-        if(chordTrace.active()) audioEngine.noteOffStyleChannel(active.destinationChannel,active.outputNote,
-            active.sourceChannel,active.sourceNote,active.sourceBank,active.sourceTick,id,chordTrace.chordId(),operation)
-        else audioEngine.noteOffChannel(active.destinationChannel,active.outputNote)
+        val dst=active.destinationChannel; val note=active.outputNote
+        val traced=chordTrace.active(); val chordId=if(traced) chordTrace.chordId() else 0L
+        val sc=active.sourceChannel; val sn=active.sourceNote; val bank=active.sourceBank; val tick=active.sourceTick
+        stageIo(dst,note){
+            if(traced) audioEngine.noteOffStyleChannel(dst,note,sc,sn,bank,tick,id,chordId,operation) else audioEngine.noteOffChannel(dst,note)
+            midiInputManager.sendNoteOff(dst,note)
+        }
     }
 
     private fun rootPitchForHeld(active:ActiveTransposedNote,chord:DetectedChord):Int{
@@ -913,16 +930,14 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             return@lifecycle
         }
         chordOff(active,eventId,1,"RELEASE_OFF")
-        midiInputManager.sendNoteOff(active.destinationChannel,active.outputNote)
         activeTransposedNotes.remove(key)
         Unit
     }
 
     private fun endScheduledNote(sourceChannel:Int,sourceNote:Int):Boolean=lifecycle {
         val active=activeTransposedNotes.remove("$sourceChannel:$sourceNote") ?: return@lifecycle false
-        if(active.destinationChannel==13)com.yourapp.yamahaarranger.ui.DebugLog.add("🎻 STRING NOTEOFF src"+active.sourceChannel+":"+active.sourceNote+" dst13 note="+active.outputNote)
+        if(active.destinationChannel==13)dlog("🎻 STRING NOTEOFF src"+active.sourceChannel+":"+active.sourceNote+" dst13 note="+active.outputNote)
         chordOff(active,active.onId,0,"SCHEDULED_OFF")
-        midiInputManager.sendNoteOff(active.destinationChannel,active.outputNote)
         true
     }
 
@@ -1268,6 +1283,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             if (sourceChannel != null) dynamicBankBySource[sourceChannel] = msb * 128 + lsb
         }
 
+        // Session identity: STOP cancels this job BEFORE it takes the monitor, so a dispatch that enters the monitor afterwards belongs to a dead session and is dropped.
+        val myJob = currentCoroutineContext()[kotlinx.coroutines.Job]
         val audioPath = StyleAudioPathDiagnostic(section.name, partPresence)
         StyleAudioPathDiagnostic.inventory(section)
         for(s in merged){
@@ -1370,6 +1387,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             }
 
             lifecycle {
+                if(myJob?.isActive==false) return@lifecycle
                 if(f12Timing.begin()!=0L) { val now=System.nanoTime(); f12Timing.record(6,now,0,((now-targetNanos)/1000).coerceIn(0,Int.MAX_VALUE.toLong()).toInt(),tick=absoluteTick.toInt()) }
                 if(com.yourapp.yamahaarranger.audio.LatencyProbe.enabled) com.yourapp.yamahaarranger.audio.LatencyProbe.styleEventDispatched(System.nanoTime(),targetNanos,s.event.isNoteOn) // LATENCY_PROBE
                 val diagChannel = policy?.destinationChannel ?: s.part.casmPolicies.ifEmpty { listOfNotNull(s.part.casm) }.map { it.destinationChannel }.distinct().singleOrNull() ?: s.event.channel
@@ -1391,7 +1409,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                 }
                 if(s.event.isNoteOn&&isUnsupportedArticulation(policy)){
                     diagnostic("DROP_UNSUPPORTED_ARTICULATION")
-                    com.yourapp.yamahaarranger.ui.DebugLog.add("🔇 SUPPRESS " + (policy?.voiceName ?: "unknown") + " src" + s.event.channel + ":" + s.event.note + " (MegaVoice articulation unsupported by SF2)")
+                    dlog("🔇 SUPPRESS " + (policy?.voiceName ?: "unknown") + " src" + s.event.channel + ":" + s.event.note + " (MegaVoice articulation unsupported by SF2)")
                     return@lifecycle
                 }
 
@@ -1406,7 +1424,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                 val destinationChannel=policy?.destinationChannel?:sourceChannel
                 if(destinationChannel in 0..3){
                     diagnostic("DROP_RESERVED_KEYBOARD")
-                    com.yourapp.yamahaarranger.ui.DebugLog.add("  · style event src"+sourceChannel+":"+s.event.note+": SKIP dst"+destinationChannel+" (reserved for keyboard voices)")
+                    dlog("  · style event src"+sourceChannel+":"+s.event.note+": SKIP dst"+destinationChannel+" (reserved for keyboard voices)")
                     return@lifecycle
                 }
                 if(destinationChannel in lockedChannels) { diagnostic("DROP_LOCKED"); return@lifecycle }
@@ -1416,9 +1434,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                 val key=sourceChannel.toString()+":"+s.event.note
                 val previousActive=activeTransposedNotes[key]
                 if(previousActive!=null){
-                    if(previousActive.destinationChannel==13)com.yourapp.yamahaarranger.ui.DebugLog.add("🎻 STRING REPLACE src"+previousActive.sourceChannel+":"+previousActive.sourceNote+" oldNote="+previousActive.outputNote)
+                    if(previousActive.destinationChannel==13)dlog("🎻 STRING REPLACE src"+previousActive.sourceChannel+":"+previousActive.sourceNote+" oldNote="+previousActive.outputNote)
                     chordOff(previousActive,previousActive.onId,0,"SCHEDULED_REPLACE_OFF")
-                    midiInputManager.sendNoteOff(previousActive.destinationChannel,previousActive.outputNote)
                     activeTransposedNotes.remove(key)
                 }
 
@@ -1438,15 +1455,18 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                 if(policy!=null&&!isDrumPart){
                     val policyList=s.part.casmPolicies.ifEmpty{listOfNotNull(s.part.casm)}
                     activeTransposedNotes[key]=ActiveTransposedNote(sourceChannel,s.event.note,destinationChannel,note,velocity,policy,policyList,s.part.name,section.name,diagBank,s.part.program,absoluteTick,diagId)
-                    if(destinationChannel==13)com.yourapp.yamahaarranger.ui.DebugLog.add("🎻 STRING NOTEON src"+sourceChannel+":"+s.event.note+" dst13 note="+note+" NTR="+(policy.ntr and 0x7f)+" NTT="+(policy.ntt and 0x7f)+" RTR="+(policy.rtr and 0x7f))
-                    if(destinationChannel==13)com.yourapp.yamahaarranger.ui.DebugLog.add("🎼 CASM SELECT src"+sourceChannel+":"+s.event.note+" chord="+chord?.rootNote+"/"+chord?.quality+" → dst"+destinationChannel+" NTR="+(policy.ntr and 0x7f)+" NTT="+(policy.ntt and 0x7f)+" SRC="+policy.sourceChordRoot+"/"+policy.sourceChordType+" range="+policy.sourceNoteLow+"-"+policy.sourceNoteHigh+" RTR="+(policy.rtr and 0x7f))
+                    if(destinationChannel==13)dlog("🎻 STRING NOTEON src"+sourceChannel+":"+s.event.note+" dst13 note="+note+" NTR="+(policy.ntr and 0x7f)+" NTT="+(policy.ntt and 0x7f)+" RTR="+(policy.rtr and 0x7f))
+                    if(destinationChannel==13)dlog("🎼 CASM SELECT src"+sourceChannel+":"+s.event.note+" chord="+chord?.rootNote+"/"+chord?.quality+" → dst"+destinationChannel+" NTR="+(policy.ntr and 0x7f)+" NTT="+(policy.ntt and 0x7f)+" SRC="+policy.sourceChordRoot+"/"+policy.sourceChordType+" range="+policy.sourceNoteLow+"-"+policy.sourceNoteHigh+" RTR="+(policy.rtr and 0x7f))
                 }
 
                 val sampled = diagnostic("FORWARD", note,
                     "transformAsMelody=${!isDrumPart} nativeRhythmChannel=${destinationChannel == 8 || destinationChannel == 9} transpose=${channelOverride?.transpose ?: 0}")
-                audioEngine.noteOnStyleChannel(destinationChannel,note,velocity/127f,
-                    sourceChannel,s.event.note,diagBank,absoluteTick,diagId,sampled,chordTrace.chordId())
-                midiInputManager.sendNoteOn(destinationChannel,note,velocity)
+                val traceChordId=chordTrace.chordId(); val srcNote=s.event.note
+                stageIo(destinationChannel,note){
+                    audioEngine.noteOnStyleChannel(destinationChannel,note,velocity/127f,
+                        sourceChannel,srcNote,diagBank,absoluteTick,diagId,sampled,traceChordId)
+                    midiInputManager.sendNoteOn(destinationChannel,note,velocity)
+                }
             }
         }
         audioPath.finish()
@@ -1459,4 +1479,60 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     }
 
     private fun ticksToMillis(ticks:Int,ppq:Int,bpm:Int):Long=if(ppq<=0||bpm<=0)0 else((ticks*(60000.0/bpm))/ppq).toLong().coerceAtLeast(0)
+}
+
+/**
+ * P1 ordered note I/O. The Style lifecycle monitor protects owner identity and the ledger only. Every NOTE_ON/NOTE_OFF (engine + MIDI OUT) decided under
+ * the monitor is staged here with a ticket per (channel,pitch) key and executed by the deciding thread AFTER the monitor is released, in ticket order per key
+ * (the order in which the ledger changed). Commands of different keys run concurrently. A session epoch plus a read/write gate make STOP/START safe:
+ * commands staged before STOP are skipped, commands already executing finish before the global kill.
+ * Deadlock-freedom: tickets on every key follow the monitor acquisition order, a thread only waits for commands of strictly earlier monitor sections, and nobody
+ * holds the gate (read) or the monitor while waiting for a turn.
+ */
+internal class OrderedNoteIo {
+    class Cmd(@JvmField val key: Int, @JvmField val ticket: Long, @JvmField val epoch: Long, @JvmField val run: () -> Unit)
+    class Batch { @JvmField var depth = 0; @JvmField val cmds = ArrayList<Cmd>(16) }
+
+    private val issued = java.util.concurrent.atomic.AtomicLongArray(16 * 128)
+    private val done = java.util.concurrent.atomic.AtomicLongArray(16 * 128)
+    private val gate = java.util.concurrent.locks.ReentrantReadWriteLock()
+    @Volatile private var epoch = 0L
+    private val local = ThreadLocal.withInitial { Batch() }
+    @Volatile var maxTurnWaitNanos = 0L; private set   // diagnostic: longest wait for an earlier command of the same key
+
+    fun batch(): Batch = local.get()
+
+    /** Caller holds the Style monitor. */
+    fun stage(b: Batch, channel: Int, note: Int, run: () -> Unit) {
+        val key = ((channel and 15) shl 7) or (note and 127)
+        b.cmds.add(Cmd(key, issued.getAndIncrement(key), epoch, run))
+    }
+    /** Caller holds the Style monitor. Logs are unkeyed: no ordering requirement, executed after the monitor is released. */
+    fun stageLog(b: Batch, run: () -> Unit) { b.cmds.add(Cmd(-1, 0L, epoch, run)) }
+
+    /** Outermost lifecycle exit (monitor released). Every staged ticket is retired even if a command throws. */
+    fun flush(b: Batch) {
+        if (b.cmds.isEmpty()) return
+        val arr = b.cmds.toTypedArray(); b.cmds.clear()
+        var err: Throwable? = null
+        for (c in arr) { try { execute(c) } catch (t: Throwable) { if (err == null) err = t } }
+        if (err != null) throw err
+    }
+
+    private fun execute(c: Cmd) {
+        if (c.key < 0) { c.run(); return }
+        val t0 = System.nanoTime(); var spins = 0
+        while (done.get(c.key) != c.ticket) { if (spins < 200) { spins++; Thread.onSpinWait() } else java.util.concurrent.locks.LockSupport.parkNanos(20_000L) }
+        val waited = System.nanoTime() - t0; if (waited > maxTurnWaitNanos) maxTurnWaitNanos = waited
+        try {
+            val r = gate.readLock(); r.lock()
+            try { if (c.epoch == epoch) c.run() } finally { r.unlock() }
+        } finally { done.set(c.key, c.ticket + 1) }
+    }
+
+    /** STOP: wait for in-flight commands, start a new session (stale staged commands are skipped), clear the ledger, then the global kill. */
+    fun stopSession(monitor: Any, clearLedger: () -> Unit, killAll: () -> Unit) {
+        val w = gate.writeLock(); w.lock()
+        try { synchronized(monitor) { epoch++; clearLedger() }; killAll() } finally { w.unlock() }
+    }
 }
