@@ -276,4 +276,80 @@ class MidiMixerOutputTest {
         a.start(); b.start(); a.join(5000); b.join(5000)
         assertFalse(a.isAlive); assertFalse(b.isAlive); assertEquals(60,r.cc(10,11)); assertNoPanic(r.events)
     }
+
+    // ---- Style voice cache: a Bank/Program/controller the module already holds is not written again ----
+    private fun voiceTriple(ch:Int,msb:Int,lsb:Int,pc:Int)=listOf(listOf(0xb0 or ch,0,msb),listOf(0xb0 or ch,32,lsb),listOf(0xc0 or ch,pc))
+    @Test fun identicalStyleVoiceAndControllersAreNotWrittenAgain() {
+        val r=Recorder(); r.router.setChannels(setOf(8,10,13)); for (ch in listOf(8,10,13)) { r.router.update(ch,snapshot(75,64,90,30,20)); r.router.program(ch,33,0,114) }
+        assertTrue(r.events.isNotEmpty()); r.events.clear()
+        for (ch in listOf(8,10,13)) r.router.program(ch,33,0,114)
+        assertEquals(emptyList<List<Int>>(),r.events)
+    }
+    @Test fun changedProgramBankOrMsbSendsTheFullTripleThenReassertsControllers() {
+        for ((pc,msb,lsb) in listOf(Triple(34,0,114),Triple(33,1,114),Triple(33,0,115))) {
+            val r=Recorder(); r.router.setChannels(setOf(10)); r.router.update(10,snapshot(75,64,90,30,20)); r.router.program(10,33,0,114); r.events.clear()
+            r.router.program(10,pc,msb,lsb)
+            assertEquals(voiceTriple(10,msb,lsb,pc),r.events.take(3))
+            for ((cc,v) in listOf(7 to 75,10 to 64,11 to 90,91 to 30,93 to 20)) assertEquals(v,r.cc(10,cc))
+            assertTrue(r.events.all { it[0] and 15 == 10 })
+        }
+    }
+    @Test fun mixerChangesStayImmediateAroundACachedVoice() {
+        val r=Recorder(); r.router.setChannels(setOf(10)); r.router.update(10,snapshot(75,64,90,30,20)); r.router.program(10,33,0,114); r.events.clear()
+        r.router.update(10,intArrayOf(11,70)); assertEquals(listOf(listOf(0xba,11,70)),r.events)
+        r.events.clear(); r.router.program(10,33,0,114); assertTrue(r.events.isEmpty())
+        r.router.update(10,intArrayOf(7,60,10,20)); assertEquals(listOf(listOf(0xba,7,60),listOf(0xba,10,20)),r.events)
+        r.events.clear(); r.router.setMaster(50); assertEquals(listOf(listOf(0xba,11,35)),r.events.filter { it[0] and 15 == 10 })
+    }
+    @Test fun outputToggleAndReconnectReplayTheCachedVoiceInFull() {
+        val r=Recorder(); r.router.setChannels(setOf(10)); r.router.update(10,snapshot(75,64,90,30,20)); r.router.program(10,33,0,114)
+        r.events.clear(); r.router.setEnabled(false); r.events.clear(); r.router.setEnabled(true)
+        assertEquals(voiceTriple(10,0,114,33),r.events.filter(::isBankOrProgram)); assertEquals(75,r.cc(10,7)); assertEquals(20,r.cc(10,93))
+        r.router.program(10,33,0,114); r.events.clear(); r.router.program(10,33,0,114); assertTrue(r.events.isEmpty())
+        r.router.setConnected(false); r.events.clear(); r.router.setConnected(true)
+        assertEquals(voiceTriple(10,0,114,33),r.events.filter(::isBankOrProgram)); assertEquals(90,r.cc(10,11))
+        r.events.clear(); r.router.program(10,33,0,114); assertTrue(r.events.isEmpty())
+    }
+    @Test fun disabledOrDisconnectedOutputStoresTheWantedVoiceAndSendsItOnEnable() {
+        val r=Recorder(); r.router.setEnabled(false); r.router.setChannels(setOf(10)); r.router.program(10,33,0,114); assertTrue(r.events.isEmpty())
+        r.router.setEnabled(true); assertEquals(voiceTriple(10,0,114,33),r.events.filter(::isBankOrProgram))
+    }
+    @Test fun aRejectedWriteIsNeverRecordedAsSent() {
+        val events=mutableListOf<List<Int>>(); var fail=0
+        val router=MidiMixerOutput { data -> val e=data.map { it.toInt() and 255 }; if (e[0] and 240 == 0xc0 && fail>0) { fail--; false } else { events += e; true } }
+        router.setConnected(true); router.setEnabled(true); router.setChannels(setOf(10)); events.clear()
+        fail=1; router.program(10,33,0,114)
+        assertEquals(listOf(listOf(0xba,0,0),listOf(0xba,32,114)),events.filter(::isBankOrProgram))
+        events.clear(); router.program(10,33,0,114)
+        assertEquals(voiceTriple(10,0,114,33),events.filter(::isBankOrProgram))
+        events.clear(); router.program(10,33,0,114); assertTrue(events.isEmpty())
+        // a rejected first message stops the sequence (no Program Change after a missing Bank Select)
+        val e2=mutableListOf<List<Int>>(); var failAll=true
+        val r2=MidiMixerOutput { data -> if (failAll) false else { e2 += data.map { it.toInt() and 255 }; true } }
+        r2.setConnected(true); r2.setEnabled(true); r2.setChannels(setOf(11)); r2.program(11,5,0,112); failAll=false; r2.program(11,5,0,112)
+        assertEquals(voiceTriple(11,0,112,5),e2.filter(::isBankOrProgram))
+    }
+    @Test fun explicitReapplyAndModuleResetSendTheVoiceAgain() {
+        val r=Recorder(); r.router.setChannels(setOf(10,11)); r.router.program(10,33,0,114); r.router.program(11,30,0,115); r.events.clear()
+        r.router.forgetSentVoice(10); r.router.program(10,33,0,114); r.router.program(11,30,0,115)
+        assertEquals(voiceTriple(10,0,114,33),r.events.filter(::isBankOrProgram))
+        r.events.clear(); r.router.forgetAllSent(); r.router.program(10,33,0,114); r.router.program(11,30,0,115)
+        assertEquals(voiceTriple(10,0,114,33)+voiceTriple(11,0,115,30),r.events.filter(::isBankOrProgram))
+    }
+    @Test fun keyboardPartsKeepSendingEveryExplicitSelectionAndAReAddedStylePartIsSentAgain() {
+        val r=Recorder(); r.router.program(1,48,2,3); r.events.clear(); r.router.program(1,48,2,3)
+        assertEquals(voiceTriple(1,2,3,48),r.events.filter(::isBankOrProgram))
+        r.router.setChannels(setOf(10)); r.router.program(10,33,0,114); r.router.setChannels(emptySet()); r.router.setChannels(setOf(10)); r.events.clear()
+        r.router.setConnected(true); r.router.program(10,33,0,114)
+        r.router.setChannels(emptySet()); r.events.clear(); r.router.setChannels(setOf(10))
+        assertEquals(voiceTriple(10,0,114,33),r.events.filter(::isBankOrProgram))
+    }
+    @Test fun productionManagerSkipsAHeldVoiceAndForgetSentVoiceResendsIt() {
+        val (midi,events)=manager(); midi.setMixerStyleChannels(setOf(10))
+        midi.sendProgramChange(10,33,0,114); assertEquals(voiceTriple(10,0,114,33),events.filter(::isBankOrProgram))
+        events.clear(); midi.sendProgramChange(10,33,0,114); assertTrue(events.isEmpty())
+        midi.forgetSentVoice(10); midi.sendProgramChange(10,33,0,114); assertEquals(voiceTriple(10,0,114,33),events.filter(::isBankOrProgram))
+        events.clear(); midi.sendProgramChange(10,34,0,114); assertEquals(voiceTriple(10,0,114,34),events.take(3))
+        events.clear(); midi.forgetAllSentMidiState(); midi.sendProgramChange(10,34,0,114); assertEquals(voiceTriple(10,0,114,34),events.take(3))
+    }
 }

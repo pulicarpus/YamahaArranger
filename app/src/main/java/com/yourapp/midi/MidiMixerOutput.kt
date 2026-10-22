@@ -14,6 +14,8 @@ class MidiMixerOutput(private val write: (ByteArray) -> Boolean) {
     private val notes = Array(16) { IntArray(128) }
     private val pendingOff = BooleanArray(16)
     private val programs = arrayOfNulls<IntArray>(16)
+    /** Bank/Program that was ACTUALLY written to the module per channel (all three messages accepted). `programs` is only the wanted value. */
+    private val sentVoice = arrayOfNulls<IntArray>(16)
     private var channels = (0..3).toSet()
     private var mutedChannels = emptySet<Int>()
     private var enabled = false
@@ -37,7 +39,7 @@ class MidiMixerOutput(private val write: (ByteArray) -> Boolean) {
     @Synchronized fun setChannels(styleChannels: Set<Int>) {
         require(styleChannels.all { it in 4..15 })
         val next = (0..3).toSet() + styleChannels
-        (channels - next).forEach(::releaseNotes)
+        (channels - next).forEach { releaseNotes(it); sentVoice[it] = null }
         val added = next - channels
         channels = next
         if (active()) added.sorted().forEach { replayChannel(it) }
@@ -67,6 +69,13 @@ class MidiMixerOutput(private val write: (ByteArray) -> Boolean) {
         programs[channel] = intArrayOf(program.coerceIn(0, 127), msb.coerceIn(0, 127), lsb.coerceIn(0, 127))
         if (active() && channel in channels) replayChannel(channel, includeProgram = true)
     }
+    /** Explicit reapply: the next [program] for this channel is written even if the module is believed to hold it already. */
+    @Synchronized fun forgetSentVoice(channel: Int) {
+        require(channel in 0..15)
+        sentVoice[channel] = null
+    }
+    /** The module may have lost its state (reset, manual change): forget everything that was written. The next replay sends it all. */
+    @Synchronized fun forgetAllSent() { invalidateSent() }
     @Synchronized fun noteOn(channel: Int, note: Int, velocity: Int) {
         if (!active() || channel !in channels) return
         if (pendingOff[channel]) releaseNotes(channel)
@@ -97,7 +106,7 @@ class MidiMixerOutput(private val write: (ByteArray) -> Boolean) {
         pendingOff[ch] = notes[ch].any { it > 0 }
     }
     private fun releaseOwnedNotes() { channels.sorted().forEach(::releaseNotes) }
-    private fun invalidateSent() { sent.forEach { it.fill(-1) } }
+    private fun invalidateSent() { sent.forEach { it.fill(-1) }; sentVoice.fill(null) }
     private fun apply(ch: Int, force: Boolean = false) {
         if (ch in mutedChannels || pendingOff[ch]) releaseNotes(ch)
         if (pendingOff[ch] && ch !in mutedChannels) return // Retry offs before restoring audible gain.
@@ -112,12 +121,20 @@ class MidiMixerOutput(private val write: (ByteArray) -> Boolean) {
     private fun replayChannel(ch: Int, includeProgram: Boolean = ch !in 0..3) {
         // Keyboard bank/program is sent only by an explicit voice selection,
         // never by output enable or reconnect. Style replay stays unchanged.
+        // Style channels (4..15) skip a Bank/Program the module already holds: a Main/Fill switch with the same voice writes nothing.
+        // A Program Change may reset the module's controllers, so they are re-asserted only after one was really written; otherwise only changed values go out.
+        var voiceHeld = false
         if (includeProgram) programs[ch]?.let { p ->
-            write(byteArrayOf((0xB0 or ch).toByte(), 0, p[1].toByte()))
-            write(byteArrayOf((0xB0 or ch).toByte(), 32, p[2].toByte()))
-            write(byteArrayOf((0xC0 or ch).toByte(), p[0].toByte()))
+            if (ch >= 4 && sentVoice[ch]?.contentEquals(p) == true) voiceHeld = true
+            else {
+                // Stop at the first rejected message and do not record the voice, so the next selection writes it all again.
+                val ok = write(byteArrayOf((0xB0 or ch).toByte(), 0, p[1].toByte())) &&
+                    write(byteArrayOf((0xB0 or ch).toByte(), 32, p[2].toByte())) &&
+                    write(byteArrayOf((0xC0 or ch).toByte(), p[0].toByte()))
+                sentVoice[ch] = if (ok) p else null
+            }
         }
-        apply(ch, force = true)
+        apply(ch, force = !voiceHeld)
     }
     private fun replay() { channels.sorted().forEach(::replayChannel) }
 }

@@ -227,6 +227,11 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
         mixerOutput.program(channel, program, bankMsb, bankLsb)
     }
 
+    /** Explicit voice re-send: the next [sendProgramChange] on this channel goes out even if MIDI OUT already holds that voice. */
+    fun forgetSentVoice(channel: Int) { if (channel in 0..15) mixerOutput.forgetSentVoice(channel) }
+    /** The keyboard may have reset or been changed by hand: the next replay writes every Bank/Program/controller again. */
+    fun forgetAllSentMidiState() = mixerOutput.forgetAllSent()
+
     fun allNotesOff() {
         val port = inputPort ?: return
         for (ch in 0 until 16) try {

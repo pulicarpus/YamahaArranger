@@ -365,6 +365,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     fun externalVoice(section:String?, channel:Int) = if(section==null) partExternal[channel] else sectionExternal[section]?.get(channel)
 
     private fun resendMidiVoice(channel:Int) {
+        midiInputManager.forgetSentVoice(channel) // explicit user action: send even if the module already holds this voice
         val ext = effectiveExternal(voiceSection,channel)
         if(ext!=null) { midiInputManager.sendProgramChange(channel,ext.program,ext.msb,ext.lsb); return }
         val v = lastStyleVoice[channel] ?: return
@@ -403,7 +404,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             audioEngine.unpinStyleChannel(channel); installedPins.remove(channel)
             audioEngine.setChannelProgram(channel,original.first,original.second,original.third)
         }
-        if(external!=null) midiInputManager.sendProgramChange(channel,external.program,external.msb,external.lsb)
+        if(external!=null) { midiInputManager.forgetSentVoice(channel); midiInputManager.sendProgramChange(channel,external.program,external.msb,external.lsb) }
         appliedChannelStates.remove(channel)
         auditionChannel=channel
         null

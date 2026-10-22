@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Realtime MIDI & audio stress DIAGNOSTIC (host). Compiles the production MIDI->Brain->Sequencer->Engine chain plus the
 REAL DebugLog source, runs tests/rtdiag, and writes RTDIAG result lines. HOST/MOCK evidence only."""
-import argparse, hashlib, json, re, subprocess, sys
+import os, argparse, hashlib, json, re, subprocess, sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,9 +28,16 @@ def extract_debug_log(out):
 def main():
     p = argparse.ArgumentParser(); p.add_argument('--out', required=True); p.add_argument('--only', default='')
     p.add_argument('--rosita', action='store_true')
+    p.add_argument('--unit', action='store_true', help='also compile app/src/test/.../MidiMixerOutputTest.kt (JVM unit contracts of the MIDI OUT router)')
+    p.add_argument('--style', default='', help='extra Style file (any extension) parsed by the production C++ parser; needs --rosita for the dumper build')
+    p.add_argument('--style-name', default='')
     a = p.parse_args()
     if a.rosita:
         sys.path.insert(0, str(ROOT / 'tools')); import test_cpv; test_cpv.rosita_tsv(Path(a.out) / 'rosita')
+        if a.style:
+            tsv = Path(a.out).resolve() / 'style.tsv'
+            tsv.write_bytes(subprocess.check_output([str(Path(a.out).resolve() / 'rosita/dump_style'), str(Path(a.style).resolve())]))
+            os.environ['SGAP_STYLE_TSV'] = str(tsv); os.environ['SGAP_STYLE_NAME'] = a.style_name or Path(a.style).name
     out = Path(a.out).resolve(); out.mkdir(parents=True, exist_ok=True)
     deps = ROOT / 'build/sff1-jvm/dependencies'
     jars = [deps / n for n in ['kotlin-compiler.jar', 'kotlin-stdlib.jar', 'kotlin-reflect.jar', 'kotlin-script-runtime.jar', 'trove4j.jar', 'annotations.jar',
@@ -55,6 +62,7 @@ def main():
     src += sorted(arr.glob('*.kt'))
     src += [q for q in sorted((ROOT / 'tests/sff5_jvm_stubs').glob('*.kt')) if q.name not in ['AudioEngineManager.kt', 'DebugLog.kt']]
     src += sorted((ROOT / 'tests/rtdiag').glob('*.kt'))
+    if a.unit: src += [ROOT / 'app/src/test/java/com/yourapp/audio/MidiMixerOutputTest.kt']
     cp = ':'.join(map(str, jars)); jar = out / 'rtdiag.jar'
     subprocess.run(['java', '-Xmx1g', '-cp', cp, 'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler', '-no-stdlib', '-no-reflect', '-nowarn', '-jvm-target', '17',
                     '-classpath', cp, '-d', str(jar), *map(str, src)], check=True)
@@ -62,7 +70,7 @@ def main():
     result = subprocess.run(['java', '-javaagent:' + str(deps / 'byte-buddy-agent.jar'), '-cp', str(jar) + ':' + cp, 'org.junit.runner.JUnitCore', *classes],
                             capture_output=True, text=True)
     (out / 'rtdiag.log').write_text(result.stdout + result.stderr)
-    rows = [l[l.index('RTDIAG ') if 'RTDIAG ' in l else l.index('CCS '):] for l in result.stdout.splitlines() if 'RTDIAG ' in l or 'CCS ' in l]
+    rows = [l[min(i for i in (l.find(k) for k in ('RTDIAG ', 'CCS ', 'SGAP ')) if i >= 0):] for l in result.stdout.splitlines() if 'RTDIAG ' in l or 'CCS ' in l or 'SGAP ' in l]
     (out / 'rtdiag-rows.txt').write_text('\n'.join(rows) + '\n')
     print('\n'.join(rows)); print('DEBUGLOG_SOURCE_SHA256', log_sha)
     tail = [l for l in result.stdout.splitlines() if l.startswith(('OK', 'Tests run', 'FAILURES')) or l[:3].strip().rstrip(')').isdigit()]
