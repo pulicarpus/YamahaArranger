@@ -38,7 +38,7 @@ import java.util.concurrent.atomic.AtomicLong
  * AudioEngineManager -> MidiMixerOutput. Only the two ends are fakes: the Android MIDI ports and the JNI bridge.
  * Everything measured here is HOST evidence (x86 JVM, no BASSMIDI, no Oboe, no USB). It says nothing about device speed.
  */
-class RtRig(val midiOut: Boolean = false, tempoBpm: Int = 120) {
+class RtRig(val midiOut: Boolean = false, tempoBpm: Int = 120, private val styleOverride: ParsedStyle? = null) {
     class Ev(val t: Long, val thread: String, val kind: Char, val ch: Int, val note: Int, val kbLock: Boolean, val lcLock: Boolean, val mixLock: Boolean)
     class Wr(val t: Long, val thread: String, val status: Int, val d1: Int, val d2: Int, val kbLock: Boolean, val lcLock: Boolean)
 
@@ -54,6 +54,8 @@ class RtRig(val midiOut: Boolean = false, tempoBpm: Int = 120) {
     }, "echo").apply { isDaemon = true; start() }
     /** Busy-wait per native note call: stands in for the shared synth mutex wait. 0 = free. A MODEL parameter, never a measurement. */
     @Volatile var nativeCallCostUs = 0L
+    @Volatile var stallOnceMs = 0L
+    @Volatile var stallThread = "MainSim"
 
     private val inPort = object : MidiInputPort() {
         override fun send(data: ByteArray, offset: Int, count: Int) {
@@ -116,7 +118,7 @@ class RtRig(val midiOut: Boolean = false, tempoBpm: Int = 120) {
         midi.connect(MidiDeviceInfo())
         midi.setMixerStyleChannels((4..15).toSet())
         midi.midiOutEnabled = midiOut
-        brain.loadStyle(style(tempoBpm))
+        brain.loadStyle(styleOverride?.also { loadedStyle = it } ?: style(tempoBpm))
         val gate = engine.readiness
         val f = gate.beginFonts(); gate.installedFonts(f, true, "m", "d"); gate.finishFonts(f, true)
         gate.finishStyle(gate.beginStyle(), loadedStyle.sections.keys, loadedStyle); gate.outputResult(gate.beginOutput(), true)
@@ -135,6 +137,9 @@ class RtRig(val midiOut: Boolean = false, tempoBpm: Int = 120) {
         val a = inv.arguments
         val t = System.nanoTime()
         fun rec(kind: Char, ch: Int, note: Int) {
+            // DIAGNOSTIC: one blocking native call (e.g. waiting for the synth mutex) on the named thread, taken while the caller holds its monitors.
+            val stall = stallOnceMs
+            if (stall > 0 && Thread.currentThread().name == stallThread) { stallOnceMs = 0; Thread.sleep(stall) }
             spin(nativeCallCostUs)
             val mixer = try { holds(field(midi, "mixerOutput")) } catch (_: Exception) { false }
             engineEvents.add(Ev(t, Thread.currentThread().name, kind, ch, note, holds(kbLockObj), holds(lcLockObj), mixer))

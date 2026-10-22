@@ -27,7 +27,10 @@ def extract_debug_log(out):
 
 def main():
     p = argparse.ArgumentParser(); p.add_argument('--out', required=True); p.add_argument('--only', default='')
+    p.add_argument('--rosita', action='store_true')
     a = p.parse_args()
+    if a.rosita:
+        sys.path.insert(0, str(ROOT / 'tools')); import test_cpv; test_cpv.rosita_tsv(Path(a.out) / 'rosita')
     out = Path(a.out).resolve(); out.mkdir(parents=True, exist_ok=True)
     deps = ROOT / 'build/sff1-jvm/dependencies'
     jars = [deps / n for n in ['kotlin-compiler.jar', 'kotlin-stdlib.jar', 'kotlin-reflect.jar', 'kotlin-script-runtime.jar', 'trove4j.jar', 'annotations.jar',
@@ -59,7 +62,7 @@ def main():
     result = subprocess.run(['java', '-javaagent:' + str(deps / 'byte-buddy-agent.jar'), '-cp', str(jar) + ':' + cp, 'org.junit.runner.JUnitCore', *classes],
                             capture_output=True, text=True)
     (out / 'rtdiag.log').write_text(result.stdout + result.stderr)
-    rows = [l[l.index('RTDIAG '):] for l in result.stdout.splitlines() if 'RTDIAG ' in l]
+    rows = [l[l.index('RTDIAG ') if 'RTDIAG ' in l else l.index('CCS '):] for l in result.stdout.splitlines() if 'RTDIAG ' in l or 'CCS ' in l]
     (out / 'rtdiag-rows.txt').write_text('\n'.join(rows) + '\n')
     print('\n'.join(rows)); print('DEBUGLOG_SOURCE_SHA256', log_sha)
     tail = [l for l in result.stdout.splitlines() if l.startswith(('OK', 'Tests run', 'FAILURES')) or l[:3].strip().rstrip(')').isdigit()]
