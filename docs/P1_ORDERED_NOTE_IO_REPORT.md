@@ -68,7 +68,11 @@ rtdiag default set 52/52 (stress 17, metronome follow, Transpose/ACMP/LEFT contr
 6. Per-flush array allocation and a `ThreadLocal` lookup per lifecycle call (µs-level, not measured on ARM).
 
 ## 8. Decision
-**GO for a device A/B experiment only** (the race, STOP/START, ownership and regression suites passed; no test failed). **Not** a claim that the audio issue is fixed, and **no merge** without your approval. Final CI/APK identity is appended below once the workflow is green.
+**GO for a device A/B experiment only** (the race, STOP/START, ownership and regression suites passed; no test failed). **Not** a claim that the audio issue is fixed, and **no merge** without your approval. CI/APK identity (all green on this commit):
+* Experiment commit `29b067c13755de2ebaaaee0f9b8c7529a632a74f` (P1 code at `e38a9c6`, test-only fixes `c7c4501` and `29b067c`), baseline `16c673a`.
+* Workflow run [39776548789](https://github.com/pulicarpus/YamahaArranger/actions/runs/39776548789): job `host` SUCCESS (native, CPV 236, LIVE/REG, Registration 108, rtdiag incl. P1 ordering/race/STOP-START and the chord-change harness with `CCS_EXPECT=p1`), job `android` SUCCESS (arm64-v8a + armeabi-v7a, signed, provenance).
+* APK artifact `YamahaArranger-STYLEVOICE-29b067c13755de2ebaaaee0f9b8c7529a632a74f` (14.2 MB; contains the APK, `apk-provenance.json` and this report as `DEVICE-TEST.txt`).
+* Two earlier CI runs failed on TEST races, not on P1: `MasterTransposeTest` (label read before it is published) and `LiveControlWiringTest.liveFillUsesExplicitLastMain…` (view model built on `Dispatchers.Default`; stale initial replay overwrote the explicit Main). Both fixed in the tests without weakening assertions; the second has a deterministic repro in `LiveMainLetterRaceTest`.
 
 ## 9. A/B test on the Redmi Pad (PSR-E343)
 APK A = current baseline APK (`16c673a`, run 39715673588, artifact `YamahaArranger-STYLEVOICE-16c673ad…`); APK B = this experiment (artifact name carries the commit SHA, see below). Same Style, tempo, SF2 set, MIDI OUT state, chord mode.
