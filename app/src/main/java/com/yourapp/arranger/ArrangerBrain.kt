@@ -8,6 +8,7 @@ import com.yourapp.yamahaarranger.audio.AudioEngineManager
 import com.yourapp.yamahaarranger.chord.ChordDetector
 import com.yourapp.yamahaarranger.chord.ChordQuality
 import com.yourapp.yamahaarranger.chord.DetectedChord
+import com.yourapp.yamahaarranger.chord.transposedBy
 import com.yourapp.midi.MidiInputManager
 import com.yourapp.yamahaarranger.style.ParsedStyle
 import com.yourapp.yamahaarranger.style.StyleChannelOverride
@@ -44,7 +45,13 @@ data class ArrangerState(
     val currentChordLabel: String = "",
     val autoFill: Boolean = true,
     val acmpEnabled: Boolean = true,
-    val leftVoiceEnabled: Boolean = true
+    val leftVoiceEnabled: Boolean = true,
+    /** Transpose that RIGHT/LEFT/ACMP currently use. */
+    val activeTranspose: Int = 0,
+    /** Requested transpose waiting for the next ACMP chord onset (Style running + ACMP ON); null when nothing is pending. */
+    val pendingTranspose: Int? = null,
+    /** RIGHT 1/2/3 octave shift (-1/0/+1). */
+    val rightOctaves: List<Int> = listOf(0, 0, 0)
 )
 
 @Singleton
@@ -70,10 +77,20 @@ class ArrangerBrain @Inject constructor(
     private var acmpEnabled = true
     private var leftVoiceEnabled = true
     private val leftVoiceChannel = 3
-    private var keyboardTranspose = 0
-    // Preserve the exact output pitch used at NOTE_ON so changing transpose
-    // while a key is held cannot produce a mismatched NOTE_OFF.
-    private val transposedNotes = mutableMapOf<Int, Int>()
+    // Master Transpose is three values, never one:
+    //  requested = what the user dialled in (also what Registration stores);
+    //  active    = what RIGHT/LEFT NOTE_ON and the ACMP chord target use right now;
+    //  pending   = requested value that must wait for the next chord onset because Style harmony is sounding.
+    @Volatile private var requestedTranspose = 0
+    @Volatile private var activeTranspose = 0
+    private var pendingTranspose: Int? = null
+    // RIGHT 1/2/3 octave (-1/0/+1), applied only to the upper-keyboard output pitch.
+    private val rightOctave = intArrayOf(0, 0, 0)
+    // Per-key ownership of the lower (ACMP/LEFT) area: a toggle while a key is held can never orphan its NOTE_OFF.
+    private val chordHeld = mutableSetOf<Int>()
+    private val leftOwners = mutableMapOf<Int, Int>()
+    // The raw chord the player last played (display + re-derivation when transpose commits without a new chord).
+    private var lastRawChord: DetectedChord? = null
     private var keyboardSustain = false
     private var keyboardReleaseTime = 64
     // Kotlin-side safety ledger: panel SUSTAIN delays keyboard NOTE_OFF for
@@ -83,7 +100,7 @@ class ArrangerBrain @Inject constructor(
     // Sustain is native for RIGHT 1/2/3; LEFT uses the ledger above.
     // Notes currently sounding through the dedicated LEFT VOICE channel.
     // Mode changes must release them even if the key-up arrives after ACMP changes.
-    private val leftVoiceNotes = mutableSetOf<Int>()
+    private val leftVoiceNotes = mutableMapOf<Int, Int>()
     private var appliedChord: DetectedChord? = null
     private var pendingChord: DetectedChord? = null
     private var pendingChordJob: Job? = null
@@ -117,7 +134,8 @@ class ArrangerBrain @Inject constructor(
         externalScope = scope
         if (::sequencer.isInitialized) sequencer.stop()
         sequencer = StyleSequencer(audioEngine, midiInputManager, scope)
-        sequencer.setMasterTranspose(keyboardTranspose)
+        sequencer.setMasterTranspose(activeTranspose)
+        sequencer.setAcmpHarmony(acmpEnabled)
         Timber.i("ArrangerBrain: scope attached")
     }
 
@@ -125,7 +143,8 @@ class ArrangerBrain @Inject constructor(
         if (!::sequencer.isInitialized) {
             val scope = externalScope ?: CoroutineScope(Dispatchers.Main + SupervisorJob())
             sequencer = StyleSequencer(audioEngine, midiInputManager, scope)
-            sequencer.setMasterTranspose(keyboardTranspose)
+            sequencer.setMasterTranspose(activeTranspose)
+            sequencer.setAcmpHarmony(acmpEnabled)
         }
     }
 
@@ -230,7 +249,12 @@ class ArrangerBrain @Inject constructor(
         DebugLog.add("🎹 SUSTAIN RELEASE: ${notes.size} held note(s)")
     }
 
-    private fun startRightNote(sourceNote: Int, outputNote: Int, velocity: Float, velocity127: Int) {
+    /**
+     * RIGHT 1/2/3 NOTE_ON. Each layer's pitch is sourceNote + activeTranspose + 12*octave(layer); a pitch outside 0..127 is
+     * DROPPED for that layer (no clamp, no octave wrap, no illegal MIDI note). The pitch is stored in the owner map, so the
+     * NOTE_OFF always pairs with the exact pitch/channel of its NOTE_ON, whatever transpose/octave/routing does afterwards.
+     */
+    private fun startRightNote(sourceNote: Int, velocity: Float, velocity127: Int) {
         com.yourapp.yamahaarranger.audio.LatencyProbe.rightRoutingStart() // LATENCY_PROBE
         rightNoteOwners.remove(sourceNote)?.forEach { (channel, pitch) ->
             engineNoteOff(channel, pitch)
@@ -238,8 +262,14 @@ class ArrangerBrain @Inject constructor(
         }
         val owners = mutableMapOf<Int, Int>()
         rightNoteOwners[sourceNote] = owners
+        val transpose = activeTranspose
         for (channel in 0..2) {
             if (!rightVoiceEnabled[channel]) continue
+            val outputNote = sourceNote + transpose + rightOctave[channel] * 12
+            if (outputNote !in 0..127) {
+                DebugLog.add("🎹 RIGHT ${channel + 1} DROP note=$sourceNote → $outputNote (outside 0..127)")
+                continue
+            }
             stopSustainedNote(channel, outputNote)
             // Diagnostic: monitor the keyboard velocity; the A/B test alters ONLY the internal synth velocity.
             RightVelocityMonitor.shared.record(channel, velocity127)
@@ -256,115 +286,201 @@ class ArrangerBrain @Inject constructor(
         }
     }
 
+    /**
+     * Master Transpose request (-12..12). While Style harmony is sounding (Style running, ACMP ON, a chord applied) the value
+     * only becomes PENDING and commits at the next valid chord onset ([onChordOnset]); in every other situation nothing
+     * harmonic can change under the player, so it is active immediately. A later request replaces an earlier pending one.
+     */
     fun setKeyboardTranspose(semitones: Int) {
+        var rederive = false
         synchronized(keyboardLock) {
-            keyboardTranspose = semitones.coerceIn(-12, 12)
-            // Master Transpose: the style follows the keyboard (melodic output only; drums and chord input are not transposed).
-            if (::sequencer.isInitialized) sequencer.setMasterTranspose(keyboardTranspose)
-            DebugLog.add("🎹 TRANSPOSE = " + if (keyboardTranspose >= 0) "+$keyboardTranspose" else keyboardTranspose.toString())
+            val value = semitones.coerceIn(-12, 12)
+            requestedTranspose = value
+            when {
+                value == activeTranspose -> pendingTranspose = null
+                mustDeferTranspose() -> pendingTranspose = value
+                else -> { commitTranspose(value, "immediate"); rederive = true }
+            }
+            publishTranspose()
+            DebugLog.add("🎹 TRANSPOSE request=$value active=$activeTranspose pending=${pendingTranspose ?: "-"}")
+        }
+        if (rederive) reapplyChordForTranspose()
+    }
+
+    private fun mustDeferTranspose(): Boolean =
+        ::sequencer.isInitialized && _state.value.isPlaying && acmpEnabled && appliedChord != null
+
+    /** Commit [value] as the active transpose. Caller holds [keyboardLock]; held RIGHT/LEFT notes keep their own pitch. */
+    private fun commitTranspose(value: Int, why: String) {
+        activeTranspose = value
+        pendingTranspose = null
+        if (::sequencer.isInitialized) sequencer.setMasterTranspose(value)
+        DebugLog.add("🎹 TRANSPOSE ACTIVE=$value ($why)")
+    }
+
+    private fun publishTranspose() {
+        _state.update { it.copy(activeTranspose = activeTranspose, pendingTranspose = pendingTranspose) }
+    }
+
+    /** No chord onset is involved (Style stopped / immediate): re-derive the target chord once so Style and keys agree. */
+    private fun reapplyChordForTranspose() {
+        val raw: DetectedChord
+        val eff: DetectedChord
+        synchronized(keyboardLock) {
+            if (!acmpEnabled) return
+            raw = lastRawChord ?: return
+            eff = raw.transposedBy(activeTranspose)
+            if (appliedChord?.sameChordAs(eff) == true) return
+            pendingChordJob?.cancel(); pendingChord = null
+            appliedChord = eff
+        }
+        ensureSequencer()
+        sequencer.currentChord = eff
+    }
+
+    fun setRightOctave(layer: Int, octave: Int) {
+        synchronized(keyboardLock) {
+            if (layer !in 0..2) return
+            val value = octave.coerceIn(-1, 1)
+            if (rightOctave[layer] == value) return
+            rightOctave[layer] = value
+            _state.update { it.copy(rightOctaves = rightOctave.toList()) }
+            DebugLog.add("🎹 RIGHT ${layer + 1} OCTAVE = $value (held notes keep their pitch)")
         }
     }
 
+    fun rightOctaveOf(layer: Int): Int = rightOctave[layer.coerceIn(0, 2)]
+
+    /**
+     * Lower keyboard area. ACMP and LEFT are independent: ACMP ON feeds the chord detector, LEFT ON sounds the LEFT voice,
+     * both ON does both for the same key, both OFF turns the whole keyboard into RIGHT 1/2/3.
+     */
     fun onKeyboardNoteOn(midiNote: Int, velocity: Float) {
         val probeRequestedNs = System.nanoTime() // LATENCY_PROBE
         synchronized(keyboardLock) {
             com.yourapp.yamahaarranger.audio.LatencyProbe.keyboardLockAcquired(probeRequestedNs) // LATENCY_PROBE
             val velocity127 = (velocity * 127f).toInt().coerceIn(0, 127)
-            val outputNote = (midiNote + keyboardTranspose).coerceIn(0, 127)
             if (midiNote > splitNote) {
-                if (!com.yourapp.yamahaarranger.audio.NoteLogTuning.skip()) DebugLog.add("🎹 RIGHT IN note=$midiNote → pitch=$outputNote vel=$velocity127")
-                startRightNote(midiNote, outputNote, velocity, velocity127)
+                if (!com.yourapp.yamahaarranger.audio.NoteLogTuning.skip()) DebugLog.add("🎹 RIGHT IN note=$midiNote vel=$velocity127")
+                startRightNote(midiNote, velocity, velocity127)
                 return
             }
-            if (acmpEnabled && leftVoiceEnabled) {
+            if (!acmpEnabled && !leftVoiceEnabled) {
+                DebugLog.add("🎹 LEFT IN note=$midiNote vel=$velocity127 → R1/R2/R3 (ACMP/L OFF)")
+                startRightNote(midiNote, velocity, velocity127)
+                return
+            }
+            if (acmpEnabled) {
                 // ACMP/chord notes are deliberately not sustain-held.
                 DebugLog.add("🎹 LEFT IN note=$midiNote vel=$velocity127 → CHORD")
                 com.yourapp.yamahaarranger.audio.LatencyProbe.chordNoteParsed(); com.yourapp.yamahaarranger.audio.LatencyProbe.chordKeyDown() // LATENCY_PROBE
-                chordDetector.noteOn(midiNote)?.let(::onChordChanged)
-            } else if (leftVoiceEnabled) {
-                transposedNotes[midiNote] = outputNote
-                DebugLog.add("🎹 LEFT IN note=$midiNote → pitch=$outputNote vel=$velocity127 → LEFT VOICE")
-                stopSustainedNote(leftVoiceChannel, outputNote)
-                audioEngine.noteOnChannel(leftVoiceChannel, outputNote, velocity)
-                midiInputManager.sendNoteOn(leftVoiceChannel, outputNote, velocity127)
-                leftVoiceNotes.add(outputNote)
-            } else {
-                DebugLog.add("🎹 LEFT IN note=$midiNote → pitch=$outputNote vel=$velocity127 → R1/R2/R3 (ACMP/L OFF)")
-                startRightNote(midiNote, outputNote, velocity, velocity127)
+                chordHeld.add(midiNote)
+                chordDetector.noteOn(midiNote)?.let { onChordChanged(it, onset = true) }
             }
+            if (leftVoiceEnabled) startLeftNote(midiNote, velocity, velocity127)
         }
+    }
+
+    private fun startLeftNote(midiNote: Int, velocity: Float, velocity127: Int) {
+        val outputNote = midiNote + activeTranspose
+        if (outputNote !in 0..127) {
+            DebugLog.add("🎹 LEFT DROP note=$midiNote → $outputNote (outside 0..127)")
+            return
+        }
+        leftOwners.remove(midiNote)?.let { releaseLeftNote(it, honourSustain = false) }
+        DebugLog.add("🎹 LEFT IN note=$midiNote → pitch=$outputNote vel=$velocity127 → LEFT VOICE")
+        stopSustainedNote(leftVoiceChannel, outputNote)
+        audioEngine.noteOnChannel(leftVoiceChannel, outputNote, velocity)
+        midiInputManager.sendNoteOn(leftVoiceChannel, outputNote, velocity127)
+        leftOwners[midiNote] = outputNote
+        leftVoiceNotes.merge(outputNote, 1, Int::plus)
+    }
+
+    private fun releaseLeftNote(outputNote: Int, honourSustain: Boolean) {
+        if (honourSustain && keyboardSustain) {
+            sustainHeldNotes.add(leftVoiceChannel to outputNote)
+            return
+        }
+        audioEngine.noteOffChannel(leftVoiceChannel, outputNote)
+        midiInputManager.sendNoteOff(leftVoiceChannel, outputNote)
+        val left = (leftVoiceNotes[outputNote] ?: 1) - 1
+        if (left <= 0) leftVoiceNotes.remove(outputNote) else leftVoiceNotes[outputNote] = left
     }
 
     fun onKeyboardNoteOff(midiNote: Int) {
         synchronized(keyboardLock) {
-            // NOTE_ON owns the part/pitch even after split, transpose or routing changes.
+            // NOTE_ON owns the part/pitch even after split, transpose, octave or routing changes.
             // Empty entries retain physical keys whose owners were cleared by RIGHT OFF.
             if (rightNoteOwners.containsKey(midiNote)) {
                 releaseRightNote(midiNote)
                 return
             }
-            val outputNote = transposedNotes.remove(midiNote) ?: (midiNote + keyboardTranspose).coerceIn(0, 127)
-            if (midiNote > splitNote) {
-                if (!com.yourapp.yamahaarranger.audio.NoteLogTuning.skip()) DebugLog.add("🎹 RIGHT OFF note=$midiNote → pitch=$outputNote → R1/R2/R3 OFF" +
-                    if (keyboardSustain) " (held by sustain)" else "")
-                releaseRightNote(midiNote)
-                return
-            }
-            if (acmpEnabled && leftVoiceEnabled) {
+            if (chordHeld.remove(midiNote)) {
                 // ACMP owns chord release; sustain never intercepts this path.
                 DebugLog.add("🎹 LEFT OFF note=$midiNote → CHORD")
                 val chord = chordDetector.noteOff(midiNote)
-                if (chord != null) onChordChanged(chord)
+                if (chord != null) onChordChanged(chord, onset = false)
                 else DebugLog.add("🎹 Chord release: keep last chord")
-            } else if (leftVoiceEnabled) {
-                DebugLog.add("🎹 LEFT OFF note=$midiNote → pitch=$outputNote → LEFT VOICE OFF" +
-                    if (keyboardSustain) " (held by sustain)" else "")
-                if (keyboardSustain) {
-                    sustainHeldNotes.add(leftVoiceChannel to outputNote)
-                } else {
-                    audioEngine.noteOffChannel(leftVoiceChannel, outputNote)
-                    midiInputManager.sendNoteOff(leftVoiceChannel, outputNote)
-                    leftVoiceNotes.remove(outputNote)
-                }
-            } else {
-                DebugLog.add("🎹 LEFT OFF note=$midiNote → pitch=$outputNote → R1/R2/R3 OFF (LEFT OFF)" +
-                    if (keyboardSustain) " (held by sustain)" else "")
-                releaseRightNote(midiNote)
+            }
+            leftOwners.remove(midiNote)?.let { pitch ->
+                DebugLog.add("🎹 LEFT OFF note=$midiNote → pitch=$pitch → LEFT VOICE OFF" + if (keyboardSustain) " (held by sustain)" else "")
+                releaseLeftNote(pitch, honourSustain = true)
             }
         }
     }
 
+    /**
+     * ACMP ON/OFF only concerns the chord detector and Style harmony; it never touches LEFT or RIGHT notes.
+     * OFF: Style keeps Rhythm only (harmonic parts released through the sequencer's own note ledger), a pending transpose
+     * commits (nothing harmonic is left to protect), chord context is dropped. ON: Style harmony re-enters only after the next
+     * valid chord (the old chord is never reused).
+     */
     fun setAcmpEnabled(enabled: Boolean) {
+        var changed = false
         synchronized(keyboardLock) {
-            if (acmpEnabled != enabled && enabled) releaseLeftVoiceNotes("ACMP ON")
-            acmpEnabled = enabled
-            pendingChordJob?.cancel()
-            pendingChord = null
-            if (!enabled) {
+            if (acmpEnabled != enabled) {
+                changed = true
+                acmpEnabled = enabled
+                pendingChordJob?.cancel()
+                pendingChord = null
                 chordDetector.reset()
+                chordHeld.clear()
                 appliedChord = null
-                _state.update { it.copy(currentChordLabel = "", acmpEnabled = false) }
-            } else _state.update { it.copy(acmpEnabled = true) }
-            DebugLog.add(if (enabled) "🎹 ACMP: ON (LEFT = CHORD)" else "🎹 ACMP: OFF")
+                lastRawChord = null
+                if (!enabled && pendingTranspose != null) commitTranspose(requestedTranspose, "ACMP OFF")
+                publishTranspose()
+                _state.update { it.copy(currentChordLabel = "", acmpEnabled = enabled) }
+                DebugLog.add(if (enabled) "🎹 ACMP: ON (chord detection; harmony re-enters after next chord)" else "🎹 ACMP: OFF (Style = drums only)")
+            }
+        }
+        if (changed) {
+            ensureSequencer()
+            sequencer.setMasterTranspose(activeTranspose)
+            sequencer.setAcmpHarmony(enabled)
         }
     }
 
+    /** LEFT ON/OFF only concerns the LEFT voice; it never changes ACMP. Turning it OFF releases its own notes only. */
     fun setLeftVoiceEnabled(enabled: Boolean) {
         synchronized(keyboardLock) {
             if (leftVoiceEnabled && !enabled) releaseLeftVoiceNotes("LEFT VOICE OFF")
             leftVoiceEnabled = enabled
             _state.update { it.copy(leftVoiceEnabled = enabled) }
-            DebugLog.add(if (enabled) "🎹 LEFT VOICE: ON" else "🎹 LEFT VOICE: OFF (LEFT → RIGHT 1/2/3)")
+            DebugLog.add(if (enabled) "🎹 LEFT VOICE: ON" else "🎹 LEFT VOICE: OFF")
         }
     }
 
     private fun releaseLeftVoiceNotes(reason: String) {
         sustainHeldNotes.removeAll { it.first == leftVoiceChannel }
+        leftOwners.clear()
         if (leftVoiceNotes.isEmpty()) return
-        val notes = leftVoiceNotes.toList()
+        val notes = leftVoiceNotes.keys.toList()
+        val instances = leftVoiceNotes.toMap()
         notes.forEach { note ->
-            audioEngine.noteOffChannel(leftVoiceChannel, note)
-            midiInputManager.sendNoteOff(leftVoiceChannel, note)
+            repeat(instances[note] ?: 1) {
+                audioEngine.noteOffChannel(leftVoiceChannel, note)
+                midiInputManager.sendNoteOff(leftVoiceChannel, note)
+            }
         }
         leftVoiceNotes.clear()
         DebugLog.add("🎹 LEFT VOICE RELEASE: $reason notes=${notes.joinToString(",")}")
@@ -401,45 +517,65 @@ class ArrangerBrain @Inject constructor(
         synchronized(keyboardLock) {
             splitNote = midiNote.coerceIn(24, 96)
             chordDetector.reset()
+            chordHeld.clear()
             appliedChord = null
+            lastRawChord = null
+            // The chord context is dropped, so a pending transpose has nothing left to wait for.
+            if (pendingTranspose != null) commitTranspose(requestedTranspose, "split change")
+            publishTranspose()
             _state.update { it.copy(currentChordLabel = "") }
             DebugLog.add("🎹 Split Point: $splitNote")
         }
     }
 
-    private fun onChordChanged(chord: DetectedChord) {
-        // Never retrigger the same chord, including Note-Off callbacks.
-        if (appliedChord?.sameChordAs(chord) == true) return
-        if (pendingChord?.sameChordAs(chord) == true) return
+    /**
+     * Chord callback from the detector. [onset] is true only for a NOTE_ON that produced a valid recognition; NOTE_OFF
+     * callbacks (which just repeat the last chord) are never onsets. A pending transpose commits here, in the same
+     * transaction (under [keyboardLock]) that derives the target chord, so transpose and chord context never disagree.
+     */
+    private fun onChordChanged(chord: DetectedChord, onset: Boolean) {
+        if (onset && pendingTranspose != null) {
+            commitTranspose(pendingTranspose!!, "chord onset ${chord.label()}")
+            publishTranspose()
+        }
+        lastRawChord = chord
+        val target = chord.transposedBy(activeTranspose)
+        // Never retrigger the same target chord, including Note-Off callbacks.
+        if (appliedChord?.sameChordAs(target) == true) return
+        if (pendingChord?.sameChordAs(target) == true) return
         ensureSequencer()
 
         // E343 sends the fingers of one chord as separate MIDI NoteOn messages.
         // Coalesce that short burst so CASM/RTR is retargeted only once.
         pendingChordJob?.cancel()
-        pendingChord = chord
+        pendingChord = target
         com.yourapp.yamahaarranger.audio.LatencyProbe.chordRecognized() // LATENCY_PROBE
-        DebugLog.add("🎹 CHORD SETTLE " + chord.label() + " (" + chordSettleMs + "ms)")
+        DebugLog.add("🎹 CHORD SETTLE " + chord.label() + (if (activeTranspose != 0) " → " + target.label() else "") + " (" + chordSettleMs + "ms)")
         val scope = externalScope ?: CoroutineScope(Dispatchers.Main + SupervisorJob())
         pendingChordJob = scope.launch {
             delay(chordSettleMs)
-            val settled = pendingChord
-            pendingChord = null
-            pendingChordJob = null
-            if (settled != null && appliedChord?.sameChordAs(settled) != true) {
-                applyChordNow(settled)
+            val settled = synchronized(keyboardLock) {
+                val c = pendingChord
+                pendingChord = null
+                pendingChordJob = null
+                if (c != null && acmpEnabled && appliedChord?.sameChordAs(c) != true) c else null
             }
+            if (settled != null) applyChordNow(settled)
         }
     }
 
-    private fun applyChordNow(chord: DetectedChord) {
+    private fun applyChordNow(target: DetectedChord) {
         ensureSequencer()
-        pendingChord = null
-        appliedChord = chord
+        val label = synchronized(keyboardLock) {
+            pendingChord = null
+            appliedChord = target
+            (lastRawChord ?: target).label()
+        }
         val probeStart = com.yourapp.yamahaarranger.audio.LatencyProbe.chordApplyStart() // LATENCY_PROBE
-        sequencer.currentChord = chord
+        sequencer.currentChord = target
         com.yourapp.yamahaarranger.audio.LatencyProbe.chordApplyEnd(probeStart) // LATENCY_PROBE
-        _state.update { it.copy(currentChordLabel = chord.label()) }
-        DebugLog.add("🎼 ACMP chord → ${chord.label()}")
+        _state.update { it.copy(currentChordLabel = label) }
+        DebugLog.add("🎼 ACMP chord → ${target.label()}")
     }
 
     fun setDrumABMode(resolved:Boolean):Boolean {
@@ -460,6 +596,13 @@ class ArrangerBrain @Inject constructor(
             pendingChord = null
             sequencer.stop()
             _state.update { it.copy(isPlaying = false) }
+            // Nothing harmonic sounds any more: a pending transpose becomes active now and the chord context follows it.
+            val commit = synchronized(keyboardLock) {
+                val p = pendingTranspose
+                if (p != null) { commitTranspose(p, "STOP"); publishTranspose() }
+                p != null
+            }
+            if (commit) reapplyChordForTranspose()
         } else {
             audioEngine.readiness.admit(activeSectionName(), style) {
                 if (_state.value.isPlaying) return@admit

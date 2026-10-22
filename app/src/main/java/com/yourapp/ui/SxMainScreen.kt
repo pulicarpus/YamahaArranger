@@ -1029,9 +1029,9 @@ private fun SxCenterDisplay(
                 }
                 Row(Modifier.fillMaxWidth().weight(1.15f), horizontalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 5.dp)) {
                     val rv = state.rightVoices
-                    rv.getOrNull(0)?.let { v -> SxVoiceCard("RIGHT 1", v.displayName(), v.enabled, Modifier.weight(1f).clickable { onPickRightVoice(0) }) }
-                    rv.getOrNull(1)?.let { v -> SxVoiceCard("RIGHT 2", v.displayName(), v.enabled, Modifier.weight(1f).clickable { onPickRightVoice(1) }) }
-                    rv.getOrNull(2)?.let { v -> SxVoiceCard("RIGHT 3", v.displayName(), v.enabled, Modifier.weight(1f).clickable { onPickRightVoice(2) }) }
+                    rv.getOrNull(0)?.let { v -> SxVoiceCard("RIGHT 1" + octaveBadge(state.rightOctaves.getOrElse(0) { 0 }), v.displayName(), v.enabled, Modifier.weight(1f).clickable { onPickRightVoice(0) }) }
+                    rv.getOrNull(1)?.let { v -> SxVoiceCard("RIGHT 2" + octaveBadge(state.rightOctaves.getOrElse(1) { 0 }), v.displayName(), v.enabled, Modifier.weight(1f).clickable { onPickRightVoice(1) }) }
+                    rv.getOrNull(2)?.let { v -> SxVoiceCard("RIGHT 3" + octaveBadge(state.rightOctaves.getOrElse(2) { 0 }), v.displayName(), v.enabled, Modifier.weight(1f).clickable { onPickRightVoice(2) }) }
                     rv.getOrNull(3)?.let { v -> SxVoiceCard("LEFT", v.displayName(), state.leftVoiceEnabled, Modifier.weight(1f).clickable { onPickRightVoice(3) }) }
                 }
                 Row(
@@ -1040,7 +1040,8 @@ private fun SxCenterDisplay(
                 ) {
                     SxValue("CHORD", state.detectedChordLabel.ifBlank { "—" }, Modifier.weight(1f), null, null, compact)
                     SxValue("TEMPO", state.tempoBpm.toString(), Modifier.weight(.8f), vm::onTempoDown, vm::onTempoUp, compact, selectedDataParameter == "TEMPO") { onDataParameterSelect("TEMPO") }
-                    SxValue("TRANSPOSE", if (state.transpose >= 0) "+" + state.transpose else state.transpose.toString(), Modifier.weight(.9f), vm::onTransposeDown, vm::onTransposeUp, compact, selectedDataParameter == "TRANSPOSE") { onDataParameterSelect("TRANSPOSE") }
+                    // Pending transpose: the label shows what still sounds, the orange value is the request that waits for the next ACMP chord.
+                    SxValue(if (state.pendingTranspose != null) "NOW " + signed(state.activeTranspose) + " ▸ NEXT CHORD" else "TRANSPOSE", signed(state.transpose), Modifier.weight(.9f), vm::onTransposeDown, vm::onTransposeUp, compact, selectedDataParameter == "TRANSPOSE", state.pendingTranspose != null) { onDataParameterSelect("TRANSPOSE") }
                     SxValue("RELEASE", state.releaseTime.toString(), Modifier.weight(.8f), vm::onReleaseDown, vm::onReleaseUp, compact, selectedDataParameter == "RELEASE") { onDataParameterSelect("RELEASE") }
                     TextButton(onClick = vm::toggleRelease, modifier = Modifier.weight(.7f).fillMaxHeight(), contentPadding = PaddingValues(1.dp)) {
                         Text(if (state.releaseEnabled) "RELEASE\nON" else "RELEASE\nOFF · 64", color = if (state.releaseEnabled) SxGreen else SxDim, fontSize = 8.sp)
@@ -1082,6 +1083,9 @@ private fun SxCenterDisplay(
     }
 }
 
+private fun octaveBadge(o: Int): String = if (o == 0) "" else " · OCT " + signed(o)
+private fun signed(v: Int): String = if (v >= 0) "+$v" else v.toString()
+
 @Composable private fun SxValue(
     label: String,
     value: String,
@@ -1090,6 +1094,7 @@ private fun SxCenterDisplay(
     plus: (() -> Unit)?,
     compact: Boolean,
     selected: Boolean = false,
+    highlight: Boolean = false,
     onSelect: (() -> Unit)? = null
 ) {
     Surface(
@@ -1103,7 +1108,7 @@ private fun SxCenterDisplay(
             Text(label, color = if (selected) Color.White else SxDim, fontSize = if (compact) 5.sp else 6.sp, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth(), maxLines = 1)
             Row(Modifier.fillMaxWidth().weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                 if (minus != null && plus != null) SmallKey("−", minus, compact)
-                Text(value, color = Color.White, fontSize = if (compact) 10.sp else 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(value, color = if (highlight) SxOrangeBright else Color.White, fontSize = if (compact) 10.sp else 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (minus != null && plus != null) SmallKey("+", plus, compact)
             }
         }
@@ -1168,6 +1173,22 @@ private fun SxCenterDisplay(
                     }
                     val leftOn = state.leftVoiceEnabled
                     Surface(color = if (leftOn) SxBlue else Color(0xFF1D2329), shape = RoundedCornerShape(3.dp), modifier = Modifier.weight(1f).fillMaxHeight().clickable { vm.toggleLeftVoice() }) { Box(contentAlignment = Alignment.Center) { Text("L", color = Color.White, fontSize = 7.sp, fontWeight = FontWeight.Bold) } }
+                }
+                Text("RIGHT OCTAVE", color = Color(0xFF55A9E6), fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                Row(Modifier.fillMaxWidth().height(if (compact) 40.dp else 46.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                    listOf(0, 1, 2).forEach { layer ->
+                        val current = state.rightOctaves.getOrElse(layer) { 0 }
+                        Column(Modifier.weight(1f).fillMaxHeight()) {
+                            Text("R" + (layer + 1), color = SxDim, fontSize = 6.sp, fontWeight = FontWeight.Bold)
+                            Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(1.dp)) {
+                                listOf(-1, 0, 1).forEach { oct ->
+                                    Surface(color = if (current == oct) SxBlue else Color(0xFF1D2329), shape = RoundedCornerShape(2.dp), modifier = Modifier.weight(1f).fillMaxHeight().clickable { vm.setRightOctave(layer, oct) }) {
+                                        Box(contentAlignment = Alignment.Center) { Text(if (oct > 0) "+1" else oct.toString(), color = Color.White, fontSize = 8.sp, fontWeight = FontWeight.Bold, maxLines = 1) }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
                 Text("ONE TOUCH SETTING", color = Color(0xFF55A9E6), fontSize = 8.sp, fontWeight = FontWeight.Bold)
                 Row(Modifier.fillMaxWidth().height(if (compact) 34.dp else 40.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) { (1..4).forEach { n -> Surface(color = Color(0xFF1D2329), shape = RoundedCornerShape(3.dp), modifier = Modifier.weight(1f).fillMaxHeight()) { Box(contentAlignment = Alignment.Center) { Text(n.toString(), color = Color.White, fontSize = 8.sp, fontWeight = FontWeight.Bold) } } } }

@@ -78,7 +78,8 @@ class RegistrationLibraryController(private val store: AtomicBankStore,
             val parts=actual.parts.map { p -> p.copy(sf2=if(s.mode==OutputMode.EXTERNAL) null else p.sf2,
                 external=if(s.mode==OutputMode.INTERNAL) null else p.external) }
             val slot=RegistrationSlot(name.trim().take(24).ifEmpty { "REG ${index+1}" },s.mode,parts,actual.release,
-                if(s.saveTempo) actual.tempoBpm else null,if(s.saveTranspose) actual.transpose else null,epoch())
+                if(s.saveTempo) actual.tempoBpm else null,if(s.saveTranspose) actual.transpose else null,epoch(),
+                actual.acmp,actual.rightOctaves)
             val updated=bank.copy(slots=bank.slots.mapIndexed { i,old -> if(i==index) slot else old })
             store.saveBank(updated)
             undo=bank

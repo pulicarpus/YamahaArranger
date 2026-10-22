@@ -2,7 +2,8 @@ package com.yourapp.yamahaarranger.registration
 
 /** Engine-independent immutable snapshots; LEFT enabled must come from Brain, not UI slot 3. */
 data class RecallSnapshot(val parts: List<PartSetup>, val release: ReleaseSetup, val tempoBpm: Int,
-    val transpose: Int, val voiceRequests: List<Long> = List(4) { 0L })
+    val transpose: Int, val voiceRequests: List<Long> = List(4) { 0L },
+    val acmp: Boolean = true, val rightOctaves: List<Int> = listOf(0, 0, 0))
 sealed class RecallStep {
     data class Enabled(val part: Part, val value: Boolean) : RecallStep()
     data class Sf2(val part: Part, val voice: Sf2VoiceRef) : RecallStep()
@@ -10,6 +11,8 @@ sealed class RecallStep {
     data class Volume(val part: Part, val value: Int) : RecallStep()
     data class Release(val value: ReleaseSetup) : RecallStep()
     data class Transpose(val value: Int) : RecallStep()
+    data class Acmp(val value: Boolean) : RecallStep()
+    data class RightOctave(val layer: Int, val value: Int) : RecallStep()
     data class Tempo(val value: Int) : RecallStep()
 }
 data class RecallIssue(val part: Part, val reason: String)
@@ -44,7 +47,12 @@ object RecallPlanner {
         }
         val steps=off+sf2+ext+volume+
             (if(!freeze.release && current.release != target.release) listOf(RecallStep.Release(target.release)) else emptyList())+on+
+            // ACMP follows PART ON/OFF; it is applied before Transpose so a recall that switches ACMP OFF applies the new transpose at once.
+            (if(!freeze.partOnOff && target.acmp != null && target.acmp != current.acmp) listOf(RecallStep.Acmp(target.acmp)) else emptyList())+
             (if(!freeze.transpose && target.transpose != null && target.transpose != current.transpose) listOf(RecallStep.Transpose(target.transpose.coerceIn(-12,12))) else emptyList())+
+            // RIGHT octaves belong to the RIGHT voices (as on a Yamaha voice setting), so they follow the VOICES freeze.
+            (if(!freeze.voices && target.rightOctaves != null && target.rightOctaves.size == 3)
+                (0..2).filter { target.rightOctaves[it].coerceIn(-1,1) != current.rightOctaves.getOrElse(it) { 0 } }.map { RecallStep.RightOctave(it,target.rightOctaves[it].coerceIn(-1,1)) } else emptyList())+
             (if(!freeze.tempo && target.tempoBpm != null && target.tempoBpm != current.tempoBpm) listOf(RecallStep.Tempo(target.tempoBpm.coerceIn(20,280))) else emptyList())
         return RecallPlan(steps,issues)
     }

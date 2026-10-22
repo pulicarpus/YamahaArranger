@@ -165,9 +165,10 @@ class VoiceReleaseContractTest {
     @Test fun lowerKeyRoutedToRightRetainsOwnersAcrossModeChanges() {
         val (engine, bridge) = engine(); engine.loadSoundFontPair("m", "d")
         val brain = ArrangerBrain(engine, ChordDetector(), mock(MidiInputManager::class.java))
-        brain.setLeftVoiceEnabled(false); brain.setRightVoiceEnabled(1, true)
+        // ACMP and LEFT are independent (ACMP ON + LEFT OFF is chord-only), so the lower area becomes RIGHT only when BOTH are OFF.
+        brain.setAcmpEnabled(false); brain.setLeftVoiceEnabled(false); brain.setRightVoiceEnabled(1, true)
         brain.onKeyboardNoteOn(40, 1f); brain.setRightVoiceEnabled(0, false)
-        brain.setLeftVoiceEnabled(true); brain.onKeyboardNoteOff(40)
+        brain.setLeftVoiceEnabled(true); brain.setAcmpEnabled(true); brain.onKeyboardNoteOff(40)
         verify(bridge, times(1)).nativeSfNoteOffChannel(0, 40)
         verify(bridge, times(1)).nativeSfNoteOffChannel(1, 40)
         verify(bridge, never()).nativeSfNoteOffChannel(3, 40)

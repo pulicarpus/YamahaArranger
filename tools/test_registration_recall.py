@@ -6,7 +6,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
 import test_voice_release as old
 original = old.run
-EXTRA = ['com.yourapp.yamahaarranger.registration.RegistrationVoiceRecallTest']
+EXTRA = ['com.yourapp.yamahaarranger.registration.RegistrationVoiceRecallTest', 'com.yourapp.yamahaarranger.registration.TransposeOctaveAcmpRecallTest']
 def augmented(command, *args, **kwargs):
     if 'org.junit.runner.JUnitCore' in command and 'com.yourapp.yamahaarranger.registration.RegistrationPersistenceTest' in command:
         command = list(command) + EXTRA

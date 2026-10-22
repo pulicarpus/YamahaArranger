@@ -59,7 +59,9 @@ object RegistrationCodec {
             mapOf("sf2" to p.sf2?.let { mapOf("sf2FileName" to it.sf2FileName,"bank" to it.bank,"program" to it.program,"presetName" to it.presetName) },
                 "external" to p.external?.let(::externalPayload), "enabled" to p.enabled,"volume" to p.volume) },
             "release" to mapOf("knobValue" to s.release.knobValue,"enabled" to s.release.enabled),
-            "tempoBpm" to s.tempoBpm,"transpose" to s.transpose,"savedAtEpochMs" to s.savedAtEpochMs)
+            "tempoBpm" to s.tempoBpm,"transpose" to s.transpose,"savedAtEpochMs" to s.savedAtEpochMs) +
+            // Optional keys are written only when present, so slots without them stay byte-identical to the pre-octave format.
+            listOfNotNull(s.acmp?.let { "acmp" to it }, s.rightOctaves?.let { o -> require(o.size == 3 && o.all { it in -1..1 }); "rightOctaves" to o })
     }
     private fun externalPayload(v: ExternalVoice): Any = mapOf("msb" to v.msb,"lsb" to v.lsb,"program" to v.program,"label" to v.label,"deviceProfile" to v.deviceProfile)
     private fun manifestPayload(m: RegistrationManifest): Any {
@@ -69,7 +71,7 @@ object RegistrationCodec {
             "defaultOutputMode" to m.defaultOutputMode.name,"externalVoices" to m.externalVoices.map { mapOf("id" to it.id,"voice" to externalPayload(it.voice)) })
     }
     private fun slot(p: Map<String,Any?>): RegistrationSlot {
-        keys(p,"name","outputMode","parts","release","tempoBpm","transpose","savedAtEpochMs")
+        keys(p,"name","outputMode","parts","release","tempoBpm","transpose","savedAtEpochMs",optional=setOf("acmp","rightOctaves"))
         val parts = list(p,"parts"); require(parts.size == 4)
         val r = obj(p["release"]); keys(r,"knobValue","enabled")
         return RegistrationSlot(name(p),OutputMode.valueOf(string(p,"outputMode")),parts.map { obj(it).let { a ->
@@ -78,7 +80,8 @@ object RegistrationCodec {
                 Sf2VoiceRef(string(v,"sf2FileName"),bounded(v,"bank",0,65535),bounded(v,"program",0,127),string(v,"presetName")) },
                 a["external"]?.let { external(obj(it)) },bool(a,"enabled"),bounded(a,"volume",0,127)) } },
             ReleaseSetup(bounded(r,"knobValue",0,127),bool(r,"enabled")),
-            p["tempoBpm"]?.let { bounded(p,"tempoBpm",20,280) },p["transpose"]?.let { bounded(p,"transpose",-12,12) },number(p,"savedAtEpochMs").also { require(it >= 0) })
+            p["tempoBpm"]?.let { bounded(p,"tempoBpm",20,280) },p["transpose"]?.let { bounded(p,"transpose",-12,12) },number(p,"savedAtEpochMs").also { require(it >= 0) },
+            p["acmp"]?.let { bool(p,"acmp") },p["rightOctaves"]?.let { list(p,"rightOctaves").also { o -> require(o.size == 3) }.map { v -> ((v as? Long) ?: error("Integer expected: rightOctaves")).coerceIn(-1L,1L).toInt() } })
     }
     private fun external(v: Map<String,Any?>): ExternalVoice {
         keys(v,"msb","lsb","program","label","deviceProfile")
@@ -88,7 +91,9 @@ object RegistrationCodec {
         keys(f,"tempo","transpose","release","voices","volumes","partOnOff")
         return FreezeFlags(bool(f,"tempo"),bool(f,"transpose"),bool(f,"release"),bool(f,"voices"),bool(f,"volumes"),bool(f,"partOnOff"))
     }
-    private fun keys(m: Map<String,Any?>, vararg keys: String) { require(m.keys == keys.toSet()) { "Unexpected/missing fields: ${m.keys}" } }
+    private fun keys(m: Map<String,Any?>, vararg keys: String, optional: Set<String> = emptySet()) {
+        require(m.keys.containsAll(keys.toSet()) && (m.keys - keys.toSet()).all { it in optional }) { "Unexpected/missing fields: ${m.keys}" }
+    }
     @Suppress("UNCHECKED_CAST") private fun obj(v: Any?): Map<String,Any?> = v as? Map<String,Any?> ?: error("Object expected")
     @Suppress("UNCHECKED_CAST") private fun list(m: Map<String,Any?>, k: String): List<Any?> = m[k] as? List<Any?> ?: error("Array expected: $k")
     private fun string(m: Map<String,Any?>, k: String): String = m[k] as? String ?: error("String expected: $k")

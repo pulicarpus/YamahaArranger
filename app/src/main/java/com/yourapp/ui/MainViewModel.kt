@@ -228,7 +228,8 @@ data class MainUiState(
     val styleVolume: Int = 127, val leftVolume: Int = 100, val right1Volume: Int = 100, val right2Volume: Int = 100, val right3Volume: Int = 100, val masterVolume: Int = 100,
     val activeBank: Int = 1, val activeRegSlot: Int = 0, val voiceName: String = "GrandPiano",
     val right2Name: String = "OFF", val splitPoint: String = "C4",
-    val acmpEnabled: Boolean = true, val leftVoiceEnabled: Boolean = true, val sustainEnabled: Boolean = false, val releaseTime: Int = 64, val releaseEnabled: Boolean = true, val effectiveReleaseTime: Int = 64,
+    val acmpEnabled: Boolean = true, val leftVoiceEnabled: Boolean = true,
+    val activeTranspose: Int = 0, val pendingTranspose: Int? = null, val rightOctaves: List<Int> = listOf(0, 0, 0), val sustainEnabled: Boolean = false, val releaseTime: Int = 64, val releaseEnabled: Boolean = true, val effectiveReleaseTime: Int = 64,
     val rightVoices: List<KeyboardVoiceSlot> = defaultKeyboardVoices(),
     val voiceAssignments: List<VoiceSlot> = emptyList(),
     val availableSoundFonts: List<Pair<Uri, String>> = emptyList(),
@@ -451,7 +452,7 @@ class MainViewModel @Inject constructor(
                     if(slot.soundFontId>0 && slot.available) com.yourapp.yamahaarranger.registration.Sf2VoiceRef(slot.soundFontName,slot.bank,slot.program,slot.name.orEmpty()) else null,
                     registrationExternal.value[slot.layer],if(slot.layer==3) brain.leftVoiceEnabled else slot.enabled,keyboardVolume(slot.layer).value)
             },com.yourapp.yamahaarranger.registration.ReleaseSetup(_releaseControl.value.knobValue,_releaseControl.value.enabled),
-                brain.tempoBpm,_transpose.value,List(4) { voiceRequestIds.get(it) })
+                brain.tempoBpm,_transpose.value,List(4) { voiceRequestIds.get(it) },brain.acmpEnabled,brain.rightOctaves)
         }
         override suspend fun catalog() = audioEngine.loadedSoundFontPresets().map {
             com.yourapp.yamahaarranger.registration.Sf2VoiceRef(it.soundFontName,it.bank,it.program,it.name)
@@ -491,6 +492,8 @@ class MainViewModel @Inject constructor(
                 is com.yourapp.yamahaarranger.registration.RecallStep.Transpose -> {
                     _transpose.value=step.value.coerceIn(-12,12); arrangerBrain.setKeyboardTranspose(_transpose.value)
                 }
+                is com.yourapp.yamahaarranger.registration.RecallStep.Acmp -> arrangerBrain.setAcmpEnabled(step.value)
+                is com.yourapp.yamahaarranger.registration.RecallStep.RightOctave -> arrangerBrain.setRightOctave(step.layer,step.value)
                 is com.yourapp.yamahaarranger.registration.RecallStep.Tempo -> arrangerBrain.setTempo(step.value.coerceIn(20,280))
                 is com.yourapp.yamahaarranger.registration.RecallStep.Sf2 -> return com.yourapp.yamahaarranger.registration.VoiceResult.FAILED
             }
@@ -629,6 +632,7 @@ class MainViewModel @Inject constructor(
             autoFill = arranger.autoFill,
             acmpEnabled = arranger.acmpEnabled,
             leftVoiceEnabled = arranger.leftVoiceEnabled,
+            activeTranspose = arranger.activeTranspose, pendingTranspose = arranger.pendingTranspose, rightOctaves = arranger.rightOctaves,
             sustainEnabled = sustain,
             releaseTime = releaseControl.knobValue,
             releaseEnabled = releaseControl.enabled,
@@ -782,6 +786,7 @@ class MainViewModel @Inject constructor(
     fun onKeyboardNoteOn(midiNote: Int, velocity: Float) = arrangerBrain.onKeyboardNoteOn(midiNote, velocity)
     fun onKeyboardNoteOff(midiNote: Int) = arrangerBrain.onKeyboardNoteOff(midiNote)
     fun toggleAutoFill() = arrangerBrain.setAutoFill(!arrangerBrain.state.value.autoFill)
+    fun setRightOctave(layer: Int, octave: Int) = arrangerBrain.setRightOctave(layer, octave)
     fun toggleAcmp() = arrangerBrain.toggleAcmp()
     fun setAcmpEnabled(enabled: Boolean) = arrangerBrain.setAcmpEnabled(enabled)
     fun toggleLeftVoice() = arrangerBrain.toggleLeftVoice()

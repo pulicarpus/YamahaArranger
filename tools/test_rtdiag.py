@@ -55,7 +55,7 @@ def main():
     cp = ':'.join(map(str, jars)); jar = out / 'rtdiag.jar'
     subprocess.run(['java', '-Xmx1g', '-cp', cp, 'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler', '-no-stdlib', '-no-reflect', '-nowarn', '-jvm-target', '17',
                     '-classpath', cp, '-d', str(jar), *map(str, src)], check=True)
-    classes = a.only.split(',') if a.only else ['com.yourapp.rtdiag.RealtimeMidiStressTest', 'com.yourapp.rtdiag.MetronomeFollowTest']
+    classes = a.only.split(',') if a.only else ['com.yourapp.rtdiag.RealtimeMidiStressTest', 'com.yourapp.rtdiag.MetronomeFollowTest', 'com.yourapp.rtdiag.TransposeAcmpLeftTest']
     result = subprocess.run(['java', '-javaagent:' + str(deps / 'byte-buddy-agent.jar'), '-cp', str(jar) + ':' + cp, 'org.junit.runner.JUnitCore', *classes],
                             capture_output=True, text=True)
     (out / 'rtdiag.log').write_text(result.stdout + result.stderr)

@@ -8,7 +8,9 @@ data class ExternalVoice(val msb: Int, val lsb: Int, val program: Int, val label
 data class PartSetup(val sf2: Sf2VoiceRef?, val external: ExternalVoice?, val enabled: Boolean, val volume: Int)
 data class ReleaseSetup(val knobValue: Int, val enabled: Boolean)
 data class RegistrationSlot(val name: String, val outputMode: OutputMode, val parts: List<PartSetup>,
-    val release: ReleaseSetup, val tempoBpm: Int?, val transpose: Int?, val savedAtEpochMs: Long)
+    val release: ReleaseSetup, val tempoBpm: Int?, val transpose: Int?, val savedAtEpochMs: Long,
+    /** ACMP status and RIGHT 1/2/3 octave (-1/0/+1). Optional: slots saved before these existed carry null and recall leaves the live value alone. */
+    val acmp: Boolean? = null, val rightOctaves: List<Int>? = null)
 data class RegistrationBank(val id: String, val name: String, val slots: List<RegistrationSlot?>)
 data class FreezeFlags(val tempo: Boolean = true, val transpose: Boolean = false, val release: Boolean = false,
     val voices: Boolean = false, val volumes: Boolean = false, val partOnOff: Boolean = false)
