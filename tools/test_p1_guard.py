@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 BASE = '16c673a'
 SEQ = 'app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt'
 ALLOWED = {SEQ, 'tests/rtdiag/OrderedNoteIoUnitTest.kt', 'tests/rtdiag/P1ChainTest.kt', 'tests/rtdiag/ChordChangeStutterTest.kt', 'tests/rtdiag/RtRig.kt',
-           'tests/cpv/MasterTransposeTest.kt', 'tools/test_rtdiag.py', 'tools/test_p1_guard.py', '.github/workflows/style-voice-editor.yml', '.github/workflows/rtdiag.yml',
+           'tests/cpv/MasterTransposeTest.kt', 'app/src/test/java/com/yourapp/registration/LiveControlWiringTest.kt', 'app/src/test/java/com/yourapp/registration/LiveMainLetterRaceTest.kt', 'tools/test_registration_recall.py', 'tools/test_rtdiag.py', 'tools/test_p1_guard.py', '.github/workflows/style-voice-editor.yml', '.github/workflows/rtdiag.yml',
            'docs/CHORD_CHANGE_STUTTER_ROOT_CAUSE.md', 'docs/P1_ORDERED_NOTE_IO_REPORT.md'}
 def git(*a): return subprocess.check_output(['git', *a], cwd=ROOT, text=True)
 changed = set(git('diff', '--name-only', BASE, 'HEAD').split()) | set(git('diff', '--name-only', BASE).split()) | \

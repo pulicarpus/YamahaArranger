@@ -32,11 +32,14 @@ class LiveControlWiringTest {
         }finally{r.close()}
     }
     @Test fun liveFillUsesExplicitLastMainEvenBeforeStateCollectorRuns()=runBlocking<Unit> {
-        val r=RecallAdapterTest.Rig();try {
-            r.reset();r.vm.onLiveMainSelected("C");r.vm.onLiveFill()
-            assertEquals("Fill C",r.vm.observedSectionLabel)
+        // The view model must be built like production (viewModelScope = Main.immediate): its state collector delivers the initial replay during construction.
+        // On the Rig's Dispatchers.Default scope that replay can arrive after the explicit selection (see LiveMainLetterRaceTest), which made this test flaky.
+        val r=RecallAdapterTest.Rig();val immediate=CoroutineScope(SupervisorJob()+Dispatchers.Unconfined);try {
+            val vm=RecallViewModelHarness(r.engine,r.brain,r.midi,immediate)
+            r.reset();vm.onLiveMainSelected("C");vm.onLiveFill()
+            assertEquals("Fill C",vm.observedSectionLabel)
             assertTrue(r.bytes.isEmpty());verify(r.bridge,never()).nativeSetKeyboardPreset(anyInt(),anyLong(),anyInt(),anyInt())
-        } finally { r.close() }
+        } finally { immediate.cancel();r.close() }
     }
     @Test fun bothNativeFailureReportsLayerAndStillAppliesExplicitExternal()=runBlocking<Unit> {
         val r=RecallAdapterTest.Rig();try {
