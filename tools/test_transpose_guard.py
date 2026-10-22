@@ -13,7 +13,7 @@ ALLOWED = {
     M + 'yamahaarranger/registration/RegistrationModel.kt', M + 'yamahaarranger/registration/RegistrationCodec.kt',
     M + 'yamahaarranger/registration/RecallPlanner.kt', M + 'yamahaarranger/registration/RegistrationLibraryController.kt',
     M + 'ui/MainViewModel.kt', M + 'ui/SxMainScreen.kt',
-    'tests/rtdiag/TransposeAcmpLeftTest.kt', 'tests/cpv/MasterTransposeTest.kt', 'app/src/test/java/com/yourapp/audio/VoiceReleaseContractTest.kt',
+    'tests/rtdiag/TransposeAcmpLeftTest.kt', 'tests/cpv/TransposeRositaTest.kt', 'tests/cpv/MasterTransposeTest.kt', 'app/src/test/java/com/yourapp/audio/VoiceReleaseContractTest.kt',
     'app/src/test/java/com/yourapp/registration/TransposeOctaveAcmpRecallTest.kt',
     'tools/test_rtdiag.py', 'tools/test_cpv.py', 'tools/test_transpose_guard.py', 'tools/test_registration_recall.py',
     '.github/workflows/style-voice-editor.yml', 'docs/TRANSPOSE_OCTAVE_ACMP_LEFT_REPORT.md',
