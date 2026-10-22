@@ -44,6 +44,8 @@ class RtRig(val midiOut: Boolean = false, tempoBpm: Int = 120, private val style
 
     val engineEvents = ConcurrentLinkedQueue<Ev>()      // kind: 'O' note on, 'F' note off, 'A' all notes off
     val usbWrites = ConcurrentLinkedQueue<Wr>()
+    /** Every MidiInputPort.send, including 2-byte Program Change (usbWrites keeps only >=3 byte messages for the older suites). d2=-1 when absent. */
+    val usbAll = ConcurrentLinkedQueue<Wr>()
     @Volatile var loopback = false
     val loopbackReentries = AtomicLong()
     /** Busy-wait per USB MIDI write (MidiInputPort.send): stands in for socket/USB service latency. A MODEL parameter. */
@@ -61,6 +63,7 @@ class RtRig(val midiOut: Boolean = false, tempoBpm: Int = 120, private val style
     private val inPort = object : MidiInputPort() {
         override fun send(data: ByteArray, offset: Int, count: Int) {
             val now = System.nanoTime()
+            usbAll.add(Wr(now, Thread.currentThread().name, data[offset].toInt() and 0xFF, data[offset + 1].toInt(), if (count >= 3) data[offset + 2].toInt() else -1, holds(kbLockObj), holds(lcLockObj)))
             if (count >= 3) usbWrites.add(Wr(now, Thread.currentThread().name, data[offset].toInt() and 0xFF, data[offset + 1].toInt(), data[offset + 2].toInt(),
                 holds(kbLockObj), holds(lcLockObj)))
             spin(usbWriteCostUs)
@@ -127,6 +130,9 @@ class RtRig(val midiOut: Boolean = false, tempoBpm: Int = 120, private val style
     }
 
     lateinit var loadedStyle: ParsedStyle
+
+    /** Same wiring as MainViewModel.init line 704-705: native mixer values reach MIDI OUT. Opt-in so the older suites stay byte-for-byte comparable. */
+    fun wireProductionMixerOutput() { engine.onMixerControllers = midi::setMixerControllers; engine.onMixerMasterVolume = midi::setMixerMasterVolume }
 
     private fun field(o: Any, name: String): Any { val f = o.javaClass.getDeclaredField(name); f.isAccessible = true; return f.get(o)!! }
     private fun holds(o: Any) = Thread.holdsLock(o)

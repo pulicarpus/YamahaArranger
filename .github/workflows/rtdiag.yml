@@ -2,7 +2,7 @@ name: Realtime MIDI & audio stress diagnostic
 # DIAGNOSTIC ONLY: host/mock measurements and real-BASSMIDI (Linux x86) cost curves. Builds no APK and changes no production file.
 on:
   push:
-    branches: [diag/realtime-midi-stress, diag/chord-change-stutter, diag/main-fill-transition-gap]
+    branches: [diag/realtime-midi-stress, diag/chord-change-stutter, diag/main-fill-transition-gap, diag/hardrock2-transition-gap]
   workflow_dispatch: {}
 permissions:
   contents: read
@@ -50,6 +50,19 @@ jobs:
         env:
           SGAP_EXPECT: current
         run: python3 tools/test_rtdiag.py --out evidence/transition-gap --rosita --only com.yourapp.rtdiag.SectionTransitionGapTest,com.yourapp.rtdiag.P1ChainTest,com.yourapp.rtdiag.OrderedNoteIoUnitTest 2>&1 | tee evidence/transition-gap.log
+      - name: HardRock2 transition audit guard (no production change)
+        if: github.ref == 'refs/heads/diag/hardrock2-transition-gap'
+        run: python3 tools/test_hardrock2_audit_guard.py 2>&1 | tee evidence/hardrock2-guard.log
+      - name: HardRock2.S578.prs through the production parser, Main/Fill/Main harness (HOST evidence only)
+        if: github.ref == 'refs/heads/diag/hardrock2-transition-gap'
+        env:
+          SGAP_EXPECT: current
+        run: python3 tools/test_rtdiag.py --out evidence/hardrock2 --rosita --style tests/fixtures/hardrock2/HardRock2.S578.prs --style-name HardRock2.S578.prs --only com.yourapp.rtdiag.SectionTransitionGapTest,com.yourapp.rtdiag.P1ChainTest,com.yourapp.rtdiag.OrderedNoteIoUnitTest 2>&1 | tee evidence/hardrock2.log
+      - name: ROSITA control with the same harness
+        if: github.ref == 'refs/heads/diag/hardrock2-transition-gap'
+        env:
+          SGAP_EXPECT: current
+        run: python3 tools/test_rtdiag.py --out evidence/rosita-control --rosita --only com.yourapp.rtdiag.SectionTransitionGapTest 2>&1 | tee evidence/rosita-control.log
       - name: Host JVM stress (production MIDI parser -> Brain -> Sequencer -> Engine, fake ports/JNI)
         run: python3 tools/test_rtdiag.py --out evidence/rtdiag-jvm 2>&1 | tee evidence/rtdiag-jvm.log
       - name: Native production note/render code with MOCK BASS (overhead + mutex contention model)

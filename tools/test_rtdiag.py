@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Realtime MIDI & audio stress DIAGNOSTIC (host). Compiles the production MIDI->Brain->Sequencer->Engine chain plus the
 REAL DebugLog source, runs tests/rtdiag, and writes RTDIAG result lines. HOST/MOCK evidence only."""
-import argparse, hashlib, json, re, subprocess, sys
+import os, argparse, hashlib, json, re, subprocess, sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,9 +28,15 @@ def extract_debug_log(out):
 def main():
     p = argparse.ArgumentParser(); p.add_argument('--out', required=True); p.add_argument('--only', default='')
     p.add_argument('--rosita', action='store_true')
+    p.add_argument('--style', default='', help='extra Style file (any extension) parsed by the production C++ parser; needs --rosita for the dumper build')
+    p.add_argument('--style-name', default='')
     a = p.parse_args()
     if a.rosita:
         sys.path.insert(0, str(ROOT / 'tools')); import test_cpv; test_cpv.rosita_tsv(Path(a.out) / 'rosita')
+        if a.style:
+            tsv = Path(a.out).resolve() / 'style.tsv'
+            tsv.write_bytes(subprocess.check_output([str(Path(a.out).resolve() / 'rosita/dump_style'), str(Path(a.style).resolve())]))
+            os.environ['SGAP_STYLE_TSV'] = str(tsv); os.environ['SGAP_STYLE_NAME'] = a.style_name or Path(a.style).name
     out = Path(a.out).resolve(); out.mkdir(parents=True, exist_ok=True)
     deps = ROOT / 'build/sff1-jvm/dependencies'
     jars = [deps / n for n in ['kotlin-compiler.jar', 'kotlin-stdlib.jar', 'kotlin-reflect.jar', 'kotlin-script-runtime.jar', 'trove4j.jar', 'annotations.jar',

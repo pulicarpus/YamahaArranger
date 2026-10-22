@@ -30,7 +30,7 @@ class SectionTransitionGapTest {
     private fun pct(v: List<Double>, p: Double) = if (v.isEmpty()) Double.NaN else v.sorted()[((v.size - 1) * p).toInt()]
 
     private fun rosita(): ParsedStyle? {
-        val path = System.getenv("ROSITA_TSV") ?: return null
+        val path = System.getenv("SGAP_STYLE_TSV") ?: System.getenv("ROSITA_TSV") ?: return null
         val sections = linkedMapOf<String, StyleSectionModel>(); var ppq = 480; var name = ""; var len = 0
         var parts = ArrayList<StylePartModel>(); var events = ArrayList<StyleNoteEvent>(); var policies = ArrayList<CasmPolicyModel>(); var partName: String? = null
         fun closePart() {
@@ -47,7 +47,7 @@ class SectionTransitionGapTest {
                 "E" -> { val st = f[2].toInt(); if (st in 0x80..0xEF) events += StyleNoteEvent(f[1].toInt(), (st and 0xF0) == 0x90 && f[4].toInt() > 0, f[3].toInt(), f[4].toInt(), st and 0x0F, st) }
             }
         }
-        closeSection(); return ParsedStyle("ROSITA.STY", ppq, sections, emptyMap(), 120)
+        closeSection(); return ParsedStyle(System.getenv("SGAP_STYLE_NAME") ?: "ROSITA.STY", ppq, sections, emptyMap(), 120)
     }
 
     private fun prefixBalanced(r: RtRig, what: String) {
@@ -94,12 +94,13 @@ class SectionTransitionGapTest {
     }
 
     private class Cfg(val midiOut: Boolean = false, val nativeUs: Long = 0, val usbUs: Long = 0, val acmp: Boolean = true, val left: Boolean = false, val right: Boolean = false,
-        val autoFill: Boolean = true, val stallMs: Long = 0, val chord: Boolean = true, val transposePending: Boolean = false)
+        val autoFill: Boolean = true, val stallMs: Long = 0, val chord: Boolean = true, val transposePending: Boolean = false, val prodMixer: Boolean = false)
 
     private fun scenario(name: String, c: Cfg = Cfg(), styleOverride: ParsedStyle? = null, body: (Ctl) -> Unit) {
         val style = styleOverride ?: rosita(); assumeTrue("ROSITA_TSV not set", style != null); style!!
         DebugLog.clear(); LatencyProbe.reset()
         val r = RtRig(c.midiOut, 120, style); r.nativeCallCostUs = c.nativeUs; r.usbWriteCostUs = c.usbUs
+        if (c.prodMixer) r.wireProductionMixerOutput()
         r.brain.setTempo(280); r.brain.setAutoFill(c.autoFill)
         if (!c.acmp) r.brain.setAcmpEnabled(false)
         if (!c.left) r.brain.setLeftVoiceEnabled(false)
@@ -118,11 +119,12 @@ class SectionTransitionGapTest {
         if (c.stallMs > 0) w.start()
         body(ctl)
         rightRun.set(false); watcher.set(false)
+        if (c.right) rt.join(1000)   // let the live-note thread finish its NoteOn/NoteOff pair before STOP (a harness race, not an engine property)
         // ---- analysis while the clock still runs
         val trans = ctl.transitions(); val ns = 60e9 / 280 / style.ppq
         val ev = r.engineEvents.toList()
         var prevName = "MainA"; var prevStart = 0L
-        val firstLate = ArrayList<Double>(); val allLate = ArrayList<Double>(); val drumFirstLate = ArrayList<Double>()
+        val firstLate = ArrayList<Double>(); val allLate = ArrayList<Double>(); val drumFirstLate = ArrayList<Double>(); val engineGap = ArrayList<Double>()
         trans.forEachIndexed { i, t ->
             val sec = style.sections[t.section] ?: return@forEachIndexed
             val src = style.sections[prevName]
@@ -137,6 +139,11 @@ class SectionTransitionGapTest {
                 val k = minOf(ticks.size, actual.size); if (k == 0) { cols.add("ch$ch:authoredN=${ticks.size},actualN=0"); continue }
                 val late = (0 until k).map { (actual[it] - (b + (ticks[it] * ns).toLong())) / 1e6 }
                 firstLate.add(late[0]); allLate.addAll(late); if (ch in 8..9) drumFirstLate.add(late[0])
+                if (ticks.size != actual.size && ch in 10..15) out("countMismatch scenario=$name #$i $prevName->${t.section} ch$ch authoredOnsTick=${ticks.take(12)} actualOnsRelMsAndNote=${ev.filter { it.kind == 'O' && it.ch == ch && it.t >= b - 1_000_000L && it.t < endNs }.sortedBy { it.t }.take(12).map { "${r2((it.t - b) / 1e6)}:n${it.note}" }}")
+                if (ch in 10..15) { // harmonic destination: last NOTE_OFF the engine sent before the new section's first NOTE_ON -> that first NOTE_ON
+                    val firstOn = actual[0]; val lastOff = ev.filter { it.kind == 'F' && it.ch == ch && it.t in (b - 2_000_000L)..firstOn }.maxOfOrNull { it.t }
+                    if (lastOff != null) { val gap = (firstOn - lastOff) / 1e6; val head = ticks[0] * ns / 1e6; engineGap.add(gap - head); cols.add("ch$ch:cutToNewMs=${r2(gap)}(authoredHead=${r2(head)},engineAdded=${r2(gap - head)})") }
+                }
                 cols.add("ch$ch:authRest=${r2(ticks[0] * ns / 1e6)}ms,firstLate=${r2(late[0])}ms,maxLate=${r2(late.max())}ms,n=${ticks.size}/${actual.size}")
             }
             val srcAuth = src?.let { sc -> authoredOns(sc).filterValues { l -> l.any { it <= posSrc } } }
@@ -144,10 +151,11 @@ class SectionTransitionGapTest {
             out("transition scenario=$name #$i $prevName->${t.section} boundaryTick=${t.tick} srcPosTick=$posSrc barAligned=${t.tick % ctl.barTicks == 0L} gridOffsetMs=${r2((((t.tick + ctl.barTicks / 2) % ctl.barTicks) - ctl.barTicks / 2) * ns / 1e6)} cutNoteOffs=${cut.size} cutOffLateMaxMs=${r2(((cut.maxOfOrNull { it.t } ?: b) - b) / 1e6)} " + cols.joinToString(" "))
             prevName = t.section; prevStart = t.tick
         }
+        if (c.midiOut) burstAnalysis(name, r, trans, ev)
         val rows = LatencyProbe.report().lines()
         fun stat(n: String) = rows.firstOrNull { it.contains("stat=$n") }?.substringAfter("count=")?.substringBefore(" buckets") ?: "NA"
         val turn = try { val seq = r.brain.javaClass.getDeclaredField("sequencer").apply { isAccessible = true }.get(r.brain)!!; val io = seq.javaClass.getDeclaredField("io").apply { isAccessible = true }.get(seq)!!; (io.javaClass.getDeclaredMethod("getMaxTurnWaitNanos").invoke(io) as Long) / 1000 } catch (e: Exception) { -1L }
-        out("summary scenario=$name transitions=${trans.size} firstEventLateMs(p50/p95/max)=${r2(pct(firstLate, .5))}/${r2(pct(firstLate, .95))}/${r2(firstLate.maxOrNull() ?: Double.NaN)} allLateMs(p50/p95/p99/max)=${r2(pct(allLate, .5))}/${r2(pct(allLate, .95))}/${r2(pct(allLate, .99))}/${r2(allLate.maxOrNull() ?: Double.NaN)} drumFirstLateMaxMs=${r2(drumFirstLate.maxOrNull() ?: Double.NaN)} " +
+        out("summary scenario=$name transitions=${trans.size} firstEventLateMs(p50/p95/max)=${r2(pct(firstLate, .5))}/${r2(pct(firstLate, .95))}/${r2(firstLate.maxOrNull() ?: Double.NaN)} allLateMs(p50/p95/p99/max)=${r2(pct(allLate, .5))}/${r2(pct(allLate, .95))}/${r2(pct(allLate, .99))}/${r2(allLate.maxOrNull() ?: Double.NaN)} harmonicCutToNewEngineAddedMs(n/p50/p95/max)=${engineGap.size}/${r2(pct(engineGap, .5))}/${r2(pct(engineGap, .95))}/${r2(engineGap.maxOrNull() ?: Double.NaN)} drumFirstLateMaxMs=${r2(drumFirstLate.maxOrNull() ?: Double.NaN)} " +
             "boundaryToApplyStart=${stat("sectionBoundaryToVoiceApplyStart")} apply=${stat("sectionVoiceApplyDuration")} requestToBoundary=${stat("sectionRequestToBoundaryWake")} applyEndToFirstNote=${stat("sectionVoiceApplyEndToFirstNoteDispatch")} boundaryToFirstNote=${stat("sectionBoundaryToFirstNoteDispatch")} firstNoteLateness=${stat("sectionFirstNoteLatenessVsSchedule")} " +
             "wake=${stat("styleEventWakeLatenessBeforeLifecycle")} dispatch=${stat("styleEventDispatchLatenessAfterLifecycle")} turnWaitMaxUs=$turn nativeCalls=${ev.count { it.kind == 'O' || it.kind == 'F' }} usbWrites=${r.usbWrites.size} playRestarts=${DebugLog.getFullAll().count { it.contains("▶ PLAY") }} globalAllNotesOff=${ev.count { it.kind == 'A' }}")
         r.brain.startStop(); Thread.sleep(250)
@@ -253,5 +261,99 @@ class SectionTransitionGapTest {
             "current" -> assertTrue("current engine: boundary is early and off the bar line $offsets", offsets.all { it < -5.0 && it > -26.0 })
             "fixed" -> assertTrue("intended: boundary on the bar line $offsets", offsets.all { Math.abs(it) < 0.5 })
         }
+    }
+
+    // ---------------------------------------------------------------- MIDI OUT setup burst per transition (MODEL write cost; the keyboard is NOT simulated)
+    private fun kindOf(w: RtRig.Wr): String = when (w.status and 0xF0) {
+        0xC0 -> "PC"; 0x90 -> "ON"; 0x80 -> "OFF"
+        0xB0 -> when (w.d1) { 0 -> "BankMSB"; 32 -> "BankLSB"; 7 -> "CC7"; 10 -> "CC10"; 11 -> "CC11"; 91 -> "CC91"; 93 -> "CC93"; else -> "CC${w.d1}" }
+        else -> "other"
+    }
+    private fun setupKind(k: String) = k != "ON" && k != "OFF" && k != "other"
+    private fun burstAnalysis(name: String, r: RtRig, trans: List<Trans>, ev: List<RtRig.Ev>) {
+        val all = r.usbAll.toList().sortedBy { it.t }
+        val clock = ArrangerBrainClock(r.brain)
+        val bounds = trans.mapNotNull { t -> clock.tickToNanos(t.tick)?.let { t to it } }
+        // A burst = consecutive Bank/Program/mixer messages separated by < 20 ms (model write costs are <= 0.3 ms each).
+        val setup = all.filter { setupKind(kindOf(it)) }
+        val bursts = ArrayList<List<RtRig.Wr>>(); var cur = ArrayList<RtRig.Wr>()
+        for (w in setup) { if (cur.isNotEmpty() && w.t - cur.last().t > 20_000_000L) { bursts.add(cur); cur = ArrayList() }; cur.add(w) }
+        if (cur.isNotEmpty()) bursts.add(cur)
+        val styleOns = ev.filter { it.kind == 'O' && it.thread != "right" }
+        var idx = 0
+        for (bu in bursts) {
+            val t0 = bu.first().t; val t1 = bu.last().t
+            val near = bounds.minByOrNull { Math.abs(it.second - t0) }?.takeIf { Math.abs(it.second - t0) < 60_000_000L }
+            val label = if (near == null) "initialPlayOrOther" else "toward ${near.first.section}@tick${near.first.tick} burstStartMinusBoundaryMs=${r2((t0 - near.second) / 1e6)}"
+            fun redundant(w: RtRig.Wr): Boolean {
+                val isPc = (w.status and 0xF0) == 0xC0
+                val before = all.lastOrNull { it.t < w.t && it.status == w.status && (isPc || it.d1 == w.d1) } ?: return false
+                return if (isPc) before.d1 == w.d1 else before.d2 == w.d2
+            }
+            val sounding = HashMap<Int, Int>(); val soundingAtSetup = sortedSetOf<Int>()
+            for (w in all) {
+                if (w.t > t1) break
+                val ch = w.status and 0x0F
+                when (w.status and 0xF0) { 0x90 -> if (w.d2 > 0) sounding.merge(ch, 1, Int::plus) else sounding.merge(ch, -1, Int::plus); 0x80 -> sounding.merge(ch, -1, Int::plus) }
+                if (w.t in t0..t1 && (kindOf(w) == "PC" || kindOf(w) == "BankMSB") && (sounding[ch] ?: 0) > 0) soundingAtSetup.add(ch)
+            }
+            // Notes the keyboard is still sounding on MIDI OUT when the burst starts: when were they started, and when is their NOTE_OFF sent?
+            val hang = ArrayList<String>(); val live = HashMap<Int, ArrayList<RtRig.Wr>>()
+            for (w in all) { if (w.t >= t0) break; val ch = w.status and 0x0F
+                when (w.status and 0xF0) { 0x90 -> if (w.d2 > 0) live.getOrPut(ch * 128 + w.d1) { ArrayList() }.add(w) else live[ch * 128 + w.d1]?.removeLastOrNull(); 0x80 -> live[ch * 128 + w.d1]?.removeLastOrNull() } }
+            val drumsOpen = live.entries.filter { it.key / 128 in 0..9 && it.key / 128 >= 8 }.sumOf { it.value.size }
+            for ((k, v) in live.entries.sortedBy { it.key }) for (on in v.filter { k / 128 !in 8..9 }) {
+                val off = all.firstOrNull { it.t > t0 && (it.status and 0x0F) == k / 128 && it.d1 == k % 128 && (((it.status and 0xF0) == 0x80) || ((it.status and 0xF0) == 0x90 && it.d2 == 0)) }
+                hang.add("ch${k / 128}:n${k % 128}(onAge=${r2((t0 - on.t) / 1e6)}ms,offAt=${if (off == null) "NONE" else r2((off.t - t0) / 1e6).toString() + "ms"})")
+            }
+            if (hang.isNotEmpty() || drumsOpen > 0) out("hang scenario=$name burst#${idx} $label drumOrPercNoteOnsWithoutNoteOff(ch8,9)=$drumsOpen melodicSoundingAtBurstStart=${hang.size} ${hang.take(24).joinToString(" ")}")
+            for (chx in hang.mapNotNull { Regex("^ch(\\d+):").find(it)?.groupValues?.get(1)?.toInt() }.filter { it in 10..15 }.toSortedSet()) {
+                val tl = all.filter { (it.status and 0x0F) == chx && it.t >= t0 - 3_000_000L && it.t <= t0 + 60_000_000L && (kindOf(it) in setOf("ON", "OFF", "PC", "BankMSB")) }.map { "${kindOf(it)}${if (kindOf(it) == "PC") it.d1 else if (kindOf(it) == "ON" || kindOf(it) == "OFF") it.d1 else it.d2}@${r2((it.t - t0) / 1e6)}" }
+                val nat = ev.filter { it.ch == chx && it.t >= t0 - 3_000_000L && it.t <= t0 + 60_000_000L }.map { "native${it.kind}${it.note}@${r2((it.t - t0) / 1e6)}[${it.thread.takeLast(8)}]" }
+                out("hangTimeline scenario=$name burst#${idx} ch$chx relativeToBurstStartMs: ${(tl + nat).joinToString(" ")}")
+            }
+            val firstOn = styleOns.filter { it.t >= t0 }.minOfOrNull { it.t }
+            val onsInside = styleOns.count { it.t in t0..t1 }
+            val after = bu.count { firstOn != null && it.t >= firstOn }
+            val byKind = bu.groupBy { kindOf(it) }.entries.sortedBy { it.key }.joinToString(",") { "${it.key}=${it.value.size}" }
+            val byCh = bu.groupBy { it.status and 0x0F }.entries.sortedBy { it.key }.joinToString(",") { "ch${it.key}=${it.value.size}" }
+            out("burst scenario=$name #${idx++} $label msgs=${bu.size} [$byKind] perChannel[$byCh] redundantVsLastSent=${bu.count { redundant(it) }}/${bu.size} spanMs=${r2((t1 - t0) / 1e6)} " +
+                "burstStartToFirstStyleNoteOnMs=${if (firstOn == null) "NA" else r2((firstOn - t0) / 1e6).toString()} styleNoteOnsInsideBurst=$onsInside msgsAfterFirstStyleNoteOn=$after " +
+                "channelsWithMidiOutNoteSoundingWhenBankPcArrived=$soundingAtSetup writers=${bu.map { it.thread }.toSortedSet()}")
+        }
+    }
+
+    // ---------------------------------------------------------------- static comparison: voice setup of every section (authored)
+    @Test fun voiceSetupInventoryPerSection() {
+        only("voiceSetupInventoryPerSection")
+        val s = rosita(); assumeTrue("style TSV not set", s != null); s!!
+        data class Setup(val voice: String, val msb: Int, val lsb: Int, val program: Int, val mixer: String)
+        val perSection = linkedMapOf<String, Map<Int, Setup>>()
+        for ((n, sec) in s.sections) {
+            val m = sortedMapOf<Int, Setup>(); var on = 0; var off = 0; val noteChannels = sortedSetOf<Int>()
+            for (p in sec.parts) {
+                val pol = p.casmPolicies.ifEmpty { listOfNotNull(p.casm) }.firstOrNull() ?: continue
+                for (e in p.events) { if (e.isNoteOn) { on++; noteChannels.add(pol.destinationChannel) } else if ((e.status and 0xF0) == 0x80 || ((e.status and 0xF0) == 0x90 && e.velocity == 0)) off++ }
+                val mix = p.events.filter { it.tick == 0 && it.isControlChange && it.channel == pol.sourceChannel && it.note in listOf(7, 10, 11, 91, 93) }.sortedBy { it.note }.joinToString("/") { "${it.note}=${it.velocity}" }
+                m.putIfAbsent(pol.destinationChannel, Setup(pol.voiceName, p.bankMsb, p.bankLsb, p.program, mix))
+            }
+            perSection[n] = m
+            out("setup section=$n lengthTicks=${sec.lengthTicks} parts=${sec.parts.size} destChannelsConfigured=${m.size} destChannelsWithNotes=${noteChannels.size}$noteChannels noteOn=$on noteOff=$off " +
+                m.entries.joinToString(" ") { "dst${it.key}:${it.value.voice.trim()}@${it.value.msb}:${it.value.lsb}:${it.value.program}{${it.value.mixer}}" })
+        }
+        val mains = perSection.keys.filter { it.startsWith("Main") }; val fills = perSection.keys.filter { it.startsWith("Fill") }
+        for (a in mains) for (b in fills) {
+            val x = perSection[a]!!; val y = perSection[b]!!
+            val common = x.keys.intersect(y.keys); val same = common.count { x[it] == y[it] }
+            out("setupPair $a<->$b destInA=${x.size} destInB=${y.size} common=${common.size} identicalVoiceAndBankAndMixer=$same differing=${common.filter { x[it] != y[it] }}")
+        }
+    }
+
+    @Test fun midiOutSetupBurstMainFillMain() {
+        only("midiOutSetupBurstMainFillMain")
+        for ((label, usb) in listOf("usb0us" to 0L, "usb150us" to 150L, "usb300us" to 300L))
+            scenario("MainA_FillAA_MainA_midiOut_$label", Cfg(midiOut = true, usbUs = usb, prodMixer = true)) { c -> c.waitPhase(3840); c.r.brain.selectSection(ArrangerSection.FillAA); c.waitTransitions(2); c.bars(1.2) }
+        scenario("MainD_FillDD_MainD_midiOut_usb300us_LEFT_RIGHT_manyChannels", Cfg(midiOut = true, usbUs = 300, left = true, right = true, prodMixer = true)) { c ->
+            c.waitPhase(3840); c.r.brain.selectMainVariation(ArrangerSection.MainD); c.waitTransitions(2); c.waitPhase(3840); c.r.brain.selectSection(ArrangerSection.FillDD); c.waitTransitions(5, 40_000); c.bars(1.2) }
     }
 }
