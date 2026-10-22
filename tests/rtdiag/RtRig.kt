@@ -140,7 +140,7 @@ class RtRig(val midiOut: Boolean = false, tempoBpm: Int = 120, private val style
         fun rec(kind: Char, ch: Int, note: Int) {
             // DIAGNOSTIC: one blocking native call (e.g. waiting for the synth mutex) on the named thread, taken while the caller holds its monitors.
             val stall = stallOnceMs
-            if (stall > 0 && Thread.currentThread().name == stallThread) { stallOnceMs = 0; stallStartedNs = System.nanoTime(); Thread.sleep(stall) }
+            if (stall > 0 && Thread.currentThread().name.startsWith(stallThread)) { stallOnceMs = 0; stallStartedNs = System.nanoTime(); Thread.sleep(stall) }
             spin(nativeCallCostUs)
             val mixer = try { holds(field(midi, "mixerOutput")) } catch (_: Exception) { false }
             engineEvents.add(Ev(t, Thread.currentThread().name, kind, ch, note, holds(kbLockObj), holds(lcLockObj), mixer))

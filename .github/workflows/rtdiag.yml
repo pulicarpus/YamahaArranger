@@ -2,7 +2,7 @@ name: Realtime MIDI & audio stress diagnostic
 # DIAGNOSTIC ONLY: host/mock measurements and real-BASSMIDI (Linux x86) cost curves. Builds no APK and changes no production file.
 on:
   push:
-    branches: [diag/realtime-midi-stress, diag/chord-change-stutter]
+    branches: [diag/realtime-midi-stress, diag/chord-change-stutter, diag/main-fill-transition-gap]
   workflow_dispatch: {}
 permissions:
   contents: read
@@ -42,6 +42,14 @@ jobs:
       - name: Chord-change stutter harness (production chain, ROSITA, model costs; HOST evidence only)
         if: github.ref == 'refs/heads/diag/chord-change-stutter'
         run: python3 tools/test_rtdiag.py --out evidence/chord-stutter --rosita --only com.yourapp.rtdiag.ChordChangeStutterTest 2>&1 | tee evidence/chord-stutter.log
+      - name: Main/Fill transition gap audit guard (no production change)
+        if: github.ref == 'refs/heads/diag/main-fill-transition-gap'
+        run: python3 tools/test_transition_gap_guard.py 2>&1 | tee evidence/transition-gap-guard.log
+      - name: Main/Fill transition gap harness (production chain, real ROSITA.STY, HOST evidence only)
+        if: github.ref == 'refs/heads/diag/main-fill-transition-gap'
+        env:
+          SGAP_EXPECT: current
+        run: python3 tools/test_rtdiag.py --out evidence/transition-gap --rosita --only com.yourapp.rtdiag.SectionTransitionGapTest,com.yourapp.rtdiag.P1ChainTest,com.yourapp.rtdiag.OrderedNoteIoUnitTest 2>&1 | tee evidence/transition-gap.log
       - name: Host JVM stress (production MIDI parser -> Brain -> Sequencer -> Engine, fake ports/JNI)
         run: python3 tools/test_rtdiag.py --out evidence/rtdiag-jvm 2>&1 | tee evidence/rtdiag-jvm.log
       - name: Native production note/render code with MOCK BASS (overhead + mutex contention model)

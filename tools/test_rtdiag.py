@@ -62,7 +62,7 @@ def main():
     result = subprocess.run(['java', '-javaagent:' + str(deps / 'byte-buddy-agent.jar'), '-cp', str(jar) + ':' + cp, 'org.junit.runner.JUnitCore', *classes],
                             capture_output=True, text=True)
     (out / 'rtdiag.log').write_text(result.stdout + result.stderr)
-    rows = [l[l.index('RTDIAG ') if 'RTDIAG ' in l else l.index('CCS '):] for l in result.stdout.splitlines() if 'RTDIAG ' in l or 'CCS ' in l]
+    rows = [l[min(i for i in (l.find(k) for k in ('RTDIAG ', 'CCS ', 'SGAP ')) if i >= 0):] for l in result.stdout.splitlines() if 'RTDIAG ' in l or 'CCS ' in l or 'SGAP ' in l]
     (out / 'rtdiag-rows.txt').write_text('\n'.join(rows) + '\n')
     print('\n'.join(rows)); print('DEBUGLOG_SOURCE_SHA256', log_sha)
     tail = [l for l in result.stdout.splitlines() if l.startswith(('OK', 'Tests run', 'FAILURES')) or l[:3].strip().rstrip(')').isdigit()]
