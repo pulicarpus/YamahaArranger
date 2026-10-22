@@ -99,8 +99,8 @@ Real-device lateness, audio-callback gaps, and USB/MIDI-OUT hardware latency: **
 First-event lateness and boundary placement are the same (e.g. MIDI OUT 700/300: 15.5 vs 15.95 ms p95;
 100 ms block: 103–107 ms both; off-grid offsets −12.8…−15.5 ms vs −13.6…−15.9 ms). P1 neither causes nor
 cures the transition gap. P1 *does* fix lifecycle faults that pre-P1 shows under this harness:
-STOP during a blocked section switch: pre-P1 8 NOTE_ON after STOP + 5 stuck; P1 0 + 0. LEFT+RIGHT
-playing across a switch: pre-P1 3 orphan NOTE_OFF, P1 0. Ordered-I/O turn wait max ≤ 107 µs.
+STOP during a blocked section switch: pre-P1 8 NOTE_ON after STOP + 5 stuck; P1 0 + 0.
+(ERRATUM, found in the HardRock2 audit: this report first also claimed `LEFT+RIGHT` orphan NOTE_OFFs on pre-P1 vs P1. That was a harness race — the live-note thread was not joined before STOP — not an engine difference; with the join fix pre-P1 and P1 both pass. See docs/HARDROCK2_MAIN_FILL_TRANSITION_AUDIT.md.) Ordered-I/O turn wait max ≤ 107 µs.
 No clock restart in any scenario (`playRestarts`=1 = initial play only; `globalAllNotesOff`=1 = final STOP).
 
 ## 8. Findings
