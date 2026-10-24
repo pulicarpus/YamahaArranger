@@ -299,3 +299,42 @@ object StyleOverridePins {
             PinCheck(o.channel, o.pin, reason == "VALID", reason, o.scope, o.section)
         }
 }
+
+/** What re-applying one saved entry did: ACTIVE, UNVERIFIED, or the STALE_* reason (shown, not applied, never deleted). */
+data class RestoreResult(
+    val external: Boolean, val channel: Int, val scope: OverrideScope, val section: String?, val state: String,
+    val pin: StyleVoicePin? = null, val voice: ExternalVoice? = null, val reason: String = state
+)
+
+/**
+ * Re-applies a saved profile after a Style load. The Style load calls this while it HOLDS the engine operation lock, and that lock is a
+ * coroutine Mutex (not reentrant): [pdtaByFile] and [loadedPresetName] must therefore read the cached native snapshot and never take it.
+ * (The first version called the locking preset listing from here and blocked the main thread forever whenever a profile was saved.)
+ */
+object StyleOverrideRestorer {
+    fun restore(
+        record: StyleOverrideRecord,
+        pdtaByFile: () -> Map<String, String>,
+        loadedPresetName: (StyleVoicePin) -> String?,
+        setSf2Pin: (channel: Int, section: String?, pin: StyleVoicePin?) -> Boolean,
+        setExternal: (channel: Int, section: String?, voice: ExternalVoice) -> Boolean,
+        log: (String) -> Unit = {}
+    ): List<RestoreResult> {
+        val out = ArrayList<RestoreResult>()
+        val pdta = pdtaByFile()
+        val checks = StyleOverridePins.check(record, { pdta[it] }) { sf2, bank, pc -> loadedPresetName(StyleVoicePin(sf2, bank, pc, "", false)) }
+        checks.forEach { c ->
+            val section = if (c.scope == OverrideScope.ALL) null else c.section
+            val state = if (!c.valid) { setSf2Pin(c.channel, section, null); c.reason }
+                        else if (setSf2Pin(c.channel, section, c.pin)) "ACTIVE" else "UNVERIFIED"
+            out += RestoreResult(false, c.channel, c.scope, c.section, state, pin = c.pin, reason = c.reason)
+            log("CPV restore ch=${c.channel} ${c.scope} ${c.section ?: "*"} ${c.pin.soundFontName} ${c.pin.bank}:${c.pin.program} '${c.pin.presetName}' ${c.reason}")
+        }
+        record.externalOverrides.forEach { e ->
+            val ok = setExternal(e.channel, e.section, e.voice)
+            out += RestoreResult(true, e.channel, e.scope, e.section, if (ok) "ACTIVE" else "UNVERIFIED", voice = e.voice)
+            log("VOICE OVERRIDE restore ch=${e.channel} ${e.scope} ${e.section ?: "*"} ${e.voice.msb}:${e.voice.lsb}:${e.voice.program} ${if (ok) "ACTIVE" else "UNVERIFIED"}")
+        }
+        return out
+    }
+}

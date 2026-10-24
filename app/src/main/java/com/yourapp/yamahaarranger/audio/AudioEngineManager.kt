@@ -412,6 +412,15 @@ class AudioEngineManager @Inject constructor(
     /** SF2 preset-data fingerprint of a loaded font ("" when unavailable); identifies content, not just the file name. */
     fun soundFontPdta(soundFontId: Long): String = if (soundFontId > 0) bridge.nativeFontPdta(soundFontId) else ""
 
+    /**
+     * Preset-data fingerprint per loaded SF2 file, read from the cached native snapshot WITHOUT the readiness lock.
+     * Safe to call while [ReadyToPlayGate.operations] is held (a Style load does); [loadedSoundFontPresets] is not: it takes that
+     * non-reentrant Mutex inside runBlocking and would block the calling thread forever.
+     */
+    fun soundFontPdtaByFile(): Map<String, String> =
+        SoundFontPresetCatalog.parse(bridge.nativeGetSoundFontPresets()).distinctBy { it.soundFontName }
+            .associate { it.soundFontName to soundFontPdta(it.soundFontId) }
+
     /** Loaded preset for a saved pin. Reads the cached native snapshot without the readiness lock. */
     fun findLoadedPreset(pin: com.yourapp.yamahaarranger.style.StyleVoicePin): SfPreset? =
         SoundFontPresetCatalog.parse(bridge.nativeGetSoundFontPresets()).firstOrNull {

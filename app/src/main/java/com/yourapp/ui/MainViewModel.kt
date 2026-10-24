@@ -1024,8 +1024,8 @@ class MainViewModel @Inject constructor(
         val dirty = w.overrides != sv.overrides || w.externalOverrides != sv.externalOverrides
         return StyleEditorUiState(dirty, overridesWritable, sv.savedAt, w.revision, message, _styleEditorUi.value.auditioning)
     }
-    private fun loadedPdtaByFile(): Map<String, String> =
-        audioEngine.loadedSoundFontPresets().distinctBy { it.soundFontName }.associate { it.soundFontName to audioEngine.soundFontPdta(it.soundFontId) }
+    /** Lock-free: the Style load calls this while holding the engine operation lock (see StyleOverrideRestorer). */
+    private fun loadedPdtaByFile(): Map<String, String> = audioEngine.soundFontPdtaByFile()
 
     private fun refreshAssignmentsFromRecord() {
         val record = currentOverrides
@@ -1042,27 +1042,13 @@ class MainViewModel @Inject constructor(
         val record = currentOverrides
         overrideStates.clear()
         if (record != null) {
-            val pdta = loadedPdtaByFile()
-            val checks = com.yourapp.yamahaarranger.style.StyleOverridePins.check(record, { pdta[it] }) { sf2, bank, pc ->
-                audioEngine.findLoadedPreset(com.yourapp.yamahaarranger.style.StyleVoicePin(sf2, bank, pc, "", false))?.name
-            }
-            checks.forEach { c ->
-                val all = c.scope == com.yourapp.yamahaarranger.style.OverrideScope.ALL
-                val state = if (!c.valid) {
-                    if (all) arrangerBrain.setStyleVoicePin(c.channel, null) else arrangerBrain.setStyleSectionVoicePin(c.section!!, c.channel, null)
-                    c.reason
-                } else {
-                    val applied = if (all) arrangerBrain.setStyleVoicePin(c.channel, c.pin) else arrangerBrain.setStyleSectionVoicePin(c.section!!, c.channel, c.pin)
-                    if (applied) "ACTIVE" else "UNVERIFIED"
-                }
-                overrideStates[stateKey(false, c.scope, c.section, c.channel)] = state
-                DebugLog.add("CPV restore ch=${c.channel} ${c.scope} ${c.section ?: "*"} ${c.pin.soundFontName} ${c.pin.bank}:${c.pin.program} '${c.pin.presetName}' ${c.reason}")
-            }
-            record.externalOverrides.forEach { e ->
-                val ok = arrangerBrain.setStyleExternalVoice(e.section, e.channel, e.voice)
-                overrideStates[stateKey(true, e.scope, e.section, e.channel)] = if (ok) "ACTIVE" else "UNVERIFIED"
-                DebugLog.add("VOICE OVERRIDE restore ch=${e.channel} ${e.scope} ${e.section ?: "*"} ${e.voice.msb}:${e.voice.lsb}:${e.voice.program} ${if (ok) "ACTIVE" else "UNVERIFIED"}")
-            }
+            val results = com.yourapp.yamahaarranger.style.StyleOverrideRestorer.restore(record,
+                pdtaByFile = { loadedPdtaByFile() },
+                loadedPresetName = { pin -> audioEngine.findLoadedPreset(pin)?.name },
+                setSf2Pin = { channel, section, pin -> if (section == null) arrangerBrain.setStyleVoicePin(channel, pin) else arrangerBrain.setStyleSectionVoicePin(section, channel, pin) },
+                setExternal = { channel, section, voice -> arrangerBrain.setStyleExternalVoice(section, channel, voice) },
+                log = { DebugLog.add(it) })
+            results.forEach { overrideStates[stateKey(it.external, it.scope, it.section, it.channel)] = it.state }
         }
         refreshAssignmentsFromRecord()
     }
@@ -1668,7 +1654,11 @@ class MainViewModel @Inject constructor(
                     savedOverrides = saved.record
                     overridesWritable = saved.writable
                     DebugLog.add("CPV overrides style=$fileName status=${saved.status} entries=${saved.record?.overrides?.size ?: 0}")
-                    restoreStyleOverrides()
+                    // Off the main thread: pinning presets is native work, and this block holds the engine operation lock.
+                    val restoreStarted = System.nanoTime()
+                    DebugLog.add("STYLE LOAD stage=restoreOverrides begin thread=${Thread.currentThread().name}")
+                    withContext(Dispatchers.Default) { restoreStyleOverrides() }
+                    DebugLog.add("STYLE LOAD stage=restoreOverrides end ms=${(System.nanoTime() - restoreStarted) / 1_000_000}")
                     // Register destinations before publishing READY; the first note must not race a UI collector.
                     midiInputManager.setMixerStyleChannels(_voiceAssignments.value.map { it.channel }.toSet())
                     syncMixerMidiMute()
