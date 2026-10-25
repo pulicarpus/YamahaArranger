@@ -68,6 +68,7 @@ fun StyleVoiceEditorOverlay(vm: MainViewModel) {
         onDrumMap = { row, scope, output, notes, done -> vm.editorApplyDrumMap(row.section, row.destinationChannel, scope, output, notes, done) },
         onAuditionNotes = { row, original, notes, done -> vm.editorAudition(row, null, original, done, notes) },
         hasExtras = vm.editorHasExtras(),
+        keyCoverage = { row -> vm.editorKeyCoverage(row) },
         deviceCatalog = remember(library) { vm.editorDeviceCatalog() },
         rememberedPick = memory?.voices?.get("STYLE_EDITOR")?.itemKey,
         onRememberPick = { key -> vm.rememberVoicePosition("STYLE_EDITOR", com.yourapp.yamahaarranger.browser.SavedPosition(key.substringBefore('|'), key)) }

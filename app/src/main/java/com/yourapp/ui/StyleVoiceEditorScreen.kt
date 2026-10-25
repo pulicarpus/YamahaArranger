@@ -99,8 +99,8 @@ class StyleVoiceEditorActions(
     val hasExtras: Boolean = false,
     /** Named PSR-E343 voices from the user's own Yamaha Data List file (empty when none was supplied). */
     val deviceCatalog: List<ExternalVoice> = emptyList(),
-    /** Evidence that a drum target note has (or lacks) a sample in the chosen kit; null = not provable. */
-    val targetNoteWarning: (StyleVoiceRow, Int) -> String? = { _, _ -> null }
+    /** Keys of the kit now chosen for this Rhythm part that have a sample (read from the SF2 zone tables); null = not provable. */
+    val keyCoverage: suspend (StyleVoiceRow) -> Set<Int>? = { null }
 )
 
 private val SvBlack = Color(0xFF080A0D)
@@ -585,6 +585,14 @@ private fun DrumMapDialog(r: StyleVoiceRow, actions: StyleVoiceEditorActions, on
         val usage = remember(scope) { actions.drumUsage(if (scope == EditScope.THIS_SECTION) r.section else null, r.destinationChannel) }
         val sources = (usage.keys + targets.keys).toSortedSet().toList()
         var error by remember { mutableStateOf<String?>(null) }
+        var coverage by remember { mutableStateOf<Set<Int>?>(null) }
+        LaunchedEffect(r.section, r.destinationChannel) { coverage = actions.keyCoverage(r) }
+        fun noteHint(note: Int): String = when {
+            output == DrumOutput.MIDI_OUT -> "external module: not checkable"
+            coverage == null -> "sample not provable"
+            note in coverage!! -> "sample present"
+            else -> "NO SAMPLE on this note (silent)"
+        }
         fun target(src: Int) = targets[src] ?: src
         fun setTarget(src: Int, value: Int) { targets[src] = value.coerceIn(0, 127) }
         fun shiftAll(delta: Int) { sources.forEach { setTarget(it, target(it) + delta) } }
@@ -634,7 +642,8 @@ private fun DrumMapDialog(r: StyleVoiceRow, actions: StyleVoiceEditorActions, on
                         HeaderButton("▶", enabled = !actions.isPlaying && !actions.auditioning) { actions.onAuditionNotes(r, false, listOf(t)) { it?.let(onToast) } }
                         Column(Modifier.width(128.dp)) {
                             Text(noteLabel(t), color = if (changed) SvBlue else SvText, fontSize = 11.sp, fontFamily = FontFamily.Monospace, maxLines = 1)
-                            Text(actions.targetNoteWarning(r, t) ?: "sample not verified", color = SvDim, fontSize = 9.sp, maxLines = 2)
+                            val hint = noteHint(t)
+                            Text(hint, color = if (hint.startsWith("NO SAMPLE")) voiceStatusColor(VoiceStatus.MISSING) else SvDim, fontSize = 9.sp, maxLines = 2)
                         }
                     }
                     Box(Modifier.fillMaxWidth().height(1.dp).background(SvLine))
@@ -654,7 +663,7 @@ private fun DrumMapDialog(r: StyleVoiceRow, actions: StyleVoiceEditorActions, on
                 Box(Modifier.weight(1f))
                 HeaderButton("CLOSE") { actions.onAuditionStop(); onClose() }
             }
-            Text("The 'sample not verified' hint means the app cannot prove a sample exists on that note; listen with ▶. Audition needs the Style stopped.", color = SvDim, fontSize = 10.sp)
+            Text("The hint under a target is read from the SoundFont's own zone tables (key ranges only). 'not provable' means the app could not read it: listen with ▶. Audition needs the Style stopped.", color = SvDim, fontSize = 10.sp)
         }
     }
 }

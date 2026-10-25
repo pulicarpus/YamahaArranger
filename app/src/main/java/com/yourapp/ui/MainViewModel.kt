@@ -1540,6 +1540,23 @@ class MainViewModel @Inject constructor(
         if (file.isFile && file.length() <= 1_000_000) com.yourapp.yamahaarranger.style.StyleVoiceEditorOps.parseDeviceCatalog(file.readText()) else emptyList()
     } catch (e: Exception) { DebugLog.add("E343 catalog unreadable: ${e.javaClass.simpleName}"); emptyList() }
 
+    private val keyCoverageCache = HashMap<String, Set<Int>?>()
+    /** Keys with a sample in the kit of this Rhythm part: the pinned kit if any, else the Style's resolved kit. Read from the SF2 file's zone tables; null = not provable. */
+    suspend fun editorKeyCoverage(row: com.yourapp.yamahaarranger.style.StyleVoiceRow): Set<Int>? = withContext(Dispatchers.IO) {
+        val pin = com.yourapp.yamahaarranger.style.StyleOverrideResolver.sf2(currentOverrides, row.section, row.destinationChannel)?.pin
+        val file = pin?.soundFontName ?: row.actualSoundFont.takeIf { it.isNotBlank() }
+        val bank = pin?.bank ?: row.actualBank
+        val program = pin?.program ?: row.actualProgram
+        if (file == null || bank == null || program == null) return@withContext null
+        val key = "$file|$bank|$program"
+        synchronized(keyCoverageCache) { if (keyCoverageCache.containsKey(key)) return@withContext keyCoverageCache[key] }
+        val uri = contentResolver.listSoundFonts().firstOrNull { it.second == file }?.first
+        val keys = try { uri?.let { contentResolver.openInputStream(it)?.buffered()?.use { s -> com.yourapp.yamahaarranger.style.Sf2KeyCoverage.keys(s, bank, program) } } }
+            catch (e: Exception) { DebugLog.add("Key coverage unreadable: ${e.javaClass.simpleName}"); null }
+        synchronized(keyCoverageCache) { keyCoverageCache[key] = keys }
+        keys
+    }
+
     fun editorHasExtras(): Boolean = currentOverrides?.let { it.octaveShifts.isNotEmpty() || it.drumMaps.isNotEmpty() } ?: false
 
     /** Effective octave shown in the editor (section-specific, then part-wide). */

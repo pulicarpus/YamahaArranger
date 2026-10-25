@@ -101,6 +101,16 @@ jobs:
           set -euo pipefail
           python3 tools/test_rtdiag.py --out evidence/v2-rosita --rosita --only com.yourapp.rtdiag.StyleEditorV2Test 2>&1 | tee evidence/v2-rosita.log
           python3 tools/test_rtdiag.py --out evidence/v2-hr2 --rosita --style tests/fixtures/hardrock2/HardRock2.S578.prs --style-name HardRock2.S578.prs --only com.yourapp.rtdiag.StyleEditorV2Test 2>&1 | tee evidence/v2-hr2.log
+      - name: Real BASSMIDI with a synthetic kendang-like SF2 (3 sample keys), style notes silent and mapped targets audible
+        if: github.ref == 'refs/heads/experiment/style-editor-v2'
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/bass-linux /tmp/bassmidi-linux
+          curl -fL --retry 3 https://www.un4seen.com/files/bass24-linux.zip -o /tmp/bass-linux.zip
+          curl -fL --retry 3 https://www.un4seen.com/files/bassmidi24-linux.zip -o /tmp/bassmidi-linux.zip
+          unzip -q /tmp/bass-linux.zip -d /tmp/bass-linux
+          unzip -q /tmp/bassmidi-linux.zip -d /tmp/bassmidi-linux
+          python3 tools/test_drum_map_real_bass.py /tmp/bass-linux /tmp/bassmidi-linux --out evidence/drum-map-real 2>&1 | tee evidence/drum-map-real.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:

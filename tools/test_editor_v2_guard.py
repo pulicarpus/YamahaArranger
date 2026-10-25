@@ -7,8 +7,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 BASE = '8dc434b'
 SEQ = 'app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt'
-ALLOWED_PREFIX = ('app/src/main/java/com/yourapp/ui/', 'tests/cpv/', 'tests/rtdiag/', 'docs/', 'tools/test_', '.github/workflows/style-voice-editor.yml', 'app/src/main/assets/')
-ALLOWED = {SEQ, 'app/src/main/java/com/yourapp/yamahaarranger/style/StyleOverrideStore.kt', 'app/src/main/java/com/yourapp/yamahaarranger/style/StyleVoiceEditorOps.kt',
+ALLOWED_PREFIX = ('app/src/main/java/com/yourapp/ui/', 'tests/cpv/', 'tests/rtdiag/', 'tests/drum_map_real_bass_test.cpp', 'docs/', 'tools/test_', '.github/workflows/style-voice-editor.yml', 'app/src/main/assets/')
+ALLOWED = {SEQ, 'app/src/main/java/com/yourapp/yamahaarranger/style/StyleOverrideStore.kt', 'app/src/main/java/com/yourapp/yamahaarranger/style/StyleVoiceEditorOps.kt', 'app/src/main/java/com/yourapp/yamahaarranger/style/Sf2KeyCoverage.kt',
            'app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt', 'app/src/main/java/com/yourapp/yamahaarranger/audio/AudioEngineManager.kt'}
 def git(*a): return subprocess.check_output(['git', *a], cwd=ROOT, text=True)
 changed = set(git('diff', '--name-only', BASE, 'HEAD').split()) | set(git('diff', '--name-only', BASE).split()) | \
