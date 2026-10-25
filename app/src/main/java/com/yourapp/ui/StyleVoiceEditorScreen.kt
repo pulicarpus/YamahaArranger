@@ -42,6 +42,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.yourapp.yamahaarranger.style.CatalogPreset
+import com.yourapp.yamahaarranger.style.DrumOutput
 import com.yourapp.yamahaarranger.style.EditScope
 import com.yourapp.yamahaarranger.style.ExternalVoice
 import com.yourapp.yamahaarranger.style.OriginalRef
@@ -84,7 +85,22 @@ class StyleVoiceEditorActions(
     /** Rhythm audition of one chosen note (Style stopped, internal only): row, kit (null = current), original?, note, result. */
     val onAuditionNote: (StyleVoiceRow, Replacement?, Boolean, Int, (String?) -> Unit) -> Unit = { _, _, _, _, _ -> },
     /** Attached/skipped SoundFont files of the managed folder: file name to status text. */
-    val attachments: List<Pair<String, String>> = emptyList()
+    val attachments: List<Pair<String, String>> = emptyList(),
+    /** V2 octave shift of a melodic part: effective value and edit callback (null removes the level). */
+    val octaveOf: (String, Int) -> Int = { _, _ -> 0 },
+    val onOctave: (StyleVoiceRow, EditScope, Int?, (String?) -> Unit) -> Unit = { _, _, _, _ -> },
+    /** V2 drum note map of Rhythm 1/2: notes the Style uses (section null = whole Style) with counts, the stored map of a level, APPLY. */
+    val drumUsage: (String?, Int) -> Map<Int, Int> = { _, _ -> emptyMap() },
+    val drumMapOf: (String, Int, EditScope, DrumOutput) -> Map<Int, Int> = { _, _, _, _ -> emptyMap() },
+    val onDrumMap: (StyleVoiceRow, EditScope, DrumOutput, Map<Int, Int>, (String?) -> Unit) -> Unit = { _, _, _, _, _ -> },
+    /** Audition a list of raw notes on a Rhythm part (Style stopped, internal only): original = the Style's own kit, else the current effective kit. */
+    val onAuditionNotes: (StyleVoiceRow, Boolean, List<Int>, (String?) -> Unit) -> Unit = { _, _, _, _ -> },
+    /** True when the working profile holds octave shifts or drum maps (enables RESET ALL). */
+    val hasExtras: Boolean = false,
+    /** Named PSR-E343 voices from the user's own Yamaha Data List file (empty when none was supplied). */
+    val deviceCatalog: List<ExternalVoice> = emptyList(),
+    /** Evidence that a drum target note has (or lacks) a sample in the chosen kit; null = not provable. */
+    val targetNoteWarning: (StyleVoiceRow, Int) -> String? = { _, _ -> null }
 )
 
 private val SvBlack = Color(0xFF080A0D)
@@ -185,7 +201,7 @@ private fun Header(inv: StyleVoiceInventory?, loaded: Boolean, output: String, a
         }
         if (actions != null && inv != null) {
             HeaderButton("SAVE PROFILE", enabled = actions.dirty && actions.writable) { actions.onSave(onToast) }
-            HeaderButton("RESET ALL", enabled = inv.flat.any { it.override != null }) { confirmReset = true }
+            HeaderButton("RESET ALL", enabled = inv.flat.any { it.override != null } || actions.hasExtras) { confirmReset = true }
         }
         HeaderButton("REFRESH", onClick = onRefresh)
         HeaderButton("CLOSE", onClick = onClose)
@@ -299,6 +315,8 @@ fun StatusBadge(status: VoiceStatus) {
 @Composable
 private fun DetailPanel(r: StyleVoiceRow?, inv: StyleVoiceInventory, actions: StyleVoiceEditorActions?, modifier: Modifier,
     onReplace: (StyleVoiceRow) -> Unit, onToast: (String) -> Unit) {
+    var showMap by remember(r?.section, r?.partIndex) { mutableStateOf(false) }
+    if (showMap && r != null && actions != null) DrumMapDialog(r, actions, onClose = { showMap = false }, onToast = onToast)
     Column(modifier.background(SvPanel, RoundedCornerShape(8.dp)).padding(10.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(5.dp)) {
         if (r == null) {
@@ -328,6 +346,8 @@ private fun DetailPanel(r: StyleVoiceRow?, inv: StyleVoiceInventory, actions: St
                     HeaderButton("RESET PART") { actions.onResetPart(r.destinationChannel) }
                 }
             }
+            if (r.readOnlyReason == null && StyleVoiceEditorOps.editable(r.destinationChannel)) OctaveControl(r, actions, onToast)
+            if (r.readOnlyReason == null && kitRow) HeaderButton("DRUM NOTE MAP", enabled = actions.writable) { showMap = true }
             if (r.readOnlyReason == null) {
                 val why = if (actions.isPlaying) "Stop the Style to audition: the test notes use this part's own channel." else null
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -420,6 +440,18 @@ fun ReplacePanel(row: StyleVoiceRow, actions: StyleVoiceEditorActions, onClose: 
                         Text(programLabel(v), color = SvDim, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
                     }
                 }
+                if (actions.deviceCatalog.isNotEmpty()) {
+                    Text("PSR-E343 voices from your Data List file (E343_VOICES.tsv)", color = SvDim, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    OutlinedTextField(query, { query = it }, singleLine = true, label = { Text("Search voice name") }, modifier = Modifier.fillMaxWidth())
+                    actions.deviceCatalog.filter { query.isBlank() || it.label.contains(query.trim(), ignoreCase = true) }.take(150).forEach { v ->
+                        Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).background(if (pickedExt == v) SvBlue.copy(alpha = 0.2f) else Color.Transparent)
+                            .clickable { pickedExt = v; error = null }.padding(horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(v.label, color = SvText, fontSize = 13.sp, modifier = Modifier.weight(1f), maxLines = 1)
+                            Text(programLabel(v), color = SvDim, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
+                        }
+                    }
+                } else Text("No PSR-E343 voice names: put the voice list from the Yamaha PSR-E343 Data List in /storage/emulated/0/YamahaArranger/E343_VOICES.tsv " +
+                    "(name, MSB, LSB, program 1-128 per line) to pick voices by name here.", color = SvDim, fontSize = 10.sp)
                 Text("Or type a Voice", color = SvDim, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     OutlinedTextField(msb, { msb = it; pickedExt = null }, singleLine = true, label = { Text("MSB") }, modifier = Modifier.weight(1f))
@@ -428,7 +460,7 @@ fun ReplacePanel(row: StyleVoiceRow, actions: StyleVoiceEditorActions, onClose: 
                     OutlinedTextField(label, { label = it }, singleLine = true, label = { Text("Name (yours)") }, modifier = Modifier.weight(1.4f))
                 }
                 typed?.second?.let { Text(it, color = voiceStatusColor(VoiceStatus.MISSING), fontSize = 11.sp) }
-                Text("This app has no built-in PSR-E343 Voice list. Numbers are sent as typed (Program shown 1-based, sent 0-based) and are not verified against the instrument." +
+                Text("The app ships no built-in PSR-E343 Voice list (none could be verified). Numbers are sent as typed (Program shown 1-based, sent 0-based) and are not verified against the instrument." +
                     if (actions.midiOut) "" else " MIDI OUT is off: the Voice is stored and sent when MIDI OUT is turned on.", color = SvDim, fontSize = 10.sp)
             }
         }
@@ -518,5 +550,111 @@ private fun Field(label: String, value: String, note: String?) {
         Text(label.uppercase(), color = SvDim, fontSize = 9.sp, fontWeight = FontWeight.Bold)
         Text(value, color = SvText, fontSize = 12.sp)
         if (note != null) Text(note, color = SvDim, fontSize = 9.sp)
+    }
+}
+
+
+@Composable
+private fun OctaveControl(r: StyleVoiceRow, actions: StyleVoiceEditorActions, onToast: (String) -> Unit) {
+    var scope by remember(r.section, r.destinationChannel) { mutableStateOf(EditScope.THIS_SECTION) }
+    val current = actions.octaveOf(r.section, r.destinationChannel)
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text("OCTAVE SHIFT", color = SvDim, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            TabChip("THIS SECTION", scope == EditScope.THIS_SECTION) { scope = EditScope.THIS_SECTION }
+            TabChip("ALL SECTIONS", scope == EditScope.ALL_SECTIONS) { scope = EditScope.ALL_SECTIONS }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            HeaderButton("−", enabled = actions.writable && current > StyleVoiceEditorOps.OCTAVE_MIN) { actions.onOctave(r, scope, current - 1) { it?.let(onToast) } }
+            Text(if (current > 0) "+$current" else "$current", color = SvText, fontSize = 15.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+            HeaderButton("+", enabled = actions.writable && current < StyleVoiceEditorOps.OCTAVE_MAX) { actions.onOctave(r, scope, current + 1) { it?.let(onToast) } }
+            HeaderButton("RESET", enabled = actions.writable) { actions.onOctave(r, scope, null) { it?.let(onToast) } }
+        }
+        Text("Moves this part up or down whole octaves (-2 to +2) after the chord is applied. Chord root, RIGHT, LEFT and Master Transpose are not affected. " +
+            "Works for the internal sound and MIDI OUT. Held notes finish at their own pitch; the change applies to the next notes. Press SAVE PROFILE to keep it.", color = SvDim, fontSize = 10.sp)
+    }
+}
+
+/** Rhythm 1/2 drum note map: Style note -> note actually played, per output and scope. Velocity, timing and duration are never changed. */
+@Composable
+private fun DrumMapDialog(r: StyleVoiceRow, actions: StyleVoiceEditorActions, onClose: () -> Unit, onToast: (String) -> Unit) {
+    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        var scope by remember { mutableStateOf(EditScope.ALL_SECTIONS) }
+        var output by remember { mutableStateOf(DrumOutput.INTERNAL) }
+        val targets = remember(scope, output) { androidx.compose.runtime.mutableStateMapOf<Int, Int>().apply { putAll(actions.drumMapOf(r.section, r.destinationChannel, scope, output)) } }
+        val usage = remember(scope) { actions.drumUsage(if (scope == EditScope.THIS_SECTION) r.section else null, r.destinationChannel) }
+        val sources = (usage.keys + targets.keys).toSortedSet().toList()
+        var error by remember { mutableStateOf<String?>(null) }
+        fun target(src: Int) = targets[src] ?: src
+        fun setTarget(src: Int, value: Int) { targets[src] = value.coerceIn(0, 127) }
+        fun shiftAll(delta: Int) { sources.forEach { setTarget(it, target(it) + delta) } }
+        val effective = sources.associateWith { target(it) }.filter { (k, v) -> k != v }
+        Column(Modifier.widthIn(max = 860.dp).heightIn(max = 600.dp).background(SvPanel, RoundedCornerShape(10.dp)).padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("DRUM NOTE MAP · ${r.partRole.uppercase()} · ${r.sectionLabel}", color = SvGreen, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text("Style note -> note played. Use it when a drum or kendang SoundFont has its samples on other notes than the Yamaha Style. The Style file is not changed; " +
+                "velocity, timing, duration and order stay as authored. Notes you do not change play as written.", color = SvDim, fontSize = 11.sp)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                TabChip("INTERNAL SF2", output == DrumOutput.INTERNAL) { output = DrumOutput.INTERNAL }
+                TabChip("MIDI OUT", output == DrumOutput.MIDI_OUT) { output = DrumOutput.MIDI_OUT }
+                Box(Modifier.weight(1f))
+                TabChip("THIS SECTION", scope == EditScope.THIS_SECTION) { scope = EditScope.THIS_SECTION }
+                TabChip("ALL SECTIONS", scope == EditScope.ALL_SECTIONS) { scope = EditScope.ALL_SECTIONS }
+            }
+            Text(if (output == DrumOutput.INTERNAL) "Internal sound: the map is used by the SoundFont kit chosen for this Rhythm part."
+                else "MIDI OUT: separate map for the external module (its kit numbering can differ). Audition plays the internal kit only.", color = SvDim, fontSize = 10.sp)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("SHIFT ALL TARGETS", color = SvDim, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                HeaderButton("−12") { shiftAll(-12) }; HeaderButton("−1") { shiftAll(-1) }; HeaderButton("+1") { shiftAll(1) }; HeaderButton("+12") { shiftAll(12) }
+                Box(Modifier.weight(1f))
+                HeaderButton("PREVIEW ORIGINAL", enabled = !actions.isPlaying && !actions.auditioning && r.program != null && sources.isNotEmpty()) {
+                    actions.onAuditionNotes(r, true, sources.take(8)) { it?.let(onToast) }
+                }
+                HeaderButton("PREVIEW MAPPED", enabled = !actions.isPlaying && !actions.auditioning && sources.isNotEmpty()) {
+                    actions.onAuditionNotes(r, false, sources.take(8).map { target(it) }) { it?.let(onToast) }
+                }
+                if (actions.auditioning) HeaderButton("STOP") { actions.onAuditionStop() }
+            }
+            if (sources.isEmpty()) Text("The Style plays no notes on this Rhythm part in the chosen scope.", color = SvDim, fontSize = 12.sp)
+            LazyColumn(Modifier.fillMaxWidth().weight(1f, fill = false).heightIn(min = 120.dp, max = 330.dp)) {
+                items(sources, key = { it }) { src ->
+                    val t = target(src)
+                    val changed = t != src
+                    Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).background(if (changed) SvBlue.copy(alpha = 0.12f) else Color.Transparent).padding(horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Column(Modifier.width(150.dp)) {
+                            Text("SOURCE " + noteLabel(src), color = SvText, fontSize = 12.sp, fontFamily = FontFamily.Monospace, maxLines = 1)
+                            Text("used ${usage[src] ?: 0}×", color = SvDim, fontSize = 10.sp)
+                        }
+                        HeaderButton("▶", enabled = !actions.isPlaying && !actions.auditioning && r.program != null) { actions.onAuditionNotes(r, true, listOf(src)) { it?.let(onToast) } }
+                        Text("→", color = SvDim, fontSize = 14.sp)
+                        HeaderButton("−") { setTarget(src, t - 1) }
+                        OutlinedTextField(t.toString(), { v -> v.toIntOrNull()?.let { n -> setTarget(src, n) } }, singleLine = true, label = { Text("TARGET") }, modifier = Modifier.width(96.dp))
+                        HeaderButton("+") { setTarget(src, t + 1) }
+                        androidx.compose.material3.Slider(value = t.toFloat(), onValueChange = { setTarget(src, it.toInt()) }, valueRange = 0f..127f, modifier = Modifier.weight(1f))
+                        HeaderButton("▶", enabled = !actions.isPlaying && !actions.auditioning) { actions.onAuditionNotes(r, false, listOf(t)) { it?.let(onToast) } }
+                        Column(Modifier.width(128.dp)) {
+                            Text(noteLabel(t), color = if (changed) SvBlue else SvText, fontSize = 11.sp, fontFamily = FontFamily.Monospace, maxLines = 1)
+                            Text(actions.targetNoteWarning(r, t) ?: "sample not verified", color = SvDim, fontSize = 9.sp, maxLines = 2)
+                        }
+                    }
+                    Box(Modifier.fillMaxWidth().height(1.dp).background(SvLine))
+                }
+            }
+            val shared = effective.entries.groupBy({ it.value }, { it.key }).filter { it.value.size > 1 }
+            if (shared.isNotEmpty()) Text("Several Style notes share a target: " + shared.entries.joinToString(" · ") { "${it.value.joinToString("+")}→${it.key}" } +
+                ". They retrigger the same sample; nothing is dropped.", color = voiceStatusColor(VoiceStatus.AMBIGUOUS), fontSize = 11.sp)
+            error?.let { Text(it, color = voiceStatusColor(VoiceStatus.MISSING), fontSize = 12.sp) }
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                HeaderButton("APPLY", enabled = actions.writable) {
+                    actions.onDrumMap(r, scope, output, effective) { err -> if (err == null) { onToast("Note map applied — press SAVE PROFILE to keep it."); onClose() } else error = err }
+                }
+                HeaderButton("RESET MAP", enabled = actions.writable) {
+                    actions.onDrumMap(r, scope, output, emptyMap()) { err -> if (err == null) { onToast("Note map removed for this scope."); onClose() } else error = err }
+                }
+                Box(Modifier.weight(1f))
+                HeaderButton("CLOSE") { actions.onAuditionStop(); onClose() }
+            }
+            Text("The 'sample not verified' hint means the app cannot prove a sample exists on that note; listen with ▶. Audition needs the Style stopped.", color = SvDim, fontSize = 10.sp)
+        }
     }
 }

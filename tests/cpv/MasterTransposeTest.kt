@@ -189,7 +189,10 @@ class MasterTransposeTest {
         while (dir != null && !File(dir, "app/src/main/java").exists()) dir = dir.parentFile
         val seq = File(dir, "app/src/main/java/com/yourapp/yamahaarranger/arranger/StyleSequencer.kt").readText()
         assertFalse("no post-CASM master add", seq.contains("+master)") || seq.contains("if(isDrumPart) 0 else masterTranspose"))
-        assertTrue(seq.contains("val note=(transformed+(channelOverride?.transpose?:0)).coerceIn(0,127)"))
+        // Style Editor V2 adds ONE explicit term after CASM: the per-part octave shift chosen in the editor (effectiveOctave, profile data). It is independent of Master Transpose.
+        assertTrue(seq.contains("val note=(transformed+(channelOverride?.transpose?:0)+12*octave).coerceIn(0,127)"))
+        assertTrue(seq.contains("val octave=if(isDrumPart) 0 else effectiveOctave(section.name,destinationChannel)"))
+        assertFalse("octave term never involves the master transpose", seq.lines().filter { it.contains("12*octave") || it.contains("effectiveOctave") }.any { it.contains("master", ignoreCase = true) })
         for (line in seq.lines().filter { it.contains("masterTranspose") && !it.trim().startsWith("*") })
             assertTrue("masterTranspose is only the diagnostic mirror: $line", line.contains("@Volatile private var masterTranspose") || line.contains("fun setMasterTranspose") || line.contains("fun masterTransposeValue"))
         val brain = File(dir, "app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt").readText()

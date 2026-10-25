@@ -1021,7 +1021,7 @@ class MainViewModel @Inject constructor(
     private fun editorSnapshot(message: String = _styleEditorUi.value.message): StyleEditorUiState {
         val empty = com.yourapp.yamahaarranger.style.StyleOverrideRecord(currentStyleSha ?: "0".repeat(64), currentStyleFileName, emptyList())
         val w = currentOverrides ?: empty; val sv = savedOverrides ?: empty
-        val dirty = w.overrides != sv.overrides || w.externalOverrides != sv.externalOverrides
+        val dirty = w.overrides != sv.overrides || w.externalOverrides != sv.externalOverrides || w.octaveShifts != sv.octaveShifts || w.drumMaps != sv.drumMaps
         return StyleEditorUiState(dirty, overridesWritable, sv.savedAt, w.revision, message, _styleEditorUi.value.auditioning)
     }
     /** Lock-free: the Style load calls this while holding the engine operation lock (see StyleOverrideRestorer). */
@@ -1047,8 +1047,13 @@ class MainViewModel @Inject constructor(
                 loadedPresetName = { pin -> audioEngine.findLoadedPreset(pin)?.name },
                 setSf2Pin = { channel, section, pin -> if (section == null) arrangerBrain.setStyleVoicePin(channel, pin) else arrangerBrain.setStyleSectionVoicePin(section, channel, pin) },
                 setExternal = { channel, section, voice -> arrangerBrain.setStyleExternalVoice(section, channel, voice) },
-                log = { DebugLog.add(it) })
-            results.forEach { overrideStates[stateKey(it.external, it.scope, it.section, it.channel)] = it.state }
+                log = { DebugLog.add(it) },
+                setOctave = { channel, section, octaves -> arrangerBrain.setStyleOctaveShift(section, channel, octaves) },
+                setDrumMap = { channel, section, output, notes -> arrangerBrain.setStyleDrumMap(section, channel, output.ordinal, notes) })
+            results.forEach { overrideStates[when (it.kind) {
+                "OCTAVE" -> extraKey(false, it.channel, it.scope, it.section, null)
+                "DRUM_MAP" -> extraKey(true, it.channel, it.scope, it.section, it.output)
+                else -> stateKey(it.external, it.scope, it.section, it.channel) }] = it.state }
         }
         refreshAssignmentsFromRecord()
     }
@@ -1453,7 +1458,18 @@ class MainViewModel @Inject constructor(
     fun editorExternalChoices(): List<com.yourapp.yamahaarranger.style.ExternalVoice> =
         liveLibrary.value.manifest.externalVoices.map { com.yourapp.yamahaarranger.style.ExternalVoice(it.voice.msb, it.voice.lsb, it.voice.program, it.voice.label) }
 
+    private fun extraKey(drum: Boolean, channel: Int, scope: com.yourapp.yamahaarranger.style.OverrideScope, section: String?, output: com.yourapp.yamahaarranger.style.DrumOutput?) =
+        "${if (drum) "D" else "O"}|${output ?: "-"}|$scope|${section ?: "*"}|$channel"
+
     private fun executeOverrideChanges(old: com.yourapp.yamahaarranger.style.StyleOverrideRecord?, new: com.yourapp.yamahaarranger.style.StyleOverrideRecord?) {
+        for (c in com.yourapp.yamahaarranger.style.StyleVoiceEditorOps.diffExtras(old, new)) {
+            val section = if (c.scope == com.yourapp.yamahaarranger.style.OverrideScope.ALL) null else c.section
+            val key = extraKey(c.drum, c.channel, c.scope, c.section, c.output)
+            val ok = if (c.drum) arrangerBrain.setStyleDrumMap(section, c.channel, c.output!!.ordinal, c.notes)
+                     else arrangerBrain.setStyleOctaveShift(section, c.channel, c.octaves)
+            val present = if (c.drum) c.notes != null else c.octaves != null
+            if (present) overrideStates[key] = if (ok) "ACTIVE" else "UNVERIFIED" else overrideStates.remove(key)
+        }
         for (c in com.yourapp.yamahaarranger.style.StyleVoiceEditorOps.diff(old, new)) {
             val all = c.scope == com.yourapp.yamahaarranger.style.OverrideScope.ALL
             val key = stateKey(c.external, c.scope, c.section, c.channel)
@@ -1489,6 +1505,53 @@ class MainViewModel @Inject constructor(
             onResult(if (problem != null) "Applied, but the engine could not verify it (preset not loaded?). It is kept and marked UNVERIFIED." else null)
         }
     }
+
+    /** Octave shift of a melodic part: APPLY plays at once for the next notes (held notes finish at their own pitch). */
+    fun editorApplyOctave(section: String, channel: Int, scope: com.yourapp.yamahaarranger.style.EditScope, octaves: Int?, onResult: (String?) -> Unit) {
+        if (currentStyleSha == null) return onResult("No Style is loaded.")
+        if (!overridesWritable) return onResult("This Style's stored profile is newer or damaged; it is kept read-only.")
+        viewModelScope.launch(Dispatchers.Default) {
+            val old = currentOverrides ?: emptyProfile()
+            val next = try {
+                if (octaves == null) com.yourapp.yamahaarranger.style.StyleVoiceEditorOps.clearOctave(old, com.yourapp.yamahaarranger.style.EditTarget(section, channel, null), scope)
+                else com.yourapp.yamahaarranger.style.StyleVoiceEditorOps.applyOctave(old, com.yourapp.yamahaarranger.style.EditTarget(section, channel, null), scope, octaves)
+            } catch (e: IllegalArgumentException) { return@launch onResult(e.message ?: "Not allowed.") }
+            executeOverrideChanges(old, next); currentOverrides = next; refreshAssignmentsFromRecord(); onResult(null)
+        }
+    }
+
+    /** Drum note map of Rhythm 1/2 for one output; an empty [notes] removes the map of that scope. */
+    fun editorApplyDrumMap(section: String, channel: Int, scope: com.yourapp.yamahaarranger.style.EditScope, output: com.yourapp.yamahaarranger.style.DrumOutput,
+        notes: Map<Int, Int>, onResult: (String?) -> Unit) {
+        if (currentStyleSha == null) return onResult("No Style is loaded.")
+        if (!overridesWritable) return onResult("This Style's stored profile is newer or damaged; it is kept read-only.")
+        viewModelScope.launch(Dispatchers.Default) {
+            val old = currentOverrides ?: emptyProfile()
+            val next = try {
+                com.yourapp.yamahaarranger.style.StyleVoiceEditorOps.applyDrumMap(old, com.yourapp.yamahaarranger.style.EditTarget(section, channel, null), scope, output, notes)
+            } catch (e: IllegalArgumentException) { return@launch onResult(e.message ?: "Not allowed.") }
+            executeOverrideChanges(old, next); currentOverrides = next; refreshAssignmentsFromRecord(); onResult(null)
+        }
+    }
+
+    /** PSR-E343 voice names from the user's own Yamaha Data List file (/storage/emulated/0/YamahaArranger/E343_VOICES.tsv); empty when absent. */
+    fun editorDeviceCatalog(): List<com.yourapp.yamahaarranger.style.ExternalVoice> = try {
+        val file = java.io.File(android.os.Environment.getExternalStorageDirectory(), "YamahaArranger/E343_VOICES.tsv")
+        if (file.isFile && file.length() <= 1_000_000) com.yourapp.yamahaarranger.style.StyleVoiceEditorOps.parseDeviceCatalog(file.readText()) else emptyList()
+    } catch (e: Exception) { DebugLog.add("E343 catalog unreadable: ${e.javaClass.simpleName}"); emptyList() }
+
+    fun editorHasExtras(): Boolean = currentOverrides?.let { it.octaveShifts.isNotEmpty() || it.drumMaps.isNotEmpty() } ?: false
+
+    /** Effective octave shown in the editor (section-specific, then part-wide). */
+    fun editorOctave(section: String, channel: Int): Int = com.yourapp.yamahaarranger.style.StyleOverrideResolver.octave(currentOverrides, section, channel)
+    /** The stored map of exactly this level (what the dialog edits). */
+    fun editorDrumMap(section: String, channel: Int, scope: com.yourapp.yamahaarranger.style.EditScope, output: com.yourapp.yamahaarranger.style.DrumOutput): Map<Int, Int> {
+        val level = if (scope == com.yourapp.yamahaarranger.style.EditScope.ALL_SECTIONS) com.yourapp.yamahaarranger.style.OverrideScope.ALL else com.yourapp.yamahaarranger.style.OverrideScope.SECTION
+        return currentOverrides?.drumMaps?.firstOrNull { it.channel == channel && it.output == output && it.scope == level && (level == com.yourapp.yamahaarranger.style.OverrideScope.ALL || it.section == section) }?.notes ?: emptyMap()
+    }
+    /** Drum notes the Style plays on this Rhythm part with their counts (section null = whole Style). */
+    fun editorDrumUsage(section: String?, channel: Int): Map<Int, Int> =
+        drumAuditStyle?.let { com.yourapp.yamahaarranger.style.StyleVoiceEditorOps.drumNoteUsage(it.sections, section, channel) } ?: emptyMap()
 
     private fun editorReset(change: (com.yourapp.yamahaarranger.style.StyleOverrideRecord) -> com.yourapp.yamahaarranger.style.StyleOverrideRecord) {
         if (currentStyleSha == null) return

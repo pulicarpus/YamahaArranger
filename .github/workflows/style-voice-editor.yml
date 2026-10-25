@@ -2,7 +2,7 @@ name: Style Voice Inspector & Editor APK
 # Isolated experiment branch. Host safety suites must pass before the APK is built.
 on:
   push:
-    branches: [feature/style-voice-inspector-editor, experiment/multi-sf2-voice-selection, experiment/style-voice-browser, experiment/custom-sf2-drum-kit, feature/realtime-audit-metronome, feature/transpose-octave-acmp-left, experiment/p1-ordered-note-io, experiment/midi-out-voice-cache, fix/style-editor-reload-crash]
+    branches: [feature/style-voice-inspector-editor, experiment/multi-sf2-voice-selection, experiment/style-voice-browser, experiment/custom-sf2-drum-kit, feature/realtime-audit-metronome, feature/transpose-octave-acmp-left, experiment/p1-ordered-note-io, experiment/midi-out-voice-cache, fix/style-editor-reload-crash, experiment/style-editor-v2]
   workflow_dispatch: {}
 permissions:
   contents: read
@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   host:
-    if: github.ref == 'refs/heads/feature/style-voice-inspector-editor' || github.ref == 'refs/heads/experiment/multi-sf2-voice-selection' || github.ref == 'refs/heads/experiment/style-voice-browser' || github.ref == 'refs/heads/experiment/custom-sf2-drum-kit' || github.ref == 'refs/heads/feature/realtime-audit-metronome' || github.ref == 'refs/heads/feature/transpose-octave-acmp-left' || github.ref == 'refs/heads/experiment/p1-ordered-note-io' || github.ref == 'refs/heads/experiment/midi-out-voice-cache' || github.ref == 'refs/heads/fix/style-editor-reload-crash'
+    if: github.ref == 'refs/heads/feature/style-voice-inspector-editor' || github.ref == 'refs/heads/experiment/multi-sf2-voice-selection' || github.ref == 'refs/heads/experiment/style-voice-browser' || github.ref == 'refs/heads/experiment/custom-sf2-drum-kit' || github.ref == 'refs/heads/feature/realtime-audit-metronome' || github.ref == 'refs/heads/feature/transpose-octave-acmp-left' || github.ref == 'refs/heads/experiment/p1-ordered-note-io' || github.ref == 'refs/heads/experiment/midi-out-voice-cache' || github.ref == 'refs/heads/fix/style-editor-reload-crash' || github.ref == 'refs/heads/experiment/style-editor-v2'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -47,7 +47,9 @@ jobs:
       - name: Style Voice isolation guard
         run: |
           set -euo pipefail
-          if [ "$GITHUB_REF" = "refs/heads/fix/style-editor-reload-crash" ]; then
+          if [ "$GITHUB_REF" = "refs/heads/experiment/style-editor-v2" ]; then
+            python3 tools/test_editor_v2_guard.py 2>&1 | tee evidence/editor-v2-guard.log
+          elif [ "$GITHUB_REF" = "refs/heads/fix/style-editor-reload-crash" ]; then
             python3 tools/test_reload_fix_guard.py 2>&1 | tee evidence/reload-fix-guard.log
           elif [ "$GITHUB_REF" = "refs/heads/experiment/midi-out-voice-cache" ]; then
             python3 tools/test_midi_cache_guard.py 2>&1 | tee evidence/midi-cache-guard.log
@@ -77,15 +79,15 @@ jobs:
           python3 tools/test_r22_regressions.py --suite live --out evidence/live 2>&1 | tee evidence/live-reg.log
           python3 tools/test_registration_recall.py 2>&1 | tee evidence/registration-recall.log
       - name: Realtime diagnostics and metronome host tests
-        if: github.ref == 'refs/heads/feature/realtime-audit-metronome' || github.ref == 'refs/heads/feature/transpose-octave-acmp-left' || github.ref == 'refs/heads/experiment/p1-ordered-note-io' || github.ref == 'refs/heads/experiment/midi-out-voice-cache' || github.ref == 'refs/heads/fix/style-editor-reload-crash'
+        if: github.ref == 'refs/heads/feature/realtime-audit-metronome' || github.ref == 'refs/heads/feature/transpose-octave-acmp-left' || github.ref == 'refs/heads/experiment/p1-ordered-note-io' || github.ref == 'refs/heads/experiment/midi-out-voice-cache' || github.ref == 'refs/heads/fix/style-editor-reload-crash' || github.ref == 'refs/heads/experiment/style-editor-v2'
         run: |
           set -euo pipefail
           python3 tools/test_metronome.py --out evidence/metronome 2>&1 | tee evidence/metronome.log
           python3 tools/test_rtdiag.py --out evidence/rtdiag-jvm 2>&1 | tee evidence/rtdiag-jvm.log
-          if [ "$GITHUB_REF" = "refs/heads/experiment/p1-ordered-note-io" ] || [ "$GITHUB_REF" = "refs/heads/experiment/midi-out-voice-cache" ] || [ "$GITHUB_REF" = "refs/heads/fix/style-editor-reload-crash" ]; then CCS_EXPECT=p1 python3 tools/test_rtdiag.py --out evidence/chord-stutter --rosita --only com.yourapp.rtdiag.ChordChangeStutterTest 2>&1 | tee evidence/chord-stutter.log; fi
+          if [ "$GITHUB_REF" = "refs/heads/experiment/p1-ordered-note-io" ] || [ "$GITHUB_REF" = "refs/heads/experiment/midi-out-voice-cache" ] || [ "$GITHUB_REF" = "refs/heads/fix/style-editor-reload-crash" ] || [ "$GITHUB_REF" = "refs/heads/experiment/style-editor-v2" ]; then CCS_EXPECT=p1 python3 tools/test_rtdiag.py --out evidence/chord-stutter --rosita --only com.yourapp.rtdiag.ChordChangeStutterTest 2>&1 | tee evidence/chord-stutter.log; fi
           python3 tools/test_rtdiag_native.py --out evidence/rtdiag-native 2>&1 | tee evidence/rtdiag-native.log
       - name: MIDI OUT voice cache - unit contracts, HardRock2 fixture and ROSITA control
-        if: github.ref == 'refs/heads/experiment/midi-out-voice-cache' || github.ref == 'refs/heads/fix/style-editor-reload-crash'
+        if: github.ref == 'refs/heads/experiment/midi-out-voice-cache' || github.ref == 'refs/heads/fix/style-editor-reload-crash' || github.ref == 'refs/heads/experiment/style-editor-v2'
         run: |
           set -euo pipefail
           python3 tools/test_rtdiag.py --out evidence/midi-unit --unit --only com.yourapp.audio.MidiMixerOutputTest 2>&1 | tee evidence/midi-unit.log
@@ -93,6 +95,12 @@ jobs:
           SGAP_EXPECT=current python3 tools/test_rtdiag.py --out evidence/cache-rosita --rosita --only com.yourapp.rtdiag.SectionTransitionGapTest 2>&1 | tee evidence/cache-rosita.log
           SGAP_EXPECT=cache SGAP_ONLY=midiOutSetupBurstMainFillMain python3 tools/test_rtdiag.py --out evidence/cache-hr2-burst --rosita --style tests/fixtures/hardrock2/HardRock2.S578.prs --style-name HardRock2.S578.prs --only com.yourapp.rtdiag.SectionTransitionGapTest 2>&1 | tee evidence/cache-hr2-burst.log
           SGAP_EXPECT=cache SGAP_ONLY=midiOutSetupBurstMainFillMain,realVoiceChangesAreStillSentAndNeverRepeated python3 tools/test_rtdiag.py --out evidence/cache-rosita-burst --rosita --only com.yourapp.rtdiag.SectionTransitionGapTest 2>&1 | tee evidence/cache-rosita-burst.log
+      - name: Style Editor V2 - octave shift and drum note maps on the production chain (ROSITA + HardRock2)
+        if: github.ref == 'refs/heads/experiment/style-editor-v2'
+        run: |
+          set -euo pipefail
+          python3 tools/test_rtdiag.py --out evidence/v2-rosita --rosita --only com.yourapp.rtdiag.StyleEditorV2Test 2>&1 | tee evidence/v2-rosita.log
+          python3 tools/test_rtdiag.py --out evidence/v2-hr2 --rosita --style tests/fixtures/hardrock2/HardRock2.S578.prs --style-name HardRock2.S578.prs --only com.yourapp.rtdiag.StyleEditorV2Test 2>&1 | tee evidence/v2-hr2.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -103,7 +111,7 @@ jobs:
           if-no-files-found: error
   android:
     needs: host
-    if: github.ref == 'refs/heads/feature/style-voice-inspector-editor' || github.ref == 'refs/heads/experiment/multi-sf2-voice-selection' || github.ref == 'refs/heads/experiment/style-voice-browser' || github.ref == 'refs/heads/experiment/custom-sf2-drum-kit' || github.ref == 'refs/heads/feature/realtime-audit-metronome' || github.ref == 'refs/heads/feature/transpose-octave-acmp-left' || github.ref == 'refs/heads/experiment/p1-ordered-note-io' || github.ref == 'refs/heads/experiment/midi-out-voice-cache' || github.ref == 'refs/heads/fix/style-editor-reload-crash'
+    if: github.ref == 'refs/heads/feature/style-voice-inspector-editor' || github.ref == 'refs/heads/experiment/multi-sf2-voice-selection' || github.ref == 'refs/heads/experiment/style-voice-browser' || github.ref == 'refs/heads/experiment/custom-sf2-drum-kit' || github.ref == 'refs/heads/feature/realtime-audit-metronome' || github.ref == 'refs/heads/feature/transpose-octave-acmp-left' || github.ref == 'refs/heads/experiment/p1-ordered-note-io' || github.ref == 'refs/heads/experiment/midi-out-voice-cache' || github.ref == 'refs/heads/fix/style-editor-reload-crash' || github.ref == 'refs/heads/experiment/style-editor-v2'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -143,7 +151,7 @@ jobs:
           "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose evidence/YamahaArranger-STYLEVOICE.apk > evidence/apk-signature.txt
           "$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging evidence/YamahaArranger-STYLEVOICE.apk > evidence/apk-badging.txt
           python3 tools/verify_cpv_build.py --apk evidence/YamahaArranger-STYLEVOICE.apk --out evidence/apk-provenance.json
-          if [ "$GITHUB_REF" = "refs/heads/fix/style-editor-reload-crash" ]; then cp docs/STYLE_EDITOR_RELOAD_CRASH_REPORT.md evidence/DEVICE-TEST.txt; elif [ "$GITHUB_REF" = "refs/heads/experiment/midi-out-voice-cache" ]; then cp docs/MIDI_OUT_VOICE_CACHE_REPORT.md evidence/DEVICE-TEST.txt; elif [ "$GITHUB_REF" = "refs/heads/experiment/p1-ordered-note-io" ]; then cp docs/P1_ORDERED_NOTE_IO_REPORT.md evidence/DEVICE-TEST.txt; elif [ "$GITHUB_REF" = "refs/heads/feature/transpose-octave-acmp-left" ]; then cp docs/TRANSPOSE_OCTAVE_ACMP_LEFT_REPORT.md evidence/DEVICE-TEST.txt; elif [ "$GITHUB_REF" = "refs/heads/feature/realtime-audit-metronome" ]; then cp docs/REALTIME_AUDIT_METRONOME_REPORT.md evidence/DEVICE-TEST.txt; else cp docs/CUSTOM_SF2_DRUM_KIT_REPORT.md evidence/DEVICE-TEST.txt; fi
+          if [ "$GITHUB_REF" = "refs/heads/experiment/style-editor-v2" ]; then cp docs/STYLE_EDITOR_V2_REPORT.md evidence/DEVICE-TEST.txt; elif [ "$GITHUB_REF" = "refs/heads/fix/style-editor-reload-crash" ]; then cp docs/STYLE_EDITOR_RELOAD_CRASH_REPORT.md evidence/DEVICE-TEST.txt; elif [ "$GITHUB_REF" = "refs/heads/experiment/midi-out-voice-cache" ]; then cp docs/MIDI_OUT_VOICE_CACHE_REPORT.md evidence/DEVICE-TEST.txt; elif [ "$GITHUB_REF" = "refs/heads/experiment/p1-ordered-note-io" ]; then cp docs/P1_ORDERED_NOTE_IO_REPORT.md evidence/DEVICE-TEST.txt; elif [ "$GITHUB_REF" = "refs/heads/feature/transpose-octave-acmp-left" ]; then cp docs/TRANSPOSE_OCTAVE_ACMP_LEFT_REPORT.md evidence/DEVICE-TEST.txt; elif [ "$GITHUB_REF" = "refs/heads/feature/realtime-audit-metronome" ]; then cp docs/REALTIME_AUDIT_METRONOME_REPORT.md evidence/DEVICE-TEST.txt; else cp docs/CUSTOM_SF2_DRUM_KIT_REPORT.md evidence/DEVICE-TEST.txt; fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:

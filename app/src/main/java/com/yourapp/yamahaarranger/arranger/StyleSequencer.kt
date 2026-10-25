@@ -120,6 +120,12 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     private val installedPins = mutableMapOf<Int, com.yourapp.yamahaarranger.style.StyleVoicePin>()
     private val partExternal = mutableMapOf<Int, com.yourapp.yamahaarranger.style.ExternalVoice>()
     private val sectionExternal = mutableMapOf<String, MutableMap<Int, com.yourapp.yamahaarranger.style.ExternalVoice>>()
+    // Style Voice Editor V2: octave shift per melodic part and drum/kendang note maps. Same priority everywhere:
+    // section-specific, then part-wide, then the Style. All reads and writes happen under the Style monitor.
+    private val partOctave = mutableMapOf<Int, Int>()
+    private val sectionOctave = mutableMapOf<String, MutableMap<Int, Int>>()
+    private val partDrumMap = mutableMapOf<Int, Map<Int, Int>>()                              // key = (channel shl 1) or output (0 internal, 1 MIDI OUT)
+    private val sectionDrumMap = mutableMapOf<String, MutableMap<Int, Map<Int, Int>>>()
     @Volatile private var voiceSection = ""
     private data class StyleVoiceState(val section: StyleSectionModel, val program: Int, val bank: Int,
         val voiceName: String?, val drum: Boolean, val msb: Int?, val lsb: Int?, val source: String)
@@ -161,7 +167,9 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         var policy:CasmPolicyModel,
         val policies:List<CasmPolicyModel>,
         val sourcePart:String, val sourceSection:String, val sourceBank:Int,
-        val sourceHeaderPC:Int, val sourceTick:Long, val onId:Long
+        val sourceHeaderPC:Int, val sourceTick:Long, val onId:Long,
+        /** Octave shift captured at NOTE_ON: a held note keeps it through chord retargets, so ON and OFF always pair on the stored output pitch. */
+        val octaveShift:Int = 0
     )
     /**
      * Master Transpose is a CHORD-TARGET transposition owned by ArrangerBrain: the detected chord is transposed before it
@@ -364,6 +372,40 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     }
     fun externalVoice(section:String?, channel:Int) = if(section==null) partExternal[channel] else sectionExternal[section]?.get(channel)
 
+    /**
+     * Style Voice Editor V2: octave shift (-2..+2) of one melodic part (destination 10..15), part-wide ([section] null) or for one section.
+     * Applied to the output pitch after CASM/NTT (chord root, RIGHT, LEFT and Master Transpose are untouched); null removes the entry.
+     * A section-level 0 is kept: it overrides a part-wide shift for that section.
+     */
+    fun setOctaveShift(section:String?, channel:Int, octaves:Int?):Boolean = lifecycle {
+        if(channel !in 10..15 || (octaves!=null && octaves !in -2..2)) return@lifecycle false
+        if(section==null) { if(octaves==null || octaves==0) partOctave.remove(channel) else partOctave[channel]=octaves }
+        else if(octaves==null) { sectionOctave[section]?.remove(channel); if(sectionOctave[section]?.isEmpty()==true) sectionOctave.remove(section) }
+        else sectionOctave.getOrPut(section){mutableMapOf()}[channel]=octaves
+        true
+    }
+    fun octaveShift(section:String?, channel:Int):Int = lifecycle { if(section==null) partOctave[channel]?:0 else sectionOctave[section]?.get(channel)?:0 }
+    private fun effectiveOctave(section:String, channel:Int):Int = sectionOctave[section]?.get(channel) ?: partOctave[channel] ?: 0
+
+    /**
+     * Style Voice Editor V2: drum note map for Rhythm 1/2 (destination 8/9) on one output (0 = internal SF2, 1 = MIDI OUT).
+     * [notes] maps the Style's own note to the note actually sent; unlisted notes play unchanged; null/empty removes the entry.
+     * Only the pitch number changes: velocity, timing, duration and event order stay as authored.
+     */
+    fun setDrumMap(section:String?, channel:Int, output:Int, notes:Map<Int,Int>?):Boolean = lifecycle {
+        if(channel !in 8..9 || output !in 0..1) return@lifecycle false
+        if(notes!=null && notes.any { (k,v) -> k !in 0..127 || v !in 0..127 }) return@lifecycle false
+        val key=(channel shl 1) or output
+        if(section==null) { if(notes.isNullOrEmpty()) partDrumMap.remove(key) else partDrumMap[key]=notes.toMap() }
+        else if(notes.isNullOrEmpty()) { sectionDrumMap[section]?.remove(key); if(sectionDrumMap[section]?.isEmpty()==true) sectionDrumMap.remove(section) }
+        else sectionDrumMap.getOrPut(section){mutableMapOf()}[key]=notes.toMap()
+        true
+    }
+    private fun mapDrumNote(section:String, channel:Int, output:Int, note:Int):Int {
+        val key=(channel shl 1) or output
+        return sectionDrumMap[section]?.get(key)?.get(note) ?: partDrumMap[key]?.get(note) ?: note
+    }
+
     private fun resendMidiVoice(channel:Int) {
         midiInputManager.forgetSentVoice(channel) // explicit user action: send even if the module already holds this voice
         val ext = effectiveExternal(voiceSection,channel)
@@ -439,6 +481,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         installedPins.keys.toList().forEach { audioEngine.unpinStyleChannel(it); appliedChannelStates.remove(it) }
         voicePins.keys.toList().forEach { if(it !in installedPins) audioEngine.unpinStyleChannel(it) }
         voicePins.clear(); sectionVoicePins.clear(); installedPins.clear(); partExternal.clear(); sectionExternal.clear()
+        partOctave.clear(); sectionOctave.clear(); partDrumMap.clear(); sectionDrumMap.clear()
         lastStyleVoice.clear(); voiceSection=""
     }
     private fun applyStyleVoice(channel:Int, v:StyleVoiceState) {
@@ -872,7 +915,8 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
     }
 
     private fun updateHeldPitch(active:ActiveTransposedNote,chord:DetectedChord,rootOnly:Boolean,retrigger:Boolean,eventId:Long){
-        val base=if(rootOnly) rootPitchForHeld(active,chord) else CasmNoteTransformer.transform(active.sourceNote,chord,active.policy)
+        // Root-only keeps the held output octave (which already carries the part's octave shift); a full re-transform adds the shift captured at NOTE_ON.
+        val base=if(rootOnly) rootPitchForHeld(active,chord) else CasmNoteTransformer.transform(active.sourceNote,chord,active.policy)?.plus(12*active.octaveShift)
         val target=base?.coerceIn(0,127)
         chordEvent(active,eventId,if(target==null) "TRANSFORM_NULL_NO_SEND" else if(target==active.outputNote) "UNCHANGED_NO_SEND" else "REPLACE",target?:-1)
         com.yourapp.yamahaarranger.audio.LatencyProbe.retargetDecision(target!=null&&target!=active.outputNote) // LATENCY_PROBE (observer)
@@ -1450,23 +1494,28 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                     diagnostic("DROP_ACMP_OFF")
                     return@lifecycle
                 }
-                val note=(transformed+(channelOverride?.transpose?:0)).coerceIn(0,127)
+                val octave=if(isDrumPart) 0 else effectiveOctave(section.name,destinationChannel)
+                val note=(transformed+(channelOverride?.transpose?:0)+12*octave).coerceIn(0,127)
                 val velocity=s.event.velocity.coerceIn(1,127)
+                // Drum note map (Rhythm 1/2 only): the engine and MIDI OUT may use different target notes; nothing else about the event changes.
+                val internalNote=if(isDrumPart&&destinationChannel in 8..9) mapDrumNote(section.name,destinationChannel,0,note) else note
+                val midiNote=if(isDrumPart&&destinationChannel in 8..9) mapDrumNote(section.name,destinationChannel,1,note) else note
 
                 if(policy!=null&&!isDrumPart){
                     val policyList=s.part.casmPolicies.ifEmpty{listOfNotNull(s.part.casm)}
-                    activeTransposedNotes[key]=ActiveTransposedNote(sourceChannel,s.event.note,destinationChannel,note,velocity,policy,policyList,s.part.name,section.name,diagBank,s.part.program,absoluteTick,diagId)
+                    activeTransposedNotes[key]=ActiveTransposedNote(sourceChannel,s.event.note,destinationChannel,note,velocity,policy,policyList,s.part.name,section.name,diagBank,s.part.program,absoluteTick,diagId,octave)
                     if(destinationChannel==13)dlog("🎻 STRING NOTEON src"+sourceChannel+":"+s.event.note+" dst13 note="+note+" NTR="+(policy.ntr and 0x7f)+" NTT="+(policy.ntt and 0x7f)+" RTR="+(policy.rtr and 0x7f))
                     if(destinationChannel==13)dlog("🎼 CASM SELECT src"+sourceChannel+":"+s.event.note+" chord="+chord?.rootNote+"/"+chord?.quality+" → dst"+destinationChannel+" NTR="+(policy.ntr and 0x7f)+" NTT="+(policy.ntt and 0x7f)+" SRC="+policy.sourceChordRoot+"/"+policy.sourceChordType+" range="+policy.sourceNoteLow+"-"+policy.sourceNoteHigh+" RTR="+(policy.rtr and 0x7f))
                 }
 
                 val sampled = diagnostic("FORWARD", note,
-                    "transformAsMelody=${!isDrumPart} nativeRhythmChannel=${destinationChannel == 8 || destinationChannel == 9} transpose=${channelOverride?.transpose ?: 0}")
+                    "transformAsMelody=${!isDrumPart} nativeRhythmChannel=${destinationChannel == 8 || destinationChannel == 9} transpose=${channelOverride?.transpose ?: 0}" +
+                        (if(octave!=0) " octave=$octave" else "") + (if(internalNote!=note||midiNote!=note) " drumMap=internal:$internalNote,midiOut:$midiNote" else ""))
                 val traceChordId=chordTrace.chordId(); val srcNote=s.event.note
-                stageIo(destinationChannel,note){
-                    audioEngine.noteOnStyleChannel(destinationChannel,note,velocity/127f,
+                stageIo(destinationChannel,internalNote){
+                    audioEngine.noteOnStyleChannel(destinationChannel,internalNote,velocity/127f,
                         sourceChannel,srcNote,diagBank,absoluteTick,diagId,sampled,traceChordId)
-                    midiInputManager.sendNoteOn(destinationChannel,note,velocity)
+                    midiInputManager.sendNoteOn(destinationChannel,midiNote,velocity)
                 }
             }
         }

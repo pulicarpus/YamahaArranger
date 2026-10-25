@@ -56,6 +56,70 @@ object StyleVoiceEditorOps {
         }
     }
 
+    // ---- V2: octave shift per melodic part and drum note maps (profile-only; the Style file is never touched) ----
+    const val OCTAVE_MIN = -2
+    const val OCTAVE_MAX = 2
+
+    fun applyOctave(record: StyleOverrideRecord, target: EditTarget, scope: EditScope, octaves: Int): StyleOverrideRecord {
+        require(editable(target.channel)) { "Octave shift is for the melodic parts (Bass, Chord, Pad, Phrase)" }
+        require(octaves in OCTAVE_MIN..OCTAVE_MAX) { "Octave shift must be -2 to +2" }
+        val level = if (scope == EditScope.ALL_SECTIONS) OverrideScope.ALL else OverrideScope.SECTION
+        return record.withOctave(StyleOctaveShift(target.channel, level, if (level == OverrideScope.SECTION) target.section else null, octaves))
+    }
+
+    /** Removes the octave entry stored at exactly this level (RESET). */
+    fun clearOctave(record: StyleOverrideRecord, target: EditTarget, scope: EditScope): StyleOverrideRecord {
+        require(editable(target.channel)) { "Octave shift is for the melodic parts (Bass, Chord, Pad, Phrase)" }
+        val level = if (scope == EditScope.ALL_SECTIONS) OverrideScope.ALL else OverrideScope.SECTION
+        return record.withoutOctave(target.channel, level, if (level == OverrideScope.SECTION) target.section else null)
+    }
+
+    /** [notes] maps source note to target note; identical pairs are dropped (no change), an empty result removes the map. */
+    fun applyDrumMap(record: StyleOverrideRecord, target: EditTarget, scope: EditScope, output: DrumOutput, notes: Map<Int, Int>): StyleOverrideRecord {
+        require(editableKit(target.channel)) { "A note map is for Rhythm 1 or Rhythm 2" }
+        require(notes.all { (k, v) -> k in 0..127 && v in 0..127 }) { "MIDI notes must be 0-127" }
+        val level = if (scope == EditScope.ALL_SECTIONS) OverrideScope.ALL else OverrideScope.SECTION
+        return record.withDrumMap(StyleDrumMap(target.channel, output, level, if (level == OverrideScope.SECTION) target.section else null,
+            notes.filter { (k, v) -> k != v }))
+    }
+
+    /** One octave or drum-map level that differs between two profiles; [octaves]/[notes] null means "removed". */
+    data class ExtraChange(val drum: Boolean, val channel: Int, val scope: OverrideScope, val section: String?,
+        val output: DrumOutput?, val octaves: Int?, val notes: Map<Int, Int>?)
+
+    fun diffExtras(old: StyleOverrideRecord?, new: StyleOverrideRecord?): List<ExtraChange> {
+        val out = ArrayList<ExtraChange>()
+        fun lv(s: OverrideScope, sec: String?) = if (s == OverrideScope.ALL) null else sec
+        val oo = (old?.octaveShifts ?: emptyList()).associateBy { Triple(it.channel, it.scope, lv(it.scope, it.section)) }
+        val no = (new?.octaveShifts ?: emptyList()).associateBy { Triple(it.channel, it.scope, lv(it.scope, it.section)) }
+        for (k in oo.keys + no.keys) if (oo[k] != no[k]) out += ExtraChange(false, k.first, k.second, k.third, null, no[k]?.octaves, null)
+        val od = (old?.drumMaps ?: emptyList()).associateBy { listOf(it.channel, it.output, it.scope, lv(it.scope, it.section)) }
+        val nd = (new?.drumMaps ?: emptyList()).associateBy { listOf(it.channel, it.output, it.scope, lv(it.scope, it.section)) }
+        for (k in od.keys + nd.keys) if (od[k] != nd[k]) {
+            val ref = nd[k] ?: od[k]!!
+            out += ExtraChange(true, ref.channel, ref.scope, ref.section, ref.output, null, nd[k]?.notes)
+        }
+        return out
+    }
+
+    /**
+     * Drum notes the Style really plays on Rhythm 1 (destination 8) or Rhythm 2 (9), with how often: NOTE_ON events whose source channel the
+     * CASM routes to [destination]. [section] null = the whole Style. Pure metadata; nothing is sounded.
+     */
+    fun drumNoteUsage(sections: Map<String, StyleSectionModel>, section: String?, destination: Int): Map<Int, Int> {
+        val counts = java.util.TreeMap<Int, Int>()
+        val selected = if (section == null) sections.values else listOfNotNull(sections[section])
+        for (sec in selected) for (part in sec.parts) {
+            val policies = part.casmPolicies.ifEmpty { listOfNotNull(part.casm) }
+            for (e in part.events) {
+                if (!e.isNoteOn) continue
+                val dst = policies.firstOrNull { it.sourceChannel == e.channel }?.destinationChannel ?: policies.firstOrNull()?.destinationChannel ?: e.channel
+                if (dst == destination) counts.merge(e.note, 1, Int::plus)
+            }
+        }
+        return counts
+    }
+
     /** Everything that must be re-sent to the sequencer to turn [old] into [new]. */
     fun diff(old: StyleOverrideRecord?, new: StyleOverrideRecord?): List<OverrideChange> {
         val out = ArrayList<OverrideChange>()
@@ -84,6 +148,21 @@ object StyleVoiceEditorOps {
             .filter { q.isEmpty() || it.name.lowercase().contains(q) || it.soundFontName.lowercase().contains(q) || "${it.bank}:${it.program}".contains(q) }
             .sortedWith(compareBy({ it.soundFontName.lowercase() }, { it.bank }, { it.program }))
     }
+
+    /**
+     * Named PSR-E343 voices from a file the USER supplies (copied from the Yamaha PSR-E343 Data List): one voice per line,
+     * `name <TAB> MSB <TAB> LSB <TAB> program(1-128)`; `,` or `;` also separate fields; `#` lines and a header line are ignored.
+     * The app ships NO built-in list: nothing here is invented, and every line that is not valid is skipped.
+     */
+    fun parseDeviceCatalog(text: String): List<ExternalVoice> = text.lineSequence().mapNotNull { raw ->
+        val line = raw.trim()
+        if (line.isEmpty() || line.startsWith("#")) return@mapNotNull null
+        val f = line.split('\t', ';', ',').map { it.trim() }
+        if (f.size < 4) return@mapNotNull null
+        val msb = f[1].toIntOrNull(); val lsb = f[2].toIntOrNull(); val pc = f[3].toIntOrNull()
+        if (msb == null || lsb == null || pc == null || msb !in 0..127 || lsb !in 0..127 || pc !in 1..128 || f[0].isBlank()) null
+        else ExternalVoice(msb, lsb, pc - 1, f[0].take(24))
+    }.distinct().toList()
 
     /** Typed external voice. Program is entered 1-based, as on the instrument's data list. Null + reason on bad input. */
     fun parseExternal(msb: String, lsb: String, program1Based: String, label: String): Pair<ExternalVoice?, String?> {

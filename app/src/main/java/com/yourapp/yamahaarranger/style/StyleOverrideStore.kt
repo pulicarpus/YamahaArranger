@@ -34,6 +34,18 @@ data class StyleExternalOverride(
     val original: OriginalRef? = null
 )
 
+/** Octave shift of one melodic part (destination channel 10..15), -2..+2 octaves. Applied to the output pitch only, after the CASM/NTT transform. */
+data class StyleOctaveShift(val channel: Int, val scope: OverrideScope, val section: String?, val octaves: Int)
+
+/** Which output a drum note map applies to: the internal SF2 kit or the MIDI OUT module (kit numbering can differ). */
+enum class DrumOutput { INTERNAL, MIDI_OUT }
+
+/**
+ * Source note (as authored in the Style) -> target note, for Rhythm 1 / Rhythm 2 (destination channel 8 / 9) on one output.
+ * Notes not listed play unchanged. Velocity, timing, duration and event order are never touched.
+ */
+data class StyleDrumMap(val channel: Int, val output: DrumOutput, val scope: OverrideScope, val section: String?, val notes: Map<Int, Int>)
+
 /**
  * Voice Override Profile of one Style (kept apart from the Style file, keyed by its content hash).
  * Effective mapping = Style request, then [overrides]/[externalOverrides] by priority:
@@ -45,9 +57,31 @@ data class StyleOverrideRecord(
     val overrides: List<StyleVoiceOverride>,
     val savedAt: Long = 0,
     val externalOverrides: List<StyleExternalOverride> = emptyList(),
-    val revision: Long = 0
+    val revision: Long = 0,
+    val octaveShifts: List<StyleOctaveShift> = emptyList(),
+    val drumMaps: List<StyleDrumMap> = emptyList()
 ) {
-    val isEmpty: Boolean get() = overrides.isEmpty() && externalOverrides.isEmpty()
+    val isEmpty: Boolean get() = overrides.isEmpty() && externalOverrides.isEmpty() && octaveShifts.isEmpty() && drumMaps.isEmpty()
+
+    private fun sameLevel(c1: Int, s1: OverrideScope, sec1: String?, c2: Int, s2: OverrideScope, sec2: String?) =
+        c1 == c2 && s1 == s2 && (if (s1 == OverrideScope.ALL) true else sec1 == sec2)
+
+    /** Octave 0 at part-wide scope removes the entry. */
+    fun withOctave(entry: StyleOctaveShift): StyleOverrideRecord {
+        val kept = octaveShifts.filterNot { sameLevel(entry.channel, entry.scope, entry.section, it.channel, it.scope, it.section) }
+        // A part-wide 0 is "no shift" (removed); a section-level 0 stays: it overrides a part-wide shift for that section.
+        return copy(octaveShifts = if (entry.octaves == 0 && entry.scope == OverrideScope.ALL) kept else kept + entry, revision = revision + 1)
+    }
+    fun withoutOctave(channel: Int, scope: OverrideScope, section: String?): StyleOverrideRecord = copy(
+        octaveShifts = octaveShifts.filterNot { sameLevel(channel, scope, section, it.channel, it.scope, it.section) }, revision = revision + 1)
+
+    /** An empty map removes the entry. */
+    fun withDrumMap(entry: StyleDrumMap): StyleOverrideRecord {
+        val kept = drumMaps.filterNot { it.output == entry.output && sameLevel(entry.channel, entry.scope, entry.section, it.channel, it.scope, it.section) }
+        return copy(drumMaps = if (entry.notes.isEmpty()) kept else kept + entry, revision = revision + 1)
+    }
+    fun withoutDrumMap(channel: Int, output: DrumOutput, scope: OverrideScope, section: String?): StyleOverrideRecord = copy(
+        drumMaps = drumMaps.filterNot { it.output == output && sameLevel(channel, scope, section, it.channel, it.scope, it.section) }, revision = revision + 1)
 
     /** The whole-style pin for a channel. */
     fun allSectionPin(channel: Int): StyleVoicePin? =
@@ -78,15 +112,19 @@ data class StyleOverrideRecord(
     /** RESET PART: every level (part-wide and all sections) for one channel. */
     fun withoutPart(channel: Int): StyleOverrideRecord = copy(
         overrides = overrides.filterNot { it.channel == channel },
-        externalOverrides = externalOverrides.filterNot { it.channel == channel }, revision = revision + 1)
+        externalOverrides = externalOverrides.filterNot { it.channel == channel },
+        octaveShifts = octaveShifts.filterNot { it.channel == channel },
+        drumMaps = drumMaps.filterNot { it.channel == channel }, revision = revision + 1)
 
     /** RESET SECTION: the section-specific entries of one section; part-wide entries stay. */
     fun withoutSection(section: String): StyleOverrideRecord = copy(
         overrides = overrides.filterNot { it.scope == OverrideScope.SECTION && it.section == section },
-        externalOverrides = externalOverrides.filterNot { it.scope == OverrideScope.SECTION && it.section == section }, revision = revision + 1)
+        externalOverrides = externalOverrides.filterNot { it.scope == OverrideScope.SECTION && it.section == section },
+        octaveShifts = octaveShifts.filterNot { it.scope == OverrideScope.SECTION && it.section == section },
+        drumMaps = drumMaps.filterNot { it.scope == OverrideScope.SECTION && it.section == section }, revision = revision + 1)
 
     /** RESET ALL. */
-    fun cleared(): StyleOverrideRecord = copy(overrides = emptyList(), externalOverrides = emptyList(), revision = revision + 1)
+    fun cleared(): StyleOverrideRecord = copy(overrides = emptyList(), externalOverrides = emptyList(), octaveShifts = emptyList(), drumMaps = emptyList(), revision = revision + 1)
 }
 
 /** Priority: section-specific override, then part-wide override, then the Style/resolver (null). */
@@ -97,6 +135,13 @@ object StyleOverrideResolver {
             ?: record.overrides.firstOrNull { it.channel == channel && it.scope == OverrideScope.ALL }
     }
 
+    /** Octaves for a part: section-specific, then part-wide, then 0. */
+    fun octave(record: StyleOverrideRecord?, section: String, channel: Int): Int {
+        if (record == null) return 0
+        return (record.octaveShifts.firstOrNull { it.channel == channel && it.scope == OverrideScope.SECTION && it.section == section }
+            ?: record.octaveShifts.firstOrNull { it.channel == channel && it.scope == OverrideScope.ALL })?.octaves ?: 0
+    }
+
     fun external(record: StyleOverrideRecord?, section: String, channel: Int): StyleExternalOverride? {
         if (record == null) return null
         return record.externalOverrides.firstOrNull { it.channel == channel && it.scope == OverrideScope.SECTION && it.section == section }
@@ -104,9 +149,9 @@ object StyleOverrideResolver {
     }
 }
 
-/** Schema-2 JSON with a CRC over the sorted-key payload. Schema 1 (SF2 entries only) is still read. */
+/** Schema-3 JSON with a CRC over the sorted-key payload (3 adds octave shifts and drum note maps). Schemas 1 and 2 are still read. */
 object StyleOverrideCodec {
-    const val SCHEMA = 2L
+    const val SCHEMA = 3L
     private val json = RegistrationCodec.Json
 
     private fun crc(payload: Any?): String =
@@ -131,6 +176,18 @@ object StyleOverrideCodec {
                 require(o.voice.msb in 0..127 && o.voice.lsb in 0..127 && o.voice.program in 0..127)
                 mapOf("channel" to o.channel, "scope" to o.scope.name, "section" to o.section,
                     "msb" to o.voice.msb, "lsb" to o.voice.lsb, "program" to o.voice.program, "label" to o.voice.label) + originalMap(o.original)
+            },
+            "octaveShifts" to record.octaveShifts.map { o ->
+                require(o.channel in 10..15 && o.octaves in -2..2)
+                require((o.scope == OverrideScope.SECTION) == (o.section != null))
+                mapOf("channel" to o.channel, "scope" to o.scope.name, "section" to o.section, "octaves" to o.octaves)
+            },
+            "drumMaps" to record.drumMaps.map { o ->
+                require(o.channel in 8..9)
+                require((o.scope == OverrideScope.SECTION) == (o.section != null))
+                require(o.notes.isNotEmpty() && o.notes.all { (k, v) -> k in 0..127 && v in 0..127 })
+                mapOf("channel" to o.channel, "output" to o.output.name, "scope" to o.scope.name, "section" to o.section,
+                    "notes" to o.notes.toSortedMap().map { (k, v) -> mapOf("source" to k, "target" to v) })
             })
         return json.write(mapOf("schema" to SCHEMA, "kind" to "styleVoiceOverrides", "styleSha256" to record.styleSha256,
             "savedAt" to record.savedAt, "payload" to payload, "crc32" to crc(payload)))
@@ -147,7 +204,7 @@ object StyleOverrideCodec {
         val e = json.parse(text) as? Map<String, Any?> ?: error("Object expected")
         val schema = e["schema"] as? Long ?: error("schema")
         if (schema > SCHEMA) throw FutureSchemaException(schema)
-        require((schema == 1L || schema == SCHEMA) && e["kind"] == "styleVoiceOverrides")
+        require((schema in 1L..SCHEMA) && e["kind"] == "styleVoiceOverrides")
         require(e.keys == setOf("schema", "kind", "styleSha256", "savedAt", "payload", "crc32")) { "Unexpected fields" }
         require(e["crc32"] == crc(e["payload"])) { "CRC mismatch" }
         val sha = e["styleSha256"] as? String ?: error("styleSha256")
@@ -178,8 +235,33 @@ object StyleOverrideCodec {
             require(voice.msb in 0..127 && voice.lsb in 0..127 && voice.program in 0..127)
             StyleExternalOverride(channel, scope, section, voice, original(o))
         } else emptyList()
+        val octaves = if (schema >= 3L) (p["octaveShifts"] as? List<Any?> ?: error("octaveShifts")).map { item ->
+            val o = item as? Map<String, Any?> ?: error("octaveShift")
+            val channel = int(o, "channel"); val octaves = int(o, "octaves")
+            require(channel in 10..15 && octaves in -2..2)
+            val scope = OverrideScope.valueOf(o["scope"] as? String ?: error("scope"))
+            val section = o["section"] as String?
+            require((scope == OverrideScope.SECTION) == (section != null))
+            StyleOctaveShift(channel, scope, section, octaves)
+        } else emptyList()
+        val drum = if (schema >= 3L) (p["drumMaps"] as? List<Any?> ?: error("drumMaps")).map { item ->
+            val o = item as? Map<String, Any?> ?: error("drumMap")
+            val channel = int(o, "channel")
+            require(channel in 8..9)
+            val scope = OverrideScope.valueOf(o["scope"] as? String ?: error("scope"))
+            val section = o["section"] as String?
+            require((scope == OverrideScope.SECTION) == (section != null))
+            val notes = (o["notes"] as? List<Any?> ?: error("notes")).associate { n ->
+                val m = n as? Map<String, Any?> ?: error("note")
+                val src = int(m, "source"); val dst = int(m, "target")
+                require(src in 0..127 && dst in 0..127)
+                src to dst
+            }
+            require(notes.isNotEmpty())
+            StyleDrumMap(channel, DrumOutput.valueOf(o["output"] as? String ?: error("output")), scope, section, notes)
+        } else emptyList()
         return StyleOverrideRecord(sha, p["styleFileName"] as? String ?: error("styleFileName"), overrides,
-            e["savedAt"] as? Long ?: error("savedAt"), external, if (schema >= 2L) p["revision"] as? Long ?: error("revision") else 0L)
+            e["savedAt"] as? Long ?: error("savedAt"), external, if (schema >= 2L) p["revision"] as? Long ?: error("revision") else 0L, octaves, drum)
     }
 }
 
@@ -303,7 +385,9 @@ object StyleOverridePins {
 /** What re-applying one saved entry did: ACTIVE, UNVERIFIED, or the STALE_* reason (shown, not applied, never deleted). */
 data class RestoreResult(
     val external: Boolean, val channel: Int, val scope: OverrideScope, val section: String?, val state: String,
-    val pin: StyleVoicePin? = null, val voice: ExternalVoice? = null, val reason: String = state
+    val pin: StyleVoicePin? = null, val voice: ExternalVoice? = null, val reason: String = state,
+    /** SF2, EXTERNAL, OCTAVE or DRUM_MAP. [output] is set for DRUM_MAP only. */
+    val kind: String = if (external) "EXTERNAL" else "SF2", val output: DrumOutput? = null
 )
 
 /**
@@ -318,7 +402,9 @@ object StyleOverrideRestorer {
         loadedPresetName: (StyleVoicePin) -> String?,
         setSf2Pin: (channel: Int, section: String?, pin: StyleVoicePin?) -> Boolean,
         setExternal: (channel: Int, section: String?, voice: ExternalVoice) -> Boolean,
-        log: (String) -> Unit = {}
+        log: (String) -> Unit = {},
+        setOctave: (channel: Int, section: String?, octaves: Int) -> Boolean = { _, _, _ -> true },
+        setDrumMap: (channel: Int, section: String?, output: DrumOutput, notes: Map<Int, Int>) -> Boolean = { _, _, _, _ -> true }
     ): List<RestoreResult> {
         val out = ArrayList<RestoreResult>()
         val pdta = pdtaByFile()
@@ -334,6 +420,16 @@ object StyleOverrideRestorer {
             val ok = setExternal(e.channel, e.section, e.voice)
             out += RestoreResult(true, e.channel, e.scope, e.section, if (ok) "ACTIVE" else "UNVERIFIED", voice = e.voice)
             log("VOICE OVERRIDE restore ch=${e.channel} ${e.scope} ${e.section ?: "*"} ${e.voice.msb}:${e.voice.lsb}:${e.voice.program} ${if (ok) "ACTIVE" else "UNVERIFIED"}")
+        }
+        record.octaveShifts.forEach { o ->
+            val ok = setOctave(o.channel, if (o.scope == OverrideScope.ALL) null else o.section, o.octaves)
+            out += RestoreResult(false, o.channel, o.scope, o.section, if (ok) "ACTIVE" else "UNVERIFIED", kind = "OCTAVE")
+            log("OCTAVE restore ch=${o.channel} ${o.scope} ${o.section ?: "*"} ${o.octaves} ${if (ok) "ACTIVE" else "UNVERIFIED"}")
+        }
+        record.drumMaps.forEach { d ->
+            val ok = setDrumMap(d.channel, if (d.scope == OverrideScope.ALL) null else d.section, d.output, d.notes)
+            out += RestoreResult(false, d.channel, d.scope, d.section, if (ok) "ACTIVE" else "UNVERIFIED", kind = "DRUM_MAP", output = d.output)
+            log("DRUM MAP restore ch=${d.channel} ${d.output} ${d.scope} ${d.section ?: "*"} notes=${d.notes.size} ${if (ok) "ACTIVE" else "UNVERIFIED"}")
         }
         return out
     }

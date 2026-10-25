@@ -890,6 +890,10 @@ class ArrangerBrain @Inject constructor(
         external: com.yourapp.yamahaarranger.style.ExternalVoice?): String? { ensureSequencer(); return sequencer.auditionBegin(channel, pin, original, external) }
     fun auditionNote(channel: Int, note: Int, on: Boolean) { if (::sequencer.isInitialized) sequencer.auditionNote(channel, note, on) }
     fun auditionEnd(channel: Int) { if (::sequencer.isInitialized) sequencer.auditionEnd(channel) }
+    /** Style Voice Editor V2: octave shift of a melodic part (section null = every section). */
+    fun setStyleOctaveShift(section: String?, channel: Int, octaves: Int?): Boolean { ensureSequencer(); return sequencer.setOctaveShift(section, channel, octaves) }
+    /** Style Voice Editor V2: drum note map of Rhythm 1/2 for one output (0 internal, 1 MIDI OUT). */
+    fun setStyleDrumMap(section: String?, channel: Int, output: Int, notes: Map<Int, Int>?): Boolean { ensureSequencer(); return sequencer.setDrumMap(section, channel, output, notes) }
     fun invalidateAppliedVoices() { if (::sequencer.isInitialized) sequencer.invalidateAppliedVoices() }
     fun styleVoicePin(channel: Int): com.yourapp.yamahaarranger.style.StyleVoicePin? =
         if (::sequencer.isInitialized) sequencer.voicePin(channel) else null

@@ -76,7 +76,7 @@ class StyleVoiceOverrideProfileTest {
             .withExternal(StyleExternalOverride(11, OverrideScope.ALL, null, ext, OriginalRef(null, null, 4)))
         val back = StyleOverrideCodec.decode(StyleOverrideCodec.encode(r))
         assertEquals(r, back)
-        assertTrue(StyleOverrideCodec.encode(r).contains("\"schema\":2"))
+        assertTrue(StyleOverrideCodec.encode(r).contains("\"schema\":${StyleOverrideCodec.SCHEMA}"))
         assertEquals("ab".repeat(32), back.overrides[0].pdta); assertEquals(orig, back.overrides[0].original)
         assertNull(back.overrides[1].original)
         assertEquals(OriginalRef(null, null, 4), back.externalOverrides[0].original)
@@ -98,7 +98,7 @@ class StyleVoiceOverrideProfileTest {
         val rec = read.record!!
         assertEquals("", rec.overrides[0].pdta); assertNull(rec.overrides[0].original); assertTrue(rec.externalOverrides.isEmpty())
         store.write(rec.withExternal(StyleExternalOverride(11, OverrideScope.ALL, null, ext)))
-        assertTrue(String(Files.readAllBytes(dir.resolve("style-$sha.json"))).contains("\"schema\":2"))
+        assertTrue(String(Files.readAllBytes(dir.resolve("style-$sha.json"))).contains("\"schema\":${StyleOverrideCodec.SCHEMA}"))
         assertEquals(1, store.read(sha).record!!.externalOverrides.size)
     }
 

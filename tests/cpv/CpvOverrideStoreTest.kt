@@ -60,7 +60,7 @@ class CpvOverrideStoreTest {
     @Test fun newerSchemaAndDamageAreReadOnly() {
         val dir = Files.createTempDirectory("cpv-store")
         val store = StyleOverrideStore(dir)
-        val text = StyleOverrideCodec.encode(StyleOverrideRecord(shaA, "A", emptyList())).replace("\"schema\":2", "\"schema\":3")
+        val text = StyleOverrideCodec.encode(StyleOverrideRecord(shaA, "A", emptyList())).replace("\"schema\":${StyleOverrideCodec.SCHEMA}", "\"schema\":${StyleOverrideCodec.SCHEMA + 1}")
         Files.write(dir.resolve("style-$shaA.json"), text.toByteArray())
         val newer = store.read(shaA)
         assertEquals(OverrideReadStatus.NEWER_SCHEMA, newer.status); assertFalse(newer.writable)
