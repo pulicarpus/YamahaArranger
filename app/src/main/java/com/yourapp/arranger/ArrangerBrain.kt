@@ -254,7 +254,7 @@ class ArrangerBrain @Inject constructor(
      * DROPPED for that layer (no clamp, no octave wrap, no illegal MIDI note). The pitch is stored in the owner map, so the
      * NOTE_OFF always pairs with the exact pitch/channel of its NOTE_ON, whatever transpose/octave/routing does afterwards.
      */
-    private fun startRightNote(sourceNote: Int, velocity: Float, velocity127: Int) {
+    private fun startRightNote(sourceNote: Int, velocity: Float, velocity127: Int, source: com.yourapp.yamahaarranger.audio.RightInputSource = com.yourapp.yamahaarranger.audio.RightInputSource.OTHER) {
         com.yourapp.yamahaarranger.audio.LatencyProbe.rightRoutingStart() // LATENCY_PROBE
         rightNoteOwners.remove(sourceNote)?.forEach { (channel, pitch) ->
             engineNoteOff(channel, pitch)
@@ -262,6 +262,10 @@ class ArrangerBrain @Inject constructor(
         }
         val owners = mutableMapOf<Int, Int>()
         rightNoteOwners[sourceNote] = owners
+        com.yourapp.yamahaarranger.audio.RightInputProbe.routed(source, sourceNote, velocity127)
+        // Touch Response: physical keyboard (USB) only. Original = identity. MIDI OUT below keeps the raw velocity.
+        val engineVelocity127 = if (source == com.yourapp.yamahaarranger.audio.RightInputSource.USB) com.yourapp.yamahaarranger.audio.RightUsbTouch.response.map(velocity127) else velocity127
+        val engineVelocity = if (engineVelocity127 == velocity127) velocity else engineVelocity127 / 127f
         val transpose = activeTranspose
         for (channel in 0..2) {
             if (!rightVoiceEnabled[channel]) continue
@@ -273,7 +277,8 @@ class ArrangerBrain @Inject constructor(
             stopSustainedNote(channel, outputNote)
             // Diagnostic: monitor the keyboard velocity; the A/B test alters ONLY the internal synth velocity.
             RightVelocityMonitor.shared.record(channel, velocity127)
-            engineNoteOn(channel, outputNote, RightVelocityTest.internalVelocity(velocity, velocity127))
+            com.yourapp.yamahaarranger.audio.RightInputProbe.forwarded(source, engineVelocity127)
+            engineNoteOn(channel, outputNote, RightVelocityTest.internalVelocity(engineVelocity, engineVelocity127))
             midiInputManager.sendNoteOn(channel, outputNote, RightVelocityTest.midiOutVelocity127(velocity127))
             owners[channel] = outputNote
         }
@@ -355,19 +360,19 @@ class ArrangerBrain @Inject constructor(
      * Lower keyboard area. ACMP and LEFT are independent: ACMP ON feeds the chord detector, LEFT ON sounds the LEFT voice,
      * both ON does both for the same key, both OFF turns the whole keyboard into RIGHT 1/2/3.
      */
-    fun onKeyboardNoteOn(midiNote: Int, velocity: Float) {
+    fun onKeyboardNoteOn(midiNote: Int, velocity: Float, source: com.yourapp.yamahaarranger.audio.RightInputSource = com.yourapp.yamahaarranger.audio.RightInputSource.OTHER) {
         val probeRequestedNs = System.nanoTime() // LATENCY_PROBE
         synchronized(keyboardLock) {
             com.yourapp.yamahaarranger.audio.LatencyProbe.keyboardLockAcquired(probeRequestedNs) // LATENCY_PROBE
             val velocity127 = (velocity * 127f).toInt().coerceIn(0, 127)
             if (midiNote > splitNote) {
                 if (!com.yourapp.yamahaarranger.audio.NoteLogTuning.skip()) DebugLog.add("🎹 RIGHT IN note=$midiNote vel=$velocity127")
-                startRightNote(midiNote, velocity, velocity127)
+                startRightNote(midiNote, velocity, velocity127, source)
                 return
             }
             if (!acmpEnabled && !leftVoiceEnabled) {
                 DebugLog.add("🎹 LEFT IN note=$midiNote vel=$velocity127 → R1/R2/R3 (ACMP/L OFF)")
-                startRightNote(midiNote, velocity, velocity127)
+                startRightNote(midiNote, velocity, velocity127, source)
                 return
             }
             if (acmpEnabled) {

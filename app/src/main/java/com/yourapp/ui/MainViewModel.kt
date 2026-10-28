@@ -743,8 +743,8 @@ class MainViewModel @Inject constructor(
             }
         }
 
-        midiInputManager.onNoteOn = { note, velocity -> arrangerBrain.onKeyboardNoteOn(note, velocity / 127f) }
-        midiInputManager.onNoteOff = { note -> arrangerBrain.onKeyboardNoteOff(note) }
+        midiInputManager.onNoteOn = { note, velocity -> arrangerBrain.onKeyboardNoteOn(note, velocity / 127f, com.yourapp.yamahaarranger.audio.RightInputSource.USB) }
+        midiInputManager.onNoteOff = { note -> com.yourapp.yamahaarranger.audio.RightInputProbe.usbNoteOff(note); arrangerBrain.onKeyboardNoteOff(note) }
         midiInputManager.onSustainChange = { enabled ->
             _sustainEnabled.value = enabled
             arrangerBrain.setKeyboardSustain(enabled)
@@ -1237,7 +1237,20 @@ class MainViewModel @Inject constructor(
         RightDiagSnapshot(backend, app)
     }
 
+    private val touchStore by lazy { com.yourapp.yamahaarranger.audio.TouchResponseStore(java.io.File(contentResolver.browserMemoryPath().toFile().parentFile, "touch_response.txt")) }
+    private val _touchResponse = MutableStateFlow(com.yourapp.yamahaarranger.audio.RightUsbTouch.response)
+    val touchResponse: StateFlow<com.yourapp.yamahaarranger.audio.TouchResponse> = _touchResponse
+    init { viewModelScope.launch(Dispatchers.IO) { val v = touchStore.read(); com.yourapp.yamahaarranger.audio.RightUsbTouch.response = v; _touchResponse.value = v } }
+    /** USB-MIDI -> RIGHT 1/2/3 only; persisted; takes effect from the next NOTE_ON. */
+    fun setTouchResponse(v: com.yourapp.yamahaarranger.audio.TouchResponse) {
+        com.yourapp.yamahaarranger.audio.RightUsbTouch.response = v; _touchResponse.value = v
+        DebugLog.add("🎹 TOUCH RESPONSE (USB→RIGHT) = ${v.label}")
+        viewModelScope.launch(Dispatchers.IO) { try { touchStore.write(v) } catch (e: Exception) { DebugLog.add("Touch response not saved: ${e.javaClass.simpleName}") } }
+    }
+    fun logRightInputProbe() { DebugLog.add(com.yourapp.yamahaarranger.audio.RightInputProbe.report()) }
+
     fun resetRightDiagStats() {
+        com.yourapp.yamahaarranger.audio.RightInputProbe.reset()
         com.yourapp.yamahaarranger.audio.RightVelocityMonitor.shared.reset()
         viewModelScope.launch(Dispatchers.Default) { audioEngine.resetRightVelocityStats() }
     }

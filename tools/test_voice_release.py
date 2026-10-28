@@ -59,6 +59,7 @@ def jvm(output, fetch):
              ROOT/'app/src/main/java/com/yourapp/yamahaarranger/audio/KeyboardPart.kt',
              ROOT/'app/src/main/java/com/yourapp/yamahaarranger/audio/ReleaseControlState.kt',
              ROOT/'app/src/main/java/com/yourapp/yamahaarranger/audio/RightVoiceDiag.kt',
+             ROOT/'app/src/main/java/com/yourapp/yamahaarranger/audio/RightUsbTouch.kt',
              ROOT/'app/src/main/java/com/yourapp/yamahaarranger/audio/VirtualKeyboard.kt',
              ROOT/'app/src/main/java/com/yourapp/yamahaarranger/audio/MixerConsoleState.kt',
              ROOT/'app/src/main/java/com/yourapp/yamahaarranger/audio/StyleMixerChannels.kt',

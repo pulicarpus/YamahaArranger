@@ -13,6 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -51,7 +52,16 @@ fun RightVoiceDiagOverlay(viewModel: MainViewModel, modifier: Modifier = Modifie
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("RIGHT DIAG — diagnostic only, not a fix", color = Color(0xFFFFC857), fontSize = 10.sp, fontWeight = FontWeight.Bold)
             Chip("RESET STATS", Color(0xFF444C56)) { viewModel.resetRightDiagStats() }
+            Chip("LOG PROBE", Color(0xFF2B5C7A)) { viewModel.logRightInputProbe() }
             Chip("CLOSE", Color(0xFF7A2B2B)) { ToolPanels.diag = false }
+        }
+        val touch by viewModel.touchResponse.collectAsState()
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 4.dp)) {
+            Text("TOUCH RESPONSE (USB→RIGHT only)", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            com.yourapp.yamahaarranger.audio.TouchResponse.values().forEach { t ->
+                Chip(t.label, if (touch == t) Color(0xFF1E8E3E) else Color(0xFF444C56)) { viewModel.setTouchResponse(t) }
+            }
+            Text("(saved · not MIDI OUT · not Virtual Keyboard)", color = Color(0xFF9AA4AF), fontSize = 9.sp)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 4.dp)) {
             Text("RIGHT VELOCITY TEST", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
@@ -62,6 +72,9 @@ fun RightVoiceDiagOverlay(viewModel: MainViewModel, modifier: Modifier = Modifie
             }
             Text("(RIGHT internal synth only · not saved)", color = Color(0xFF9AA4AF), fontSize = 9.sp)
         }
+        var probe by remember { mutableStateOf("") }
+        LaunchedEffect(Unit) { while (true) { probe = com.yourapp.yamahaarranger.audio.RightInputProbe.report(); delay(500) } }
+        Text(probe, color = Color(0xFF7FDBFF), fontSize = 9.sp, fontFamily = FontFamily.Monospace)
         val snap = snapshot
         val first = snap?.backend?.firstOrNull { r -> snap.app.firstOrNull { it.label.replace(" ", "") == r.part }?.enabled == true }
         val sf = first?.get("actualLabel")?.takeIf { it == "COLOMBO" || it == "TYROS" }

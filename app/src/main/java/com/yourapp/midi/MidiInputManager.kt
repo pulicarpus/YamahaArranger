@@ -146,6 +146,7 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
             val type = status and 0xF0
             val channel = status and 0x0F
             if (type == 0xC0 || type == 0xD0) {
+                com.yourapp.yamahaarranger.audio.RightInputProbe.usbSingleData(type, channel)
                 if (i < end) i++
                 continue
             }
@@ -161,6 +162,7 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
             i++
             pendingData1 = -1
 
+            com.yourapp.yamahaarranger.audio.RightInputProbe.usbMessage(type, channel, d1, d2)
             if (channel == chordInputChannel && (type == 0x90 || type == 0x80 || (type == 0xB0 && d1 == 64))) com.yourapp.yamahaarranger.audio.LatencyProbe.midiEvent()
             // RAW diagnostic before channel filtering: captures every MIDI channel.
             // This lets us distinguish E343 RIGHT traffic from ACMP traffic without

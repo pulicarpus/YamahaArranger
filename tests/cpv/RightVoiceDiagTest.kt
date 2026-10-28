@@ -56,7 +56,7 @@ class RightVoiceDiagTest {
         val end = brain.indexOf("private fun releaseRightNote")
         assertTrue(start in 0 until end)
         val body = brain.substring(start, end)
-        assertTrue(body.contains("engineNoteOn(channel, outputNote, RightVelocityTest.internalVelocity(velocity, velocity127))"))
+        assertTrue(body.contains("engineNoteOn(channel, outputNote, RightVelocityTest.internalVelocity(engineVelocity, engineVelocity127))"))
         assertTrue(body.contains("midiInputManager.sendNoteOn(channel, outputNote, RightVelocityTest.midiOutVelocity127(velocity127))"))
         assertFalse("LEFT/ACMP/style paths must not reference the test",
             brain.substring(0, start).contains("RightVelocityTest.") || brain.substring(end).contains("RightVelocityTest."))

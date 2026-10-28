@@ -209,6 +209,7 @@ class VirtualRightVoices(
         for (c in 0..2) if ((previous and (1 shl c)) != 0) release(c, pitch)
         var mask = 0
         val velocity = velocity127.coerceIn(1, 127)
+        RightInputProbe.routed(RightInputSource.OTHER, pitch, velocity); RightInputProbe.forwarded(RightInputSource.OTHER, velocity)
         for (c in 0..2) if (rightEnabled(c)) { engineOn(c, pitch, velocity / 127f); mask = mask or (1 shl c) }
         down[pitch] = mask
     }

@@ -42,6 +42,8 @@ class RtRig(val midiOut: Boolean = false, tempoBpm: Int = 120, private val style
     class Ev(val t: Long, val thread: String, val kind: Char, val ch: Int, val note: Int, val kbLock: Boolean, val lcLock: Boolean, val mixLock: Boolean)
     class Wr(val t: Long, val thread: String, val status: Int, val d1: Int, val d2: Int, val kbLock: Boolean, val lcLock: Boolean)
 
+    /** (channel, note, velocity as the native side computes it: lround(v*127) clamped 1..127) for every keyboard NOTE_ON that reaches the bridge. */
+    val nativeNoteOnVel = ConcurrentLinkedQueue<Triple<Int, Int, Int>>()
     val engineEvents = ConcurrentLinkedQueue<Ev>()      // kind: 'O' note on, 'F' note off, 'A' all notes off
     val usbWrites = ConcurrentLinkedQueue<Wr>()
     /** Every MidiInputPort.send, including 2-byte Program Change (usbWrites keeps only >=3 byte messages for the older suites). d2=-1 when absent. */
@@ -116,8 +118,8 @@ class RtRig(val midiOut: Boolean = false, tempoBpm: Int = 120, private val style
         brain.attachScope(scope)
         kbLockObj = field(brain, "keyboardLock")
         // Same wiring as MainViewModel.init (lines 742-748).
-        midi.onNoteOn = { note, velocity -> brain.onKeyboardNoteOn(note, velocity / 127f) }
-        midi.onNoteOff = { note -> brain.onKeyboardNoteOff(note) }
+        midi.onNoteOn = { note, velocity -> brain.onKeyboardNoteOn(note, velocity / 127f, com.yourapp.yamahaarranger.audio.RightInputSource.USB) }
+        midi.onNoteOff = { note -> com.yourapp.yamahaarranger.audio.RightInputProbe.usbNoteOff(note); brain.onKeyboardNoteOff(note) }
         midi.onSustainChange = { enabled -> brain.setKeyboardSustain(enabled) }
         midi.connect(MidiDeviceInfo())
         midi.setMixerStyleChannels((4..15).toSet())
@@ -153,7 +155,7 @@ class RtRig(val midiOut: Boolean = false, tempoBpm: Int = 120, private val style
             if (kind == 'O') oracle.on(ch, note) else if (kind == 'F') oracle.off(ch, note)
         }
         when (name) {
-            "nativeSfNoteOnChannel" -> { rec('O', a[0] as Int, a[1] as Int); return null }
+            "nativeSfNoteOnChannel" -> { nativeNoteOnVel.add(Triple(a[0] as Int, a[1] as Int, Math.round((a[2] as Float) * 127f).coerceIn(1, 127))); rec('O', a[0] as Int, a[1] as Int); return null }
             "nativeSfNoteOffChannel" -> { rec('F', a[0] as Int, a[1] as Int); return null }
             "nativeSfNoteOnStyleChannel" -> { rec('O', a[0] as Int, a[1] as Int); return null }
             "nativeSfNoteOffStyleChannel" -> { rec('F', a[0] as Int, a[1] as Int); return null }
