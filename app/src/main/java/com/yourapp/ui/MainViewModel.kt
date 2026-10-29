@@ -1240,12 +1240,20 @@ class MainViewModel @Inject constructor(
     private val touchStore by lazy { com.yourapp.yamahaarranger.audio.TouchResponseStore(java.io.File(contentResolver.browserMemoryPath().toFile().parentFile, "touch_response.txt")) }
     private val _touchResponse = MutableStateFlow(com.yourapp.yamahaarranger.audio.RightUsbTouch.response)
     val touchResponse: StateFlow<com.yourapp.yamahaarranger.audio.TouchResponse> = _touchResponse
-    init { viewModelScope.launch(Dispatchers.IO) { val v = touchStore.read(); com.yourapp.yamahaarranger.audio.RightUsbTouch.response = v; _touchResponse.value = v } }
+    init { viewModelScope.launch(Dispatchers.IO) { val v = touchStore.read(); com.yourapp.yamahaarranger.audio.RightUsbTouch.response = v; _touchResponse.value = v; _touchCustom.value = com.yourapp.yamahaarranger.audio.TouchCustom.gamma to com.yourapp.yamahaarranger.audio.TouchCustom.floor } }
     /** USB-MIDI -> RIGHT 1/2/3 only; persisted; takes effect from the next NOTE_ON. */
     fun setTouchResponse(v: com.yourapp.yamahaarranger.audio.TouchResponse) {
         com.yourapp.yamahaarranger.audio.RightUsbTouch.response = v; _touchResponse.value = v
         DebugLog.add("🎹 TOUCH RESPONSE (USB→RIGHT) = ${v.label}")
         viewModelScope.launch(Dispatchers.IO) { try { touchStore.write(v) } catch (e: Exception) { DebugLog.add("Touch response not saved: ${e.javaClass.simpleName}") } }
+    }
+    private val _touchCustom = MutableStateFlow(com.yourapp.yamahaarranger.audio.TouchCustom.gamma to com.yourapp.yamahaarranger.audio.TouchCustom.floor)
+    val touchCustom: StateFlow<Pair<Double, Int>> = _touchCustom
+    /** CUSTOM curve parameters (gamma 0.30..1.50, floor 1..100). Only used while Touch Response = Custom; persisted with the mode. */
+    fun setTouchCustom(gamma: Double, floor: Int) {
+        com.yourapp.yamahaarranger.audio.TouchCustom.set(gamma, floor)
+        _touchCustom.value = com.yourapp.yamahaarranger.audio.TouchCustom.gamma to com.yourapp.yamahaarranger.audio.TouchCustom.floor
+        setTouchResponse(_touchResponse.value)
     }
     fun logRightInputProbe() { DebugLog.add(com.yourapp.yamahaarranger.audio.RightInputProbe.report()) }
 

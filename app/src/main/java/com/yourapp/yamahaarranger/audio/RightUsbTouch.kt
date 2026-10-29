@@ -16,7 +16,8 @@ enum class TouchResponse(val label: String, private val gamma: Double) {
     ORIGINAL("Original", 1.0),
     SOFT("Soft", 0.60),     // light touch reaches a louder velocity
     MEDIUM("Medium", 0.80), // mild lift
-    HARD("Hard", 1.25);     // needs a firmer touch
+    HARD("Hard", 1.25),     // needs a firmer touch
+    CUSTOM("Custom", 1.0);  // gamma + floor from [TouchCustom]
 
     private val table: IntArray = IntArray(128) { v ->
         if (v <= 0) 0
@@ -25,11 +26,32 @@ enum class TouchResponse(val label: String, private val gamma: Double) {
     }
 
     /** Velocity 1..127 for the internal synth; 0 stays 0 (callers never pass it). */
-    fun map(velocity127: Int): Int = table[velocity127.coerceIn(0, 127)]
+    fun map(velocity127: Int): Int = (if (this == CUSTOM) TouchCustom.table else table)[velocity127.coerceIn(0, 127)]
 
     companion object {
         val DEFAULT = ORIGINAL
         fun parse(text: String?): TouchResponse = values().firstOrNull { it.name.equals(text?.trim(), ignoreCase = true) } ?: DEFAULT
+    }
+}
+
+/**
+ * CUSTOM curve: out = floor + (127 - floor) * (v/127)^gamma, rounded, 1..127, 127 -> 127, monotonic. gamma < 1 lifts weak touches
+ * (dynamics are kept: louder input is still louder output), floor is the lowest velocity the synth ever receives.
+ */
+object TouchCustom {
+    const val GAMMA_MIN = 0.30; const val GAMMA_MAX = 1.50; const val FLOOR_MIN = 1; const val FLOOR_MAX = 100
+    @Volatile var gamma: Double = 0.55; private set
+    @Volatile var floor: Int = 1; private set
+    @Volatile var table: IntArray = build(gamma, floor); private set
+
+    fun build(gamma: Double, floor: Int): IntArray = IntArray(128) { v ->
+        if (v <= 0) 0 else Math.round(floor + (127 - floor) * Math.pow(v / 127.0, gamma)).toInt().coerceIn(1, 127)
+    }
+
+    fun set(newGamma: Double, newFloor: Int) {
+        val g = Math.round(newGamma.coerceIn(GAMMA_MIN, GAMMA_MAX) * 100) / 100.0
+        val f = newFloor.coerceIn(FLOOR_MIN, FLOOR_MAX)
+        table = build(g, f); gamma = g; floor = f
     }
 }
 
@@ -42,11 +64,20 @@ enum class RightInputSource { USB, OTHER }
 
 /** One-line text file; atomic replace. Unreadable or unknown content means the default (ORIGINAL). */
 class TouchResponseStore(private val file: File) {
-    fun read(): TouchResponse = try { if (file.isFile) TouchResponse.parse(file.readText()) else TouchResponse.DEFAULT } catch (_: Exception) { TouchResponse.DEFAULT }
+    /** File: first line = mode name, optional `gamma=` / `floor=` lines for CUSTOM. Loading also restores the CUSTOM parameters. */
+    fun read(): TouchResponse = try {
+        if (!file.isFile) TouchResponse.DEFAULT else {
+            val lines = file.readLines()
+            val kv = lines.drop(1).mapNotNull { l -> l.split('=', limit = 2).takeIf { it.size == 2 }?.let { it[0].trim() to it[1].trim() } }.toMap()
+            TouchCustom.set(kv["gamma"]?.toDoubleOrNull() ?: TouchCustom.gamma, kv["floor"]?.toIntOrNull() ?: TouchCustom.floor)
+            TouchResponse.parse(lines.firstOrNull())
+        }
+    } catch (_: Exception) { TouchResponse.DEFAULT }
     fun write(value: TouchResponse) {
+        val text = value.name + "\ngamma=" + TouchCustom.gamma + "\nfloor=" + TouchCustom.floor + "\n"
         val tmp = File(file.parentFile, file.name + ".tmp")
-        tmp.writeText(value.name)
-        if (!tmp.renameTo(file)) { file.writeText(value.name); tmp.delete() }
+        tmp.writeText(text)
+        if (!tmp.renameTo(file)) { file.writeText(text); tmp.delete() }
     }
 }
 

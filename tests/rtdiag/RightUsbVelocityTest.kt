@@ -3,6 +3,7 @@ package com.yourapp.rtdiag
 import com.yourapp.yamahaarranger.audio.RightInputProbe
 import com.yourapp.yamahaarranger.audio.RightUsbTouch
 import com.yourapp.yamahaarranger.audio.RightVelocityTest
+import com.yourapp.yamahaarranger.audio.TouchCustom
 import com.yourapp.yamahaarranger.audio.TouchResponse
 import com.yourapp.yamahaarranger.audio.TouchResponseStore
 import com.yourapp.yamahaarranger.audio.VirtualRightVoices
@@ -135,12 +136,31 @@ class RightUsbVelocityTest {
         r.close()
     }
 
+    @Test fun customCurveKeepsDynamicsFloorAndFullScale() {
+        for (g in listOf(0.30, 0.45, 0.55, 0.8, 1.0, 1.5)) for (fl in listOf(1, 20, 45, 100)) {
+            TouchCustom.set(g, fl)
+            var prev = 0
+            for (v in 1..127) { val m = TouchResponse.CUSTOM.map(v); assertTrue("g=$g floor=$fl v=$v -> $m", m in maxOf(1, fl)..127 && m >= prev); prev = m }
+            assertEquals(127, TouchResponse.CUSTOM.map(127)); assertEquals(0, TouchResponse.CUSTOM.map(0))
+            assertTrue("dynamics kept (not a flat 100)", TouchResponse.CUSTOM.map(20) < TouchResponse.CUSTOM.map(110) || fl >= 100)
+        }
+        TouchCustom.set(9.0, 500); assertEquals(1.5, TouchCustom.gamma, 1e-9); assertEquals(100, TouchCustom.floor)
+        TouchCustom.set(0.55, 1)
+        println("RTDIAG RIGHTUSB custom(0.55,1) " + listOf(20, 40, 48, 57, 60, 80, 100, 127).joinToString(" ") { "$it->${TouchResponse.CUSTOM.map(it)}" })
+        RightUsbTouch.response = TouchResponse.CUSTOM
+        val r = rig(); assertEquals(TouchResponse.CUSTOM.map(48), r.usbVel(48)); r.close()
+    }
+
     @Test fun preferenceIsPersistedAndDefaultsToOriginal() {
         val f = File.createTempFile("touch", ".txt"); f.delete()
         val s = TouchResponseStore(f)
         assertEquals(TouchResponse.ORIGINAL, s.read())
         for (t in TouchResponse.values()) { s.write(t); assertEquals(t, TouchResponseStore(f).read()) }
+        TouchCustom.set(0.7, 30); s.write(TouchResponse.CUSTOM); TouchCustom.set(1.0, 1)
+        assertEquals(TouchResponse.CUSTOM, TouchResponseStore(f).read()); assertEquals(0.7, TouchCustom.gamma, 1e-9); assertEquals(30, TouchCustom.floor)
+        f.writeText("SOFT"); assertEquals("old one-line file still loads", TouchResponse.SOFT, s.read())
         f.writeText("garbage"); assertEquals(TouchResponse.ORIGINAL, s.read())
+        TouchCustom.set(0.55, 1)
         f.delete()
     }
 

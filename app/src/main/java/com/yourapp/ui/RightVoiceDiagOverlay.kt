@@ -61,6 +61,15 @@ fun RightVoiceDiagOverlay(viewModel: MainViewModel, modifier: Modifier = Modifie
             com.yourapp.yamahaarranger.audio.TouchResponse.values().forEach { t ->
                 Chip(t.label, if (touch == t) Color(0xFF1E8E3E) else Color(0xFF444C56)) { viewModel.setTouchResponse(t) }
             }
+            if (touch == com.yourapp.yamahaarranger.audio.TouchResponse.CUSTOM) {
+                val (g, f) = viewModel.touchCustom.collectAsState().value
+                Chip("γ−", Color(0xFF444C56)) { viewModel.setTouchCustom(g - 0.05, f) }
+                Text("γ=%.2f".format(g), color = Color.White, fontSize = 9.sp)
+                Chip("γ+", Color(0xFF444C56)) { viewModel.setTouchCustom(g + 0.05, f) }
+                Chip("floor−", Color(0xFF444C56)) { viewModel.setTouchCustom(g, f - 5) }
+                Text("floor=$f", color = Color.White, fontSize = 9.sp)
+                Chip("floor+", Color(0xFF444C56)) { viewModel.setTouchCustom(g, f + 5) }
+            }
             Text("(saved · not MIDI OUT · not Virtual Keyboard)", color = Color(0xFF9AA4AF), fontSize = 9.sp)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 4.dp)) {
