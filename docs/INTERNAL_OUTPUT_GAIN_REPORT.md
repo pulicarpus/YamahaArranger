@@ -31,3 +31,13 @@ Because the missing level (≈ −8…−13 dB) is larger than all clamps and pe
 1. Install the APK, open RIGHT DIAG → INTERNAL GAIN, keep 0 dB, press RESET METER, play RIGHT only (and then with a Style running) at normal and hard touch; note peak/RMS and "CLIP RISK".
 2. Try +6 dB, then +9 / +12 dB (same playing, same Android and E343 volumes). Compare with MIDI OUT through the same speaker. Watch the meter: `over` > 0 means the knee is working; sustained high `knee` counts or audible harshness means too much gain for that patch.
 3. Report the preferred step, whether RIGHT + Style stays clean, and the meter line. Touch Response Custom is unchanged.
+
+## Measured results (CI run 40905761456, commit b94ed8f; real BASSMIDI, synthetic Strings chord, vel 57, scaled so the LEGACY 0 dB peak is the stated level)
+| legacy peak | +3 dB | +6 dB | +9 dB | +12 dB |
+|---|---|---|---|---|
+| −18 dBFS | exact (peak −15) | exact (−12) | exact (−9) | exact (−6) |
+| −12 dBFS | exact (−9) | exact (−6) | exact (−3) | exact RMS, peak −0.4; knee on 676 samples |
+| −6 dBFS | exact (−3) | peak −0.4; knee on 676 samples | RMS +8.9 (−0.14 dB vs ideal); knee 6 423 samples | RMS +11.2 (−0.78 dB vs ideal); knee 19 680 samples |
+* RMS gain equals the nominal step as long as the peak after gain stays under about 0 dBFS; the knee only acts above that and the largest measured loss is 0.78 dB. No output sample exceeds 1.0 above 0 dB; at 0 dB the buffer is bit-identical to the legacy path.
+* RIGHT-only and RIGHT+Style rows are identical because both scenarios are normalised to the same legacy peak; the real Style+RIGHT peak must be read from the on-device meter. The real peak of Colombo is unknown; this table is a guide, not a Colombo measurement.
+* Both the earlier uncalibrated run (938cc4f, 110 simultaneous string voices, +20 dB over full scale) and its numbers are invalid and must not be used.
