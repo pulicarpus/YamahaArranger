@@ -1,0 +1,24 @@
+name: RIGHT fidelity real BASSMIDI (quick)
+on:
+  push:
+    branches: [experiment/right-audio-fidelity]
+jobs:
+  real-bass:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - name: Real BASSMIDI measurements on synthetic SoundFonts
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/bass-linux /tmp/bassmidi-linux evidence
+          curl -fL --retry 3 https://www.un4seen.com/files/bass24-linux.zip -o /tmp/bass-linux.zip
+          curl -fL --retry 3 https://www.un4seen.com/files/bassmidi24-linux.zip -o /tmp/bassmidi-linux.zip
+          unzip -q /tmp/bass-linux.zip -d /tmp/bass-linux
+          unzip -q /tmp/bassmidi-linux.zip -d /tmp/bassmidi-linux
+          python3 tools/test_right_fidelity_real_bass.py /tmp/bass-linux /tmp/bassmidi-linux --out evidence/right-fidelity 2>&1 | tee evidence/right-fidelity.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RIGHT-fidelity-real-bass-${{ github.run_id }}
+          path: evidence/
