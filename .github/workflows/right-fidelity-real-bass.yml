@@ -1,7 +1,7 @@
 name: RIGHT fidelity real BASSMIDI (quick)
 on:
   push:
-    branches: [experiment/right-audio-fidelity]
+    branches: [experiment/right-audio-fidelity, experiment/internal-output-gain]
 jobs:
   real-bass:
     runs-on: ubuntu-latest

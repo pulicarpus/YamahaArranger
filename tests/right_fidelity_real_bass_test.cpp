@@ -6,6 +6,7 @@
 #include <bass.h>
 #include <bassmidi.h>
 #include "sf2_rich_fixture.h"
+#include "../app/src/main/cpp/internal_gain.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -66,7 +67,7 @@ struct M { double peak = 0, steadyRms = 0, attackMs = -1, tailRms = 0; int clipp
 
 const int RATE = 48000;
 
-M render(HSOUNDFONT font, const std::vector<std::pair<int,int>>& notes /*key,vel*/, int pc, const Opt& o, int channels = 1) {
+M render(HSOUNDFONT font, const std::vector<std::pair<int,int>>& notes /*key,vel*/, int pc, const Opt& o, int channels = 1, std::vector<float>* pcmOut = nullptr) {
     HSTREAM s = BASS_MIDI_StreamCreate(16, BASS_STREAM_DECODE | BASS_SAMPLE_FLOAT | BASS_MIDI_NOTEOFF1, RATE);
     BASS_MIDI_FONT f{font, -1, 0}; BASS_MIDI_StreamSetFonts(s, &f, 1);
     BASS_MIDI_FontSetVolume(font, o.fontVol);
@@ -88,6 +89,7 @@ M render(HSOUNDFONT font, const std::vector<std::pair<int,int>>& notes /*key,vel
         if (!off && b >= int(o.noteSec * 100)) { for (int ch = 0; ch < channels; ++ch) for (auto& n : notes) BASS_MIDI_StreamEvent(s, ch, MIDI_EVENT_NOTE, n.first); off = true; }
         const int got = BASS_ChannelGetData(s, buf.data(), buf.size() * 4 | BASS_DATA_FLOAT);
         if (got <= 0) break;
+        if (pcmOut) pcmOut->insert(pcmOut->end(), buf.begin(), buf.begin() + got / 4);
         double e = 0; const int n = got / 4;
         for (int i = 0; i < n; ++i) { const double v = buf[i]; e += v * v; m.peak = std::max(m.peak, std::fabs(v)); if (std::fabs(v) > 1.0) ++clipped; }
         const double r = std::sqrt(e / std::max(1, n)); rmsPerBlock.push_back(r);
@@ -102,6 +104,7 @@ M render(HSOUNDFONT font, const std::vector<std::pair<int,int>>& notes /*key,vel
     m.tailRms = tailN ? std::sqrt(tail / tailN) : 0;
     return m;
 }
+double db20(double x) { return x > 1e-9 ? 20.0 * std::log10(x) : -180.0; }
 double db(double x) { return x > 1e-9 ? 20.0 * std::log10(x) : -180.0; }
 int failures = 0;
 void check(bool ok, const std::string& what) { if (!ok) { std::cout << "RFA FAIL " << what << "\n"; ++failures; } }
@@ -168,6 +171,28 @@ int main(int argc, char** argv) {
             const M right = render(font, notes, 0, Opt(), 3);
             const M all = render(font, notes, 0, Opt(), 11);
             std::printf("RFA poly vel=%d notes=%d RIGHT(3ch) peak=%.3f clipped=%d | RIGHT+8 style ch peak=%.3f clipped=%d\n", velo, n, right.peak, right.clipped, all.peak, all.clipped);
+        }
+    }
+    // 7. INTERNAL OUTPUT GAIN stage (internal_gain.h) on real BASSMIDI output: RIGHT only (3 ch) and RIGHT + 8 style channels.
+    //    "normal" = like the app (stream 1.0, font 0.90); "hot" = deliberately extreme (stream 1.27, font 1.5, CC7 127) to exercise the knee.
+    for (int hot = 0; hot < 2; ++hot) {
+        for (int withStyle = 0; withStyle < 2; ++withStyle) {
+            Opt o; if (hot) { o.streamVol = 1.27f; o.fontVol = 1.5f; o.cc7 = 127; }
+            std::vector<std::pair<int,int>> notes; for (int k = 0; k < 10; ++k) notes.push_back({48 + k * 2, 127});
+            std::vector<float> pcm; render(font, notes, 1, o, withStyle ? 11 : 3, &pcm);
+            double refRms = 0;
+            for (float db : {0.f, 3.f, 6.f, 9.f, 12.f}) {
+                internal_gain::Stage st; st.setDb(db); std::vector<float> y = pcm; st.process(y.data(), int(y.size()));
+                double ss = 0, ssIdeal = 0; float pk = 0; int hard = 0;
+                const float lin = internal_gain::dbToLinear(db);
+                for (size_t i = 0; i < y.size(); ++i) { ss += double(y[i]) * y[i]; ssIdeal += double(pcm[i] * lin) * (pcm[i] * lin); pk = std::max(pk, std::fabs(y[i])); if (std::fabs(y[i]) > 1.0f) ++hard; }
+                const double rms = std::sqrt(ss / y.size()), ideal = std::sqrt(ssIdeal / y.size());
+                if (db == 0.f) refRms = rms;
+                std::printf("RFA igain %s %s db=%+.0f peakOutDbFS=%.1f rmsGainVs0dB=%+.1f (ideal %+.1f, knee loss %.2f dB) %s\n", hot ? "HOT" : "normal", withStyle ? "RIGHT+Style" : "RIGHT-only",
+                            db, db20(pk), db20(rms) - db20(refRms), db20(ideal) - db20(refRms), db20(ideal) - db20(rms), st.report().c_str());
+                check(hard == 0 || db == 0.f, "stage output reaches 1.0 above 0 dB");
+                check(db != 0.f || std::equal(y.begin(), y.end(), pcm.begin()), "0 dB is bit-identical");
+            }
         }
     }
     BASS_MIDI_FontFree(font); BASS_Free();

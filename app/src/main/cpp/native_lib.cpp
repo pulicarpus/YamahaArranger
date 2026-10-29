@@ -92,6 +92,9 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_Nati
     return g_engine && fontId > 0 && g_engine->sfSetKeyboardPreset(channel,static_cast<uint64_t>(fontId),bank,program) ? JNI_TRUE : JNI_FALSE;
 }
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetMasterGain(JNIEnv*,jobject,jfloat gain){if(g_engine)g_engine->sfSetMasterGain(gain);}
+extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetInternalGainDb(JNIEnv*,jobject,jfloat db){if(g_engine)g_engine->sfSetInternalGainDb(db);}
+extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeInternalGainReport(JNIEnv* env,jobject){return env->NewStringUTF(g_engine?g_engine->internalGainReport().c_str():"IGAIN engine_absent\n");}
+extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeInternalGainReset(JNIEnv*,jobject){if(g_engine)g_engine->internalGainResetStats();}
 extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeGetSoundFontPresets(JNIEnv* env,jobject){
     if(!g_engine) return env->NewStringUTF("");
     const std::string presets = g_engine->sfPresetList();

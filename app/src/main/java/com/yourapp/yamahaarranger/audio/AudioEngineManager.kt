@@ -37,6 +37,7 @@ class AudioEngineManager @Inject constructor(
                 DebugLog.add("📋 Native logger initialized")
                 started = bridge.nativeStart()
                 if (started) bridge.nativeSetKeyboardReleaseTime(keyboardReleaseTime)
+                if (started) bridge.nativeSetInternalGainDb(internalGainDb)
                 DebugLog.traceAudio("START result=$started sf2Loaded=$soundFontLoaded")
                 DebugLog.add(if (started) "✅ AudioEngine OK" else "❌ AudioEngine FAILED")
             }
@@ -469,6 +470,13 @@ class AudioEngineManager @Inject constructor(
         DebugLog.add("🎹 RELEASE TIME=$keyboardReleaseTime R1/R2/R3 acceptedAndReadback=$ok")
         ok
     } }
+
+    /** INTERNAL OUTPUT GAIN (0..12 dB) on the BASSMIDI mix only; 0 = legacy path. Never reaches MIDI OUT. */
+    @Volatile var internalGainDb: Float = 0f
+        private set
+    fun setInternalGainDb(db: Float) { internalGainDb = db.coerceIn(0f, 12f); bridge.nativeSetInternalGainDb(internalGainDb) }
+    fun internalGainReport(): String = bridge.nativeInternalGainReport()
+    fun resetInternalGainStats() = bridge.nativeInternalGainReset()
 
     fun setMasterVolume(volume: Int) {
         val v = volume.coerceIn(0, 127)

@@ -59,6 +59,9 @@ class NativeAudioBridge @Inject constructor() {
     external fun nativeSetKeyboardSustain(enabled: Boolean)
     external fun nativeSetKeyboardReleaseTime(releaseTime: Int): Boolean
     external fun nativeSetMasterGain(gain: Float)
+    external fun nativeSetInternalGainDb(db: Float)
+    external fun nativeInternalGainReport(): String
+    external fun nativeInternalGainReset()
     external fun nativeGetSoundFontPresets(): String
     external fun nativeKeyboardVoiceSnapshot(): String
     external fun nativeRightVoiceDiagnostic(): String

@@ -1255,6 +1255,19 @@ class MainViewModel @Inject constructor(
         _touchCustom.value = com.yourapp.yamahaarranger.audio.TouchCustom.gamma to com.yourapp.yamahaarranger.audio.TouchCustom.floor
         setTouchResponse(_touchResponse.value)
     }
+    private val gainStore by lazy { com.yourapp.yamahaarranger.audio.InternalGainStore(java.io.File(contentResolver.browserMemoryPath().toFile().parentFile, "internal_gain.txt")) }
+    private val _internalGainDb = MutableStateFlow(0)
+    val internalGainDb: StateFlow<Int> = _internalGainDb
+    init { viewModelScope.launch(Dispatchers.IO) { val v = gainStore.read(); audioEngine.setInternalGainDb(v.toFloat()); _internalGainDb.value = v } }
+    /** INTERNAL OUTPUT GAIN 0..12 dB on the BASSMIDI mix only (0 = legacy default / rollback). Saved; never sent to MIDI OUT. */
+    fun setInternalGainDb(db: Int) {
+        val v = com.yourapp.yamahaarranger.audio.InternalGain.clamp(db)
+        _internalGainDb.value = v
+        DebugLog.add("🔊 INTERNAL GAIN = +$v dB (BASSMIDI mix only, MIDI OUT unchanged)")
+        viewModelScope.launch(Dispatchers.IO) { audioEngine.setInternalGainDb(v.toFloat()); audioEngine.resetInternalGainStats(); try { gainStore.write(v) } catch (e: Exception) { DebugLog.add("Internal gain not saved: ${e.javaClass.simpleName}") } }
+    }
+    fun internalGainReport(): com.yourapp.yamahaarranger.audio.InternalGain.Report? = com.yourapp.yamahaarranger.audio.InternalGain.parse(audioEngine.internalGainReport())
+    fun resetInternalGainStats() { audioEngine.resetInternalGainStats() }
     fun logRightInputProbe() { DebugLog.add(com.yourapp.yamahaarranger.audio.RightInputProbe.report()) }
 
     fun resetRightDiagStats() {

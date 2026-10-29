@@ -81,6 +81,18 @@ fun RightVoiceDiagOverlay(viewModel: MainViewModel, modifier: Modifier = Modifie
             }
             Text("(RIGHT internal synth only · not saved)", color = Color(0xFF9AA4AF), fontSize = 9.sp)
         }
+        val gainDb by viewModel.internalGainDb.collectAsState()
+        var gainText by remember { mutableStateOf("") }
+        var gainWarn by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) { while (true) { val r = try { viewModel.internalGainReport() } catch (_: Exception) { null }; gainText = r?.summary() ?: "no meter"; gainWarn = r?.wouldClip == true; delay(500) } }
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 4.dp)) {
+            Text("INTERNAL GAIN (BASSMIDI mix only)", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            com.yourapp.yamahaarranger.audio.InternalGain.STEPS.forEach { d ->
+                Chip(if (d == 0) "0 dB (default)" else "+$d dB", if (gainDb == d) Color(0xFF1E8E3E) else Color(0xFF444C56)) { viewModel.setInternalGainDb(d) }
+            }
+            Chip("RESET METER", Color(0xFF444C56)) { viewModel.resetInternalGainStats() }
+        }
+        Text((if (gainWarn) "CLIP RISK  " else "OK  ") + gainText, color = if (gainWarn) Color(0xFFFF6B6B) else Color(0xFF4CD37B), fontSize = 9.sp, fontFamily = FontFamily.Monospace)
         var probe by remember { mutableStateOf("") }
         LaunchedEffect(Unit) { while (true) { probe = com.yourapp.yamahaarranger.audio.RightInputProbe.report(); delay(500) } }
         Text(probe, color = Color(0xFF7FDBFF), fontSize = 9.sp, fontFamily = FontFamily.Monospace)

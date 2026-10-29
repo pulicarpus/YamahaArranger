@@ -7,6 +7,7 @@
 #include "bassmidi_player.h"
 #include "latency_probe.h"
 #include "metronome_engine.h"
+#include "internal_gain.h"
 #include "buffer_policy.h"
 #include <atomic>
 // PCM_PATH_OBSERVER_BEGIN
@@ -49,6 +50,9 @@ public:
     void sfSetKeyboardSustain(bool enabled);
     bool sfSetKeyboardReleaseTime(int releaseTime);
     void sfSetMasterGain(float gain);
+    void sfSetInternalGainDb(float db){internalGain_.setDb(db);}
+    std::string internalGainReport() const {return internalGain_.report();}
+    void internalGainResetStats(){internalGain_.resetStats();}
     std::string sfPresetList() const;
     std::string sfKeyboardVoiceSnapshot() const { return soundFont_.keyboardVoiceSnapshot(); }
     std::string sfRightOnsetReport(int channel,int key) { return soundFont_.onsetReport(channel,key); }
@@ -87,6 +91,7 @@ public:
     std::string metronomeReport() const {return metronome_.report();}
     void latencySetEnabled(bool e){latency_probe::probe.enabled.store(e?1:0);}
 private:
+    internal_gain::Stage internalGain_; // after BASSMIDI, before the clamp; 0 dB = legacy path (measure only)
     metronome::Engine metronome_; // click generator mixed after BASSMIDI; see metronome_engine.h
     std::shared_ptr<oboe::AudioStream> stream_;
     std::atomic<int> bufferMode_{buffer_policy::BASELINE_2X};

@@ -232,6 +232,7 @@ oboe::DataCallbackResult AudioEngine::onAudioReady(
 #endif
 // PCM_PATH_OBSERVER_END
         soundFont_.render(out, numFrames);
+        internalGain_.process(out, sampleCount);
 
         for (int i = 0; i < sampleCount; ++i) {
             out[i] = std::max(-1.0f, std::min(1.0f, out[i]));
