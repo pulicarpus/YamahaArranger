@@ -173,25 +173,28 @@ int main(int argc, char** argv) {
             std::printf("RFA poly vel=%d notes=%d RIGHT(3ch) peak=%.3f clipped=%d | RIGHT+8 style ch peak=%.3f clipped=%d\n", velo, n, right.peak, right.clipped, all.peak, all.clipped);
         }
     }
-    // 7. INTERNAL OUTPUT GAIN stage (internal_gain.h) on real BASSMIDI output: RIGHT only (3 ch) and RIGHT + 8 style channels.
-    //    "normal" = like the app (stream 1.0, font 0.90); "hot" = deliberately extreme (stream 1.27, font 1.5, CC7 127) to exercise the knee.
-    for (int hot = 0; hot < 2; ++hot) {
-        for (int withStyle = 0; withStyle < 2; ++withStyle) {
-            Opt o; if (hot) { o.streamVol = 1.27f; o.fontVol = 1.5f; o.cc7 = 127; }
-            std::vector<std::pair<int,int>> notes; for (int k = 0; k < 10; ++k) notes.push_back({48 + k * 2, 127});
-            std::vector<float> pcm; render(font, notes, 1, o, withStyle ? 11 : 3, &pcm);
+    // 7. INTERNAL OUTPUT GAIN stage (internal_gain.h) on real BASSMIDI output. Scenarios: RIGHT only (3 channels, 6-note Strings chord, velocity 57 = E343 median)
+    //    and RIGHT + Style (the same on 11 channels). The raw render is then scaled so that the LEGACY (0 dB) peak equals a chosen level (-18/-12/-6 dBFS):
+    //    the real peak of Colombo on the device is unknown, so the table shows how each gain step behaves for a quiet, a normal and a hot legacy mix.
+    for (int withStyle = 0; withStyle < 2; ++withStyle) {
+        std::vector<std::pair<int,int>> notes; for (int k = 0; k < 6; ++k) notes.push_back({48 + k * 3, 57});
+        std::vector<float> raw; render(font, notes, 1, Opt(), withStyle ? 11 : 3, &raw);
+        float rawPeak = 0; for (float v : raw) rawPeak = std::max(rawPeak, std::fabs(v));
+        for (double legacyPeakDb : {-18.0, -12.0, -6.0}) {
+            const float scale = float(std::pow(10.0, legacyPeakDb / 20.0)) / rawPeak;
+            std::vector<float> pcm = raw; for (float& v : pcm) v *= scale;
             double refRms = 0;
-            for (float db : {0.f, 3.f, 6.f, 9.f, 12.f}) {
-                internal_gain::Stage st; st.setDb(db); std::vector<float> y = pcm; st.process(y.data(), int(y.size()));
+            for (float gdb : {0.f, 3.f, 6.f, 9.f, 12.f}) {
+                internal_gain::Stage st; st.setDb(gdb); std::vector<float> y = pcm; st.process(y.data(), int(y.size()));
                 double ss = 0, ssIdeal = 0; float pk = 0; int hard = 0;
-                const float lin = internal_gain::dbToLinear(db);
+                const float lin = internal_gain::dbToLinear(gdb);
                 for (size_t i = 0; i < y.size(); ++i) { ss += double(y[i]) * y[i]; ssIdeal += double(pcm[i] * lin) * (pcm[i] * lin); pk = std::max(pk, std::fabs(y[i])); if (std::fabs(y[i]) > 1.0f) ++hard; }
                 const double rms = std::sqrt(ss / y.size()), ideal = std::sqrt(ssIdeal / y.size());
-                if (db == 0.f) refRms = rms;
-                std::printf("RFA igain %s %s db=%+.0f peakOutDbFS=%.1f rmsGainVs0dB=%+.1f (ideal %+.1f, knee loss %.2f dB) %s\n", hot ? "HOT" : "normal", withStyle ? "RIGHT+Style" : "RIGHT-only",
-                            db, db20(pk), db20(rms) - db20(refRms), db20(ideal) - db20(refRms), db20(ideal) - db20(rms), st.report().c_str());
-                check(hard == 0 || db == 0.f, "stage output reaches 1.0 above 0 dB");
-                check(db != 0.f || std::equal(y.begin(), y.end(), pcm.begin()), "0 dB is bit-identical");
+                if (gdb == 0.f) refRms = rms;
+                std::printf("RFA igain %s legacyPeak=%+.0fdBFS gain=%+.0fdB outPeak=%.1fdBFS rmsGain=%+.1fdB (ideal %+.1f, knee loss %.2fdB) %s",
+                            withStyle ? "RIGHT+Style" : "RIGHT-only", legacyPeakDb, gdb, db20(pk), db20(rms) - db20(refRms), db20(ideal) - db20(refRms), db20(ideal) - db20(rms), st.report().c_str());
+                check(hard == 0 || gdb == 0.f, "stage output exceeds 1.0 above 0 dB");
+                check(gdb != 0.f || std::equal(y.begin(), y.end(), pcm.begin()), "0 dB is bit-identical");
             }
         }
     }
