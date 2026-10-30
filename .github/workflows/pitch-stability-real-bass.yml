@@ -1,0 +1,27 @@
+name: RIGHT pitch stability real BASSMIDI (quick)
+on:
+  push:
+    branches: [experiment/pitch-stability]
+jobs:
+  real-bass:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - name: Analyzer self-test (known vibrato / tremolo) and real BASSMIDI measurements
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/bass-linux /tmp/bassmidi-linux evidence
+          g++ -std=c++17 -O2 -Wall -I tests -o /tmp/pitch_analysis_test tests/pitch_analysis_test.cpp
+          /tmp/pitch_analysis_test 2>&1 | tee evidence/pitch-analysis.log
+          curl -fL --retry 3 https://www.un4seen.com/files/bass24-linux.zip -o /tmp/bass-linux.zip
+          curl -fL --retry 3 https://www.un4seen.com/files/bassmidi24-linux.zip -o /tmp/bassmidi-linux.zip
+          unzip -q /tmp/bass-linux.zip -d /tmp/bass-linux
+          unzip -q /tmp/bassmidi-linux.zip -d /tmp/bassmidi-linux
+          grep -h "define MIDI_EVENT_\|define BASS_ATTRIB_MIDI\|define BASS_CONFIG_MIDI\|define MIDI_SYSTEM" /tmp/bassmidi-linux/c/bassmidi.h | tee evidence/bassmidi-header-constants.txt
+          python3 tools/test_pitch_stability_real_bass.py /tmp/bass-linux /tmp/bassmidi-linux --out evidence/pitch-stability 2>&1 | tee evidence/pitch-stability.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PITCH-stability-real-bass-${{ github.run_id }}
+          path: evidence/
