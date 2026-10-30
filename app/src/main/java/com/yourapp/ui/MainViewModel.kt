@@ -1237,6 +1237,20 @@ class MainViewModel @Inject constructor(
         RightDiagSnapshot(backend, app)
     }
 
+    /** Read-only: what the SoundFont file itself asks for (chorus/reverb send, vibrato/LFO pitch, tuning, such modulators) for each enabled RIGHT voice at keys 48/60/72/84. */
+    suspend fun rightSf2PitchFxReport(): String = withContext(Dispatchers.IO) {
+        val sb = StringBuilder("SF2 PITCH/FX REQUESTS (file's own generators; BASSMIDI's implicit CC1/pressure vibrato modulators are NOT listed)\n")
+        for (slot in _rightVoices.value.filter { it.layer in 0..2 && it.enabled }) {
+            val uri = contentResolver.listSoundFonts().firstOrNull { it.second == slot.soundFontName }?.first
+            sb.append("${slot.label} '${slot.displayName()}' sf2=${slot.soundFontName} bank=${slot.bank} pc=${slot.program}\n")
+            for (key in intArrayOf(48, 60, 72, 84)) {
+                val fx = try { uri?.let { contentResolver.openInputStream(it)?.buffered()?.use { st -> com.yourapp.yamahaarranger.audio.Sf2PitchFx.read(st, slot.bank, slot.program, key) } } } catch (e: Exception) { null }
+                sb.append("  key=$key ").append(fx?.summary() ?: "not proven (file/preset not readable at this bank/program)").append(if (fx != null && fx.asksForChorus) "  <- SF2 itself requests chorus" else "").append(if (fx != null && fx.asksForPitchModulation) "  <- SF2 itself requests pitch modulation" else "").append('\n')
+            }
+        }
+        sb.toString().also { DebugLog.add(it) }
+    }
+
     private val touchStore by lazy { com.yourapp.yamahaarranger.audio.TouchResponseStore(java.io.File(contentResolver.browserMemoryPath().toFile().parentFile, "touch_response.txt")) }
     private val _touchResponse = MutableStateFlow(com.yourapp.yamahaarranger.audio.RightUsbTouch.response)
     val touchResponse: StateFlow<com.yourapp.yamahaarranger.audio.TouchResponse> = _touchResponse

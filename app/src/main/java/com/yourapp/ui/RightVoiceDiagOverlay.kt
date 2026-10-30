@@ -30,6 +30,7 @@ import com.yourapp.yamahaarranger.audio.RightVelocityMode
 import com.yourapp.yamahaarranger.audio.RightVelocityMonitor
 import com.yourapp.yamahaarranger.audio.RightVelocityTest
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Non-modal diagnostic panel: the Voice Selector and keyboard stay usable while it is open.
@@ -39,6 +40,8 @@ import kotlinx.coroutines.delay
 fun RightVoiceDiagOverlay(viewModel: MainViewModel, modifier: Modifier = Modifier) {
     var mode by remember { mutableStateOf(RightVelocityTest.mode) }
     var snapshot by remember { mutableStateOf<MainViewModel.RightDiagSnapshot?>(null) }
+    var fxText by remember { mutableStateOf("") }
+    val fxScope = androidx.compose.runtime.rememberCoroutineScope()
     if (!ToolPanels.diag) return
     LaunchedEffect(Unit) {
         while (true) {
@@ -53,6 +56,7 @@ fun RightVoiceDiagOverlay(viewModel: MainViewModel, modifier: Modifier = Modifie
             Text("RIGHT DIAG — diagnostic only, not a fix", color = Color(0xFFFFC857), fontSize = 10.sp, fontWeight = FontWeight.Bold)
             Chip("RESET STATS", Color(0xFF444C56)) { viewModel.resetRightDiagStats() }
             Chip("LOG PROBE", Color(0xFF2B5C7A)) { viewModel.logRightInputProbe() }
+            Chip("SF2 PITCH/FX", Color(0xFF2B5C7A)) { fxScope.launch { fxText = viewModel.rightSf2PitchFxReport() } }
             Chip("CLOSE", Color(0xFF7A2B2B)) { ToolPanels.diag = false }
         }
         val touch by viewModel.touchResponse.collectAsState()
@@ -108,6 +112,7 @@ fun RightVoiceDiagOverlay(viewModel: MainViewModel, modifier: Modifier = Modifie
         }
         Text("TEST ID: $testId (derived from BASS readback, not from UI)", color = Color(0xFF7FDBFF), fontSize = 10.sp)
         Column(Modifier.verticalScroll(rememberScrollState())) {
+            if (fxText.isNotEmpty()) Text(fxText, color = Color(0xFFFFC857), fontSize = 9.sp, fontFamily = FontFamily.Monospace)
             if (snap == null) Text("waiting for first readback…", color = Color.White, fontSize = 10.sp)
             snap?.backend?.forEach { row ->
                 val app = snap.app.firstOrNull { it.label.replace(" ", "") == row.part }
