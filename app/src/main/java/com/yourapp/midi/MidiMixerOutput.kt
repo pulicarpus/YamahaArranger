@@ -13,6 +13,12 @@ class MidiMixerOutput(private val write: (ByteArray) -> Boolean) {
     private val sent = Array(16) { IntArray(128) { -1 } }
     private val notes = Array(16) { IntArray(128) }
     private val pendingOff = BooleanArray(16)
+    // MIDI OUT octave correction of the melodic Style parts (10..15), in octaves. Applied only to the bytes written to the module.
+    // `paired[ch][note*5 + k + 2]` counts the NOTE_ONs of that INPUT note that were sent with correction k, so every NOTE_OFF is written
+    // with the very note its NOTE_ON used, even when the correction was changed while the note was held. Preallocated: no allocation on the note path.
+    private val octave = IntArray(16)
+    private val paired = Array(16) { IntArray(128 * 5) }
+    private val lastCorrection = Array(16) { IntArray(128) }
     private val programs = arrayOfNulls<IntArray>(16)
     /** Bank/Program that was ACTUALLY written to the module per channel (all three messages accepted). `programs` is only the wanted value. */
     private val sentVoice = arrayOfNulls<IntArray>(16)
@@ -32,7 +38,7 @@ class MidiMixerOutput(private val write: (ByteArray) -> Boolean) {
     @Synchronized fun setConnected(value: Boolean) {
         if (!value) releaseOwnedNotes()
         connected = value
-        if (!value) { notes.forEach { it.fill(0) }; pendingOff.fill(false) }
+        if (!value) { notes.forEach { it.fill(0) }; pendingOff.fill(false); paired.forEach { it.fill(0) } }
         invalidateSent()
         if (value && enabled) replay()
     }
@@ -76,19 +82,46 @@ class MidiMixerOutput(private val write: (ByteArray) -> Boolean) {
     }
     /** The module may have lost its state (reset, manual change): forget everything that was written. The next replay sends it all. */
     @Synchronized fun forgetAllSent() { invalidateSent() }
+    /** MIDI OUT octave correction (-2..+2) of a melodic Style part. Rhythm (8/9), RIGHT and LEFT (0..3) are never corrected. Held notes keep the correction they started with. */
+    @Synchronized fun setOctaveCorrection(channel: Int, octaves: Int): Boolean {
+        if (channel !in 10..15 || octaves !in -2..2) return false
+        octave[channel] = octaves
+        return true
+    }
+    @Synchronized fun octaveCorrection(channel: Int): Int = if (channel in 10..15) octave[channel] else 0
+    /** New Style / reset: every correction back to 0. Does not touch sounding notes (their NOTE_OFFs still pair through the ledger). */
+    @Synchronized fun clearOctaveCorrections() { octave.fill(0) }
+    /** Forget the NOTE_ON pairing after a panic (CC123 silenced every note): nothing is held any more. */
+    @Synchronized fun clearOctavePairing() { paired.forEach { it.fill(0) } }
     @Synchronized fun noteOn(channel: Int, note: Int, velocity: Int) {
         if (!active() || channel !in channels) return
         if (pendingOff[channel]) releaseNotes(channel)
         if (channel in mutedChannels || pendingOff[channel]) return
         val n = note.coerceIn(0, 127)
-        if (write(byteArrayOf((0x90 or channel).toByte(), n.toByte(), velocity.coerceIn(1, 127).toByte()))) notes[channel][n]++
+        val k = if (channel in 10..15) octave[channel] else 0
+        val out = n + 12 * k
+        if (out !in 0..127) return // outside MIDI range after the correction: not sent (no wrap-around); its NOTE_OFF is dropped the same way
+        if (write(byteArrayOf((0x90 or channel).toByte(), out.toByte(), velocity.coerceIn(1, 127).toByte()))) {
+            notes[channel][out]++
+            paired[channel][n * 5 + k + 2]++
+            lastCorrection[channel][n] = k
+        }
     }
     @Synchronized fun noteOff(channel: Int, note: Int) {
         if (!active() || channel !in channels) return
         val n = note.coerceIn(0, 127)
+        // The NOTE_OFF uses the correction its NOTE_ON was sent with (most recent first); an unmatched NOTE_OFF uses the current one.
+        var k = if (channel in 10..15) octave[channel] else 0
+        val counts = paired[channel]
+        val last = lastCorrection[channel][n]
+        if (counts[n * 5 + last + 2] > 0) k = last
+        else for (j in -2..2) if (counts[n * 5 + j + 2] > 0) { k = j; break }
+        val out = n + 12 * k
+        if (out !in 0..127) return
         // Never filter NOTE_OFF by the current mute/solo gain.
-        if (off(channel, n)) {
-            notes[channel][n] = (notes[channel][n] - 1).coerceAtLeast(0)
+        if (off(channel, out)) {
+            if (counts[n * 5 + k + 2] > 0) counts[n * 5 + k + 2]--
+            notes[channel][out] = (notes[channel][out] - 1).coerceAtLeast(0)
             if (notes[channel].all { it == 0 }) pendingOff[channel] = false
         }
     }
@@ -104,6 +137,7 @@ class MidiMixerOutput(private val write: (ByteArray) -> Boolean) {
             if (off(ch, note)) notes[ch][note]--
         }
         pendingOff[ch] = notes[ch].any { it > 0 }
+        if (!pendingOff[ch]) paired[ch].fill(0)
     }
     private fun releaseOwnedNotes() { channels.sorted().forEach(::releaseNotes) }
     private fun invalidateSent() { sent.forEach { it.fill(-1) }; sentVoice.fill(null) }

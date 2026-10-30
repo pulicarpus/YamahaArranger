@@ -37,6 +37,13 @@ data class StyleExternalOverride(
 /** Octave shift of one melodic part (destination channel 10..15), -2..+2 octaves. Applied to the output pitch only, after the CASM/NTT transform. */
 data class StyleOctaveShift(val channel: Int, val scope: OverrideScope, val section: String?, val octaves: Int)
 
+/**
+ * MIDI OUT only octave correction of one melodic Style part (destination channel 10..15 = Bass, Chord 1, Chord 2, Pad, Phrase 1, Phrase 2), -2..+2 octaves (12 semitones each).
+ * Applied by the MIDI OUT router to the note actually written to the external module, after the CASM/NTT transform and any octave shift.
+ * The internal synthesizer never sees it. Part-wide for the whole Style; 0 is stored as "absent".
+ */
+data class StyleMidiOutOctave(val channel: Int, val octaves: Int)
+
 /** Which output a drum note map applies to: the internal SF2 kit or the MIDI OUT module (kit numbering can differ). */
 enum class DrumOutput { INTERNAL, MIDI_OUT }
 
@@ -59,9 +66,19 @@ data class StyleOverrideRecord(
     val externalOverrides: List<StyleExternalOverride> = emptyList(),
     val revision: Long = 0,
     val octaveShifts: List<StyleOctaveShift> = emptyList(),
-    val drumMaps: List<StyleDrumMap> = emptyList()
+    val drumMaps: List<StyleDrumMap> = emptyList(),
+    val midiOutOctaves: List<StyleMidiOutOctave> = emptyList()
 ) {
-    val isEmpty: Boolean get() = overrides.isEmpty() && externalOverrides.isEmpty() && octaveShifts.isEmpty() && drumMaps.isEmpty()
+    val isEmpty: Boolean get() = overrides.isEmpty() && externalOverrides.isEmpty() && octaveShifts.isEmpty() && drumMaps.isEmpty() && midiOutOctaves.isEmpty()
+
+    /** MIDI OUT octave correction of one part (0 when none is stored). */
+    fun midiOutOctave(channel: Int): Int = midiOutOctaves.firstOrNull { it.channel == channel }?.octaves ?: 0
+    /** Sets the MIDI OUT octave correction of one part; 0 removes the entry. */
+    fun withMidiOutOctave(channel: Int, octaves: Int): StyleOverrideRecord {
+        require(channel in 10..15 && octaves in -2..2) { "MIDI OUT octave correction is -2 to +2 for Bass, Chord 1/2, Pad and Phrase 1/2" }
+        val kept = midiOutOctaves.filterNot { it.channel == channel }
+        return copy(midiOutOctaves = if (octaves == 0) kept else (kept + StyleMidiOutOctave(channel, octaves)).sortedBy { it.channel }, revision = revision + 1)
+    }
 
     private fun sameLevel(c1: Int, s1: OverrideScope, sec1: String?, c2: Int, s2: OverrideScope, sec2: String?) =
         c1 == c2 && s1 == s2 && (if (s1 == OverrideScope.ALL) true else sec1 == sec2)
@@ -114,7 +131,7 @@ data class StyleOverrideRecord(
         overrides = overrides.filterNot { it.channel == channel },
         externalOverrides = externalOverrides.filterNot { it.channel == channel },
         octaveShifts = octaveShifts.filterNot { it.channel == channel },
-        drumMaps = drumMaps.filterNot { it.channel == channel }, revision = revision + 1)
+        drumMaps = drumMaps.filterNot { it.channel == channel }, midiOutOctaves = midiOutOctaves.filterNot { it.channel == channel }, revision = revision + 1)
 
     /** RESET SECTION: the section-specific entries of one section; part-wide entries stay. */
     fun withoutSection(section: String): StyleOverrideRecord = copy(
@@ -124,7 +141,7 @@ data class StyleOverrideRecord(
         drumMaps = drumMaps.filterNot { it.scope == OverrideScope.SECTION && it.section == section }, revision = revision + 1)
 
     /** RESET ALL. */
-    fun cleared(): StyleOverrideRecord = copy(overrides = emptyList(), externalOverrides = emptyList(), octaveShifts = emptyList(), drumMaps = emptyList(), revision = revision + 1)
+    fun cleared(): StyleOverrideRecord = copy(overrides = emptyList(), externalOverrides = emptyList(), octaveShifts = emptyList(), drumMaps = emptyList(), midiOutOctaves = emptyList(), revision = revision + 1)
 }
 
 /** Priority: section-specific override, then part-wide override, then the Style/resolver (null). */
@@ -189,8 +206,13 @@ object StyleOverrideCodec {
                 mapOf("channel" to o.channel, "output" to o.output.name, "scope" to o.scope.name, "section" to o.section,
                     "notes" to o.notes.toSortedMap().map { (k, v) -> mapOf("source" to k, "target" to v) })
             })
+        // Optional key: absent when empty, so profiles without MIDI OUT octave correction are byte-identical to what earlier builds wrote and read.
+        val withMidi = if (record.midiOutOctaves.isEmpty()) payload else payload + ("midiOutOctaves" to record.midiOutOctaves.map { o ->
+            require(o.channel in 10..15 && o.octaves in -2..2 && o.octaves != 0)
+            mapOf("channel" to o.channel, "octaves" to o.octaves)
+        })
         return json.write(mapOf("schema" to SCHEMA, "kind" to "styleVoiceOverrides", "styleSha256" to record.styleSha256,
-            "savedAt" to record.savedAt, "payload" to payload, "crc32" to crc(payload)))
+            "savedAt" to record.savedAt, "payload" to withMidi, "crc32" to crc(withMidi)))
     }
 
     private fun int(o: Map<String, Any?>, key: String) = (o[key] as? Long ?: error(key)).toInt()
@@ -260,8 +282,14 @@ object StyleOverrideCodec {
             require(notes.isNotEmpty())
             StyleDrumMap(channel, DrumOutput.valueOf(o["output"] as? String ?: error("output")), scope, section, notes)
         } else emptyList()
+        val midiOctaves = (p["midiOutOctaves"] as? List<Any?>)?.map { item ->
+            val o = item as? Map<String, Any?> ?: error("midiOutOctave")
+            val channel = int(o, "channel"); val octaves = int(o, "octaves")
+            require(channel in 10..15 && octaves in -2..2 && octaves != 0)
+            StyleMidiOutOctave(channel, octaves)
+        }.orEmpty().also { list -> require(list.map { it.channel }.distinct().size == list.size) { "Duplicate MIDI OUT octave channel" } }
         return StyleOverrideRecord(sha, p["styleFileName"] as? String ?: error("styleFileName"), overrides,
-            e["savedAt"] as? Long ?: error("savedAt"), external, if (schema >= 2L) p["revision"] as? Long ?: error("revision") else 0L, octaves, drum)
+            e["savedAt"] as? Long ?: error("savedAt"), external, if (schema >= 2L) p["revision"] as? Long ?: error("revision") else 0L, octaves, drum, midiOctaves)
     }
 }
 
@@ -404,7 +432,8 @@ object StyleOverrideRestorer {
         setExternal: (channel: Int, section: String?, voice: ExternalVoice) -> Boolean,
         log: (String) -> Unit = {},
         setOctave: (channel: Int, section: String?, octaves: Int) -> Boolean = { _, _, _ -> true },
-        setDrumMap: (channel: Int, section: String?, output: DrumOutput, notes: Map<Int, Int>) -> Boolean = { _, _, _, _ -> true }
+        setDrumMap: (channel: Int, section: String?, output: DrumOutput, notes: Map<Int, Int>) -> Boolean = { _, _, _, _ -> true },
+        setMidiOutOctave: (channel: Int, octaves: Int) -> Boolean = { _, _ -> true }
     ): List<RestoreResult> {
         val out = ArrayList<RestoreResult>()
         val pdta = pdtaByFile()
@@ -430,6 +459,11 @@ object StyleOverrideRestorer {
             val ok = setDrumMap(d.channel, if (d.scope == OverrideScope.ALL) null else d.section, d.output, d.notes)
             out += RestoreResult(false, d.channel, d.scope, d.section, if (ok) "ACTIVE" else "UNVERIFIED", kind = "DRUM_MAP", output = d.output)
             log("DRUM MAP restore ch=${d.channel} ${d.output} ${d.scope} ${d.section ?: "*"} notes=${d.notes.size} ${if (ok) "ACTIVE" else "UNVERIFIED"}")
+        }
+        record.midiOutOctaves.forEach { m ->
+            val ok = setMidiOutOctave(m.channel, m.octaves)
+            out += RestoreResult(false, m.channel, OverrideScope.ALL, null, if (ok) "ACTIVE" else "UNVERIFIED", kind = "MIDI_OUT_OCTAVE")
+            log("MIDI OUT OCTAVE restore ch=${m.channel} ${m.octaves} ${if (ok) "ACTIVE" else "UNVERIFIED"}")
         }
         return out
     }

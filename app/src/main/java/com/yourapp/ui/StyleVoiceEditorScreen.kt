@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -95,8 +96,12 @@ class StyleVoiceEditorActions(
     val onDrumMap: (StyleVoiceRow, EditScope, DrumOutput, Map<Int, Int>, (String?) -> Unit) -> Unit = { _, _, _, _, _ -> },
     /** Audition a list of raw notes on a Rhythm part (Style stopped, internal only): original = the Style's own kit, else the current effective kit. */
     val onAuditionNotes: (StyleVoiceRow, Boolean, List<Int>, (String?) -> Unit) -> Unit = { _, _, _, _ -> },
-    /** True when the working profile holds octave shifts or drum maps (enables RESET ALL). */
+    /** True when the working profile holds octave shifts, drum maps or MIDI OUT octave corrections (enables RESET ALL). */
     val hasExtras: Boolean = false,
+    /** MIDI OUT octave correction (-2..+2) of Bass / Chord 1 / Chord 2 / Pad / Phrase 1 / Phrase 2 (channel 10..15), its edit callback and RESET ALL TO 0. */
+    val midiOutOctaveOf: (Int) -> Int = { 0 },
+    val onMidiOutOctave: (Int, Int, (String?) -> Unit) -> Unit = { _, _, _ -> },
+    val onMidiOutOctaveReset: ((String?) -> Unit) -> Unit = { },
     /** Named PSR-E343 voices from the user's own Yamaha Data List file (empty when none was supplied). */
     val deviceCatalog: List<ExternalVoice> = emptyList(),
     /** Keys of the kit now chosen for this Rhythm part that have a sample (read from the SF2 zone tables); null = not provable. */
@@ -184,6 +189,7 @@ fun StyleVoiceInspectorContent(
 private fun Header(inv: StyleVoiceInventory?, loaded: Boolean, output: String, actions: StyleVoiceEditorActions?,
     onRefresh: () -> Unit, onClose: () -> Unit, onToast: (String) -> Unit) {
     var confirmReset by remember { mutableStateOf(false) }
+    var showMidiOctave by remember { mutableStateOf(false) }
     Row(Modifier.fillMaxWidth().height(52.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Column(Modifier.weight(1f)) {
             Text("STYLE VOICES", color = SvGreen, fontWeight = FontWeight.Bold, fontSize = 17.sp)
@@ -200,12 +206,14 @@ private fun Header(inv: StyleVoiceInventory?, loaded: Boolean, output: String, a
             Chip("PROFILE", if (actions == null) "$overrides override" else if (actions.dirty) "UNSAVED" else if (overrides > 0) "SAVED · $overrides" else "none")
         }
         if (actions != null && inv != null) {
+            HeaderButton("MIDI OUT OCTAVE", enabled = actions.writable) { showMidiOctave = true }
             HeaderButton("SAVE PROFILE", enabled = actions.dirty && actions.writable) { actions.onSave(onToast) }
             HeaderButton("RESET ALL", enabled = inv.flat.any { it.override != null } || actions.hasExtras) { confirmReset = true }
         }
         HeaderButton("REFRESH", onClick = onRefresh)
         HeaderButton("CLOSE", onClick = onClose)
     }
+    if (showMidiOctave && actions != null) MidiOutOctaveDialog(actions, onToast) { showMidiOctave = false }
     if (confirmReset && actions != null) Dialog(onDismissRequest = { confirmReset = false }) {
         Column(Modifier.background(SvPanel, RoundedCornerShape(10.dp)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Reset every replacement of this Style?", color = SvText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
@@ -231,6 +239,42 @@ private fun HeaderButton(text: String, enabled: Boolean = true, onClick: () -> U
     Box(Modifier.heightIn(min = 48.dp).background(SvPanelHi, RoundedCornerShape(6.dp))
         .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier).padding(horizontal = 14.dp), contentAlignment = Alignment.Center) {
         Text(text, color = if (enabled) SvBlue else SvDim.copy(alpha = 0.5f), fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1, softWrap = false)
+    }
+}
+
+private val MIDI_OUT_OCTAVE_PARTS = listOf(10 to "Bass", 11 to "Chord 1", 12 to "Chord 2", 13 to "Pad", 14 to "Phrase 1", 15 to "Phrase 2")
+
+/** Style Editor -> MIDI OUT -> Octave Correction. Per Style, saved with SAVE PROFILE; the internal synthesizer, Rhythm, RIGHT and LEFT are not affected. */
+@Composable
+private fun MidiOutOctaveDialog(actions: StyleVoiceEditorActions, onToast: (String) -> Unit, onClose: () -> Unit) {
+    var tick by remember { mutableStateOf(0) } // recompose after an edit lands in the working profile
+    Dialog(onDismissRequest = onClose) {
+        Column(Modifier.background(SvPanel, RoundedCornerShape(10.dp)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("MIDI OUT · OCTAVE CORRECTION", color = SvGreen, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text("Moves the notes sent to the external keyboard by whole octaves (12 semitones per step). Only MIDI OUT of this Style: the internal sound, Rhythm drums, RIGHT and LEFT are not changed. Notes already sounding finish on the octave they started with.",
+                color = SvDim, fontSize = 12.sp)
+            if (!actions.midiOut) Text("MIDI OUT is OFF now; the setting is still saved with the Style.", color = Color(0xFFFFB347), fontSize = 12.sp)
+            MIDI_OUT_OCTAVE_PARTS.forEach { (channel, label) ->
+                val current = remember(tick) { actions.midiOutOctaveOf(channel) }
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(label, color = SvText, fontWeight = FontWeight.Bold, fontSize = 13.sp, modifier = Modifier.width(78.dp))
+                    for (value in -2..2) {
+                        val selected = value == current
+                        Box(Modifier.widthIn(min = 52.dp).heightIn(min = 44.dp).background(if (selected) SvBlue else SvPanelHi, RoundedCornerShape(6.dp))
+                            .then(if (actions.writable) Modifier.clickable { actions.onMidiOutOctave(channel, value) { error -> error?.let(onToast); tick++ } } else Modifier),
+                            contentAlignment = Alignment.Center) {
+                            Text(if (value > 0) "+$value" else "$value", color = if (selected) SvBlack else SvText, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        }
+                    }
+                    Text(if (current == 0) "0" else "${if (current > 0) "+" else ""}${current * 12} st", color = if (current == 0) SvDim else SvBlue, fontSize = 12.sp)
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                HeaderButton("RESET ALL TO 0", enabled = actions.writable && MIDI_OUT_OCTAVE_PARTS.any { actions.midiOutOctaveOf(it.first) != 0 }) { actions.onMidiOutOctaveReset { error -> error?.let(onToast); tick++ } }
+                HeaderButton("CLOSE", onClick = onClose)
+            }
+            Text("Press SAVE PROFILE to keep it for this Style.", color = SvDim, fontSize = 11.sp)
+        }
     }
 }
 

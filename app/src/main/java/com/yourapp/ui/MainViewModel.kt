@@ -1021,7 +1021,7 @@ class MainViewModel @Inject constructor(
     private fun editorSnapshot(message: String = _styleEditorUi.value.message): StyleEditorUiState {
         val empty = com.yourapp.yamahaarranger.style.StyleOverrideRecord(currentStyleSha ?: "0".repeat(64), currentStyleFileName, emptyList())
         val w = currentOverrides ?: empty; val sv = savedOverrides ?: empty
-        val dirty = w.overrides != sv.overrides || w.externalOverrides != sv.externalOverrides || w.octaveShifts != sv.octaveShifts || w.drumMaps != sv.drumMaps
+        val dirty = w.overrides != sv.overrides || w.externalOverrides != sv.externalOverrides || w.octaveShifts != sv.octaveShifts || w.drumMaps != sv.drumMaps || w.midiOutOctaves != sv.midiOutOctaves
         return StyleEditorUiState(dirty, overridesWritable, sv.savedAt, w.revision, message, _styleEditorUi.value.auditioning)
     }
     /** Lock-free: the Style load calls this while holding the engine operation lock (see StyleOverrideRestorer). */
@@ -1041,6 +1041,7 @@ class MainViewModel @Inject constructor(
     private fun restoreStyleOverrides() {
         val record = currentOverrides
         overrideStates.clear()
+        midiInputManager.clearStyleOctaveCorrections() // a Style without a stored correction always starts at 0
         if (record != null) {
             val results = com.yourapp.yamahaarranger.style.StyleOverrideRestorer.restore(record,
                 pdtaByFile = { loadedPdtaByFile() },
@@ -1049,7 +1050,8 @@ class MainViewModel @Inject constructor(
                 setExternal = { channel, section, voice -> arrangerBrain.setStyleExternalVoice(section, channel, voice) },
                 log = { DebugLog.add(it) },
                 setOctave = { channel, section, octaves -> arrangerBrain.setStyleOctaveShift(section, channel, octaves) },
-                setDrumMap = { channel, section, output, notes -> arrangerBrain.setStyleDrumMap(section, channel, output.ordinal, notes) })
+                setDrumMap = { channel, section, output, notes -> arrangerBrain.setStyleDrumMap(section, channel, output.ordinal, notes) },
+                setMidiOutOctave = { channel, octaves -> midiInputManager.setStyleOctaveCorrection(channel, octaves) })
             results.forEach { overrideStates[when (it.kind) {
                 "OCTAVE" -> extraKey(false, it.channel, it.scope, it.section, null)
                 "DRUM_MAP" -> extraKey(true, it.channel, it.scope, it.section, it.output)
@@ -1510,6 +1512,10 @@ class MainViewModel @Inject constructor(
         "${if (drum) "D" else "O"}|${output ?: "-"}|$scope|${section ?: "*"}|$channel"
 
     private fun executeOverrideChanges(old: com.yourapp.yamahaarranger.style.StyleOverrideRecord?, new: com.yourapp.yamahaarranger.style.StyleOverrideRecord?) {
+        for (channel in 10..15) {
+            val before = old?.midiOutOctave(channel) ?: 0; val after = new?.midiOutOctave(channel) ?: 0
+            if (before != after) midiInputManager.setStyleOctaveCorrection(channel, after)
+        }
         for (c in com.yourapp.yamahaarranger.style.StyleVoiceEditorOps.diffExtras(old, new)) {
             val section = if (c.scope == com.yourapp.yamahaarranger.style.OverrideScope.ALL) null else c.section
             val key = extraKey(c.drum, c.channel, c.scope, c.section, c.output)
@@ -1605,7 +1611,36 @@ class MainViewModel @Inject constructor(
         keys
     }
 
-    fun editorHasExtras(): Boolean = currentOverrides?.let { it.octaveShifts.isNotEmpty() || it.drumMaps.isNotEmpty() } ?: false
+    fun editorHasExtras(): Boolean = currentOverrides?.let { it.octaveShifts.isNotEmpty() || it.drumMaps.isNotEmpty() || it.midiOutOctaves.isNotEmpty() } ?: false
+
+    /** MIDI OUT octave correction of a melodic part in the working profile (0 = none). */
+    fun editorMidiOutOctave(channel: Int): Int = currentOverrides?.midiOutOctave(channel) ?: 0
+    /** Sets the MIDI OUT octave correction (-2..+2) of Bass/Chord 1/Chord 2/Pad/Phrase 1/Phrase 2 for this Style: heard at once on MIDI OUT, saved with SAVE PROFILE. */
+    fun editorSetMidiOutOctave(channel: Int, octaves: Int, onResult: (String?) -> Unit) {
+        if (currentStyleSha == null) return onResult("No Style is loaded.")
+        if (!overridesWritable) return onResult("This Style's stored profile is newer or damaged; it is kept read-only.")
+        viewModelScope.launch(Dispatchers.Default) {
+            val old = currentOverrides ?: emptyProfile()
+            val next = try { old.withMidiOutOctave(channel, octaves) } catch (e: IllegalArgumentException) { return@launch onResult(e.message ?: "Not allowed.") }
+            executeOverrideChanges(old, next)
+            currentOverrides = next
+            refreshAssignmentsFromRecord()
+            onResult(null)
+        }
+    }
+    /** RESET ALL TO 0 for the MIDI OUT octave corrections only (voices and other edits stay). */
+    fun editorResetMidiOutOctaves(onResult: (String?) -> Unit) {
+        if (currentStyleSha == null) return onResult("No Style is loaded.")
+        if (!overridesWritable) return onResult("This Style's stored profile is newer or damaged; it is kept read-only.")
+        viewModelScope.launch(Dispatchers.Default) {
+            val old = currentOverrides ?: emptyProfile()
+            val next = old.copy(midiOutOctaves = emptyList(), revision = old.revision + 1)
+            executeOverrideChanges(old, next)
+            currentOverrides = next
+            refreshAssignmentsFromRecord()
+            onResult(null)
+        }
+    }
 
     /** Effective octave shown in the editor (section-specific, then part-wide). */
     fun editorOctave(section: String, channel: Int): Int = com.yourapp.yamahaarranger.style.StyleOverrideResolver.octave(currentOverrides, section, channel)

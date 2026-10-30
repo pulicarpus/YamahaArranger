@@ -234,7 +234,13 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
     /** The keyboard may have reset or been changed by hand: the next replay writes every Bank/Program/controller again. */
     fun forgetAllSentMidiState() = mixerOutput.forgetAllSent()
 
+    /** MIDI OUT octave correction of a melodic Style part (10..15), -2..+2. MIDI OUT only: the internal synthesizer is not involved. */
+    fun setStyleOctaveCorrection(channel: Int, octaves: Int): Boolean = mixerOutput.setOctaveCorrection(channel, octaves)
+    fun styleOctaveCorrection(channel: Int): Int = mixerOutput.octaveCorrection(channel)
+    fun clearStyleOctaveCorrections() = mixerOutput.clearOctaveCorrections()
+
     fun allNotesOff() {
+        mixerOutput.clearOctavePairing()
         val port = inputPort ?: return
         for (ch in 0 until 16) try {
             port.send(byteArrayOf((0xB0 or ch).toByte(), 123.toByte(), 0), 0, 3)
