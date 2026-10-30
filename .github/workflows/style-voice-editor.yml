@@ -145,7 +145,7 @@ jobs:
           grep -h "define MIDI_EVENT_\|define BASS_ATTRIB_MIDI\|define BASS_MIDI_FONT_\|define BASS_CONFIG_MIDI" /tmp/bassmidi-linux/c/bassmidi.h | tee evidence/bassmidi-header-constants.txt
           python3 tools/test_pitch_stability_real_bass.py /tmp/bass-linux /tmp/bassmidi-linux --out evidence/pitch-stability 2>&1 | tee evidence/pitch-stability.log
       - name: Real BASSMIDI measurements on synthetic SoundFonts (velocity, CC7/CC11, volume, reverb/chorus, polyphony, internal gain)
-        if: github.ref == 'refs/heads/experiment/right-audio-fidelity' || github.ref == 'refs/heads/experiment/internal-output-gain' || github.ref == 'refs/heads/experiment/pitch-stability'
+        if: github.ref == 'refs/heads/experiment/right-audio-fidelity' || github.ref == 'refs/heads/experiment/internal-output-gain'
         run: |
           set -euo pipefail
           mkdir -p /tmp/bass-linux /tmp/bassmidi-linux
