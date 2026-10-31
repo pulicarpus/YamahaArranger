@@ -62,6 +62,8 @@ class NativeAudioBridge @Inject constructor() {
     external fun nativeSetInternalGainDb(db: Float)
     external fun nativeInternalGainReport(): String
     external fun nativeInternalGainReset()
+    /** Peak of the most recent audio block after the output stage (0..1): the only real audio level the app has. */
+    external fun nativeMasterLevel(): Float
     external fun nativeGetSoundFontPresets(): String
     external fun nativeKeyboardVoiceSnapshot(): String
     external fun nativeRightVoiceDiagnostic(): String

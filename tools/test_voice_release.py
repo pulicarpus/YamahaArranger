@@ -68,6 +68,8 @@ def jvm(output, fetch):
              ROOT/'app/src/main/java/com/yourapp/style/StyleModel.kt',
              ROOT/'app/src/main/java/com/yourapp/midi/MidiInputManager.kt',
              ROOT/'app/src/main/java/com/yourapp/midi/MidiMixerOutput.kt',
+            ROOT/'app/src/main/java/com/yourapp/midi/LiveKeyState.kt',
+            ROOT/'app/src/main/java/com/yourapp/midi/ChannelActivity.kt',
              ROOT/'app/src/test/java/com/yourapp/audio/MidiMixerOutputTest.kt',
              ROOT/'app/src/test/java/com/yourapp/audio/VoiceReleaseContractTest.kt',
              ROOT/'tests/readiness_jvm/ReadyToPlayEngineTest.kt',

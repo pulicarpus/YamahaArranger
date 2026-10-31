@@ -24,6 +24,16 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
     var onNoteOn: ((midiNote: Int, velocity: Int) -> Unit)? = null
     var onNoteOff: ((midiNote: Int) -> Unit)? = null
     var onSustainChange: ((enabled: Boolean) -> Unit)? = null
+    /** Which keys of the physical keyboard are down (original MIDI IN note numbers), mirrored by the on-screen keyboard. Read-only for everything else. */
+    val liveKeys = LiveKeyState()
+    init {
+        // Unplugging the keyboard never reaches the parser: clear the on-screen keys when any MIDI device is removed. Visual state only.
+        try {
+            midiManager?.registerDeviceCallback(object : MidiManager.DeviceCallback() {
+                override fun onDeviceRemoved(device: MidiDeviceInfo) { liveKeys.clear() }
+            }, Handler(Looper.getMainLooper()))
+        } catch (e: Exception) { Timber.w(e, "MIDI device callback not registered") }
+    }
     var connectedDeviceName: String? = null
         private set
     private val mixerOutput = MidiMixerOutput { data ->
@@ -181,14 +191,17 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
                 0x90 -> if (channel == chordInputChannel) {
                     if (d2 > 0) {
                         com.yourapp.yamahaarranger.audio.LatencyProbe.noteOnParsed()
+                        liveKeys.noteOn(d1, d2)
                         onNoteOn?.invoke(d1, d2)
                         if (!com.yourapp.yamahaarranger.audio.NoteLogTuning.skip()) DebugLog.add("🎹 IN ch$channel NoteOn $d1 vel$d2")
                     } else {
+                        liveKeys.noteOff(d1)
                         onNoteOff?.invoke(d1)
                         if (!com.yourapp.yamahaarranger.audio.NoteLogTuning.skip()) DebugLog.add("🎹 IN ch$channel NoteOff $d1")
                     }
                 }
                 0x80 -> if (channel == chordInputChannel) {
+                    liveKeys.noteOff(d1)
                     onNoteOff?.invoke(d1)
                     if (!com.yourapp.yamahaarranger.audio.NoteLogTuning.skip()) DebugLog.add("🎹 IN ch$channel NoteOff $d1")
                 }
@@ -198,6 +211,7 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
 
     fun sendNoteOn(channel: Int, note: Int, velocity: Int) {
         if (channel !in 0..15) return
+        ChannelActivity.noteOn(ChannelActivity.Source.NOTES, channel, velocity) // Mixer indicator only; nothing is sent or changed
         mixerOutput.noteOn(channel, note, velocity)
     }
 
@@ -248,6 +262,7 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
     }
 
     fun close() {
+        liveKeys.clear() // a closed/removed device must not leave a key lit
         mixerOutput.setConnected(false)
         try { outputPort?.close() } catch (e: Exception) { Timber.w(e, "close outputPort") }
         try { inputPort?.close() } catch (e: Exception) { Timber.w(e, "close inputPort") }

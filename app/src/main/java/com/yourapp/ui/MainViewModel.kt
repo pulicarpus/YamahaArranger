@@ -1284,6 +1284,10 @@ class MainViewModel @Inject constructor(
     }
     fun internalGainReport(): com.yourapp.yamahaarranger.audio.InternalGain.Report? = com.yourapp.yamahaarranger.audio.InternalGain.parse(audioEngine.internalGainReport())
     fun resetInternalGainStats() { audioEngine.resetInternalGainStats() }
+    /** Real output level (peak of the last audio block, 0..1) for the Mixer's MASTER meter. */
+    fun masterLevel(): Float = audioEngine.masterLevel()
+    /** Which keys of the physical keyboard are down (original MIDI IN notes), for the on-screen keyboard. */
+    val liveKeys: com.yourapp.midi.LiveKeyState get() = midiInputManager.liveKeys
     fun logRightInputProbe() { DebugLog.add(com.yourapp.yamahaarranger.audio.RightInputProbe.report()) }
 
     fun resetRightDiagStats() {

@@ -102,6 +102,7 @@ class MidiMixerOutput(private val write: (ByteArray) -> Boolean) {
         val out = n + 12 * k
         if (out !in 0..127) return // outside MIDI range after the correction: not sent (no wrap-around); its NOTE_OFF is dropped the same way
         if (write(byteArrayOf((0x90 or channel).toByte(), out.toByte(), velocity.coerceIn(1, 127).toByte()))) {
+            ChannelActivity.noteOn(ChannelActivity.Source.MIDI_OUT, channel, velocity) // Mixer "MIDI OUT activity" indicator: a message was really written
             notes[channel][out]++
             paired[channel][n * 5 + k + 2]++
             lastCorrection[channel][n] = k

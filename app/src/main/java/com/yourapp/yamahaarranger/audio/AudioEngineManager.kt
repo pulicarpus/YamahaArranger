@@ -477,6 +477,8 @@ class AudioEngineManager @Inject constructor(
     fun setInternalGainDb(db: Float) { internalGainDb = db.coerceIn(0f, 12f); bridge.nativeSetInternalGainDb(internalGainDb) }
     fun internalGainReport(): String = bridge.nativeInternalGainReport()
     fun resetInternalGainStats() = bridge.nativeInternalGainReset()
+    /** Real output level for the Mixer's master meter: peak of the last audio block, 0..1 (linear). Per-part audio levels do not exist (one mixed BASSMIDI stream). */
+    fun masterLevel(): Float = bridge.nativeMasterLevel()
 
     fun setMasterVolume(volume: Int) {
         val v = volume.coerceIn(0, 127)

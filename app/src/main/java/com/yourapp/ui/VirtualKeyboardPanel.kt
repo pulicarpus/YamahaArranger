@@ -22,7 +22,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -32,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -60,6 +63,15 @@ fun VirtualKeyboardPanel(viewModel: MainViewModel, onClose: () -> Unit, modifier
     var pressed by remember { mutableLongStateOf(0L) }
     var scrollPx by remember { mutableFloatStateOf(0f) }
     var diag by remember { mutableStateOf("") }
+    // PSR-E343 MIDI IN mirror: the physical keys come from the MIDI input manager's LiveKeyState (original note numbers); this panel only READS them.
+    val liveKeys = viewModel.liveKeys
+    var physTick by remember { mutableIntStateOf(0) }
+    var follow by remember { mutableStateOf(true) }
+    var edgeInfo by remember { mutableStateOf("") }
+    LaunchedEffect(liveKeys) {
+        var seen = -1
+        while (true) { withFrameNanos { }; val v = liveKeys.version; if (v != seen) { seen = v; physTick++ } }
+    }
 
     // Closing the panel (or leaving composition) always releases every virtual note and the virtual sustain.
     DisposableEffect(Unit) { onDispose { viewModel.closeVirtualKeyboard() } }
@@ -79,7 +91,9 @@ fun VirtualKeyboardPanel(viewModel: MainViewModel, onClose: () -> Unit, modifier
 
     Column(modifier.fillMaxWidth().height(VirtualKeyboardPanelHeight).background(Color(0xF0151A20)).padding(6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Btn("CLOSE", Color(0xFF8A2D2D)) { viewModel.closeVirtualKeyboard(); onClose() }
+            Btn("HIDE KEYBOARD", Color(0xFF8A2D2D)) { viewModel.closeVirtualKeyboard(); onClose() }
+            Btn(if (follow) "FOLLOW MIDI IN: ON" else "FOLLOW MIDI IN: OFF", if (follow) Color(0xFF8A5A00) else Color(0xFF3A4450)) { follow = !follow }
+            if (edgeInfo.isNotEmpty()) Text(edgeInfo, color = Color(0xFFFFC857), fontSize = 11.sp, fontWeight = FontWeight.Bold)
             Btn("OCT −", Color(0xFF3A4450)) { controller.setOctave(octave - 1); octave = controller.octaveShift }
             Text("OCT ${if (octave >= 0) "+" else ""}$octave  ${VirtualKeyboardLayout.noteName(VirtualKeyboardLayout.pitchOf(0, octave))}–" +
                 VirtualKeyboardLayout.noteName(VirtualKeyboardLayout.pitchOf(VirtualKeyboardLayout.KEY_COUNT - 1, octave)),
@@ -104,6 +118,19 @@ fun VirtualKeyboardPanel(viewModel: MainViewModel, onClose: () -> Unit, modifier
             val maxScroll = (totalW - viewW).coerceAtLeast(0f)
             val currentScroll by rememberUpdatedState(scrollPx.coerceIn(0f, maxScroll))
             val octaveNow by rememberUpdatedState(octave)
+            LaunchedEffect(physTick, follow, octave, maxScroll) {
+                val notes = liveKeys.downNotes()
+                val low = VirtualKeyboardLayout.pitchOf(0, octave); val high = low + VirtualKeyboardLayout.KEY_COUNT - 1
+                val below = notes.count { it < low }; val above = notes.count { it > high }
+                edgeInfo = (if (below > 0) "◀ $below below " else "") + (if (above > 0) "$above above ▶" else "")
+                if (!follow || notes.isEmpty()) return@LaunchedEffect
+                val inRange = notes.filter { it in low..high }
+                if (inRange.isEmpty()) return@LaunchedEffect
+                val left = VirtualKeyboardLayout.keyLeft(inRange.first() - low, whitePx)
+                val right = VirtualKeyboardLayout.keyLeft(inRange.last() - low, whitePx) + whitePx
+                val cur = scrollPx.coerceIn(0f, maxScroll)
+                if (left < cur || right > cur + viewW) scrollPx = (((left + right) / 2f) - viewW / 2f).coerceIn(0f, maxScroll)
+            }
             val labelPaint = remember {
                 android.graphics.Paint().apply {
                     color = android.graphics.Color.DKGRAY; isAntiAlias = true; textAlign = android.graphics.Paint.Align.CENTER
@@ -163,12 +190,15 @@ fun VirtualKeyboardPanel(viewModel: MainViewModel, onClose: () -> Unit, modifier
                 ) {
                     val h = size.height
                     val shift = currentScroll
+                    val tick = physTick // read in the draw scope: a MIDI IN change redraws this canvas only
+                    val lowNote = VirtualKeyboardLayout.pitchOf(0, octaveNow)
                     for (i in 0 until VirtualKeyboardLayout.KEY_COUNT) {
                         if (VirtualKeyboardLayout.isBlack(i)) continue
                         val x = VirtualKeyboardLayout.keyLeft(i, whitePx) - shift
                         if (x + whitePx < 0f || x > size.width) continue
                         val down = (pressed shr i) and 1L != 0L
-                        drawRect(if (down) Color(0xFF7FC8FF) else Color(0xFFF4F4F0), Offset(x, 0f), Size(whitePx - 1.5f, h))
+                        val pv = liveKeys.velocityOf(lowNote + i)
+                        drawRect(if (pv > 0) lerp(Color(0xFFFFE08A), Color(0xFFFF9F1C), pv / 127f) else if (down) Color(0xFF7FC8FF) else Color(0xFFF4F4F0), Offset(x, 0f), Size(whitePx - 1.5f, h))
                         drawRect(Color(0xFF555B63), Offset(x, 0f), Size(whitePx - 1.5f, h), style = Stroke(1.5f))
                         val label = VirtualKeyboardLayout.cLabel(i, octaveNow)
                         if (label.isNotEmpty()) {
@@ -182,7 +212,8 @@ fun VirtualKeyboardPanel(viewModel: MainViewModel, onClose: () -> Unit, modifier
                         val w = VirtualKeyboardLayout.keyWidth(i, whitePx)
                         if (x + w < 0f || x > size.width) continue
                         val down = (pressed shr i) and 1L != 0L
-                        drawRect(if (down) Color(0xFF2F83C9) else Color(0xFF15181C), Offset(x, 0f), Size(w, VirtualKeyboardLayout.blackHeight(h)))
+                        val pv = liveKeys.velocityOf(lowNote + i)
+                        drawRect(if (pv > 0) lerp(Color(0xFFB87400), Color(0xFFFF9F1C), pv / 127f) else if (down) Color(0xFF2F83C9) else Color(0xFF15181C), Offset(x, 0f), Size(w, VirtualKeyboardLayout.blackHeight(h)))
                     }
                 }
             }

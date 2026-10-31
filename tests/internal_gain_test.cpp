@@ -18,6 +18,9 @@ int main() {
       check(std::fabs(y[600] - shape(x[600] * dbToLinear(6))) < 1e-6f, "formula");
       const float q = 0.2f; Stage t; t.setDb(6); float v = q; t.process(&v, 1); check(std::fabs(v - q * dbToLinear(6)) < 1e-6f, "linear below knee");
       std::cout << s.report(); }
+    // live level for the Mixer: peak of the most recent block
+    { Stage s; s.setDb(6); std::vector<float> a{0.1f, -0.2f}, b{0.05f, 0.0f}; s.process(a.data(), 2); check(std::fabs(s.lastBlockPeak() - 0.2f * dbToLinear(6)) < 1e-5f, "block peak (loud block)");
+      s.process(b.data(), 2); check(std::fabs(s.lastBlockPeak() - 0.05f * dbToLinear(6)) < 1e-5f, "block peak follows the last block"); }
     // knee continuity and slope at the threshold
     { const float a = kKnee - 1e-4f, b = kKnee + 1e-4f; check(std::fabs(shape(b) - shape(a)) < 3e-4f, "continuous at knee"); }
     // clamps of the control, NaN safety, stats reset

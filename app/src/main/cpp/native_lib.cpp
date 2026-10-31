@@ -94,6 +94,7 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_Nati
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetMasterGain(JNIEnv*,jobject,jfloat gain){if(g_engine)g_engine->sfSetMasterGain(gain);}
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetInternalGainDb(JNIEnv*,jobject,jfloat db){if(g_engine)g_engine->sfSetInternalGainDb(db);}
 extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeInternalGainReport(JNIEnv* env,jobject){return env->NewStringUTF(g_engine?g_engine->internalGainReport().c_str():"IGAIN engine_absent\n");}
+extern "C" JNIEXPORT jfloat JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeMasterLevel(JNIEnv*,jobject){return g_engine?g_engine->masterLevel():0.0f;}
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeInternalGainReset(JNIEnv*,jobject){if(g_engine)g_engine->internalGainResetStats();}
 extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeGetSoundFontPresets(JNIEnv* env,jobject){
     if(!g_engine) return env->NewStringUTF("");

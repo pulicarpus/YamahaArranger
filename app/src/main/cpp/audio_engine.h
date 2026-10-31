@@ -53,6 +53,7 @@ public:
     void sfSetInternalGainDb(float db){internalGain_.setDb(db);}
     std::string internalGainReport() const {return internalGain_.report();}
     void internalGainResetStats(){internalGain_.resetStats();}
+    float masterLevel() const {return internalGain_.lastBlockPeak();}
     std::string sfPresetList() const;
     std::string sfKeyboardVoiceSnapshot() const { return soundFont_.keyboardVoiceSnapshot(); }
     std::string sfRightOnsetReport(int channel,int key) { return soundFont_.onsetReport(channel,key); }

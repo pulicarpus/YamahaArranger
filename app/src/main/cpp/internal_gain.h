@@ -38,6 +38,8 @@ public:
         lin_.store(d == 0.0f ? 1.0f : dbToLinear(d), std::memory_order_relaxed);
     }
     float db() const { return db_.load(std::memory_order_relaxed); }
+    /** Peak |sample| (0..1, after the stage, before the engine clamp) of the most recent audio block. */
+    float lastBlockPeak() const { return lastBlockPeak_.load(std::memory_order_relaxed); }
 
     // Audio thread. `n` = interleaved samples.
     void process(float* x, int n) {
@@ -65,6 +67,7 @@ public:
                 if (o > peakOut) peakOut = o;
             }
         }
+        lastBlockPeak_.store(peakOut, std::memory_order_relaxed); // live output level for the Mixer's master meter: one relaxed store per callback
         float cur = peakPreMax_.load(std::memory_order_relaxed);
         while (peakPre > cur && !peakPreMax_.compare_exchange_weak(cur, peakPre, std::memory_order_relaxed)) {}
         cur = peakOutMax_.load(std::memory_order_relaxed);
@@ -93,7 +96,7 @@ public:
     }
 
 private:
-    std::atomic<float> db_{0.0f}, lin_{1.0f}, peakPreMax_{0.0f}, peakOutMax_{0.0f};
+    std::atomic<float> db_{0.0f}, lin_{1.0f}, peakPreMax_{0.0f}, peakOutMax_{0.0f}, lastBlockPeak_{0.0f};
     std::atomic<double> sumSq_{0.0};
     std::atomic<uint64_t> samples_{0};
     std::atomic<uint32_t> over_{0}, limited_{0};
