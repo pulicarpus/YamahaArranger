@@ -1670,6 +1670,19 @@ class MainViewModel @Inject constructor(
     /** RESET ALL: the Style plays exactly as authored. Saving afterwards deletes the stored profile. */
     fun editorResetAll() = editorReset { it.cleared() }
 
+    /** DISCARD: drops the unsaved edits. The saved profile (or none) becomes the working profile again and its settings are applied through the same diff as every other edit. */
+    fun editorDiscard(onResult: (String) -> Unit) {
+        if (currentStyleSha == null) return onResult("")
+        viewModelScope.launch(Dispatchers.Default) {
+            val old = currentOverrides ?: emptyProfile()
+            val saved = savedOverrides
+            executeOverrideChanges(old, saved ?: emptyProfile())
+            currentOverrides = saved
+            refreshAssignmentsFromRecord()
+            onResult("Unsaved changes discarded.")
+        }
+    }
+
     /** SAVE PROFILE: writes the working profile next to (not into) the Style file, keyed by its content hash. */
     fun editorSave(onResult: (String) -> Unit) {
         val sha = currentStyleSha ?: return onResult("No Style is loaded.")

@@ -71,6 +71,7 @@ fun StyleVoiceEditorOverlay(vm: MainViewModel) {
         midiOutOctaveOf = { channel -> vm.editorMidiOutOctave(channel) },
         onMidiOutOctave = { channel, octaves, done -> vm.editorSetMidiOutOctave(channel, octaves, done) },
         onMidiOutOctaveReset = { done -> vm.editorResetMidiOutOctaves(done) },
+        onDiscard = { done -> vm.editorDiscard(done) },
         keyCoverage = { row -> vm.editorKeyCoverage(row) },
         deviceCatalog = remember(library) { vm.editorDeviceCatalog() },
         rememberedPick = memory?.voices?.get("STYLE_EDITOR")?.itemKey,
@@ -79,5 +80,6 @@ fun StyleVoiceEditorOverlay(vm: MainViewModel) {
     StyleVoiceInspectorContent(
         inventory = inventory, loaded = loaded,
         output = if (state.midiOutEnabled) "MIDI OUT + internal" else "Internal (BASSMIDI)",
-        onRefresh = { refresh++ }, onClose = StyleVoiceEditorHost::close, actions = actions)
+        onRefresh = { refresh++ }, onClose = StyleVoiceEditorHost::close, actions = actions,
+        backHandler = { onBack -> androidx.activity.compose.BackHandler(enabled = true, onBack = onBack) })
 }

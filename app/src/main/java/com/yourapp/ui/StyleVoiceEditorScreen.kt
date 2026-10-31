@@ -49,6 +49,7 @@ import com.yourapp.yamahaarranger.style.ExternalVoice
 import com.yourapp.yamahaarranger.style.OriginalRef
 import com.yourapp.yamahaarranger.style.Provenance
 import com.yourapp.yamahaarranger.style.Replacement
+import com.yourapp.yamahaarranger.style.StyleEditorNavigation
 import com.yourapp.yamahaarranger.style.StyleVoiceEditorOps
 import com.yourapp.yamahaarranger.style.StyleVoiceInventoryBuilder
 import com.yourapp.yamahaarranger.style.StyleVoiceInventory
@@ -102,6 +103,8 @@ class StyleVoiceEditorActions(
     val midiOutOctaveOf: (Int) -> Int = { 0 },
     val onMidiOutOctave: (Int, Int, (String?) -> Unit) -> Unit = { _, _, _ -> },
     val onMidiOutOctaveReset: ((String?) -> Unit) -> Unit = { },
+    /** Back to the last SAVED profile (unsaved edits are dropped and the saved settings are applied again); the result text is shown. */
+    val onDiscard: ((String) -> Unit) -> Unit = { },
     /** Named PSR-E343 voices from the user's own Yamaha Data List file (empty when none was supplied). */
     val deviceCatalog: List<ExternalVoice> = emptyList(),
     /** Keys of the kit now chosen for this Rhythm part that have a sample (read from the SF2 zone tables); null = not provable. */
@@ -144,7 +147,9 @@ fun StyleVoiceInspectorContent(
     initialSection: String? = null,
     initialSelection: Pair<String, Int>? = null,
     actions: StyleVoiceEditorActions? = null,
-    initialReplaceFor: Pair<String, Int>? = null
+    initialReplaceFor: Pair<String, Int>? = null,
+    /** Installs the platform Back handling (Android: BackHandler). Default none, so the desktop preview needs no Android library. */
+    backHandler: @Composable (onBack: () -> Unit) -> Unit = {}
 ) {
     var replaceFor by remember(inventory?.styleName) { mutableStateOf(initialReplaceFor) }
     var toast by remember { mutableStateOf<String?>(null) }
@@ -153,9 +158,16 @@ fun StyleVoiceInspectorContent(
     val section = inventory?.let { inv ->
         selectedSection?.takeIf { it in inv.sections } ?: inv.activeSection?.takeIf { it in inv.sections } ?: inv.sections.firstOrNull()
     }
+    // ← BACK, the Android Back button/gesture and CLOSE share one rule: leave at once, or ask Save / Discard / Cancel when the profile has unsaved changes.
+    var askLeave by remember { mutableStateOf(false) }
+    val requestBack: () -> Unit = {
+        if (actions != null && StyleEditorNavigation.onBack(actions.dirty) == StyleEditorNavigation.Leave.ASK) { askLeave = true } else { onClose() }
+    }
+    backHandler(requestBack)
+    if (askLeave && actions != null) LeaveConfirmDialog(actions, onToast = { toast = it }, onCancel = { askLeave = false }, onLeave = { askLeave = false; onClose() })
     Surface(color = SvBlack, modifier = Modifier.fillMaxSize().clickable(enabled = false) {}) {
         Column(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Header(inventory, loaded, output, actions, onRefresh, onClose) { toast = it }
+            Header(inventory, loaded, output, actions, onRefresh, requestBack) { toast = it }
             if (inventory == null) {
                 Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                     Text(if (loaded) "No Style is loaded. Open a Style first; this page is read-only." else "Reading Style…",
@@ -191,6 +203,7 @@ private fun Header(inv: StyleVoiceInventory?, loaded: Boolean, output: String, a
     var confirmReset by remember { mutableStateOf(false) }
     var showMidiOctave by remember { mutableStateOf(false) }
     Row(Modifier.fillMaxWidth().height(52.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        HeaderButton("← BACK", onClick = onClose)
         Column(Modifier.weight(1f)) {
             Text("STYLE VOICES", color = SvGreen, fontWeight = FontWeight.Bold, fontSize = 17.sp)
             Text(inv?.styleName ?: if (loaded) "no style" else "…", color = SvText, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -274,6 +287,24 @@ private fun MidiOutOctaveDialog(actions: StyleVoiceEditorActions, onToast: (Stri
                 HeaderButton("CLOSE", onClick = onClose)
             }
             Text("Press SAVE PROFILE to keep it for this Style.", color = SvDim, fontSize = 11.sp)
+        }
+    }
+}
+
+/** Unsaved profile changes: Save (then leave), Discard (back to the saved profile, then leave) or Cancel (stay in the editor). */
+@Composable
+private fun LeaveConfirmDialog(actions: StyleVoiceEditorActions, onToast: (String) -> Unit, onCancel: () -> Unit, onLeave: () -> Unit) {
+    Dialog(onDismissRequest = onCancel) {
+        Column(Modifier.background(SvPanel, RoundedCornerShape(10.dp)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Unsaved changes", color = SvText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text("This Style's profile has changes that are not saved. Save them, discard them (the last saved settings come back), or stay in the editor.", color = SvDim, fontSize = 12.sp)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                HeaderButton("SAVE", enabled = actions.writable) {
+                    actions.onSave { message -> if (StyleEditorNavigation.closeAfterSave(message)) onLeave() else { onToast(message); onCancel() } }
+                }
+                HeaderButton("DISCARD") { actions.onDiscard { onLeave() } }
+                HeaderButton("CANCEL", onClick = onCancel)
+            }
         }
     }
 }

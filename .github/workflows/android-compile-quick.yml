@@ -1,7 +1,7 @@
 name: Android compile (quick)
 on:
   push:
-    branches: [experiment/midi-out-octave]
+    branches: [experiment/midi-out-octave, experiment/style-editor-back]
 jobs:
   compile:
     runs-on: ubuntu-latest

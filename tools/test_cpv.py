@@ -28,6 +28,7 @@ CPV_SOURCES = [
     MAIN / 'yamahaarranger/audio/RightUsbTouch.kt',
     MAIN / 'yamahaarranger/audio/InternalGain.kt',
     MAIN / 'yamahaarranger/audio/Sf2PitchFx.kt',
+    MAIN / 'yamahaarranger/style/StyleEditorNavigation.kt',
     MAIN / 'yamahaarranger/audio/VirtualKeyboard.kt',
     MAIN / 'yamahaarranger/registration/RegistrationCodec.kt',
     MAIN / 'yamahaarranger/registration/RegistrationModel.kt',
