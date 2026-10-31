@@ -65,6 +65,7 @@ fun VirtualKeyboardPanel(viewModel: MainViewModel, onClose: () -> Unit, modifier
     var diag by remember { mutableStateOf("") }
     // PSR-E343 MIDI IN mirror: the physical keys come from the MIDI input manager's LiveKeyState (original note numbers); this panel only READS them.
     val liveKeys = viewModel.liveKeys
+    val splitNote by viewModel.splitNote.collectAsState()
     var physTick by remember { mutableIntStateOf(0) }
     var follow by remember { mutableStateOf(true) }
     var edgeInfo by remember { mutableStateOf("") }
@@ -93,6 +94,7 @@ fun VirtualKeyboardPanel(viewModel: MainViewModel, onClose: () -> Unit, modifier
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Btn("HIDE KEYBOARD", Color(0xFF8A2D2D)) { viewModel.closeVirtualKeyboard(); onClose() }
             Btn(if (follow) "FOLLOW MIDI IN: ON" else "FOLLOW MIDI IN: OFF", if (follow) Color(0xFF8A5A00) else Color(0xFF3A4450)) { follow = !follow }
+            Btn("SPLIT ${com.yourapp.yamahaarranger.audio.SplitPoint.name(splitNote)}", Color(0xFF8A5A00)) { SplitHost.open() }
             if (edgeInfo.isNotEmpty()) Text(edgeInfo, color = Color(0xFFFFC857), fontSize = 11.sp, fontWeight = FontWeight.Bold)
             Btn("OCT −", Color(0xFF3A4450)) { controller.setOctave(octave - 1); octave = controller.octaveShift }
             Text("OCT ${if (octave >= 0) "+" else ""}$octave  ${VirtualKeyboardLayout.noteName(VirtualKeyboardLayout.pitchOf(0, octave))}–" +
@@ -192,13 +194,16 @@ fun VirtualKeyboardPanel(viewModel: MainViewModel, onClose: () -> Unit, modifier
                     val shift = currentScroll
                     val tick = physTick // read in the draw scope: a MIDI IN change redraws this canvas only
                     val lowNote = VirtualKeyboardLayout.pitchOf(0, octaveNow)
+                    val splitIdx = splitNote - lowNote   // key index of the highest LEFT key (the split key itself is LEFT)
                     for (i in 0 until VirtualKeyboardLayout.KEY_COUNT) {
                         if (VirtualKeyboardLayout.isBlack(i)) continue
                         val x = VirtualKeyboardLayout.keyLeft(i, whitePx) - shift
                         if (x + whitePx < 0f || x > size.width) continue
                         val down = (pressed shr i) and 1L != 0L
                         val pv = liveKeys.velocityOf(lowNote + i)
-                        drawRect(if (pv > 0) lerp(Color(0xFFFFE08A), Color(0xFFFF9F1C), pv / 127f) else if (down) Color(0xFF7FC8FF) else Color(0xFFF4F4F0), Offset(x, 0f), Size(whitePx - 1.5f, h))
+                        val ig = liveKeys.ignoredVelocityOf(lowNote + i)
+                        val rest = if (i <= splitIdx) Color(0xFFE6EEF8) else Color(0xFFF7F2E6)   // LEFT area slightly cool, RIGHT area slightly warm
+                        drawRect(if (pv > 0) lerp(Color(0xFFFFE08A), Color(0xFFFF9F1C), pv / 127f) else if (down) Color(0xFF7FC8FF) else if (ig > 0) lerp(Color(0xFFD7CBF5), Color(0xFF9575CD), ig / 127f) else rest, Offset(x, 0f), Size(whitePx - 1.5f, h))
                         drawRect(Color(0xFF555B63), Offset(x, 0f), Size(whitePx - 1.5f, h), style = Stroke(1.5f))
                         val label = VirtualKeyboardLayout.cLabel(i, octaveNow)
                         if (label.isNotEmpty()) {
@@ -213,7 +218,15 @@ fun VirtualKeyboardPanel(viewModel: MainViewModel, onClose: () -> Unit, modifier
                         if (x + w < 0f || x > size.width) continue
                         val down = (pressed shr i) and 1L != 0L
                         val pv = liveKeys.velocityOf(lowNote + i)
-                        drawRect(if (pv > 0) lerp(Color(0xFFB87400), Color(0xFFFF9F1C), pv / 127f) else if (down) Color(0xFF2F83C9) else Color(0xFF15181C), Offset(x, 0f), Size(w, VirtualKeyboardLayout.blackHeight(h)))
+                        val ig = liveKeys.ignoredVelocityOf(lowNote + i)
+                        drawRect(if (pv > 0) lerp(Color(0xFFB87400), Color(0xFFFF9F1C), pv / 127f) else if (down) Color(0xFF2F83C9) else if (ig > 0) Color(0xFF6A4FA3) else Color(0xFF15181C), Offset(x, 0f), Size(w, VirtualKeyboardLayout.blackHeight(h)))
+                    }
+                    // Split line between the highest LEFT key and the first RIGHT key (halfway between the two key centres).
+                    if (splitIdx in 0 until VirtualKeyboardLayout.KEY_COUNT - 1) {
+                        val a = VirtualKeyboardLayout.keyLeft(splitIdx, whitePx) + VirtualKeyboardLayout.keyWidth(splitIdx, whitePx) / 2f
+                        val b = VirtualKeyboardLayout.keyLeft(splitIdx + 1, whitePx) + VirtualKeyboardLayout.keyWidth(splitIdx + 1, whitePx) / 2f
+                        val bx = (a + b) / 2f - shift
+                        if (bx >= 0f && bx <= size.width) drawLine(Color(0xFFFFB347), Offset(bx, 0f), Offset(bx, h), 4f)
                     }
                 }
             }

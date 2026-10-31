@@ -77,13 +77,15 @@ private fun LiveStyleGroup(title: String, buttons: List<LiveSectionButton>, big:
 /** START/STOP, ACMP, AUTO FILL, RELEASE. Callbacks are the existing ViewModel actions. */
 @Composable
 fun LiveTransportRow(isPlaying: Boolean, startEnabled: Boolean, startReason: String?, acmpOn: Boolean, autoFillOn: Boolean,
-    releaseOn: Boolean, releaseValue: Int, onStartStop: () -> Unit, onAcmp: () -> Unit, onAutoFill: () -> Unit, onRelease: () -> Unit, modifier: Modifier = Modifier) {
+    releaseOn: Boolean, releaseValue: Int, onStartStop: () -> Unit, onAcmp: () -> Unit, onAutoFill: () -> Unit, onRelease: () -> Unit, modifier: Modifier = Modifier,
+    splitName: String = "F#3", onSplit: () -> Unit = {}) {
     Row(modifier.fillMaxWidth().height(HardwareKeyStyle.TRANSPORT_KEY_H_DP.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         HardwareLedButton(if (isPlaying) "STOP" else "START", if (!startEnabled && !isPlaying) startReason else null,
             if (isPlaying) LiveColors.Red else LiveColors.Green, LiveColors.Label, isPlaying || startEnabled, Modifier.weight(2f).fillMaxHeight(), active = isPlaying, onClick = onStartStop)
         HardwareLedButton("ACMP", if (acmpOn) "ON" else "OFF", if (acmpOn) LiveColors.Green else LedTone.Off, LiveColors.Label, true, Modifier.weight(1f).fillMaxHeight(), onClick = onAcmp)
         HardwareLedButton("AUTO FILL", if (autoFillOn) "ON" else "OFF", if (autoFillOn) LiveColors.Amber else LedTone.Off, LiveColors.Label, true, Modifier.weight(1f).fillMaxHeight(), onClick = onAutoFill)
         HardwareLedButton("RELEASE", "${if (releaseOn) "ON" else "OFF"} $releaseValue", if (releaseOn) LiveColors.Blue else LedTone.Off, LiveColors.Label, true, Modifier.weight(1f).fillMaxHeight(), onClick = onRelease)
+        HardwareLedButton("SPLIT", splitName, LiveColors.Amber, LiveColors.Label, true, Modifier.weight(1f).fillMaxHeight(), onClick = onSplit)
     }
 }
 

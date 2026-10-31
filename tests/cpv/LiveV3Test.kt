@@ -189,8 +189,9 @@ class LiveV3Test {
         val v31 = sortedSetOf("currentExternal", "initializeLiveLibrary", "liveLibrary", "liveRegistration", "liveSectionInventory", "onLiveAddExternal", "onLiveBankChange",
             "onLiveCreateBank", "onLiveDefaultMode", "onLiveExternalSelected", "onLiveFreeze", "onLiveSaveOptions", "onLiveSlotTap", "onSectionSelected", "toggleLeftVoice",
             "toggleRightVoice", "nudgeTempo", "onLiveSaveArm", "onLiveUndoSave", "onRight1VolumeChange", "onRight2VolumeChange", "onRight3VolumeChange", "onStartStop",
-            "onStyleVolumeChange", "onTransposeDown", "onTransposeUp", "toggleAcmp", "toggleAutoFill", "toggleRelease")
-        assertEquals("V3.2 wires exactly the V3.1 ViewModel surface", v31, found)
+            "onStyleVolumeChange", "onTransposeDown", "onTransposeUp", "toggleAcmp", "toggleAutoFill", "toggleRelease",
+            "splitNote") // + the SPLIT key's read-only value (the Split dialog itself lives outside the Live Control screen)
+        assertEquals("V3.2 wires exactly the V3.1 ViewModel surface (plus the split value)", v31, found)
         // still exactly four faders and eight registration slots
         assertEquals(4, Regex("LiveFader\\(\"").findAll(screen).count())
         assertEquals(1, Regex("\\(0\\.\\.7\\)\\.map \\{ index ->").findAll(screen).count())

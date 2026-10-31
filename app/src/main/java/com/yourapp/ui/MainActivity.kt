@@ -133,6 +133,7 @@ class MainActivity : ComponentActivity() {
                     )
                 }
                 StyleVoiceEditorOverlay(viewModel)
+                SplitDialogHost(viewModel)
                 if (showInspector.value) {
                     Sf2StyleInspectorDialog(
                         onDismiss = { showInspector.value = false },

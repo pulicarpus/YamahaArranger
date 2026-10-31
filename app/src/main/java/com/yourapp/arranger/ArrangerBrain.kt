@@ -517,6 +517,20 @@ class ArrangerBrain @Inject constructor(
         }
     }
 
+    /**
+     * Moves the split point (36..95) WITHOUT touching anything that is sounding or running: the new split is read by the next NOTE_ON only.
+     * Held notes keep the owner they were started with (RIGHT / LEFT / chord maps are keyed by the pressed key), so their NOTE_OFF still pairs;
+     * the chord detector, the applied chord, transpose and Style playback are not reset (unlike [setSplitPoint], which drops the chord context).
+     * A key AT the split point belongs to the LEFT area (`midiNote > splitNote` is RIGHT), as before.
+     */
+    fun setSplitNote(midiNote: Int): Int {
+        val clamped = com.yourapp.yamahaarranger.audio.SplitPoint.clamp(midiNote)
+        synchronized(keyboardLock) { splitNote = clamped }
+        DebugLog.add("🎹 Split moved to $clamped (${com.yourapp.yamahaarranger.audio.SplitPoint.name(clamped)}); applies from the next NOTE_ON")
+        return clamped
+    }
+    fun splitNoteValue(): Int = synchronized(keyboardLock) { splitNote }
+
     /** E343-compatible default split point, exposed for future UI control. */
     fun setSplitPoint(midiNote: Int) {
         synchronized(keyboardLock) {

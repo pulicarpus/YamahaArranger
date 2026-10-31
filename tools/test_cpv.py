@@ -30,6 +30,8 @@ CPV_SOURCES = [
     MAIN / 'yamahaarranger/audio/Sf2PitchFx.kt',
     MAIN / 'midi/LiveKeyState.kt',
     MAIN / 'midi/ChannelActivity.kt',
+    MAIN / 'midi/MidiInStats.kt',
+    MAIN / 'yamahaarranger/audio/SplitPoint.kt',
     MAIN / 'ui/MixerPure.kt',
     MAIN / 'yamahaarranger/style/StyleEditorNavigation.kt',
     MAIN / 'yamahaarranger/audio/VirtualKeyboard.kt',

@@ -70,6 +70,8 @@ def jvm(output, fetch):
              ROOT/'app/src/main/java/com/yourapp/midi/MidiMixerOutput.kt',
             ROOT/'app/src/main/java/com/yourapp/midi/LiveKeyState.kt',
             ROOT/'app/src/main/java/com/yourapp/midi/ChannelActivity.kt',
+            ROOT/'app/src/main/java/com/yourapp/midi/MidiInStats.kt',
+            ROOT/'app/src/main/java/com/yourapp/yamahaarranger/audio/SplitPoint.kt',
              ROOT/'app/src/test/java/com/yourapp/audio/MidiMixerOutputTest.kt',
              ROOT/'app/src/test/java/com/yourapp/audio/VoiceReleaseContractTest.kt',
              ROOT/'tests/readiness_jvm/ReadyToPlayEngineTest.kt',

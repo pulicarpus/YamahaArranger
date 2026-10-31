@@ -49,6 +49,7 @@ fun LiveControlScreen(state: MainUiState, vm: MainViewModel, onArranger: () -> U
     val external by vm.currentExternal.collectAsState()
     val library by vm.liveLibrary.collectAsState()
     val inventory by vm.liveSectionInventory.collectAsState()
+    val splitNote by vm.splitNote.collectAsState()
     var panel by remember { mutableStateOf("") }
     var externalPart by remember { mutableStateOf(0) }
     var bankName by remember { mutableStateOf("") }
@@ -127,7 +128,8 @@ fun LiveControlScreen(state: MainUiState, vm: MainViewModel, onArranger: () -> U
                             // STYLE CONTROL (LED from the loaded style's parsed section table) and TRANSPORT: shared panels, existing actions only
                             LiveStyleControlPanel(inventory,state.activeSection,areaWidthDp,{ label -> vm.onSectionSelected(label) },Modifier.fillMaxWidth())
                             LiveTransportRow(state.isPlaying,state.startReady,state.readinessReason,state.acmpEnabled,state.autoFill,state.releaseEnabled,state.releaseTime,
-                                vm::onStartStop,vm::toggleAcmp,vm::toggleAutoFill,vm::toggleRelease)
+                                vm::onStartStop,vm::toggleAcmp,vm::toggleAutoFill,vm::toggleRelease,
+                                splitName=com.yourapp.yamahaarranger.audio.SplitPoint.name(splitNote),onSplit={ SplitHost.open() })
                         }
                     }
                     // LIVE MIXER: four independent faders, existing per-part / style volume actions only

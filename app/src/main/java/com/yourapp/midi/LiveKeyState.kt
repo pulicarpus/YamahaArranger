@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicIntegerArray
  */
 class LiveKeyState {
     private val velocity = AtomicIntegerArray(128)   // 0 = up
+    private val ignored = AtomicIntegerArray(128)   // received on a channel that is NOT played: shown differently, never as a played key
     private val changes = AtomicInteger()
 
     /** Bumped on every visible change; the UI polls it instead of redrawing per event. */
@@ -28,10 +29,24 @@ class LiveKeyState {
         if (velocity.getAndSet(note, 0) != 0) changes.incrementAndGet()
     }
 
+    /** A key received on a MIDI channel that is not played as keyboard (display only, so a missing/filtered zone is visible instead of silent). */
+    fun ignoredNoteOn(note: Int, vel: Int) {
+        if (note !in 0..127) return
+        if (vel <= 0) { ignoredNoteOff(note); return }
+        val v = vel.coerceIn(1, 127)
+        if (ignored.getAndSet(note, v) != v) changes.incrementAndGet()
+    }
+    fun ignoredNoteOff(note: Int) {
+        if (note !in 0..127) return
+        if (ignored.getAndSet(note, 0) != 0) changes.incrementAndGet()
+    }
+    fun ignoredVelocityOf(note: Int): Int = if (note in 0..127) ignored.get(note) else 0
+    fun ignoredNotes(): List<Int> = (0 until 128).filter { ignored.get(it) > 0 }
+
     /** Device removed / connection closed / reset: nothing may stay lit. */
     fun clear() {
         var any = false
-        for (n in 0 until 128) if (velocity.getAndSet(n, 0) != 0) any = true
+        for (n in 0 until 128) { if (velocity.getAndSet(n, 0) != 0) any = true; if (ignored.getAndSet(n, 0) != 0) any = true }
         if (any) changes.incrementAndGet()
     }
 

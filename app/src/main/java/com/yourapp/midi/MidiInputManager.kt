@@ -51,6 +51,11 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
 
     /** MIDI channel used by the E343 keyboard for chord/ACMP input (0 = MIDI channel 1). */
     var chordInputChannel: Int = 0
+    /** Extra MIDI IN channels (bit n = channel n+1, channels 2..8 only) that are played as keyboard too, e.g. the E343's Split voice. 0 = baseline: channel 1 only. */
+    @Volatile var extraInputChannels: Int = 0
+    private fun acceptsKeys(channel: Int) = channel == chordInputChannel || (channel in 1..7 && (extraInputChannels shr channel) and 1 != 0)
+    /** Passive per-channel record of what the keyboard sent (diagnostic only). */
+    val inputStats = MidiInStats()
 
     private var runningStatus = -1
     private var pendingData1 = -1
@@ -187,23 +192,32 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
                 }
             }
 
+            // Keys received on a channel that is not played as keyboard are only counted and shown (visualizer, diagnostics); they never reach routing.
+            val keyChannel = acceptsKeys(channel)
             when (type) {
-                0x90 -> if (channel == chordInputChannel) {
-                    if (d2 > 0) {
-                        com.yourapp.yamahaarranger.audio.LatencyProbe.noteOnParsed()
-                        liveKeys.noteOn(d1, d2)
-                        onNoteOn?.invoke(d1, d2)
-                        if (!com.yourapp.yamahaarranger.audio.NoteLogTuning.skip()) DebugLog.add("🎹 IN ch$channel NoteOn $d1 vel$d2")
-                    } else {
+                0x90 -> {
+                    if (d2 > 0) inputStats.noteOn(channel, d1, keyChannel)
+                    if (keyChannel) {
+                        if (d2 > 0) {
+                            com.yourapp.yamahaarranger.audio.LatencyProbe.noteOnParsed()
+                            liveKeys.noteOn(d1, d2)
+                            onNoteOn?.invoke(d1, d2)
+                            if (!com.yourapp.yamahaarranger.audio.NoteLogTuning.skip()) DebugLog.add("🎹 IN ch$channel NoteOn $d1 vel$d2")
+                        } else {
+                            inputStats.noteOff(channel)
+                            liveKeys.noteOff(d1)
+                            onNoteOff?.invoke(d1)
+                            if (!com.yourapp.yamahaarranger.audio.NoteLogTuning.skip()) DebugLog.add("🎹 IN ch$channel NoteOff $d1")
+                        }
+                    } else if (channel < 8) { if (d2 > 0) liveKeys.ignoredNoteOn(d1, d2) else liveKeys.ignoredNoteOff(d1) }
+                }
+                0x80 -> {
+                    inputStats.noteOff(channel)
+                    if (keyChannel) {
                         liveKeys.noteOff(d1)
                         onNoteOff?.invoke(d1)
                         if (!com.yourapp.yamahaarranger.audio.NoteLogTuning.skip()) DebugLog.add("🎹 IN ch$channel NoteOff $d1")
-                    }
-                }
-                0x80 -> if (channel == chordInputChannel) {
-                    liveKeys.noteOff(d1)
-                    onNoteOff?.invoke(d1)
-                    if (!com.yourapp.yamahaarranger.audio.NoteLogTuning.skip()) DebugLog.add("🎹 IN ch$channel NoteOff $d1")
+                    } else if (channel < 8) liveKeys.ignoredNoteOff(d1)
                 }
             }
         }
@@ -263,6 +277,7 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
 
     fun close() {
         liveKeys.clear() // a closed/removed device must not leave a key lit
+        inputStats.reset()
         mixerOutput.setConnected(false)
         try { outputPort?.close() } catch (e: Exception) { Timber.w(e, "close outputPort") }
         try { inputPort?.close() } catch (e: Exception) { Timber.w(e, "close inputPort") }

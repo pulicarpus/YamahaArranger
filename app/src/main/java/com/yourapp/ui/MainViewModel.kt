@@ -743,8 +743,15 @@ class MainViewModel @Inject constructor(
             }
         }
 
-        midiInputManager.onNoteOn = { note, velocity -> arrangerBrain.onKeyboardNoteOn(note, velocity / 127f, com.yourapp.yamahaarranger.audio.RightInputSource.USB) }
-        midiInputManager.onNoteOff = { note -> com.yourapp.yamahaarranger.audio.RightInputProbe.usbNoteOff(note); arrangerBrain.onKeyboardNoteOff(note) }
+        // SET BY KEY: when armed, the next key press (USB or touch) becomes the split point and is NOT played; its release is swallowed.
+        midiInputManager.onNoteOn = { note, velocity ->
+            val picked = splitByKey.onPress(com.yourapp.yamahaarranger.audio.KeySource.USB_MIDI, note)
+            if (picked != null) applySplit(picked) else arrangerBrain.onKeyboardNoteOn(note, velocity / 127f, com.yourapp.yamahaarranger.audio.RightInputSource.USB)
+        }
+        midiInputManager.onNoteOff = { note ->
+            com.yourapp.yamahaarranger.audio.RightInputProbe.usbNoteOff(note)
+            if (!splitByKey.onRelease(com.yourapp.yamahaarranger.audio.KeySource.USB_MIDI, note)) arrangerBrain.onKeyboardNoteOff(note)
+        }
         midiInputManager.onSustainChange = { enabled ->
             _sustainEnabled.value = enabled
             arrangerBrain.setKeyboardSustain(enabled)
@@ -1148,7 +1155,16 @@ class MainViewModel @Inject constructor(
     }
 
     /** On-screen keyboard: plays RIGHT 1/2/3 through ArrangerBrain's virtual path (engine only, never MIDI OUT). */
-    val virtualKeyboard = com.yourapp.yamahaarranger.audio.VirtualKeyboardController(arrangerBrain.virtualKeyboardSink)
+    val virtualKeyboard = com.yourapp.yamahaarranger.audio.VirtualKeyboardController(object : com.yourapp.yamahaarranger.audio.VirtualKeyboardSink {
+        private val base = arrangerBrain.virtualKeyboardSink
+        override fun noteOn(pitch: Int, velocity127: Int) {
+            val picked = splitByKey.onPress(com.yourapp.yamahaarranger.audio.KeySource.TOUCH, pitch)
+            if (picked != null) applySplit(picked) else base.noteOn(pitch, velocity127)
+        }
+        override fun noteOff(pitch: Int) { if (!splitByKey.onRelease(com.yourapp.yamahaarranger.audio.KeySource.TOUCH, pitch)) base.noteOff(pitch) }
+        override fun setSustain(enabled: Boolean) = base.setSustain(enabled)
+        override fun releaseAll() = base.releaseAll()
+    })
     private val _virtualKeyboardEpoch = MutableStateFlow(0)
     /** Bumps whenever the keyboard was force-closed (pause/focus loss) so the panel resyncs its controls. */
     val virtualKeyboardEpoch: StateFlow<Int> = _virtualKeyboardEpoch
@@ -1288,6 +1304,44 @@ class MainViewModel @Inject constructor(
     fun masterLevel(): Float = audioEngine.masterLevel()
     /** Which keys of the physical keyboard are down (original MIDI IN notes), for the on-screen keyboard. */
     val liveKeys: com.yourapp.midi.LiveKeyState get() = midiInputManager.liveKeys
+    // ---- Split point + MIDI IN channels (persisted in keyboard_input.txt; defaults = baseline: split 54 / F#3, channel 1 only) ----
+    private val splitByKey = com.yourapp.yamahaarranger.audio.SplitByKey()
+    private val keyboardInputStore by lazy { com.yourapp.yamahaarranger.audio.KeyboardInputSettingsStore(java.io.File(contentResolver.browserMemoryPath().toFile().parentFile, "keyboard_input.txt")) }
+    private val _splitNote = MutableStateFlow(com.yourapp.yamahaarranger.audio.SplitPoint.DEFAULT)
+    /** Highest key of the LEFT area (a key AT the split is LEFT). */
+    val splitNote: StateFlow<Int> = _splitNote
+    private val _splitArmed = MutableStateFlow(false)
+    val splitArmed: StateFlow<Boolean> = _splitArmed
+    private val _extraInputChannels = MutableStateFlow(0)
+    /** Bit n = MIDI IN channel n+1 (2..8) is also played as keyboard. */
+    val extraInputChannels: StateFlow<Int> = _extraInputChannels
+    init {
+        viewModelScope.launch(Dispatchers.IO) {
+            val s = keyboardInputStore.read()
+            midiInputManager.extraInputChannels = s.extraChannels; _extraInputChannels.value = s.extraChannels
+            _splitNote.value = arrangerBrain.setSplitNote(s.split)
+        }
+    }
+    private fun persistKeyboardInput() {
+        val s = com.yourapp.yamahaarranger.audio.KeyboardInputSettings(_splitNote.value, _extraInputChannels.value)
+        viewModelScope.launch(Dispatchers.IO) { try { keyboardInputStore.write(s) } catch (e: Exception) { DebugLog.add("Keyboard input settings not saved: ${e.javaClass.simpleName}") } }
+    }
+    private fun applySplit(note: Int) {
+        _splitNote.value = arrangerBrain.setSplitNote(note); _splitArmed.value = false; persistKeyboardInput()
+    }
+    fun nudgeSplit(semitones: Int) { splitByKey.cancel(); _splitArmed.value = false; applySplit(com.yourapp.yamahaarranger.audio.SplitPoint.step(_splitNote.value, semitones)) }
+    fun resetSplit() { splitByKey.cancel(); _splitArmed.value = false; applySplit(com.yourapp.yamahaarranger.audio.SplitPoint.DEFAULT) }
+    fun armSplitByKey() { splitByKey.arm(); _splitArmed.value = true; DebugLog.add("🎹 SET BY KEY armed: press a key on the E343 or on the screen keyboard") }
+    fun cancelSplitByKey() { splitByKey.cancel(); _splitArmed.value = false }
+    /** Also play MIDI IN channel [channel] (2..8) as keyboard (e.g. the E343 Split voice). Takes effect from the next NOTE_ON; held notes are untouched. */
+    fun toggleInputChannel(channel: Int) {
+        if (channel !in 1..7) return
+        val next = _extraInputChannels.value xor (1 shl channel)
+        midiInputManager.extraInputChannels = next; _extraInputChannels.value = next; persistKeyboardInput()
+    }
+    /** What the keyboard sent so far, per MIDI channel, and whether it was played or ignored by the channel filter. */
+    fun midiInReport(): String = midiInputManager.inputStats.summary(_splitNote.value)
+    fun resetMidiInReport() { midiInputManager.inputStats.reset() }
     fun logRightInputProbe() { DebugLog.add(com.yourapp.yamahaarranger.audio.RightInputProbe.report()) }
 
     fun resetRightDiagStats() {
