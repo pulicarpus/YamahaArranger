@@ -1351,6 +1351,13 @@ class MainViewModel @Inject constructor(
     fun e343DrumNoteOffNextMode() { com.yourapp.yamahaarranger.arranger.E343DrumNoteOff.nextMode() }
     fun e343DrumNoteOffNextGate() { com.yourapp.yamahaarranger.arranger.E343DrumNoteOff.nextGate() }
     fun e343DrumNoteOffReport(): String = com.yourapp.yamahaarranger.arranger.E343DrumNoteOff.report().also { DebugLog.add(it) }
+    /** Experiment page state, read from the experiment itself (what the engine really uses, not a UI copy). */
+    fun e343ExperimentUi(): E343ExperimentUiState = com.yourapp.yamahaarranger.arranger.E343DrumNoteOff.snapshot().let { x ->
+        E343ExperimentUiState(x.mode, x.gateMs, x.gates, x.styleName, x.styleInScope, x.routerWired, x.tracked, x.offAuthored, x.offGate, x.offRetrigger, x.offRelease, x.dropped, x.open)
+    }
+    fun e343SetMode(name: String) { com.yourapp.yamahaarranger.arranger.E343DrumNoteOff.setModeByName(name) }
+    fun e343SetGate(ms: Int) { com.yourapp.yamahaarranger.arranger.E343DrumNoteOff.setGate(ms); DebugLog.add("E343 DRUM NOTE OFF gate=${ms}ms") }
+    fun e343ResetStats() { com.yourapp.yamahaarranger.arranger.E343DrumNoteOff.resetStats() }
     fun logRightInputProbe() { DebugLog.add(com.yourapp.yamahaarranger.audio.RightInputProbe.report()) }
 
     fun resetRightDiagStats() {

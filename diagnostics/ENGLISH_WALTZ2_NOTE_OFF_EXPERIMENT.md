@@ -32,10 +32,13 @@ Voice #189 Standard Kit 2 di PSR-E343, tuts D1 (MIDI 26, Brush Swirl) ditekan da
 * Di MainC dan FillCC, Style sendiri menahan satu swirl hampir sepanjang section. Mode AUTHORED akan mempertahankan itu sesuai keinginan penulis; mode SHORT_GATE memotongnya.
 
 ## 4. Eksperimen (terisolasi, default OFF)
-Objek `E343DrumNoteOff` (class `E343DrumNoteOffExperiment`, di `StyleSequencer.kt`). Kontrol: **RIGHT DIAG → baris "E343 EXPERIMENT"**.
-* Chip **`E343 26 OFF: <mode>`** berganti mode LEGACY → AUTHORED → SHORT_GATE → LEGACY.
-* Chip **GATE** berganti 40/80/120/200/300 ms (default 120).
-* Chip **E343 OFF STATS** menampilkan statistik (juga dicatat ke debug log).
+Objek `E343DrumNoteOff` (class `E343DrumNoteOffExperiment`, di `StyleSequencer.kt`). Kontrol (sejak perbaikan UI §8): **RIGHT DIAG → tombol besar `E343 EXPERIMENT ▸ <mode>`** membuka halaman layar penuh:
+* tiga tombol mode **LEGACY / AUTHORED / SHORT_GATE** (yang aktif berwarna hijau);
+* lima tombol gate **40/80/120/200/300 ms**;
+* baris "Active mode", status scope, dan statistik NOTE ON/OFF yang diperbarui 2× per detik;
+* RESET STATS, serta CLOSE atau tombol Back Android.
+
+(Chip lama "E343 26 OFF / GATE" di versi `95f6600` ada di kode tetapi tidak terlihat; lihat §8.)
 
 Mode tidak disimpan: setiap aplikasi dibuka, mode kembali ke LEGACY.
 
@@ -79,8 +82,9 @@ Batasan yang diketahui: jika channel di-mute/solo saat swirl berbunyi, router la
 | `midi/MidiMixerOutput.kt` | Tambahan saja: `epoch` (naik saat enable/connect berubah) + `noteProbe()` baca-saja. |
 | `midi/MidiInputManager.kt` | Tambahan saja: `midiOutNoteProbe()`. |
 | `arranger/ArrangerBrain.kt` | Tambahan saja: saat `loadStyle`, nama Style dicatat dan not yang terbuka ditutup. |
-| `ui/MainViewModel.kt` | Tambahan saja: wiring probe + 4 fungsi chip. |
-| `ui/RightVoiceDiagOverlay.kt` | Tambahan saja: satu baris chip. |
+| `ui/MainViewModel.kt` | Tambahan saja: wiring probe, fungsi chip, `e343ExperimentUi/e343SetMode/e343SetGate/e343ResetStats`. |
+| `ui/RightVoiceDiagOverlay.kt` | Layout diperbaiki (§8): CLOSE dan tombol E343 di depan, semua baris bisa digeser, panel bisa di-scroll; dialog E343 layar penuh. Semua aksi lama tetap ada (guard). |
+| `ui/E343ExperimentPanel.kt` (baru) | Halaman eksperimen Compose murni, juga di-compile oleh `tools/ui_preview` untuk tes UI desktop. |
 | `tests/fixtures/englishwaltz2/EnglishWaltz2.S519.prs` | Salinan byte-identik file pengguna (SHA-256 `90c9efb4…94a3`), untuk test CI. Style asli tidak diubah. |
 
 Guard `tools/test_e343_drum_noteoff_guard.py` memeriksa:
@@ -124,15 +128,90 @@ Ini bukti logika software di host, **bukan** bukti bunyi E343.
 ## 7. CI / APK
 Workflow `.github/workflows/style-voice-editor.yml` diperluas untuk `experiment/e343-drum-note-off`: guard sendiri, langkah test eksperimen (EW2 + ROSITA + audit EW2), dan laporan ini sebagai `DEVICE-TEST.txt` di artifact APK.
 
-CI_RESULT
+* Run **#45** [`41297070679`](https://github.com/pulicarpus/YamahaArranger/actions/runs/41297070679) (`8d9a9e8`): job host **dibatalkan pada batas 60 menit** setelah 16 langkah hijau, di menit ke-3 langkah eksperimen; job android tidak berjalan.
+* Run **#46** [`41302348294`](https://github.com/pulicarpus/YamahaArranger/actions/runs/41302348294) (`95f6600`, timeout host 100 m): **host success (59 m 58 s), android success (3 m 27 s)**. APK [`YamahaArranger-STYLEVOICE-95f6600…`](https://github.com/pulicarpus/YamahaArranger/actions/runs/41302348294/artifacts/13082949489). APK inilah yang diuji pengguna di Redmi Pad; kontrol E343-nya tidak bisa dijangkau (§8).
 
-## 8. Tes di PSR-E343 (yang dibutuhkan dari pengguna)
+## 8. Perbaikan UI RIGHT DIAG (laporan Redmi Pad, landscape)
+**Gejala (pengguna, APK run #46 / `95f6600`):** hanya RESET STATS, LOG PROBE, SF2 PITCH/FX, dan MIDI OUT STATE yang terlihat. Tombol lain terpotong atau bertumpuk, panel tidak bisa digeser, dan kontrol E343 tidak ditemukan.
+
+**Kontrol E343 memang ada di APK itu.** Job android run #46 berhasil, dan `95f6600` berisi `E343DrumNoteOff` beserta chip-nya (commit `8d9a9e8`). Masalahnya murni di layout, dan bisa dibuktikan dari kode `RightVoiceDiagOverlay.kt` @ `95f6600`:
+1. Panel memakai `width(560.dp)` + `heightIn(max = 330.dp)`, dan **Column luar tidak bisa di-scroll**. Hanya blok teks paling bawah yang punya `verticalScroll`.
+2. Setiap baris kontrol adalah `Row` biasa **tanpa scroll atau wrap**. Baris 1 berisi judul (~240 dp) ditambah 6 chip, lebih lebar dari 560 dp. Anak-anak terakhir (CLEAR OUT NOTES, **CLOSE**) tidak kebagian lebar. Ini persis empat tombol yang terlihat di laporan.
+3. Baris E343 diawali `Text` panjang ("E343 EXPERIMENT (EnglishWaltz2, …)"). Teks itu mengambil seluruh 560 dp dan membungkus ke beberapa baris, sehingga chip mode/GATE/STATS sesudahnya mendapat lebar 0 dan **tidak terlihat**.
+
+Ini bukan masalah orientasi atau state: lebar panel tetap 560 dp di layar mana pun.
+
+**Perbaikan:**
+* `RightVoiceDiagOverlay.kt`:
+  - **CLOSE** dan tombol besar **`E343 EXPERIMENT ▸ <mode>`** dipindah ke depan.
+  - Setiap baris chip diberi `horizontalScroll`, dan seluruh panel diberi `verticalScroll`. Scroll dalam di bagian bawah dihapus, karena scroll bersarang searah akan crash.
+  - Semua aksi lama tetap ada (diperiksa guard). Chip E343 OFF STATS dipindah ke baris kedua.
+* `E343ExperimentPanel.kt` (baru, Compose murni tanpa ViewModel/Android): halaman layar penuh.
+  - Header tetap dengan **CLOSE** yang selalu terlihat; isi di-scroll vertikal.
+  - Tombol mode dan gate berukuran **≥ 52 dp**, dengan pilihan aktif ditandai.
+  - Baris "Active mode", statistik, dan RESET STATS.
+  - **Status scope**: jika Style bukan EnglishWaltz2, tertulis "NOT APPLICABLE to the current Style '…' … plays exactly as LEGACY".
+* Halaman ini dibuka sebagai `Dialog` layar penuh (`E343ExperimentDialog`), jadi tidak tertutup HOME, VOICE, transport, atau keyboard. Tombol Back Android menutupnya.
+* Tombol memanggil `E343DrumNoteOff.setModeByName` dan `setGate`, yaitu objek yang sama yang dipakai sequencer. State halaman dibaca dari `E343DrumNoteOff.snapshot()` (state asli mesin, bukan salinan UI), diperbarui 2× per detik.
+
+**Tes:**
+* `E343DrumNoteOffUnitTest` (+2): nama tombol → mode mesin; nama tak dikenal tidak mengubah apa-apa; pindah ke LEGACY menutup not 26 yang terbuka; snapshot = state mesin (mode, gate, scope, router, statistik). CPV JVM **332 OK** (lokal).
+* `tools/ui_preview/src/test/kotlin/E343ExperimentPanelTest.kt` (desktop Compose, meng-compile file panel yang sama dengan aplikasi). Ukuran 1333×800 dp (Redmi Pad 10.61" landscape), 1280×800 dp (Redmi Pad SE/Pro), dan 800×360 dp (uji beban). Yang diperiksa:
+  - CLOSE terlihat tanpa scroll;
+  - 3 mode + 5 gate + RESET + statistik dapat dijangkau dan terlihat;
+  - tinggi tombol ≥ 48 dp;
+  - klik tombol mengubah "Active mode";
+  - Style lain berlabel NOT APPLICABLE;
+  - PNG dirender sebagai bukti.
+
+  Tes ini **hanya bisa jalan di CI** (Maven/Google tidak bisa diakses dari sesi ini). Hasilnya di §9.
+* Overlay RIGHT DIAG sendiri bergantung pada MainViewModel, jadi tidak dirender di desktop. Perbaikannya dibuktikan lewat kode dan guard, **belum dilihat di Redmi Pad**.
+
+## 9. Pipeline build: kenapa lambat, dan jalur Quick APK
+**Bukti waktu (run #46 `41302348294`, `95f6600`, dari timestamp API job dan log):**
+| Tahap | Waktu terukur | Isi |
+|---|---|---|
+| host: native resolver/Policy C/drum/ROSITA | 8 m 30 s | harness C++ (U01, R23, policy, CPV native, …) |
+| host: JVM CPV + LIVE/REG | 2 m 47 s | CPV 330 tests (74 s), LIVE/REG 4× (~43 s tiap compile) |
+| host: Realtime diag + metronome | **24 m 08 s** | rtdiag 52 tests 302 s; **`ChordChangeStutterTest` 1120 s (18,7 m)**; rtdiag native 24 s |
+| host: MIDI OUT voice cache | **16 m 40 s** | unit 42 s; `SectionTransitionGapTest`+P1+ordered I/O HR2 378 s; ROSITA 356 s; burst HR2 111 s; burst ROSITA 113 s |
+| host: velocity / octave / mixer / split | 42 / 44 / 44 / 43 s | masing-masing satu run rtdiag kecil (7–10 tests) |
+| host: E343 audit | 1 m 36 s | 2 run × 48 s (2 tests) |
+| host: NOTE OFF experiment + audit EW2 | 3 m 11 s | 59 + 50 + 82 s |
+| **host total** | **59 m 58 s** | |
+| android (setelah `needs: host`) | **3 m 27 s** | NDK 25 s, SDK 7 s, **compile APK 2 m 35 s**, verify 1 s |
+
+**Akar penyebab:**
+1. **Dependensi job:** `android` memakai `needs: host`, jadi APK baru keluar setelah semua tes host selesai (~60 m). Padahal build APK-nya sendiri hanya 3,5 m.
+2. **Tes waktu-nyata:** `ChordChangeStutterTest` dan `SectionTransitionGapTest` memutar Style secara real time (puluhan skenario × 6 percobaan). Waktunya dibatasi jam dinding, bukan CPU. Tes ini diwarisi branch e343 dari kondisi `if:` eksperimen-eksperimen sebelumnya (P1, voice cache).
+3. **Kompilasi ulang:** setiap pemanggilan `test_rtdiag.py`/`test_cpv.py` meng-compile ulang rantai Kotlin produksi dari nol dengan `kotlin-compiler.jar`. Run 2 tes saja butuh 42–48 s. Ada 21 pemanggilan, kira-kira **14 menit kompilasi berulang**.
+4. Tidak ditemukan proses menggantung. Semua tahap selesai OK, dan run #45 dibatalkan murni karena batas 60 m.
+
+**Jalur Quick APK** (`.github/workflows/e343-quick-apk.yml`, "Quick Experimental APK (E343)"). Ada tiga job **paralel dan independen** plus satu job laporan:
+* **apk**: checkout tepat `GITHUB_SHA`, JDK 17, NDK r26d, Gradle 8.7, SDK yang di-pin.
+  - Pemeriksaan keselamatan esensial: guard isolasi dan ancestry baseline.
+  - `assembleDebug`, verifikasi tanda tangan, kedua ABI, dan provenance `source_sha == GITHUB_SHA`.
+  - Pemeriksaan **isi dex**: kelas `E343DrumNoteOffExperiment`, `E343DrumNoteOffSnapshot`, `E343ExperimentContent`, `E343ExperimentDialog`, tag `e343.mode.`, dan label `E343 EXPERIMENT` harus ada.
+  - Artifact **`E343-QUICK-APK-<branch>-<sha>`** berisi APK bernama dengan SHA, BUILD-INFO (branch, commit, nomor run, sha256 APK), dan laporan ini.
+* **quick-tests**: guard, CPV JVM (termasuk unit test eksperimen), `E343DrumNoteOffRtTest` pada EnglishWaltz2, ROSITA, dan HardRock2.
+* **ui-test**: tes UI desktop + PNG.
+* **report**: tabel hasil, dan **merah jika salah satu job gagal**. APK tetap ter-upload walau tes merah, tetapi kegagalan terlihat jelas.
+
+Cache yang dipakai hanya dependensi Gradle (berdasarkan file Gradle) dan JAR uji (berdasarkan JSON, tetap diverifikasi sha256). Output build tidak pernah di-cache, jadi tidak ada artefak yang tercampur antar-commit.
+
+**Full Validation tidak diubah isinya** (`style-voice-editor.yml`, semua tes tetap). Perubahannya hanya: timeout host 100 m (`95f6600`) dan tambahan run HardRock2 di langkah eksperimen. Workflow ini berjalan terpisah pada push yang sama. Belum diparalelkan, karena memecah job host lama butuh restrukturisasi yang lebih besar; itu usulan terpisah.
+
+QUICK_RESULT
+
+
+## 10. Tes di PSR-E343 (yang dibutuhkan dari pengguna)
 1. Pasang APK dan hubungkan E343 lewat USB MIDI OUT. Muat **EnglishWaltz2.S519**, mainkan **MainA**.
 2. **LEGACY** (default): dengarkan "tres-tres-tres" sebagai referensi.
-3. RIGHT DIAG → **`E343 26 OFF`** → **AUTHORED**. Dengarkan MainA/MainB: apakah "tres" berlebihan hilang dan swirl terdengar satu ketukan dengan aksen 1-2-3?
+3. RIGHT DIAG → **`E343 EXPERIMENT ▸`** → tombol **AUTHORED**. Baris "Active mode" harus berubah, dan status scope harus hijau ("ACTIVE on EnglishWaltz2"). Dengarkan MainA/MainB: apakah "tres" berlebihan hilang dan swirl terdengar satu ketukan dengan aksen 1-2-3?
 4. Ganti ke **SHORT_GATE**, coba GATE 40/80/120/200/300 ms. Catat nilai yang paling enak dan yang merusak irama.
 5. Uji juga MainC (swirl panjang yang memang ditulis Style), Fill, STOP di tengah, dan ganti section.
-6. Tekan **E343 OFF STATS** dan **MIDI OUT STATE**, lalu kirim teksnya beserta penilaian Anda per mode.
+6. Kirim angka statistik di halaman E343 (atau RIGHT DIAG → **E343 OFF STATS** / **MIDI OUT STATE**), beserta penilaian Anda per mode.
+6b. Kontrol: muat ROSITA, buka halaman E343. Harus tertulis **"NOT APPLICABLE to the current Style 'ROSITA…'"**, dan ROSITA harus terdengar sama di semua mode.
 7. Kembalikan ke LEGACY setelah selesai (atau tutup aplikasi; mode tidak disimpan).
 
 Keputusan setelah itu: jika AUTHORED menghilangkan masalah tanpa merusak irama, langkah berikutnya adalah memperluas dengan hati-hati, juga di branch eksperimen terpisah. Kandidatnya: not 28 Brush Tap Swirl (juga ditahan oleh Style), lalu opsi per Style. **Tidak ada perluasan ke seluruh drum atau seluruh Style tanpa bukti.**

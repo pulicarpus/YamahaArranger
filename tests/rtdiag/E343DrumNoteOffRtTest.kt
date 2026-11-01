@@ -166,12 +166,12 @@ class E343DrumNoteOffRtTest {
     }
 
     @Test fun rositaIsOutOfScopeInEveryMode() {
-        val st = style(); assumeTrue("ROSITA run only", !st.fileName.contains("EnglishWaltz2"))
+        val st = style(); assumeTrue("ROSITA / HardRock2 run only (any Style other than EnglishWaltz2)", !st.fileName.contains("EnglishWaltz2"))
         val base = run(st, "MainA", E343DrumNoteOffMode.LEGACY, totalMs = 1500)
         for (m in listOf(E343DrumNoteOffMode.AUTHORED, E343DrumNoteOffMode.SHORT_GATE)) {
             val r = run(st, "MainA", m, gate = 40, totalMs = 1500)
             val stop = r.marks["stop"]!!
-            row("ROSITA mode=${m.name} drumOffs=${r.offsBefore(8, stop).size + r.offsBefore(9, stop).size} ${r.report}")
+            row("OUT-OF-SCOPE style=${st.fileName} mode=${m.name} drumOffs=${r.offsBefore(8, stop).size + r.offsBefore(9, stop).size} ${r.report}")
             assertEquals("ROSITA ${m.name}: no drum NOTE OFF", 0, r.offsBefore(8, stop).size + r.offsBefore(9, stop).size)
             assertEquals("nothing tracked", 0, stat(r, "tracked"))
             for (c in 8..9) {

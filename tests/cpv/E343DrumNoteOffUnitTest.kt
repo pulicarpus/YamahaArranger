@@ -79,4 +79,19 @@ class E343DrumNoteOffUnitTest {
         E343DrumNoteOff.setGate(5); assertEquals(10, E343DrumNoteOff.gateMs); E343DrumNoteOff.setGate(5000); assertEquals(1000, E343DrumNoteOff.gateMs)
         E343DrumNoteOff.setGate(300); E343DrumNoteOff.nextGate(); assertEquals(40, E343DrumNoteOff.gateMs)
     }
+    @Test fun uiButtonNamesSwitchTheRealExperimentAndUnknownNamesChangeNothing() {
+        assertTrue(E343DrumNoteOff.setModeByName("AUTHORED")); assertEquals(Mode.AUTHORED, E343DrumNoteOff.mode); assertTrue(E343DrumNoteOff.inScope(9, 26))
+        assertTrue(E343DrumNoteOff.setModeByName("SHORT_GATE")); assertEquals(Mode.SHORT_GATE, E343DrumNoteOff.mode)
+        assertFalse(E343DrumNoteOff.setModeByName("ALL_DRUMS")); assertEquals(Mode.SHORT_GATE, E343DrumNoteOff.mode)
+        play(26); assertTrue(E343DrumNoteOff.setModeByName("LEGACY")); assertEquals("switching to LEGACY closes the open note", listOf("ON26", "OFF26"), wire.toList())
+        assertFalse(E343DrumNoteOff.inScope(9, 26))
+    }
+    @Test fun snapshotIsTheExperimentsOwnState() {
+        E343DrumNoteOff.setModeByName("AUTHORED"); E343DrumNoteOff.setGate(80); play(26)
+        val x = E343DrumNoteOff.snapshot()
+        assertEquals("AUTHORED", x.mode); assertEquals(80, x.gateMs); assertEquals(listOf(40, 80, 120, 200, 300), x.gates)
+        assertTrue(x.styleInScope); assertTrue(x.routerWired); assertEquals(1L, x.tracked); assertEquals(1, x.open)
+        E343DrumNoteOff.styleName = "ROSITA.STY"; assertFalse(E343DrumNoteOff.snapshot().styleInScope)
+        E343DrumNoteOff.probe = null; assertFalse(E343DrumNoteOff.snapshot().routerWired)
+    }
 }

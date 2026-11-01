@@ -143,12 +143,13 @@ jobs:
           set -euo pipefail
           python3 tools/test_rtdiag.py --out evidence/e343-rosita --rosita --only com.yourapp.rtdiag.E343MidiOutAuditTest 2>&1 | tee evidence/e343-rosita.log
           python3 tools/test_rtdiag.py --out evidence/e343-hardrock2 --rosita --style tests/fixtures/hardrock2/HardRock2.S578.prs --style-name HardRock2.S578.prs --only com.yourapp.rtdiag.E343MidiOutAuditTest 2>&1 | tee evidence/e343-hardrock2.log
-      - name: PSR-E343 drum NOTE OFF experiment (EnglishWaltz2 Rhythm2 note 26, MIDI OUT only) + ROSITA out-of-scope + EnglishWaltz2 audit
+      - name: PSR-E343 drum NOTE OFF experiment (EnglishWaltz2 Rhythm2 note 26, MIDI OUT only) + ROSITA / HardRock2 out-of-scope + EnglishWaltz2 audit
         if: github.ref == 'refs/heads/experiment/e343-drum-note-off'
         run: |
           set -euo pipefail
           python3 tools/test_rtdiag.py --out evidence/e343-noteoff-ew2 --rosita --style tests/fixtures/englishwaltz2/EnglishWaltz2.S519.prs --style-name EnglishWaltz2.S519.prs --only com.yourapp.rtdiag.E343DrumNoteOffRtTest 2>&1 | tee evidence/e343-noteoff-ew2.log
           python3 tools/test_rtdiag.py --out evidence/e343-noteoff-rosita --rosita --only com.yourapp.rtdiag.E343DrumNoteOffRtTest 2>&1 | tee evidence/e343-noteoff-rosita.log
+          python3 tools/test_rtdiag.py --out evidence/e343-noteoff-hr2 --rosita --style tests/fixtures/hardrock2/HardRock2.S578.prs --style-name HardRock2.S578.prs --only com.yourapp.rtdiag.E343DrumNoteOffRtTest 2>&1 | tee evidence/e343-noteoff-hr2.log
           python3 tools/test_rtdiag.py --out evidence/ew2-e343-audit --rosita --style tests/fixtures/englishwaltz2/EnglishWaltz2.S519.prs --style-name EnglishWaltz2.S519.prs --only com.yourapp.rtdiag.EnglishWaltz2E343DrumTest 2>&1 | tee evidence/ew2-e343-audit.log
       - name: Style Editor V2 - octave shift and drum note maps on the production chain (ROSITA + HardRock2)
         if: github.ref == 'refs/heads/experiment/style-editor-v2'

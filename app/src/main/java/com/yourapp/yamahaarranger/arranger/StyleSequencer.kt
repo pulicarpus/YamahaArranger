@@ -1611,6 +1611,10 @@ internal class OrderedNoteIo {
  */
 enum class E343DrumNoteOffMode { LEGACY, AUTHORED, SHORT_GATE }
 
+/** Plain snapshot of the experiment (no Android types) for the UI. */
+data class E343DrumNoteOffSnapshot(val mode: String, val gateMs: Int, val gates: List<Int>, val styleName: String, val styleInScope: Boolean, val routerWired: Boolean,
+    val tracked: Long, val offAuthored: Long, val offGate: Long, val offRetrigger: Long, val offRelease: Long, val dropped: Long, val open: Int)
+
 /** The app's single instance (wired in MainViewModel). Tests may create their own [E343DrumNoteOffExperiment]. */
 object E343DrumNoteOff : E343DrumNoteOffExperiment()
 
@@ -1669,6 +1673,17 @@ open class E343DrumNoteOffExperiment {
 
     fun setMode(m: E343DrumNoteOffMode) { releaseAll("MODE ${mode.name}->${m.name}"); mode = m; com.yourapp.yamahaarranger.ui.DebugLog.add("E343 DRUM NOTE OFF mode=${m.name} gate=${gateMs}ms scope=EnglishWaltz2 ch10 note$NOTE") }
     fun setGate(ms: Int) { gateMs = ms.coerceIn(10, 1000) }
+    /** Explicit mode from the UI (button name = enum name). False for an unknown name; nothing changes then. */
+    fun setModeByName(name: String): Boolean {
+        val m = E343DrumNoteOffMode.values().firstOrNull { it.name == name } ?: return false
+        if (m != mode) setMode(m)
+        return true
+    }
+    /** Read-only state for the RIGHT DIAG experiment page. */
+    fun snapshot(): E343DrumNoteOffSnapshot = synchronized(lock) {
+        E343DrumNoteOffSnapshot(mode.name, gateMs, GATES_MS.toList(), styleName, styleName.contains("EnglishWaltz2", true), probe != null,
+            stats[0], stats[1], stats[2], stats[3], stats[4], stats[5], open.size)
+    }
     fun nextMode() = setMode(E343DrumNoteOffMode.values()[(mode.ordinal + 1) % E343DrumNoteOffMode.values().size])
     fun nextGate() = setGate(GATES_MS.firstOrNull { it > gateMs } ?: GATES_MS[0])
     fun openCount() = synchronized(lock) { open.size }

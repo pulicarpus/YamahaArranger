@@ -2,6 +2,7 @@ package com.yourapp.yamahaarranger.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +27,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.yourapp.yamahaarranger.audio.RightVelocityMode
 import com.yourapp.yamahaarranger.audio.RightVelocityMonitor
 import com.yourapp.yamahaarranger.audio.RightVelocityTest
@@ -42,7 +45,9 @@ fun RightVoiceDiagOverlay(viewModel: MainViewModel, modifier: Modifier = Modifie
     var snapshot by remember { mutableStateOf<MainViewModel.RightDiagSnapshot?>(null) }
     var fxText by remember { mutableStateOf("") }
     val fxScope = androidx.compose.runtime.rememberCoroutineScope()
+    var e343Open by remember { mutableStateOf(false) }
     if (!ToolPanels.diag) return
+    if (e343Open) E343ExperimentDialog(viewModel) { e343Open = false }
     LaunchedEffect(Unit) {
         while (true) {
             snapshot = try { viewModel.rightVoiceDiagSnapshot() } catch (_: Exception) { snapshot }
@@ -50,26 +55,24 @@ fun RightVoiceDiagOverlay(viewModel: MainViewModel, modifier: Modifier = Modifie
         }
     }
     Column(
-        modifier.width(560.dp).heightIn(max = 330.dp).background(Color(0xEE10151B), RoundedCornerShape(6.dp)).padding(8.dp)
+        modifier.width(560.dp).heightIn(max = 330.dp).background(Color(0xEE10151B), RoundedCornerShape(6.dp)).verticalScroll(rememberScrollState()).padding(8.dp)
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        // CLOSE and the E343 entry come first and every chip row scrolls sideways: nothing can be pushed out of the 560 dp panel any more.
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, modifier = Modifier.horizontalScroll(rememberScrollState())) {
+            BigChip("CLOSE", Color(0xFF7A2B2B)) { ToolPanels.diag = false }
+            BigChip("E343 EXPERIMENT ▸ " + viewModel.e343ExperimentUi().mode, Color(0xFF7A5A2B)) { e343Open = true }
             Text("RIGHT DIAG — diagnostic only, not a fix", color = Color(0xFFFFC857), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 4.dp).horizontalScroll(rememberScrollState())) {
             Chip("RESET STATS", Color(0xFF444C56)) { viewModel.resetRightDiagStats() }
             Chip("LOG PROBE", Color(0xFF2B5C7A)) { viewModel.logRightInputProbe() }
             Chip("SF2 PITCH/FX", Color(0xFF2B5C7A)) { fxScope.launch { fxText = viewModel.rightSf2PitchFxReport() } }
             Chip("MIDI OUT STATE", Color(0xFF2B5C7A)) { fxText = viewModel.midiOutReport() }
             Chip("CLEAR OUT NOTES", Color(0xFF444C56)) { viewModel.resetMidiOutReport() }
-            Chip("CLOSE", Color(0xFF7A2B2B)) { ToolPanels.diag = false }
-        }
-        var e343Label by remember { mutableStateOf(viewModel.e343DrumNoteOffLabel()) }
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 4.dp)) {
-            Text("E343 EXPERIMENT (EnglishWaltz2, Rhythm 2, note 26, MIDI OUT only)", color = Color(0xFFFFC857), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-            Chip(e343Label, Color(0xFF7A5A2B)) { viewModel.e343DrumNoteOffNextMode(); e343Label = viewModel.e343DrumNoteOffLabel() }
-            Chip("GATE", Color(0xFF444C56)) { viewModel.e343DrumNoteOffNextGate(); e343Label = viewModel.e343DrumNoteOffLabel() }
             Chip("E343 OFF STATS", Color(0xFF2B5C7A)) { fxText = viewModel.e343DrumNoteOffReport() }
         }
         val touch by viewModel.touchResponse.collectAsState()
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 4.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 4.dp).horizontalScroll(rememberScrollState())) {
             Text("TOUCH RESPONSE (USB→RIGHT only)", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
             com.yourapp.yamahaarranger.audio.TouchResponse.values().forEach { t ->
                 Chip(t.label, if (touch == t) Color(0xFF1E8E3E) else Color(0xFF444C56)) { viewModel.setTouchResponse(t) }
@@ -85,7 +88,7 @@ fun RightVoiceDiagOverlay(viewModel: MainViewModel, modifier: Modifier = Modifie
             }
             Text("(saved · not MIDI OUT · not Virtual Keyboard)", color = Color(0xFF9AA4AF), fontSize = 9.sp)
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 4.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(vertical = 4.dp).horizontalScroll(rememberScrollState())) {
             Text("RIGHT VELOCITY TEST", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
             RightVelocityMode.values().forEach { m ->
                 Chip(m.label, if (mode == m) Color(0xFF1E8E3E) else Color(0xFF444C56)) {
@@ -98,7 +101,7 @@ fun RightVoiceDiagOverlay(viewModel: MainViewModel, modifier: Modifier = Modifie
         var gainText by remember { mutableStateOf("") }
         var gainWarn by remember { mutableStateOf(false) }
         LaunchedEffect(Unit) { while (true) { val r = try { viewModel.internalGainReport() } catch (_: Exception) { null }; gainText = r?.summary() ?: "no meter"; gainWarn = r?.wouldClip == true; delay(500) } }
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 4.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 4.dp).horizontalScroll(rememberScrollState())) {
             Text("INTERNAL GAIN (BASSMIDI mix only)", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
             com.yourapp.yamahaarranger.audio.InternalGain.STEPS.forEach { d ->
                 Chip(if (d == 0) "0 dB (default)" else "+$d dB", if (gainDb == d) Color(0xFF1E8E3E) else Color(0xFF444C56)) { viewModel.setInternalGainDb(d) }
@@ -120,7 +123,7 @@ fun RightVoiceDiagOverlay(viewModel: MainViewModel, modifier: Modifier = Modifie
             else -> "SF2 of first enabled RIGHT = ${first?.get("actualLabel") ?: "UNKNOWN"} / ${mode.label}"
         }
         Text("TEST ID: $testId (derived from BASS readback, not from UI)", color = Color(0xFF7FDBFF), fontSize = 10.sp)
-        Column(Modifier.verticalScroll(rememberScrollState())) {
+        Column {
             if (fxText.isNotEmpty()) Text(fxText, color = Color(0xFFFFC857), fontSize = 9.sp, fontFamily = FontFamily.Monospace)
             if (snap == null) Text("waiting for first readback…", color = Color.White, fontSize = 10.sp)
             snap?.backend?.forEach { row ->
@@ -128,6 +131,31 @@ fun RightVoiceDiagOverlay(viewModel: MainViewModel, modifier: Modifier = Modifie
                 RowBlock(row, app)
             }
         }
+    }
+}
+
+/** Larger chip for the always-visible actions (CLOSE, E343 entry). */
+@Composable
+private fun BigChip(text: String, color: Color, onClick: () -> Unit) {
+    Box(Modifier.heightIn(min = 40.dp).background(color, RoundedCornerShape(4.dp)).clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 8.dp),
+        contentAlignment = androidx.compose.ui.Alignment.Center) {
+        Text(text, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+    }
+}
+
+/** Full-screen, modal E343 experiment page (vertical scroll, big buttons, CLOSE / Android Back). State is polled from the experiment twice per second. */
+@Composable
+fun E343ExperimentDialog(viewModel: MainViewModel, onClose: () -> Unit) {
+    var state by remember { mutableStateOf(viewModel.e343ExperimentUi()) }
+    LaunchedEffect(Unit) { while (true) { state = viewModel.e343ExperimentUi(); delay(500) } }
+    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = false)) {
+        E343ExperimentContent(
+            state = state,
+            onMode = { viewModel.e343SetMode(it); state = viewModel.e343ExperimentUi() },
+            onGate = { viewModel.e343SetGate(it); state = viewModel.e343ExperimentUi() },
+            onResetStats = { viewModel.e343ResetStats(); state = viewModel.e343ExperimentUi() },
+            onClose = onClose,
+        )
     }
 }
 

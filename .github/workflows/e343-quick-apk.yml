@@ -1,0 +1,210 @@
+name: Quick Experimental APK (E343)
+# Device-test build for the PSR-E343 drum NOTE OFF experiment. NOT a production certification.
+# The APK job does not wait for any test job: it runs the isolation guard (seconds), compiles, verifies and uploads.
+# Quick tests and the desktop UI test run in parallel; the final "report" job turns red if any of them failed.
+# Full Validation stays in style-voice-editor.yml (unchanged test set) and runs independently on the same push.
+on:
+  push:
+    branches: [experiment/e343-drum-note-off]
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: e343-quick-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  PYTHONDONTWRITEBYTECODE: '1'
+jobs:
+  apk:
+    name: Quick APK (guard + compile + verify)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r26d
+          link-to-sdk: true
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+          # dependency/wrapper cache only (keyed by Gradle files); build outputs are never cached, so nothing mixes between commits
+          cache-read-only: false
+      - name: Essential safety - E343 isolation guard and baseline ancestry
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          python3 tools/test_e343_drum_noteoff_guard.py 2>&1 | tee evidence/guard.log
+          python3 tools/verify_cpv_build.py --out evidence/provenance-source.json
+      - name: Install byte-pinned official SDK inputs
+        run: |
+          set -euo pipefail
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install 'cmake;3.22.1' 'build-tools;34.0.0' 'platforms;android-34' > /dev/null
+          python3 tools/install_u01_android_sdk.py > evidence/sdk-identities.json
+      - name: Compile debug APK (both ARM ABIs)
+        run: |
+          set -euo pipefail
+          gradle --no-daemon --max-workers=2 assembleDebug --stacktrace 2>&1 | tee evidence/android-build.log
+      - name: Verify APK = this commit, signature, ABIs and E343 experiment + UI inside
+        run: |
+          set -euo pipefail
+          short=$(git rev-parse --short=12 HEAD)
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA" || { echo "checkout $(git rev-parse HEAD) != GITHUB_SHA $GITHUB_SHA"; exit 1; }
+          apk="evidence/YamahaArranger-E343-QUICK-${short}.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "$apk"
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose "$apk" > evidence/apk-signature.txt
+          python3 tools/verify_cpv_build.py --apk "$apk" --out evidence/apk-provenance.json
+          python3 - "$apk" "$GITHUB_SHA" <<'PY'
+          import json, sys, zipfile
+          apk, sha = sys.argv[1], sys.argv[2]
+          prov = json.load(open('evidence/apk-provenance.json'))
+          assert prov['source_sha'] == sha, ('provenance source', prov['source_sha'], sha)
+          dex = b''.join(zipfile.ZipFile(apk).read(n) for n in zipfile.ZipFile(apk).namelist() if n.startswith('classes') and n.endswith('.dex'))
+          need = [b'E343DrumNoteOffExperiment', b'E343DrumNoteOffSnapshot', b'E343ExperimentContent', b'E343ExperimentDialog', b'e343.mode.', b'SHORT_GATE', b'E343 EXPERIMENT']
+          missing = [n.decode() for n in need if n not in dex]
+          assert not missing, 'APK does not contain: ' + ', '.join(missing)
+          print('APK contains the E343 experiment and the E343 page; source_sha', sha)
+          PY
+          {
+            echo "branch: ${GITHUB_REF_NAME}"
+            echo "commit: ${GITHUB_SHA}"
+            echo "workflow: ${GITHUB_WORKFLOW} run #${GITHUB_RUN_NUMBER} (id ${GITHUB_RUN_ID})"
+            echo "apk: $(basename "$apk") sha256 $(sha256sum "$apk" | cut -d' ' -f1)"
+            echo "QUICK device-test build. Not production-certified. Check the 'report' job for the quick tests and the UI test."
+          } > evidence/BUILD-INFO.txt
+          cp diagnostics/ENGLISH_WALTZ2_NOTE_OFF_EXPERIMENT.md evidence/DEVICE-TEST.txt
+          cat evidence/BUILD-INFO.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: E343-QUICK-APK-${{ github.ref_name }}-${{ github.sha }}
+          path: |
+            evidence/YamahaArranger-E343-QUICK-*.apk
+            evidence/BUILD-INFO.txt
+            evidence/DEVICE-TEST.txt
+            evidence/apk-provenance.json
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: E343-QUICK-apk-evidence-${{ github.run_id }}
+          path: |
+            evidence/*.log
+            evidence/*.json
+            evidence/*.txt
+          if-no-files-found: warn
+
+  quick-tests:
+    name: Quick tests (guard, CPV JVM, NOTE OFF experiment on EW2 / ROSITA / HardRock2)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/cache@v4
+        with:
+          path: build/sff1-jvm/dependencies
+          key: sff1-jvm-deps-${{ hashFiles('tests/fixtures/sff1_jvm_dependencies.json') }}
+      - name: Fetch (if not cached) and sha256-verify pinned JVM test inputs
+        run: |
+          set -euo pipefail
+          mkdir -p evidence build/sff1-jvm/dependencies
+          python3 - <<'PY'
+          import hashlib, json, subprocess
+          from pathlib import Path
+          for e in json.loads(Path('tests/fixtures/sff1_jvm_dependencies.json').read_text())['dependencies']:
+              p = Path('build/sff1-jvm/dependencies') / e['filename']
+              if not p.exists() or hashlib.sha256(p.read_bytes()).hexdigest() != e['sha256']:
+                  subprocess.run(['curl', '-fsSL', '--retry', '3', e['url'], '-o', str(p)], check=True)
+              assert hashlib.sha256(p.read_bytes()).hexdigest() == e['sha256'], e['filename']
+          PY
+      - name: Isolation guard
+        run: python3 tools/test_e343_drum_noteoff_guard.py 2>&1 | tee evidence/guard.log
+      - name: CPV JVM (incl. E343DrumNoteOffUnitTest)
+        run: |
+          set -euo pipefail
+          python3 tools/test_cpv.py --suite jvm --out evidence/cpv-jvm 2>&1 | tee evidence/cpv-jvm.log
+      - name: NOTE OFF experiment on the production chain - EnglishWaltz2, ROSITA, HardRock2
+        run: |
+          set -euo pipefail
+          python3 tools/test_rtdiag.py --out evidence/noteoff-ew2 --rosita --style tests/fixtures/englishwaltz2/EnglishWaltz2.S519.prs --style-name EnglishWaltz2.S519.prs --only com.yourapp.rtdiag.E343DrumNoteOffRtTest 2>&1 | tee evidence/noteoff-ew2.log
+          python3 tools/test_rtdiag.py --out evidence/noteoff-rosita --rosita --only com.yourapp.rtdiag.E343DrumNoteOffRtTest 2>&1 | tee evidence/noteoff-rosita.log
+          python3 tools/test_rtdiag.py --out evidence/noteoff-hr2 --rosita --style tests/fixtures/hardrock2/HardRock2.S578.prs --style-name HardRock2.S578.prs --only com.yourapp.rtdiag.E343DrumNoteOffRtTest 2>&1 | tee evidence/noteoff-hr2.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: E343-QUICK-test-evidence-${{ github.run_id }}
+          path: evidence/**/*.log
+          if-no-files-found: warn
+
+  ui-test:
+    name: E343 page UI test (desktop Compose, Redmi Pad landscape sizes) + PNG
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+          cache-read-only: false
+      - name: Desktop Compose UI test of the real E343ExperimentPanel.kt
+        run: |
+          set -euo pipefail
+          sudo apt-get install -y -qq fontconfig fonts-dejavu-core >/dev/null || true
+          gradle -p tools/ui_preview --no-daemon test --tests E343ExperimentPanelTest --stacktrace 2>&1 | tee ui-test.log
+          ls -la tools/ui_preview/build/png-e343
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: E343-QUICK-ui-${{ github.sha }}
+          path: |
+            ui-test.log
+            tools/ui_preview/build/png-e343/*.png
+            tools/ui_preview/build/reports/tests/test/**
+          if-no-files-found: warn
+
+  report:
+    name: Quick report (fails if any quick job failed)
+    needs: [apk, quick-tests, ui-test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summary
+        run: |
+          {
+            echo "## Quick Experimental APK (E343) - ${GITHUB_REF_NAME} @ ${GITHUB_SHA}"
+            echo "| job | result |"; echo "|---|---|"
+            echo "| apk | ${{ needs.apk.result }} |"
+            echo "| quick-tests | ${{ needs.quick-tests.result }} |"
+            echo "| ui-test | ${{ needs.ui-test.result }} |"
+            echo
+            echo "Device-test build only. Full Validation: workflow 'Style Voice Inspector & Editor APK' on the same commit."
+          } >> "$GITHUB_STEP_SUMMARY"
+          test "${{ needs.apk.result }}" = success && test "${{ needs.quick-tests.result }}" = success && test "${{ needs.ui-test.result }}" = success

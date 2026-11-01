@@ -9,6 +9,15 @@ dependencies {
     implementation(compose.desktop.currentOs)
     implementation(compose.material3)
     implementation(compose.foundation)
+    // E343 experiment page: desktop Compose UI regression test (sizes of the Redmi Pad in landscape)
+    testImplementation(compose.desktop.uiTestJUnit4)
+    testImplementation(compose.desktop.currentOs)
+    testImplementation("junit:junit:4.13.2")
+}
+tasks.withType<Test> {
+    systemProperty("java.awt.headless", "true")
+    systemProperty("e343.png.dir", layout.buildDirectory.dir("png-e343").get().asFile.path)
+    testLogging { events("passed", "failed", "skipped"); exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL; showStandardStreams = true }
 }
 sourceSets {
     main {
@@ -23,6 +32,7 @@ sourceSets {
                 "com/yourapp/yamahaarranger/style/StyleOverrideStore.kt",
                 "com/yourapp/yamahaarranger/registration/RegistrationCodec.kt", "com/yourapp/yamahaarranger/registration/RegistrationModel.kt", "com/yourapp/yamahaarranger/audio/MixerConsoleState.kt",
                 "com/yourapp/ui/MetronomePanel.kt", "com/yourapp/yamahaarranger/audio/MetronomeModel.kt",
+                "com/yourapp/ui/E343ExperimentPanel.kt",
             )
         }
     }
