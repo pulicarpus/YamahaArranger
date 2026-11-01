@@ -44,6 +44,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.yourapp.yamahaarranger.style.CatalogPreset
 import com.yourapp.yamahaarranger.style.DrumOutput
+import com.yourapp.yamahaarranger.style.E343Compat
 import com.yourapp.yamahaarranger.style.EditScope
 import com.yourapp.yamahaarranger.style.ExternalVoice
 import com.yourapp.yamahaarranger.style.OriginalRef
@@ -402,6 +403,8 @@ private fun DetailPanel(r: StyleVoiceRow?, inv: StyleVoiceInventory, actions: St
         StatusBadge(r.status)
         Field("Request (raw)", "MSB ${r.msb ?: "none"} · LSB ${r.lsb ?: "none"} · Program ${r.program ?: "none"}", provenanceText(r.requestProvenance))
         Field("Request (display, 1-based)", r.displayRequest, "same bytes + 1 on Program")
+        val e343 = E343Compat.classify(r.msb, r.lsb, r.program, r.casmVoiceName, actions?.deviceCatalog.orEmpty())
+        Field("PSR-E343 (MIDI OUT)", E343Compat.describe(e343), "from your supplied Data List only; never applied automatically")
         Field("Channels", "source ${r.sourceChannel + 1} → destination ${r.destinationChannel + 1}" +
             if (r.hasCasm) "" else "  (no CASM entry; source used)", provenanceText(r.routingProvenance))
         Field("Style's own Voice name", r.casmVoiceName.ifBlank { "not carried by the file" }, "CASM table, as authored")

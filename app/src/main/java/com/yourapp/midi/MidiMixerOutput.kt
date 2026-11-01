@@ -13,6 +13,8 @@ class MidiMixerOutput(private val write: (ByteArray) -> Boolean) {
     private val sent = Array(16) { IntArray(128) { -1 } }
     private val notes = Array(16) { IntArray(128) }
     private val pendingOff = BooleanArray(16)
+    /** NOTE_ONs actually written per channel and written note (diagnostic only: which drum/percussion notes the module was sent). */
+    private val written = Array(16) { IntArray(128) }
     // MIDI OUT octave correction of the melodic Style parts (10..15), in octaves. Applied only to the bytes written to the module.
     // `paired[ch][note*5 + k + 2]` counts the NOTE_ONs of that INPUT note that were sent with correction k, so every NOTE_OFF is written
     // with the very note its NOTE_ON used, even when the correction was changed while the note was held. Preallocated: no allocation on the note path.
@@ -104,6 +106,7 @@ class MidiMixerOutput(private val write: (ByteArray) -> Boolean) {
         if (write(byteArrayOf((0x90 or channel).toByte(), out.toByte(), velocity.coerceIn(1, 127).toByte()))) {
             ChannelActivity.noteOn(ChannelActivity.Source.MIDI_OUT, channel, velocity) // Mixer "MIDI OUT activity" indicator: a message was really written
             notes[channel][out]++
+            written[channel][out]++
             paired[channel][n * 5 + k + 2]++
             lastCorrection[channel][n] = k
         }
@@ -126,6 +129,25 @@ class MidiMixerOutput(private val write: (ByteArray) -> Boolean) {
             if (notes[channel].all { it == 0 }) pendingOff[channel] = false
         }
     }
+    /**
+     * Read-only "what was really sent" report per managed channel: the Bank/Program the module was last given (MSB/LSB/PC with the 1-based display number), the wanted voice if it
+     * differs, last written CC7/10/11/91/93, octave correction and the notes written. Used to compare what the app sends with what the PSR-E343 plays.
+     */
+    @Synchronized fun outputReport(): String {
+        val sb = StringBuilder("MIDI OUT STATE (enabled=$enabled connected=$connected)\n")
+        for (ch in channels.sorted()) {
+            val v = sentVoice[ch]; val want = programs[ch]
+            val voice = if (v != null) "voice sent MSB ${v[1]} LSB ${v[2]} PC ${v[0]} (display ${v[0] + 1})" else if (want != null) "voice NOT sent yet (wanted MSB ${want[1]} LSB ${want[2]} PC ${want[0]} / display ${want[0] + 1})" else "no voice message"
+            val cc = controllers.joinToString(" ") { c -> "CC$c=" + (sent[ch][c].takeIf { it >= 0 }?.toString() ?: "-") }
+            val total = written[ch].sum()
+            val top = (0 until 128).filter { written[ch][it] > 0 }.sortedByDescending { written[ch][it] }.take(10).joinToString(" ") { "$it:${written[ch][it]}" }
+            val tag = when (ch) { 8, 9 -> " [Rhythm ${ch - 7}]"; in 10..15 -> " [melodic part]"; else -> "" }
+            sb.append("ch${ch + 1}$tag: $voice | $cc | oct=${octaveCorrection(ch)}${if (ch in mutedChannels) " MUTED" else ""} | NOTE_ON written $total" + (if (top.isNotEmpty()) " notes[note:count] $top" else "") + "\n")
+        }
+        return sb.toString()
+    }
+    fun resetWrittenStats() = synchronized(this) { written.forEach { it.fill(0) } }
+
     private fun active() = enabled && connected
     private fun expression(channel: Int) =
         if (channel in 0..3 && channel in mutedChannels) 0 else (values[channel][2] * master + 50) / 100

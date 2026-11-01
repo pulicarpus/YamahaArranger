@@ -1342,6 +1342,9 @@ class MainViewModel @Inject constructor(
     /** What the keyboard sent so far, per MIDI channel, and whether it was played or ignored by the channel filter. */
     fun midiInReport(): String = midiInputManager.inputStats.summary(_splitNote.value)
     fun resetMidiInReport() { midiInputManager.inputStats.reset() }
+    /** What MIDI OUT has really been sent (per channel: Bank/Program, controllers, written notes); also copied to the debug log. */
+    fun midiOutReport(): String = midiInputManager.midiOutReport().also { DebugLog.add(it) }
+    fun resetMidiOutReport() { midiInputManager.resetMidiOutReport() }
     fun logRightInputProbe() { DebugLog.add(com.yourapp.yamahaarranger.audio.RightInputProbe.report()) }
 
     fun resetRightDiagStats() {

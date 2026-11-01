@@ -265,6 +265,9 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
     /** MIDI OUT octave correction of a melodic Style part (10..15), -2..+2. MIDI OUT only: the internal synthesizer is not involved. */
     fun setStyleOctaveCorrection(channel: Int, octaves: Int): Boolean = mixerOutput.setOctaveCorrection(channel, octaves)
     fun styleOctaveCorrection(channel: Int): Int = mixerOutput.octaveCorrection(channel)
+    /** Read-only report of what MIDI OUT has really been sent (voices, controllers, written notes) per channel. */
+    fun midiOutReport(): String = mixerOutput.outputReport()
+    fun resetMidiOutReport() = mixerOutput.resetWrittenStats()
     fun clearStyleOctaveCorrections() = mixerOutput.clearOctaveCorrections()
 
     fun allNotesOff() {

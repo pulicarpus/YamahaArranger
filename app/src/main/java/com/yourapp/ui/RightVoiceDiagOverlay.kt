@@ -57,6 +57,8 @@ fun RightVoiceDiagOverlay(viewModel: MainViewModel, modifier: Modifier = Modifie
             Chip("RESET STATS", Color(0xFF444C56)) { viewModel.resetRightDiagStats() }
             Chip("LOG PROBE", Color(0xFF2B5C7A)) { viewModel.logRightInputProbe() }
             Chip("SF2 PITCH/FX", Color(0xFF2B5C7A)) { fxScope.launch { fxText = viewModel.rightSf2PitchFxReport() } }
+            Chip("MIDI OUT STATE", Color(0xFF2B5C7A)) { fxText = viewModel.midiOutReport() }
+            Chip("CLEAR OUT NOTES", Color(0xFF444C56)) { viewModel.resetMidiOutReport() }
             Chip("CLOSE", Color(0xFF7A2B2B)) { ToolPanels.diag = false }
         }
         val touch by viewModel.touchResponse.collectAsState()
