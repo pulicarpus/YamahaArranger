@@ -82,7 +82,7 @@ class RotaryDataKnobTest {
         val h = Harness(); setContent { SideColumn(h, 240, 520) }
         onNodeWithTag(K.KNOB).performTouchInput { turn(30f, 120f) }            // +90 deg / 6 deg = +15 BPM
         waitForIdle(); assertEquals(135, h.values["TEMPO"])
-        onNodeWithTag(K.VALUE).assertTextEquals("135"); onNodeWithTag(K.paramValue("TEMPO")).assertTextEquals("135")
+        onNodeWithTag(K.VALUE).assertTextEquals("135"); onNodeWithTag(K.paramValue("TEMPO"), useUnmergedTree = true).assertTextEquals("135")
         onNodeWithTag(K.KNOB).performTouchInput { turn(200f, 140f) }           // -60 deg = -10
         waitForIdle(); assertEquals(125, h.values["TEMPO"])
     }
@@ -129,7 +129,7 @@ class RotaryDataKnobTest {
     @Test fun anExternalChangeIsShownAndTheNextTurnStartsFromIt() = runDesktopComposeUiTest(240, 520) {
         val h = Harness(); setContent { SideColumn(h, 240, 520) }
         h.values["TEMPO"] = 90                                                   // e.g. a Style load / registration recall / -/+ button
-        waitForIdle(); onNodeWithTag(K.VALUE).assertTextEquals("90"); onNodeWithTag(K.paramValue("TEMPO")).assertTextEquals("90")
+        waitForIdle(); onNodeWithTag(K.VALUE).assertTextEquals("90"); onNodeWithTag(K.paramValue("TEMPO"), useUnmergedTree = true).assertTextEquals("90")
         onNodeWithTag(K.KNOB).performTouchInput { turn(0f, 12f) }              // +2
         waitForIdle(); assertEquals(92, h.values["TEMPO"])
     }
