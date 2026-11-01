@@ -1,0 +1,1327 @@
+# PSR-E343 Drum Kit List, extracted from the official Yamaha Owner's Manual psre343_en_om_b0.pdf, pages 53-55.
+# midi_note = the note number on MIDI (what the app sends); keyboard_note = MIDI + 12 (the E343 panel keyboard, per the manual footnote). Note names use Yamaha C3 = 60.
+# same_as_std1 = blank cell in the manual ("same as Standard Kit 1"). Notes not listed for a kit have no sound in that kit.
+# same_as_std1=footnote_only (kits 199-205, page 55): the cell is blank and the footnote on page 53 says blank = same as Standard Kit 1, but page 55 does not show Standard Kit 1 beside these kits; treat as UNVERIFIED until heard on the instrument.
+# SFX Kit 1/2 (203, 204): the manual says their actual KEYBOARD notes are one octave lower than listed; midi_note is given as listed.
+#voice_no	kit	msb	lsb	program_1_128	midi_note	midi_note_name	keyboard_note	keyboard_note_name	sound	same_as_std1	source_page
+# MERGED CELL in 205 Sound Effect Kit: 'Drum Loop' is printed across the rows between MIDI notes 29 and 30; the manual does not state the exact keys, so no note row is claimed for it.
+# MERGED CELL in 205 Sound Effect Kit: 'Huuaah!' is printed across the rows between MIDI notes 65 and 66; the manual does not state the exact keys, so no note row is claimed for it.
+188	Standard Kit 1	127	0	1	13	C#-1	25	C#0	Surdo Mute	n/a	53
+188	Standard Kit 1	127	0	1	14	D-1	26	D0	Surdo Open	n/a	53
+188	Standard Kit 1	127	0	1	15	D#-1	27	D#0	Hi Q	n/a	53
+188	Standard Kit 1	127	0	1	16	E-1	28	E0	Whip Slap	n/a	53
+188	Standard Kit 1	127	0	1	17	F-1	29	F0	Scratch Push	n/a	53
+188	Standard Kit 1	127	0	1	18	F#-1	30	F#0	Scratch Pull	n/a	53
+188	Standard Kit 1	127	0	1	19	G-1	31	G0	Finger Snap	n/a	53
+188	Standard Kit 1	127	0	1	20	G#-1	32	G#0	Click Noise	n/a	53
+188	Standard Kit 1	127	0	1	21	A-1	33	A0	Metronome Click	n/a	53
+188	Standard Kit 1	127	0	1	22	A#-1	34	A#0	Metronome Bell	n/a	53
+188	Standard Kit 1	127	0	1	23	B-1	35	B0	Seq Click L	n/a	53
+188	Standard Kit 1	127	0	1	24	C0	36	C1	Seq Click H	n/a	53
+188	Standard Kit 1	127	0	1	25	C#0	37	C#1	Brush Tap	n/a	53
+188	Standard Kit 1	127	0	1	26	D0	38	D1	Brush Swirl	n/a	53
+188	Standard Kit 1	127	0	1	27	D#0	39	D#1	Brush Slap	n/a	53
+188	Standard Kit 1	127	0	1	28	E0	40	E1	Brush Tap Swirl	n/a	53
+188	Standard Kit 1	127	0	1	29	F0	41	F1	Snare Roll	n/a	53
+188	Standard Kit 1	127	0	1	30	F#0	42	F#1	Castanet	n/a	53
+188	Standard Kit 1	127	0	1	31	G0	43	G1	Snare H Soft	n/a	53
+188	Standard Kit 1	127	0	1	32	G#0	44	G#1	Sticks	n/a	53
+188	Standard Kit 1	127	0	1	33	A0	45	A1	Bass Drum Soft	n/a	53
+188	Standard Kit 1	127	0	1	34	A#0	46	A#1	Open Rim Shot	n/a	53
+188	Standard Kit 1	127	0	1	35	B0	47	B1	Bass Drum Hard	n/a	53
+188	Standard Kit 1	127	0	1	36	C1	48	C2	Bass Drum	n/a	53
+188	Standard Kit 1	127	0	1	37	C#1	49	C#2	Side Stick	n/a	53
+188	Standard Kit 1	127	0	1	38	D1	50	D2	Snare M	n/a	53
+188	Standard Kit 1	127	0	1	39	D#1	51	D#2	Hand Clap	n/a	53
+188	Standard Kit 1	127	0	1	40	E1	52	E2	Snare H Hard	n/a	53
+188	Standard Kit 1	127	0	1	41	F1	53	F2	Floor Tom L	n/a	53
+188	Standard Kit 1	127	0	1	42	F#1	54	F#2	Hi-Hat Closed	n/a	53
+188	Standard Kit 1	127	0	1	43	G1	55	G2	Floor Tom H	n/a	53
+188	Standard Kit 1	127	0	1	44	G#1	56	G#2	Hi-Hat Pedal	n/a	53
+188	Standard Kit 1	127	0	1	45	A1	57	A2	Low Tom	n/a	53
+188	Standard Kit 1	127	0	1	46	A#1	58	A#2	Hi-Hat Open	n/a	53
+188	Standard Kit 1	127	0	1	47	B1	59	B2	Mid Tom L	n/a	53
+188	Standard Kit 1	127	0	1	48	C2	60	C3	Mid Tom H	n/a	53
+188	Standard Kit 1	127	0	1	49	C#2	61	C#3	Crash Cymbal 1	n/a	53
+188	Standard Kit 1	127	0	1	50	D2	62	D3	High Tom	n/a	53
+188	Standard Kit 1	127	0	1	51	D#2	63	D#3	Ride Cymbal 1	n/a	53
+188	Standard Kit 1	127	0	1	52	E2	64	E3	Chinese Cymbal	n/a	53
+188	Standard Kit 1	127	0	1	53	F2	65	F3	Ride Cymbal Cup	n/a	53
+188	Standard Kit 1	127	0	1	54	F#2	66	F#3	Tambourine	n/a	53
+188	Standard Kit 1	127	0	1	55	G2	67	G3	Splash Cymbal	n/a	53
+188	Standard Kit 1	127	0	1	56	G#2	68	G#3	Cowbell	n/a	53
+188	Standard Kit 1	127	0	1	57	A2	69	A3	Crash Cymbal 2	n/a	53
+188	Standard Kit 1	127	0	1	58	A#2	70	A#3	Vibraslap	n/a	53
+188	Standard Kit 1	127	0	1	59	B2	71	B3	Ride Cymbal 2	n/a	53
+188	Standard Kit 1	127	0	1	60	C3	72	C4	Bongo H	n/a	53
+188	Standard Kit 1	127	0	1	61	C#3	73	C#4	Bongo L	n/a	53
+188	Standard Kit 1	127	0	1	62	D3	74	D4	Conga H Mute	n/a	53
+188	Standard Kit 1	127	0	1	63	D#3	75	D#4	Conga H Open	n/a	53
+188	Standard Kit 1	127	0	1	64	E3	76	E4	Conga L	n/a	53
+188	Standard Kit 1	127	0	1	65	F3	77	F4	Timbale H	n/a	53
+188	Standard Kit 1	127	0	1	66	F#3	78	F#4	Timbale L	n/a	53
+188	Standard Kit 1	127	0	1	67	G3	79	G4	Agogo H	n/a	53
+188	Standard Kit 1	127	0	1	68	G#3	80	G#4	Agogo L	n/a	53
+188	Standard Kit 1	127	0	1	69	A3	81	A4	Cabasa	n/a	53
+188	Standard Kit 1	127	0	1	70	A#3	82	A#4	Maracas	n/a	53
+188	Standard Kit 1	127	0	1	71	B3	83	B4	Samba Whistle H	n/a	53
+188	Standard Kit 1	127	0	1	72	C4	84	C5	Samba Whistle L	n/a	53
+188	Standard Kit 1	127	0	1	73	C#4	85	C#5	Guiro Short	n/a	53
+188	Standard Kit 1	127	0	1	74	D4	86	D5	Guiro Long	n/a	53
+188	Standard Kit 1	127	0	1	75	D#4	87	D#5	Claves	n/a	53
+188	Standard Kit 1	127	0	1	76	E4	88	E5	Wood Block H	n/a	53
+188	Standard Kit 1	127	0	1	77	F4	89	F5	Wood Block L	n/a	53
+188	Standard Kit 1	127	0	1	78	F#4	90	F#5	Cuica Mute	n/a	53
+188	Standard Kit 1	127	0	1	79	G4	91	G5	Cuica Open	n/a	53
+188	Standard Kit 1	127	0	1	80	G#4	92	G#5	Triangle Mute	n/a	53
+188	Standard Kit 1	127	0	1	81	A4	93	A5	Triangle Open	n/a	53
+188	Standard Kit 1	127	0	1	82	A#4	94	A#5	Shaker	n/a	53
+188	Standard Kit 1	127	0	1	83	B4	95	B5	Jingle Bell	n/a	53
+188	Standard Kit 1	127	0	1	84	C5	96	C6	Bell Tree	n/a	53
+189	Standard Kit 2	127	0	2	13	C#-1	25	C#0	Surdo Mute	yes	53
+189	Standard Kit 2	127	0	2	14	D-1	26	D0	Surdo Open	yes	53
+189	Standard Kit 2	127	0	2	15	D#-1	27	D#0	Hi Q	yes	53
+189	Standard Kit 2	127	0	2	16	E-1	28	E0	Whip Slap	yes	53
+189	Standard Kit 2	127	0	2	17	F-1	29	F0	Scratch Push	yes	53
+189	Standard Kit 2	127	0	2	18	F#-1	30	F#0	Scratch Pull	yes	53
+189	Standard Kit 2	127	0	2	19	G-1	31	G0	Finger Snap	yes	53
+189	Standard Kit 2	127	0	2	20	G#-1	32	G#0	Click Noise	yes	53
+189	Standard Kit 2	127	0	2	21	A-1	33	A0	Metronome Click	yes	53
+189	Standard Kit 2	127	0	2	22	A#-1	34	A#0	Metronome Bell	yes	53
+189	Standard Kit 2	127	0	2	23	B-1	35	B0	Seq Click L	yes	53
+189	Standard Kit 2	127	0	2	24	C0	36	C1	Seq Click H	yes	53
+189	Standard Kit 2	127	0	2	25	C#0	37	C#1	Brush Tap	yes	53
+189	Standard Kit 2	127	0	2	26	D0	38	D1	Brush Swirl	yes	53
+189	Standard Kit 2	127	0	2	27	D#0	39	D#1	Brush Slap	yes	53
+189	Standard Kit 2	127	0	2	28	E0	40	E1	Brush Tap Swirl	yes	53
+189	Standard Kit 2	127	0	2	29	F0	41	F1	Snare Roll	yes	53
+189	Standard Kit 2	127	0	2	30	F#0	42	F#1	Castanet	yes	53
+189	Standard Kit 2	127	0	2	31	G0	43	G1	Snare H Soft 2	no	53
+189	Standard Kit 2	127	0	2	32	G#0	44	G#1	Sticks	yes	53
+189	Standard Kit 2	127	0	2	33	A0	45	A1	Bass Drum Soft	yes	53
+189	Standard Kit 2	127	0	2	34	A#0	46	A#1	Open Rim Shot 2	no	53
+189	Standard Kit 2	127	0	2	35	B0	47	B1	Bass Drum Hard	yes	53
+189	Standard Kit 2	127	0	2	36	C1	48	C2	Bass Drum 2	no	53
+189	Standard Kit 2	127	0	2	37	C#1	49	C#2	Side Stick	yes	53
+189	Standard Kit 2	127	0	2	38	D1	50	D2	Snare M 2	no	53
+189	Standard Kit 2	127	0	2	39	D#1	51	D#2	Hand Clap	yes	53
+189	Standard Kit 2	127	0	2	40	E1	52	E2	Snare H Hard 2	no	53
+189	Standard Kit 2	127	0	2	41	F1	53	F2	Floor Tom L	yes	53
+189	Standard Kit 2	127	0	2	42	F#1	54	F#2	Hi-Hat Closed	yes	53
+189	Standard Kit 2	127	0	2	43	G1	55	G2	Floor Tom H	yes	53
+189	Standard Kit 2	127	0	2	44	G#1	56	G#2	Hi-Hat Pedal	yes	53
+189	Standard Kit 2	127	0	2	45	A1	57	A2	Low Tom	yes	53
+189	Standard Kit 2	127	0	2	46	A#1	58	A#2	Hi-Hat Open	yes	53
+189	Standard Kit 2	127	0	2	47	B1	59	B2	Mid Tom L	yes	53
+189	Standard Kit 2	127	0	2	48	C2	60	C3	Mid Tom H	yes	53
+189	Standard Kit 2	127	0	2	49	C#2	61	C#3	Crash Cymbal 1	yes	53
+189	Standard Kit 2	127	0	2	50	D2	62	D3	High Tom	yes	53
+189	Standard Kit 2	127	0	2	51	D#2	63	D#3	Ride Cymbal 1	yes	53
+189	Standard Kit 2	127	0	2	52	E2	64	E3	Chinese Cymbal	yes	53
+189	Standard Kit 2	127	0	2	53	F2	65	F3	Ride Cymbal Cup	yes	53
+189	Standard Kit 2	127	0	2	54	F#2	66	F#3	Tambourine	yes	53
+189	Standard Kit 2	127	0	2	55	G2	67	G3	Splash Cymbal	yes	53
+189	Standard Kit 2	127	0	2	56	G#2	68	G#3	Cowbell	yes	53
+189	Standard Kit 2	127	0	2	57	A2	69	A3	Crash Cymbal 2	yes	53
+189	Standard Kit 2	127	0	2	58	A#2	70	A#3	Vibraslap	yes	53
+189	Standard Kit 2	127	0	2	59	B2	71	B3	Ride Cymbal 2	yes	53
+189	Standard Kit 2	127	0	2	60	C3	72	C4	Bongo H	yes	53
+189	Standard Kit 2	127	0	2	61	C#3	73	C#4	Bongo L	yes	53
+189	Standard Kit 2	127	0	2	62	D3	74	D4	Conga H Mute	yes	53
+189	Standard Kit 2	127	0	2	63	D#3	75	D#4	Conga H Open	yes	53
+189	Standard Kit 2	127	0	2	64	E3	76	E4	Conga L	yes	53
+189	Standard Kit 2	127	0	2	65	F3	77	F4	Timbale H	yes	53
+189	Standard Kit 2	127	0	2	66	F#3	78	F#4	Timbale L	yes	53
+189	Standard Kit 2	127	0	2	67	G3	79	G4	Agogo H	yes	53
+189	Standard Kit 2	127	0	2	68	G#3	80	G#4	Agogo L	yes	53
+189	Standard Kit 2	127	0	2	69	A3	81	A4	Cabasa	yes	53
+189	Standard Kit 2	127	0	2	70	A#3	82	A#4	Maracas	yes	53
+189	Standard Kit 2	127	0	2	71	B3	83	B4	Samba Whistle H	yes	53
+189	Standard Kit 2	127	0	2	72	C4	84	C5	Samba Whistle L	yes	53
+189	Standard Kit 2	127	0	2	73	C#4	85	C#5	Guiro Short	yes	53
+189	Standard Kit 2	127	0	2	74	D4	86	D5	Guiro Long	yes	53
+189	Standard Kit 2	127	0	2	75	D#4	87	D#5	Claves	yes	53
+189	Standard Kit 2	127	0	2	76	E4	88	E5	Wood Block H	yes	53
+189	Standard Kit 2	127	0	2	77	F4	89	F5	Wood Block L	yes	53
+189	Standard Kit 2	127	0	2	78	F#4	90	F#5	Cuica Mute	yes	53
+189	Standard Kit 2	127	0	2	79	G4	91	G5	Cuica Open	yes	53
+189	Standard Kit 2	127	0	2	80	G#4	92	G#5	Triangle Mute	yes	53
+189	Standard Kit 2	127	0	2	81	A4	93	A5	Triangle Open	yes	53
+189	Standard Kit 2	127	0	2	82	A#4	94	A#5	Shaker	yes	53
+189	Standard Kit 2	127	0	2	83	B4	95	B5	Jingle Bell	yes	53
+189	Standard Kit 2	127	0	2	84	C5	96	C6	Bell Tree	yes	53
+190	Room Kit	127	0	9	13	C#-1	25	C#0	Surdo Mute	yes	53
+190	Room Kit	127	0	9	14	D-1	26	D0	Surdo Open	yes	53
+190	Room Kit	127	0	9	15	D#-1	27	D#0	Hi Q	yes	53
+190	Room Kit	127	0	9	16	E-1	28	E0	Whip Slap	yes	53
+190	Room Kit	127	0	9	17	F-1	29	F0	Scratch Push	yes	53
+190	Room Kit	127	0	9	18	F#-1	30	F#0	Scratch Pull	yes	53
+190	Room Kit	127	0	9	19	G-1	31	G0	Finger Snap	yes	53
+190	Room Kit	127	0	9	20	G#-1	32	G#0	Click Noise	yes	53
+190	Room Kit	127	0	9	21	A-1	33	A0	Metronome Click	yes	53
+190	Room Kit	127	0	9	22	A#-1	34	A#0	Metronome Bell	yes	53
+190	Room Kit	127	0	9	23	B-1	35	B0	Seq Click L	yes	53
+190	Room Kit	127	0	9	24	C0	36	C1	Seq Click H	yes	53
+190	Room Kit	127	0	9	25	C#0	37	C#1	Brush Tap	yes	53
+190	Room Kit	127	0	9	26	D0	38	D1	Brush Swirl	yes	53
+190	Room Kit	127	0	9	27	D#0	39	D#1	Brush Slap	yes	53
+190	Room Kit	127	0	9	28	E0	40	E1	Brush Tap Swirl	yes	53
+190	Room Kit	127	0	9	29	F0	41	F1	Snare Roll	yes	53
+190	Room Kit	127	0	9	30	F#0	42	F#1	Castanet	yes	53
+190	Room Kit	127	0	9	31	G0	43	G1	Snare H Soft	yes	53
+190	Room Kit	127	0	9	32	G#0	44	G#1	Sticks	yes	53
+190	Room Kit	127	0	9	33	A0	45	A1	Bass Drum Soft	yes	53
+190	Room Kit	127	0	9	34	A#0	46	A#1	Open Rim Shot	yes	53
+190	Room Kit	127	0	9	35	B0	47	B1	Bass Drum Hard	yes	53
+190	Room Kit	127	0	9	36	C1	48	C2	Bass Drum	yes	53
+190	Room Kit	127	0	9	37	C#1	49	C#2	Side Stick	yes	53
+190	Room Kit	127	0	9	38	D1	50	D2	SD Room L	no	53
+190	Room Kit	127	0	9	39	D#1	51	D#2	Hand Clap	yes	53
+190	Room Kit	127	0	9	40	E1	52	E2	SD Room H	no	53
+190	Room Kit	127	0	9	41	F1	53	F2	Room Tom 1	no	53
+190	Room Kit	127	0	9	42	F#1	54	F#2	Hi-Hat Closed	yes	53
+190	Room Kit	127	0	9	43	G1	55	G2	Room Tom 2	no	53
+190	Room Kit	127	0	9	44	G#1	56	G#2	Hi-Hat Pedal	yes	53
+190	Room Kit	127	0	9	45	A1	57	A2	Room Tom 3	no	53
+190	Room Kit	127	0	9	46	A#1	58	A#2	Hi-Hat Open	yes	53
+190	Room Kit	127	0	9	47	B1	59	B2	Room Tom 4	no	53
+190	Room Kit	127	0	9	48	C2	60	C3	Room Tom 5	no	53
+190	Room Kit	127	0	9	49	C#2	61	C#3	Crash Cymbal 1	yes	53
+190	Room Kit	127	0	9	50	D2	62	D3	Room Tom 6	no	53
+190	Room Kit	127	0	9	51	D#2	63	D#3	Ride Cymbal 1	yes	53
+190	Room Kit	127	0	9	52	E2	64	E3	Chinese Cymbal	yes	53
+190	Room Kit	127	0	9	53	F2	65	F3	Ride Cymbal Cup	yes	53
+190	Room Kit	127	0	9	54	F#2	66	F#3	Tambourine	yes	53
+190	Room Kit	127	0	9	55	G2	67	G3	Splash Cymbal	yes	53
+190	Room Kit	127	0	9	56	G#2	68	G#3	Cowbell	yes	53
+190	Room Kit	127	0	9	57	A2	69	A3	Crash Cymbal 2	yes	53
+190	Room Kit	127	0	9	58	A#2	70	A#3	Vibraslap	yes	53
+190	Room Kit	127	0	9	59	B2	71	B3	Ride Cymbal 2	yes	53
+190	Room Kit	127	0	9	60	C3	72	C4	Bongo H	yes	53
+190	Room Kit	127	0	9	61	C#3	73	C#4	Bongo L	yes	53
+190	Room Kit	127	0	9	62	D3	74	D4	Conga H Mute	yes	53
+190	Room Kit	127	0	9	63	D#3	75	D#4	Conga H Open	yes	53
+190	Room Kit	127	0	9	64	E3	76	E4	Conga L	yes	53
+190	Room Kit	127	0	9	65	F3	77	F4	Timbale H	yes	53
+190	Room Kit	127	0	9	66	F#3	78	F#4	Timbale L	yes	53
+190	Room Kit	127	0	9	67	G3	79	G4	Agogo H	yes	53
+190	Room Kit	127	0	9	68	G#3	80	G#4	Agogo L	yes	53
+190	Room Kit	127	0	9	69	A3	81	A4	Cabasa	yes	53
+190	Room Kit	127	0	9	70	A#3	82	A#4	Maracas	yes	53
+190	Room Kit	127	0	9	71	B3	83	B4	Samba Whistle H	yes	53
+190	Room Kit	127	0	9	72	C4	84	C5	Samba Whistle L	yes	53
+190	Room Kit	127	0	9	73	C#4	85	C#5	Guiro Short	yes	53
+190	Room Kit	127	0	9	74	D4	86	D5	Guiro Long	yes	53
+190	Room Kit	127	0	9	75	D#4	87	D#5	Claves	yes	53
+190	Room Kit	127	0	9	76	E4	88	E5	Wood Block H	yes	53
+190	Room Kit	127	0	9	77	F4	89	F5	Wood Block L	yes	53
+190	Room Kit	127	0	9	78	F#4	90	F#5	Cuica Mute	yes	53
+190	Room Kit	127	0	9	79	G4	91	G5	Cuica Open	yes	53
+190	Room Kit	127	0	9	80	G#4	92	G#5	Triangle Mute	yes	53
+190	Room Kit	127	0	9	81	A4	93	A5	Triangle Open	yes	53
+190	Room Kit	127	0	9	82	A#4	94	A#5	Shaker	yes	53
+190	Room Kit	127	0	9	83	B4	95	B5	Jingle Bell	yes	53
+190	Room Kit	127	0	9	84	C5	96	C6	Bell Tree	yes	53
+191	Rock Kit	127	0	17	13	C#-1	25	C#0	Surdo Mute	yes	53
+191	Rock Kit	127	0	17	14	D-1	26	D0	Surdo Open	yes	53
+191	Rock Kit	127	0	17	15	D#-1	27	D#0	Hi Q	yes	53
+191	Rock Kit	127	0	17	16	E-1	28	E0	Whip Slap	yes	53
+191	Rock Kit	127	0	17	17	F-1	29	F0	Scratch Push	yes	53
+191	Rock Kit	127	0	17	18	F#-1	30	F#0	Scratch Pull	yes	53
+191	Rock Kit	127	0	17	19	G-1	31	G0	Finger Snap	yes	53
+191	Rock Kit	127	0	17	20	G#-1	32	G#0	Click Noise	yes	53
+191	Rock Kit	127	0	17	21	A-1	33	A0	Metronome Click	yes	53
+191	Rock Kit	127	0	17	22	A#-1	34	A#0	Metronome Bell	yes	53
+191	Rock Kit	127	0	17	23	B-1	35	B0	Seq Click L	yes	53
+191	Rock Kit	127	0	17	24	C0	36	C1	Seq Click H	yes	53
+191	Rock Kit	127	0	17	25	C#0	37	C#1	Brush Tap	yes	53
+191	Rock Kit	127	0	17	26	D0	38	D1	Brush Swirl	yes	53
+191	Rock Kit	127	0	17	27	D#0	39	D#1	Brush Slap	yes	53
+191	Rock Kit	127	0	17	28	E0	40	E1	Brush Tap Swirl	yes	53
+191	Rock Kit	127	0	17	29	F0	41	F1	Snare Roll	yes	53
+191	Rock Kit	127	0	17	30	F#0	42	F#1	Castanet	yes	53
+191	Rock Kit	127	0	17	31	G0	43	G1	SD Rock H	no	53
+191	Rock Kit	127	0	17	32	G#0	44	G#1	Sticks	yes	53
+191	Rock Kit	127	0	17	33	A0	45	A1	Bass Drum Soft	yes	53
+191	Rock Kit	127	0	17	34	A#0	46	A#1	Open Rim Shot	yes	53
+191	Rock Kit	127	0	17	35	B0	47	B1	Bass Drum H	no	53
+191	Rock Kit	127	0	17	36	C1	48	C2	BD Rock	no	53
+191	Rock Kit	127	0	17	37	C#1	49	C#2	Side Stick	yes	53
+191	Rock Kit	127	0	17	38	D1	50	D2	SD Rock L	no	53
+191	Rock Kit	127	0	17	39	D#1	51	D#2	Hand Clap	yes	53
+191	Rock Kit	127	0	17	40	E1	52	E2	SD Rock Rim	no	53
+191	Rock Kit	127	0	17	41	F1	53	F2	Rock Tom 1	no	53
+191	Rock Kit	127	0	17	42	F#1	54	F#2	Hi-Hat Closed	yes	53
+191	Rock Kit	127	0	17	43	G1	55	G2	Rock Tom 2	no	53
+191	Rock Kit	127	0	17	44	G#1	56	G#2	Hi-Hat Pedal	yes	53
+191	Rock Kit	127	0	17	45	A1	57	A2	Rock Tom 3	no	53
+191	Rock Kit	127	0	17	46	A#1	58	A#2	Hi-Hat Open	yes	53
+191	Rock Kit	127	0	17	47	B1	59	B2	Rock Tom 4	no	53
+191	Rock Kit	127	0	17	48	C2	60	C3	Rock Tom 5	no	53
+191	Rock Kit	127	0	17	49	C#2	61	C#3	Crash Cymbal 1	yes	53
+191	Rock Kit	127	0	17	50	D2	62	D3	Rock Tom 6	no	53
+191	Rock Kit	127	0	17	51	D#2	63	D#3	Ride Cymbal 1	yes	53
+191	Rock Kit	127	0	17	52	E2	64	E3	Chinese Cymbal	yes	53
+191	Rock Kit	127	0	17	53	F2	65	F3	Ride Cymbal Cup	yes	53
+191	Rock Kit	127	0	17	54	F#2	66	F#3	Tambourine	yes	53
+191	Rock Kit	127	0	17	55	G2	67	G3	Splash Cymbal	yes	53
+191	Rock Kit	127	0	17	56	G#2	68	G#3	Cowbell	yes	53
+191	Rock Kit	127	0	17	57	A2	69	A3	Crash Cymbal 2	yes	53
+191	Rock Kit	127	0	17	58	A#2	70	A#3	Vibraslap	yes	53
+191	Rock Kit	127	0	17	59	B2	71	B3	Ride Cymbal 2	yes	53
+191	Rock Kit	127	0	17	60	C3	72	C4	Bongo H	yes	53
+191	Rock Kit	127	0	17	61	C#3	73	C#4	Bongo L	yes	53
+191	Rock Kit	127	0	17	62	D3	74	D4	Conga H Mute	yes	53
+191	Rock Kit	127	0	17	63	D#3	75	D#4	Conga H Open	yes	53
+191	Rock Kit	127	0	17	64	E3	76	E4	Conga L	yes	53
+191	Rock Kit	127	0	17	65	F3	77	F4	Timbale H	yes	53
+191	Rock Kit	127	0	17	66	F#3	78	F#4	Timbale L	yes	53
+191	Rock Kit	127	0	17	67	G3	79	G4	Agogo H	yes	53
+191	Rock Kit	127	0	17	68	G#3	80	G#4	Agogo L	yes	53
+191	Rock Kit	127	0	17	69	A3	81	A4	Cabasa	yes	53
+191	Rock Kit	127	0	17	70	A#3	82	A#4	Maracas	yes	53
+191	Rock Kit	127	0	17	71	B3	83	B4	Samba Whistle H	yes	53
+191	Rock Kit	127	0	17	72	C4	84	C5	Samba Whistle L	yes	53
+191	Rock Kit	127	0	17	73	C#4	85	C#5	Guiro Short	yes	53
+191	Rock Kit	127	0	17	74	D4	86	D5	Guiro Long	yes	53
+191	Rock Kit	127	0	17	75	D#4	87	D#5	Claves	yes	53
+191	Rock Kit	127	0	17	76	E4	88	E5	Wood Block H	yes	53
+191	Rock Kit	127	0	17	77	F4	89	F5	Wood Block L	yes	53
+191	Rock Kit	127	0	17	78	F#4	90	F#5	Cuica Mute	yes	53
+191	Rock Kit	127	0	17	79	G4	91	G5	Cuica Open	yes	53
+191	Rock Kit	127	0	17	80	G#4	92	G#5	Triangle Mute	yes	53
+191	Rock Kit	127	0	17	81	A4	93	A5	Triangle Open	yes	53
+191	Rock Kit	127	0	17	82	A#4	94	A#5	Shaker	yes	53
+191	Rock Kit	127	0	17	83	B4	95	B5	Jingle Bell	yes	53
+191	Rock Kit	127	0	17	84	C5	96	C6	Bell Tree	yes	53
+192	Electronic Kit	127	0	25	13	C#-1	25	C#0	Surdo Mute	yes	53
+192	Electronic Kit	127	0	25	14	D-1	26	D0	Surdo Open	yes	53
+192	Electronic Kit	127	0	25	15	D#-1	27	D#0	Hi Q	yes	53
+192	Electronic Kit	127	0	25	16	E-1	28	E0	Whip Slap	yes	53
+192	Electronic Kit	127	0	25	17	F-1	29	F0	Scratch Push	yes	53
+192	Electronic Kit	127	0	25	18	F#-1	30	F#0	Scratch Pull	yes	53
+192	Electronic Kit	127	0	25	19	G-1	31	G0	Finger Snap	yes	53
+192	Electronic Kit	127	0	25	20	G#-1	32	G#0	Click Noise	yes	53
+192	Electronic Kit	127	0	25	21	A-1	33	A0	Metronome Click	yes	53
+192	Electronic Kit	127	0	25	22	A#-1	34	A#0	Metronome Bell	yes	53
+192	Electronic Kit	127	0	25	23	B-1	35	B0	Seq Click L	yes	53
+192	Electronic Kit	127	0	25	24	C0	36	C1	Seq Click H	yes	53
+192	Electronic Kit	127	0	25	25	C#0	37	C#1	Brush Tap	yes	53
+192	Electronic Kit	127	0	25	26	D0	38	D1	Brush Swirl	yes	53
+192	Electronic Kit	127	0	25	27	D#0	39	D#1	Brush Slap	yes	53
+192	Electronic Kit	127	0	25	28	E0	40	E1	Reverse Cymbal	no	53
+192	Electronic Kit	127	0	25	29	F0	41	F1	Snare Roll	yes	53
+192	Electronic Kit	127	0	25	30	F#0	42	F#1	Hi Q 2	no	53
+192	Electronic Kit	127	0	25	31	G0	43	G1	Snare L	no	53
+192	Electronic Kit	127	0	25	32	G#0	44	G#1	Sticks	yes	53
+192	Electronic Kit	127	0	25	33	A0	45	A1	Bass Drum H	no	53
+192	Electronic Kit	127	0	25	34	A#0	46	A#1	Open Rim Shot	yes	53
+192	Electronic Kit	127	0	25	35	B0	47	B1	BD Rock	no	53
+192	Electronic Kit	127	0	25	36	C1	48	C2	BD Gate	no	53
+192	Electronic Kit	127	0	25	37	C#1	49	C#2	Side Stick	yes	53
+192	Electronic Kit	127	0	25	38	D1	50	D2	SD Rock L	no	53
+192	Electronic Kit	127	0	25	39	D#1	51	D#2	Hand Clap	yes	53
+192	Electronic Kit	127	0	25	40	E1	52	E2	SD Rock H	no	53
+192	Electronic Kit	127	0	25	41	F1	53	F2	E Tom 1	no	53
+192	Electronic Kit	127	0	25	42	F#1	54	F#2	Hi-Hat Closed	yes	53
+192	Electronic Kit	127	0	25	43	G1	55	G2	E Tom 2	no	53
+192	Electronic Kit	127	0	25	44	G#1	56	G#2	Hi-Hat Pedal	yes	53
+192	Electronic Kit	127	0	25	45	A1	57	A2	E Tom 3	no	53
+192	Electronic Kit	127	0	25	46	A#1	58	A#2	Hi-Hat Open	yes	53
+192	Electronic Kit	127	0	25	47	B1	59	B2	E Tom 4	no	53
+192	Electronic Kit	127	0	25	48	C2	60	C3	E Tom 5	no	53
+192	Electronic Kit	127	0	25	49	C#2	61	C#3	Crash Cymbal 1	yes	53
+192	Electronic Kit	127	0	25	50	D2	62	D3	E Tom 6	no	53
+192	Electronic Kit	127	0	25	51	D#2	63	D#3	Ride Cymbal 1	yes	53
+192	Electronic Kit	127	0	25	52	E2	64	E3	Chinese Cymbal	yes	53
+192	Electronic Kit	127	0	25	53	F2	65	F3	Ride Cymbal Cup	yes	53
+192	Electronic Kit	127	0	25	54	F#2	66	F#3	Tambourine	yes	53
+192	Electronic Kit	127	0	25	55	G2	67	G3	Splash Cymbal	yes	53
+192	Electronic Kit	127	0	25	56	G#2	68	G#3	Cowbell	yes	53
+192	Electronic Kit	127	0	25	57	A2	69	A3	Crash Cymbal 2	yes	53
+192	Electronic Kit	127	0	25	58	A#2	70	A#3	Vibraslap	yes	53
+192	Electronic Kit	127	0	25	59	B2	71	B3	Ride Cymbal 2	yes	53
+192	Electronic Kit	127	0	25	60	C3	72	C4	Bongo H	yes	53
+192	Electronic Kit	127	0	25	61	C#3	73	C#4	Bongo L	yes	53
+192	Electronic Kit	127	0	25	62	D3	74	D4	Conga H Mute	yes	53
+192	Electronic Kit	127	0	25	63	D#3	75	D#4	Conga H Open	yes	53
+192	Electronic Kit	127	0	25	64	E3	76	E4	Conga L	yes	53
+192	Electronic Kit	127	0	25	65	F3	77	F4	Timbale H	yes	53
+192	Electronic Kit	127	0	25	66	F#3	78	F#4	Timbale L	yes	53
+192	Electronic Kit	127	0	25	67	G3	79	G4	Agogo H	yes	53
+192	Electronic Kit	127	0	25	68	G#3	80	G#4	Agogo L	yes	53
+192	Electronic Kit	127	0	25	69	A3	81	A4	Cabasa	yes	53
+192	Electronic Kit	127	0	25	70	A#3	82	A#4	Maracas	yes	53
+192	Electronic Kit	127	0	25	71	B3	83	B4	Samba Whistle H	yes	53
+192	Electronic Kit	127	0	25	72	C4	84	C5	Samba Whistle L	yes	53
+192	Electronic Kit	127	0	25	73	C#4	85	C#5	Guiro Short	yes	53
+192	Electronic Kit	127	0	25	74	D4	86	D5	Guiro Long	yes	53
+192	Electronic Kit	127	0	25	75	D#4	87	D#5	Claves	yes	53
+192	Electronic Kit	127	0	25	76	E4	88	E5	Wood Block H	yes	53
+192	Electronic Kit	127	0	25	77	F4	89	F5	Wood Block L	yes	53
+192	Electronic Kit	127	0	25	78	F#4	90	F#5	Scratch Push	no	53
+192	Electronic Kit	127	0	25	79	G4	91	G5	Scratch Pull	no	53
+192	Electronic Kit	127	0	25	80	G#4	92	G#5	Triangle Mute	yes	53
+192	Electronic Kit	127	0	25	81	A4	93	A5	Triangle Open	yes	53
+192	Electronic Kit	127	0	25	82	A#4	94	A#5	Shaker	yes	53
+192	Electronic Kit	127	0	25	83	B4	95	B5	Jingle Bell	yes	53
+192	Electronic Kit	127	0	25	84	C5	96	C6	Bell Tree	yes	53
+193	Analog Kit	127	0	26	13	C#-1	25	C#0	Surdo Mute	yes	53
+193	Analog Kit	127	0	26	14	D-1	26	D0	Surdo Open	yes	53
+193	Analog Kit	127	0	26	15	D#-1	27	D#0	Hi Q	yes	53
+193	Analog Kit	127	0	26	16	E-1	28	E0	Whip Slap	yes	53
+193	Analog Kit	127	0	26	17	F-1	29	F0	Scratch Push	yes	53
+193	Analog Kit	127	0	26	18	F#-1	30	F#0	Scratch Pull	yes	53
+193	Analog Kit	127	0	26	19	G-1	31	G0	Finger Snap	yes	53
+193	Analog Kit	127	0	26	20	G#-1	32	G#0	Click Noise	yes	53
+193	Analog Kit	127	0	26	21	A-1	33	A0	Metronome Click	yes	53
+193	Analog Kit	127	0	26	22	A#-1	34	A#0	Metronome Bell	yes	53
+193	Analog Kit	127	0	26	23	B-1	35	B0	Seq Click L	yes	53
+193	Analog Kit	127	0	26	24	C0	36	C1	Seq Click H	yes	53
+193	Analog Kit	127	0	26	25	C#0	37	C#1	Brush Tap	yes	53
+193	Analog Kit	127	0	26	26	D0	38	D1	Brush Swirl	yes	53
+193	Analog Kit	127	0	26	27	D#0	39	D#1	Brush Slap	yes	53
+193	Analog Kit	127	0	26	28	E0	40	E1	Reverse Cymbal	no	53
+193	Analog Kit	127	0	26	29	F0	41	F1	Snare Roll	yes	53
+193	Analog Kit	127	0	26	30	F#0	42	F#1	Hi Q 2	no	53
+193	Analog Kit	127	0	26	31	G0	43	G1	SD Rock H	no	53
+193	Analog Kit	127	0	26	32	G#0	44	G#1	Sticks	yes	53
+193	Analog Kit	127	0	26	33	A0	45	A1	Bass Drum H	no	53
+193	Analog Kit	127	0	26	34	A#0	46	A#1	Open Rim Shot	yes	53
+193	Analog Kit	127	0	26	35	B0	47	B1	BD Analog L	no	53
+193	Analog Kit	127	0	26	36	C1	48	C2	BD Analog H	no	53
+193	Analog Kit	127	0	26	37	C#1	49	C#2	Analog Side Stick	no	53
+193	Analog Kit	127	0	26	38	D1	50	D2	Analog Snare 1	no	53
+193	Analog Kit	127	0	26	39	D#1	51	D#2	Hand Clap	yes	53
+193	Analog Kit	127	0	26	40	E1	52	E2	Analog Snare 2	no	53
+193	Analog Kit	127	0	26	41	F1	53	F2	Analog Tom 1	no	53
+193	Analog Kit	127	0	26	42	F#1	54	F#2	Analog HH Closed 1	no	53
+193	Analog Kit	127	0	26	43	G1	55	G2	Analog Tom 2	no	53
+193	Analog Kit	127	0	26	44	G#1	56	G#2	Analog HH Closed 2	no	53
+193	Analog Kit	127	0	26	45	A1	57	A2	Analog Tom 3	no	53
+193	Analog Kit	127	0	26	46	A#1	58	A#2	Analog HH Open	no	53
+193	Analog Kit	127	0	26	47	B1	59	B2	Analog Tom 4	no	53
+193	Analog Kit	127	0	26	48	C2	60	C3	Analog Tom 5	no	53
+193	Analog Kit	127	0	26	49	C#2	61	C#3	Analog Cymbal	no	53
+193	Analog Kit	127	0	26	50	D2	62	D3	Analog Tom 6	no	53
+193	Analog Kit	127	0	26	51	D#2	63	D#3	Ride Cymbal 1	yes	53
+193	Analog Kit	127	0	26	52	E2	64	E3	Chinese Cymbal	yes	53
+193	Analog Kit	127	0	26	53	F2	65	F3	Ride Cymbal Cup	yes	53
+193	Analog Kit	127	0	26	54	F#2	66	F#3	Tambourine	yes	53
+193	Analog Kit	127	0	26	55	G2	67	G3	Splash Cymbal	yes	53
+193	Analog Kit	127	0	26	56	G#2	68	G#3	Analog Cowbell	no	53
+193	Analog Kit	127	0	26	57	A2	69	A3	Crash Cymbal 2	yes	53
+193	Analog Kit	127	0	26	58	A#2	70	A#3	Vibraslap	yes	53
+193	Analog Kit	127	0	26	59	B2	71	B3	Ride Cymbal 2	yes	53
+193	Analog Kit	127	0	26	60	C3	72	C4	Bongo H	yes	53
+193	Analog Kit	127	0	26	61	C#3	73	C#4	Bongo L	yes	53
+193	Analog Kit	127	0	26	62	D3	74	D4	Analog Conga H	no	53
+193	Analog Kit	127	0	26	63	D#3	75	D#4	Analog Conga M	no	53
+193	Analog Kit	127	0	26	64	E3	76	E4	Analog Conga L	no	53
+193	Analog Kit	127	0	26	65	F3	77	F4	Timbale H	yes	53
+193	Analog Kit	127	0	26	66	F#3	78	F#4	Timbale L	yes	53
+193	Analog Kit	127	0	26	67	G3	79	G4	Agogo H	yes	53
+193	Analog Kit	127	0	26	68	G#3	80	G#4	Agogo L	yes	53
+193	Analog Kit	127	0	26	69	A3	81	A4	Cabasa	yes	53
+193	Analog Kit	127	0	26	70	A#3	82	A#4	Analog Maracas	no	53
+193	Analog Kit	127	0	26	71	B3	83	B4	Samba Whistle H	yes	53
+193	Analog Kit	127	0	26	72	C4	84	C5	Samba Whistle L	yes	53
+193	Analog Kit	127	0	26	73	C#4	85	C#5	Guiro Short	yes	53
+193	Analog Kit	127	0	26	74	D4	86	D5	Guiro Long	yes	53
+193	Analog Kit	127	0	26	75	D#4	87	D#5	Analog Claves	no	53
+193	Analog Kit	127	0	26	76	E4	88	E5	Wood Block H	yes	53
+193	Analog Kit	127	0	26	77	F4	89	F5	Wood Block L	yes	53
+193	Analog Kit	127	0	26	78	F#4	90	F#5	Scratch Push	no	53
+193	Analog Kit	127	0	26	79	G4	91	G5	Scratch Pull	no	53
+193	Analog Kit	127	0	26	80	G#4	92	G#5	Triangle Mute	yes	53
+193	Analog Kit	127	0	26	81	A4	93	A5	Triangle Open	yes	53
+193	Analog Kit	127	0	26	82	A#4	94	A#5	Shaker	yes	53
+193	Analog Kit	127	0	26	83	B4	95	B5	Jingle Bell	yes	53
+193	Analog Kit	127	0	26	84	C5	96	C6	Bell Tree	yes	53
+194	Dance Kit	127	0	113	13	C#-1	25	C#0	Surdo Mute	yes	54
+194	Dance Kit	127	0	113	14	D-1	26	D0	Surdo Open	yes	54
+194	Dance Kit	127	0	113	15	D#-1	27	D#0	Hi Q	yes	54
+194	Dance Kit	127	0	113	16	E-1	28	E0	Whip Slap	yes	54
+194	Dance Kit	127	0	113	17	F-1	29	F0	Scratch Push	yes	54
+194	Dance Kit	127	0	113	18	F#-1	30	F#0	Scratch Pull	yes	54
+194	Dance Kit	127	0	113	19	G-1	31	G0	Finger Snap	yes	54
+194	Dance Kit	127	0	113	20	G#-1	32	G#0	Click Noise	yes	54
+194	Dance Kit	127	0	113	21	A-1	33	A0	Metronome Click	yes	54
+194	Dance Kit	127	0	113	22	A#-1	34	A#0	Metronome Bell	yes	54
+194	Dance Kit	127	0	113	23	B-1	35	B0	Seq Click L	yes	54
+194	Dance Kit	127	0	113	24	C0	36	C1	Seq Click H	yes	54
+194	Dance Kit	127	0	113	25	C#0	37	C#1	Brush Tap	yes	54
+194	Dance Kit	127	0	113	26	D0	38	D1	Brush Swirl	yes	54
+194	Dance Kit	127	0	113	27	D#0	39	D#1	Brush Slap	yes	54
+194	Dance Kit	127	0	113	28	E0	40	E1	Reverse Cymbal	no	54
+194	Dance Kit	127	0	113	29	F0	41	F1	Snare Roll	yes	54
+194	Dance Kit	127	0	113	30	F#0	42	F#1	Hi Q 2	no	54
+194	Dance Kit	127	0	113	31	G0	43	G1	AnSD Snappy	no	54
+194	Dance Kit	127	0	113	32	G#0	44	G#1	Sticks	yes	54
+194	Dance Kit	127	0	113	33	A0	45	A1	AnBD Dance-1	no	54
+194	Dance Kit	127	0	113	34	A#0	46	A#1	AnSD OpenRim	no	54
+194	Dance Kit	127	0	113	35	B0	47	B1	AnBD Dance-2	no	54
+194	Dance Kit	127	0	113	36	C1	48	C2	AnBD Dance-3	no	54
+194	Dance Kit	127	0	113	37	C#1	49	C#2	Analog Side Stick	no	54
+194	Dance Kit	127	0	113	38	D1	50	D2	AnSD Q	no	54
+194	Dance Kit	127	0	113	39	D#1	51	D#2	Hand Clap	yes	54
+194	Dance Kit	127	0	113	40	E1	52	E2	AnSD Ana+Acoustic	no	54
+194	Dance Kit	127	0	113	41	F1	53	F2	Analog Tom 1	no	54
+194	Dance Kit	127	0	113	42	F#1	54	F#2	Analog HH Closed 3	no	54
+194	Dance Kit	127	0	113	43	G1	55	G2	Analog Tom 2	no	54
+194	Dance Kit	127	0	113	44	G#1	56	G#2	Analog HH Closed 4	no	54
+194	Dance Kit	127	0	113	45	A1	57	A2	Analog Tom 3	no	54
+194	Dance Kit	127	0	113	46	A#1	58	A#2	Analog HH Open 2	no	54
+194	Dance Kit	127	0	113	47	B1	59	B2	Analog Tom 4	no	54
+194	Dance Kit	127	0	113	48	C2	60	C3	Analog Tom 5	no	54
+194	Dance Kit	127	0	113	49	C#2	61	C#3	Analog Cymbal	no	54
+194	Dance Kit	127	0	113	50	D2	62	D3	Analog Tom 6	no	54
+194	Dance Kit	127	0	113	51	D#2	63	D#3	Ride Cymbal 1	yes	54
+194	Dance Kit	127	0	113	52	E2	64	E3	Chinese Cymbal	yes	54
+194	Dance Kit	127	0	113	53	F2	65	F3	Ride Cymbal Cup	yes	54
+194	Dance Kit	127	0	113	54	F#2	66	F#3	Tambourine	yes	54
+194	Dance Kit	127	0	113	55	G2	67	G3	Splash Cymbal	yes	54
+194	Dance Kit	127	0	113	56	G#2	68	G#3	Analog Cowbell	no	54
+194	Dance Kit	127	0	113	57	A2	69	A3	Crash Cymbal 2	yes	54
+194	Dance Kit	127	0	113	58	A#2	70	A#3	Vibraslap	yes	54
+194	Dance Kit	127	0	113	59	B2	71	B3	Ride Cymbal 2	yes	54
+194	Dance Kit	127	0	113	60	C3	72	C4	Bongo H	yes	54
+194	Dance Kit	127	0	113	61	C#3	73	C#4	Bongo L	yes	54
+194	Dance Kit	127	0	113	62	D3	74	D4	Analog Conga H	no	54
+194	Dance Kit	127	0	113	63	D#3	75	D#4	Analog Conga M	no	54
+194	Dance Kit	127	0	113	64	E3	76	E4	Analog Conga L	no	54
+194	Dance Kit	127	0	113	65	F3	77	F4	Timbale H	yes	54
+194	Dance Kit	127	0	113	66	F#3	78	F#4	Timbale L	yes	54
+194	Dance Kit	127	0	113	67	G3	79	G4	Agogo H	yes	54
+194	Dance Kit	127	0	113	68	G#3	80	G#4	Agogo L	yes	54
+194	Dance Kit	127	0	113	69	A3	81	A4	Cabasa	yes	54
+194	Dance Kit	127	0	113	70	A#3	82	A#4	Analog Maracas	no	54
+194	Dance Kit	127	0	113	71	B3	83	B4	Samba Whistle H	yes	54
+194	Dance Kit	127	0	113	72	C4	84	C5	Samba Whistle L	yes	54
+194	Dance Kit	127	0	113	73	C#4	85	C#5	Guiro Short	yes	54
+194	Dance Kit	127	0	113	74	D4	86	D5	Guiro Long	yes	54
+194	Dance Kit	127	0	113	75	D#4	87	D#5	Analog Claves	no	54
+194	Dance Kit	127	0	113	76	E4	88	E5	Wood Block H	yes	54
+194	Dance Kit	127	0	113	77	F4	89	F5	Wood Block L	yes	54
+194	Dance Kit	127	0	113	78	F#4	90	F#5	Scratch Push	no	54
+194	Dance Kit	127	0	113	79	G4	91	G5	Scratch Pull	no	54
+194	Dance Kit	127	0	113	80	G#4	92	G#5	Triangle Mute	yes	54
+194	Dance Kit	127	0	113	81	A4	93	A5	Triangle Open	yes	54
+194	Dance Kit	127	0	113	82	A#4	94	A#5	Shaker	yes	54
+194	Dance Kit	127	0	113	83	B4	95	B5	Jingle Bell	yes	54
+194	Dance Kit	127	0	113	84	C5	96	C6	Bell Tree	yes	54
+195	Jazz Kit	127	0	33	13	C#-1	25	C#0	Surdo Mute	yes	54
+195	Jazz Kit	127	0	33	14	D-1	26	D0	Surdo Open	yes	54
+195	Jazz Kit	127	0	33	15	D#-1	27	D#0	Hi Q	yes	54
+195	Jazz Kit	127	0	33	16	E-1	28	E0	Whip Slap	yes	54
+195	Jazz Kit	127	0	33	17	F-1	29	F0	Scratch Push	yes	54
+195	Jazz Kit	127	0	33	18	F#-1	30	F#0	Scratch Pull	yes	54
+195	Jazz Kit	127	0	33	19	G-1	31	G0	Finger Snap	yes	54
+195	Jazz Kit	127	0	33	20	G#-1	32	G#0	Click Noise	yes	54
+195	Jazz Kit	127	0	33	21	A-1	33	A0	Metronome Click	yes	54
+195	Jazz Kit	127	0	33	22	A#-1	34	A#0	Metronome Bell	yes	54
+195	Jazz Kit	127	0	33	23	B-1	35	B0	Seq Click L	yes	54
+195	Jazz Kit	127	0	33	24	C0	36	C1	Seq Click H	yes	54
+195	Jazz Kit	127	0	33	25	C#0	37	C#1	Brush Tap	yes	54
+195	Jazz Kit	127	0	33	26	D0	38	D1	Brush Swirl	yes	54
+195	Jazz Kit	127	0	33	27	D#0	39	D#1	Brush Slap	yes	54
+195	Jazz Kit	127	0	33	28	E0	40	E1	Brush Tap Swirl	yes	54
+195	Jazz Kit	127	0	33	29	F0	41	F1	Snare Roll	yes	54
+195	Jazz Kit	127	0	33	30	F#0	42	F#1	Castanet	yes	54
+195	Jazz Kit	127	0	33	31	G0	43	G1	SD Jazz H Light	no	54
+195	Jazz Kit	127	0	33	32	G#0	44	G#1	Sticks	yes	54
+195	Jazz Kit	127	0	33	33	A0	45	A1	Bass Drum Soft	yes	54
+195	Jazz Kit	127	0	33	34	A#0	46	A#1	Open Rim Shot	yes	54
+195	Jazz Kit	127	0	33	35	B0	47	B1	Bass Drum Hard	yes	54
+195	Jazz Kit	127	0	33	36	C1	48	C2	BD Jazz	no	54
+195	Jazz Kit	127	0	33	37	C#1	49	C#2	Side Stick	yes	54
+195	Jazz Kit	127	0	33	38	D1	50	D2	SD Jazz L	no	54
+195	Jazz Kit	127	0	33	39	D#1	51	D#2	Hand Clap	yes	54
+195	Jazz Kit	127	0	33	40	E1	52	E2	SD Jazz M	no	54
+195	Jazz Kit	127	0	33	41	F1	53	F2	Jazz Tom 1	no	54
+195	Jazz Kit	127	0	33	42	F#1	54	F#2	Hi-Hat Closed	yes	54
+195	Jazz Kit	127	0	33	43	G1	55	G2	Jazz Tom 2	no	54
+195	Jazz Kit	127	0	33	44	G#1	56	G#2	Hi-Hat Pedal	yes	54
+195	Jazz Kit	127	0	33	45	A1	57	A2	Jazz Tom 3	no	54
+195	Jazz Kit	127	0	33	46	A#1	58	A#2	Hi-Hat Open	yes	54
+195	Jazz Kit	127	0	33	47	B1	59	B2	Jazz Tom 4	no	54
+195	Jazz Kit	127	0	33	48	C2	60	C3	Jazz Tom 5	no	54
+195	Jazz Kit	127	0	33	49	C#2	61	C#3	Crash Cymbal 1	yes	54
+195	Jazz Kit	127	0	33	50	D2	62	D3	Jazz Tom 6	no	54
+195	Jazz Kit	127	0	33	51	D#2	63	D#3	Ride Cymbal 1	yes	54
+195	Jazz Kit	127	0	33	52	E2	64	E3	Chinese Cymbal	yes	54
+195	Jazz Kit	127	0	33	53	F2	65	F3	Ride Cymbal Cup	yes	54
+195	Jazz Kit	127	0	33	54	F#2	66	F#3	Tambourine	yes	54
+195	Jazz Kit	127	0	33	55	G2	67	G3	Splash Cymbal	yes	54
+195	Jazz Kit	127	0	33	56	G#2	68	G#3	Cowbell	yes	54
+195	Jazz Kit	127	0	33	57	A2	69	A3	Crash Cymbal 2	yes	54
+195	Jazz Kit	127	0	33	58	A#2	70	A#3	Vibraslap	yes	54
+195	Jazz Kit	127	0	33	59	B2	71	B3	Ride Cymbal 2	yes	54
+195	Jazz Kit	127	0	33	60	C3	72	C4	Bongo H	yes	54
+195	Jazz Kit	127	0	33	61	C#3	73	C#4	Bongo L	yes	54
+195	Jazz Kit	127	0	33	62	D3	74	D4	Conga H Mute	yes	54
+195	Jazz Kit	127	0	33	63	D#3	75	D#4	Conga H Open	yes	54
+195	Jazz Kit	127	0	33	64	E3	76	E4	Conga L	yes	54
+195	Jazz Kit	127	0	33	65	F3	77	F4	Timbale H	yes	54
+195	Jazz Kit	127	0	33	66	F#3	78	F#4	Timbale L	yes	54
+195	Jazz Kit	127	0	33	67	G3	79	G4	Agogo H	yes	54
+195	Jazz Kit	127	0	33	68	G#3	80	G#4	Agogo L	yes	54
+195	Jazz Kit	127	0	33	69	A3	81	A4	Cabasa	yes	54
+195	Jazz Kit	127	0	33	70	A#3	82	A#4	Maracas	yes	54
+195	Jazz Kit	127	0	33	71	B3	83	B4	Samba Whistle H	yes	54
+195	Jazz Kit	127	0	33	72	C4	84	C5	Samba Whistle L	yes	54
+195	Jazz Kit	127	0	33	73	C#4	85	C#5	Guiro Short	yes	54
+195	Jazz Kit	127	0	33	74	D4	86	D5	Guiro Long	yes	54
+195	Jazz Kit	127	0	33	75	D#4	87	D#5	Claves	yes	54
+195	Jazz Kit	127	0	33	76	E4	88	E5	Wood Block H	yes	54
+195	Jazz Kit	127	0	33	77	F4	89	F5	Wood Block L	yes	54
+195	Jazz Kit	127	0	33	78	F#4	90	F#5	Cuica Mute	yes	54
+195	Jazz Kit	127	0	33	79	G4	91	G5	Cuica Open	yes	54
+195	Jazz Kit	127	0	33	80	G#4	92	G#5	Triangle Mute	yes	54
+195	Jazz Kit	127	0	33	81	A4	93	A5	Triangle Open	yes	54
+195	Jazz Kit	127	0	33	82	A#4	94	A#5	Shaker	yes	54
+195	Jazz Kit	127	0	33	83	B4	95	B5	Jingle Bell	yes	54
+195	Jazz Kit	127	0	33	84	C5	96	C6	Bell Tree	yes	54
+196	Brush Kit	127	0	41	13	C#-1	25	C#0	Surdo Mute	yes	54
+196	Brush Kit	127	0	41	14	D-1	26	D0	Surdo Open	yes	54
+196	Brush Kit	127	0	41	15	D#-1	27	D#0	Hi Q	yes	54
+196	Brush Kit	127	0	41	16	E-1	28	E0	Whip Slap	yes	54
+196	Brush Kit	127	0	41	17	F-1	29	F0	Scratch Push	yes	54
+196	Brush Kit	127	0	41	18	F#-1	30	F#0	Scratch Pull	yes	54
+196	Brush Kit	127	0	41	19	G-1	31	G0	Finger Snap	yes	54
+196	Brush Kit	127	0	41	20	G#-1	32	G#0	Click Noise	yes	54
+196	Brush Kit	127	0	41	21	A-1	33	A0	Metronome Click	yes	54
+196	Brush Kit	127	0	41	22	A#-1	34	A#0	Metronome Bell	yes	54
+196	Brush Kit	127	0	41	23	B-1	35	B0	Seq Click L	yes	54
+196	Brush Kit	127	0	41	24	C0	36	C1	Seq Click H	yes	54
+196	Brush Kit	127	0	41	25	C#0	37	C#1	Brush Tap	yes	54
+196	Brush Kit	127	0	41	26	D0	38	D1	Brush Swirl	yes	54
+196	Brush Kit	127	0	41	27	D#0	39	D#1	Brush Slap	yes	54
+196	Brush Kit	127	0	41	28	E0	40	E1	Brush Tap Swirl	yes	54
+196	Brush Kit	127	0	41	29	F0	41	F1	Snare Roll	yes	54
+196	Brush Kit	127	0	41	30	F#0	42	F#1	Castanet	yes	54
+196	Brush Kit	127	0	41	31	G0	43	G1	Brush Slap L	no	54
+196	Brush Kit	127	0	41	32	G#0	44	G#1	Sticks	yes	54
+196	Brush Kit	127	0	41	33	A0	45	A1	Bass Drum Soft	yes	54
+196	Brush Kit	127	0	41	34	A#0	46	A#1	Open Rim Shot	yes	54
+196	Brush Kit	127	0	41	35	B0	47	B1	Bass Drum Hard	yes	54
+196	Brush Kit	127	0	41	36	C1	48	C2	BD Jazz	no	54
+196	Brush Kit	127	0	41	37	C#1	49	C#2	Side Stick	yes	54
+196	Brush Kit	127	0	41	38	D1	50	D2	Brush Slap	no	54
+196	Brush Kit	127	0	41	39	D#1	51	D#2	Hand Clap	yes	54
+196	Brush Kit	127	0	41	40	E1	52	E2	Brush Tap	no	54
+196	Brush Kit	127	0	41	41	F1	53	F2	Brush Tom 1	no	54
+196	Brush Kit	127	0	41	42	F#1	54	F#2	Hi-Hat Closed	yes	54
+196	Brush Kit	127	0	41	43	G1	55	G2	Brush Tom 2	no	54
+196	Brush Kit	127	0	41	44	G#1	56	G#2	Hi-Hat Pedal	yes	54
+196	Brush Kit	127	0	41	45	A1	57	A2	Brush Tom 3	no	54
+196	Brush Kit	127	0	41	46	A#1	58	A#2	Hi-Hat Open	yes	54
+196	Brush Kit	127	0	41	47	B1	59	B2	Brush Tom 4	no	54
+196	Brush Kit	127	0	41	48	C2	60	C3	Brush Tom 5	no	54
+196	Brush Kit	127	0	41	49	C#2	61	C#3	Crash Cymbal 1	yes	54
+196	Brush Kit	127	0	41	50	D2	62	D3	Brush Tom 6	no	54
+196	Brush Kit	127	0	41	51	D#2	63	D#3	Ride Cymbal 1	yes	54
+196	Brush Kit	127	0	41	52	E2	64	E3	Chinese Cymbal	yes	54
+196	Brush Kit	127	0	41	53	F2	65	F3	Ride Cymbal Cup	yes	54
+196	Brush Kit	127	0	41	54	F#2	66	F#3	Tambourine	yes	54
+196	Brush Kit	127	0	41	55	G2	67	G3	Splash Cymbal	yes	54
+196	Brush Kit	127	0	41	56	G#2	68	G#3	Cowbell	yes	54
+196	Brush Kit	127	0	41	57	A2	69	A3	Crash Cymbal 2	yes	54
+196	Brush Kit	127	0	41	58	A#2	70	A#3	Vibraslap	yes	54
+196	Brush Kit	127	0	41	59	B2	71	B3	Ride Cymbal 2	yes	54
+196	Brush Kit	127	0	41	60	C3	72	C4	Bongo H	yes	54
+196	Brush Kit	127	0	41	61	C#3	73	C#4	Bongo L	yes	54
+196	Brush Kit	127	0	41	62	D3	74	D4	Conga H Mute	yes	54
+196	Brush Kit	127	0	41	63	D#3	75	D#4	Conga H Open	yes	54
+196	Brush Kit	127	0	41	64	E3	76	E4	Conga L	yes	54
+196	Brush Kit	127	0	41	65	F3	77	F4	Timbale H	yes	54
+196	Brush Kit	127	0	41	66	F#3	78	F#4	Timbale L	yes	54
+196	Brush Kit	127	0	41	67	G3	79	G4	Agogo H	yes	54
+196	Brush Kit	127	0	41	68	G#3	80	G#4	Agogo L	yes	54
+196	Brush Kit	127	0	41	69	A3	81	A4	Cabasa	yes	54
+196	Brush Kit	127	0	41	70	A#3	82	A#4	Maracas	yes	54
+196	Brush Kit	127	0	41	71	B3	83	B4	Samba Whistle H	yes	54
+196	Brush Kit	127	0	41	72	C4	84	C5	Samba Whistle L	yes	54
+196	Brush Kit	127	0	41	73	C#4	85	C#5	Guiro Short	yes	54
+196	Brush Kit	127	0	41	74	D4	86	D5	Guiro Long	yes	54
+196	Brush Kit	127	0	41	75	D#4	87	D#5	Claves	yes	54
+196	Brush Kit	127	0	41	76	E4	88	E5	Wood Block H	yes	54
+196	Brush Kit	127	0	41	77	F4	89	F5	Wood Block L	yes	54
+196	Brush Kit	127	0	41	78	F#4	90	F#5	Cuica Mute	yes	54
+196	Brush Kit	127	0	41	79	G4	91	G5	Cuica Open	yes	54
+196	Brush Kit	127	0	41	80	G#4	92	G#5	Triangle Mute	yes	54
+196	Brush Kit	127	0	41	81	A4	93	A5	Triangle Open	yes	54
+196	Brush Kit	127	0	41	82	A#4	94	A#5	Shaker	yes	54
+196	Brush Kit	127	0	41	83	B4	95	B5	Jingle Bell	yes	54
+196	Brush Kit	127	0	41	84	C5	96	C6	Bell Tree	yes	54
+197	Symphony Kit	127	0	49	13	C#-1	25	C#0	Surdo Mute	yes	54
+197	Symphony Kit	127	0	49	14	D-1	26	D0	Surdo Open	yes	54
+197	Symphony Kit	127	0	49	15	D#-1	27	D#0	Hi Q	yes	54
+197	Symphony Kit	127	0	49	16	E-1	28	E0	Whip Slap	yes	54
+197	Symphony Kit	127	0	49	17	F-1	29	F0	Scratch Push	yes	54
+197	Symphony Kit	127	0	49	18	F#-1	30	F#0	Scratch Pull	yes	54
+197	Symphony Kit	127	0	49	19	G-1	31	G0	Finger Snap	yes	54
+197	Symphony Kit	127	0	49	20	G#-1	32	G#0	Click Noise	yes	54
+197	Symphony Kit	127	0	49	21	A-1	33	A0	Metronome Click	yes	54
+197	Symphony Kit	127	0	49	22	A#-1	34	A#0	Metronome Bell	yes	54
+197	Symphony Kit	127	0	49	23	B-1	35	B0	Seq Click L	yes	54
+197	Symphony Kit	127	0	49	24	C0	36	C1	Seq Click H	yes	54
+197	Symphony Kit	127	0	49	25	C#0	37	C#1	Brush Tap	yes	54
+197	Symphony Kit	127	0	49	26	D0	38	D1	Brush Swirl	yes	54
+197	Symphony Kit	127	0	49	27	D#0	39	D#1	Brush Slap	yes	54
+197	Symphony Kit	127	0	49	28	E0	40	E1	Brush Tap Swirl	yes	54
+197	Symphony Kit	127	0	49	29	F0	41	F1	Snare Roll	yes	54
+197	Symphony Kit	127	0	49	30	F#0	42	F#1	Castanet	yes	54
+197	Symphony Kit	127	0	49	31	G0	43	G1	Snare H Soft	yes	54
+197	Symphony Kit	127	0	49	32	G#0	44	G#1	Sticks	yes	54
+197	Symphony Kit	127	0	49	33	A0	45	A1	Bass Drum L	no	54
+197	Symphony Kit	127	0	49	34	A#0	46	A#1	Open Rim Shot	yes	54
+197	Symphony Kit	127	0	49	35	B0	47	B1	Gran Cassa	no	54
+197	Symphony Kit	127	0	49	36	C1	48	C2	Gran Cassa Mute	no	54
+197	Symphony Kit	127	0	49	37	C#1	49	C#2	Side Stick	yes	54
+197	Symphony Kit	127	0	49	38	D1	50	D2	Marching Sn M	no	54
+197	Symphony Kit	127	0	49	39	D#1	51	D#2	Hand Clap	yes	54
+197	Symphony Kit	127	0	49	40	E1	52	E2	Marching Sn H	no	54
+197	Symphony Kit	127	0	49	41	F1	53	F2	Jazz Tom 1	no	54
+197	Symphony Kit	127	0	49	42	F#1	54	F#2	Hi-Hat Closed	yes	54
+197	Symphony Kit	127	0	49	43	G1	55	G2	Jazz Tom 2	no	54
+197	Symphony Kit	127	0	49	44	G#1	56	G#2	Hi-Hat Pedal	yes	54
+197	Symphony Kit	127	0	49	45	A1	57	A2	Jazz Tom 3	no	54
+197	Symphony Kit	127	0	49	46	A#1	58	A#2	Hi-Hat Open	yes	54
+197	Symphony Kit	127	0	49	47	B1	59	B2	Jazz Tom 4	no	54
+197	Symphony Kit	127	0	49	48	C2	60	C3	Jazz Tom 5	no	54
+197	Symphony Kit	127	0	49	49	C#2	61	C#3	Hand Cym. L	no	54
+197	Symphony Kit	127	0	49	50	D2	62	D3	Jazz Tom 6	no	54
+197	Symphony Kit	127	0	49	51	D#2	63	D#3	Hand Cym.Short L	no	54
+197	Symphony Kit	127	0	49	52	E2	64	E3	Chinese Cymbal	yes	54
+197	Symphony Kit	127	0	49	53	F2	65	F3	Ride Cymbal Cup	yes	54
+197	Symphony Kit	127	0	49	54	F#2	66	F#3	Tambourine	yes	54
+197	Symphony Kit	127	0	49	55	G2	67	G3	Splash Cymbal	yes	54
+197	Symphony Kit	127	0	49	56	G#2	68	G#3	Cowbell	yes	54
+197	Symphony Kit	127	0	49	57	A2	69	A3	Hand Cym. H	no	54
+197	Symphony Kit	127	0	49	58	A#2	70	A#3	Vibraslap	yes	54
+197	Symphony Kit	127	0	49	59	B2	71	B3	Hand Cym.Short H	no	54
+197	Symphony Kit	127	0	49	60	C3	72	C4	Bongo H	yes	54
+197	Symphony Kit	127	0	49	61	C#3	73	C#4	Bongo L	yes	54
+197	Symphony Kit	127	0	49	62	D3	74	D4	Conga H Mute	yes	54
+197	Symphony Kit	127	0	49	63	D#3	75	D#4	Conga H Open	yes	54
+197	Symphony Kit	127	0	49	64	E3	76	E4	Conga L	yes	54
+197	Symphony Kit	127	0	49	65	F3	77	F4	Timbale H	yes	54
+197	Symphony Kit	127	0	49	66	F#3	78	F#4	Timbale L	yes	54
+197	Symphony Kit	127	0	49	67	G3	79	G4	Agogo H	yes	54
+197	Symphony Kit	127	0	49	68	G#3	80	G#4	Agogo L	yes	54
+197	Symphony Kit	127	0	49	69	A3	81	A4	Cabasa	yes	54
+197	Symphony Kit	127	0	49	70	A#3	82	A#4	Maracas	yes	54
+197	Symphony Kit	127	0	49	71	B3	83	B4	Samba Whistle H	yes	54
+197	Symphony Kit	127	0	49	72	C4	84	C5	Samba Whistle L	yes	54
+197	Symphony Kit	127	0	49	73	C#4	85	C#5	Guiro Short	yes	54
+197	Symphony Kit	127	0	49	74	D4	86	D5	Guiro Long	yes	54
+197	Symphony Kit	127	0	49	75	D#4	87	D#5	Claves	yes	54
+197	Symphony Kit	127	0	49	76	E4	88	E5	Wood Block H	yes	54
+197	Symphony Kit	127	0	49	77	F4	89	F5	Wood Block L	yes	54
+197	Symphony Kit	127	0	49	78	F#4	90	F#5	Cuica Mute	yes	54
+197	Symphony Kit	127	0	49	79	G4	91	G5	Cuica Open	yes	54
+197	Symphony Kit	127	0	49	80	G#4	92	G#5	Triangle Mute	yes	54
+197	Symphony Kit	127	0	49	81	A4	93	A5	Triangle Open	yes	54
+197	Symphony Kit	127	0	49	82	A#4	94	A#5	Shaker	yes	54
+197	Symphony Kit	127	0	49	83	B4	95	B5	Jingle Bell	yes	54
+197	Symphony Kit	127	0	49	84	C5	96	C6	Bell Tree	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	13	C#-1	25	C#0	Surdo Mute	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	14	D-1	26	D0	Surdo Open	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	15	D#-1	27	D#0	Hi Q	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	16	E-1	28	E0	Whip Slap	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	17	F-1	29	F0	Scratch Push	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	18	F#-1	30	F#0	Scratch Pull	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	19	G-1	31	G0	Finger Snap	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	20	G#-1	32	G#0	Click Noise	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	21	A-1	33	A0	Metronome Click	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	22	A#-1	34	A#0	Metronome Bell	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	23	B-1	35	B0	Seq Click L	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	24	C0	36	C1	Seq Click H	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	25	C#0	37	C#1	Brush Tap	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	26	D0	38	D1	Brush Swirl	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	27	D#0	39	D#1	Brush Slap	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	28	E0	40	E1	Brush Tap Swirl	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	29	F0	41	F1	Snare Roll	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	30	F#0	42	F#1	Castanet	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	31	G0	43	G1	Snare H Soft	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	32	G#0	44	G#1	Sticks	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	33	A0	45	A1	Bass Drum Soft	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	34	A#0	46	A#1	Open Rim Shot	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	35	B0	47	B1	Bass Drum Hard	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	36	C1	48	C2	Bass Drum	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	37	C#1	49	C#2	Side Stick	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	38	D1	50	D2	Snare M	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	39	D#1	51	D#2	Hand Clap	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	40	E1	52	E2	Snare H Hard	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	41	F1	53	F2	Floor Tom L	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	42	F#1	54	F#2	Hi-Hat Closed	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	43	G1	55	G2	Floor Tom H	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	44	G#1	56	G#2	Hi-Hat Pedal	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	45	A1	57	A2	Low Tom	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	46	A#1	58	A#2	Hi-Hat Open	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	47	B1	59	B2	Mid Tom L	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	48	C2	60	C3	Mid Tom H	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	49	C#2	61	C#3	Crash Cymbal 1	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	50	D2	62	D3	High Tom	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	51	D#2	63	D#3	Ride Cymbal 1	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	52	E2	64	E3	Chinese Cymbal	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	53	F2	65	F3	Ride Cymbal Cup	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	54	F#2	66	F#3	Tambourine	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	55	G2	67	G3	Splash Cymbal	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	56	G#2	68	G#3	Cowbell	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	57	A2	69	A3	Crash Cymbal 2	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	58	A#2	70	A#3	Vibraslap	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	59	B2	71	B3	Ride Cymbal 2	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	60	C3	72	C4	Bongo H	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	61	C#3	73	C#4	Bongo L	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	62	D3	74	D4	Conga H Mute	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	63	D#3	75	D#4	Conga H Open	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	64	E3	76	E4	Conga L	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	65	F3	77	F4	Timbale H	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	66	F#3	78	F#4	Timbale L	yes	54
+198	StdKit1 + Chinese Perc.	126	0	128	67	G3	79	G4	Dagu Mute	no	54
+198	StdKit1 + Chinese Perc.	126	0	128	68	G#3	80	G#4	Zhongcha Mute	no	54
+198	StdKit1 + Chinese Perc.	126	0	128	69	A3	81	A4	Dagu Heavy	no	54
+198	StdKit1 + Chinese Perc.	126	0	128	70	A#3	82	A#4	Zhongcha Open	no	54
+198	StdKit1 + Chinese Perc.	126	0	128	71	B3	83	B4	Paigu Middle	no	54
+198	StdKit1 + Chinese Perc.	126	0	128	72	C4	84	C5	Paigu Low	no	54
+198	StdKit1 + Chinese Perc.	126	0	128	73	C#4	85	C#5	Xiaocha Mute	no	54
+198	StdKit1 + Chinese Perc.	126	0	128	74	D4	86	D5	Bangu	no	54
+198	StdKit1 + Chinese Perc.	126	0	128	75	D#4	87	D#5	Xiaocha Open	no	54
+198	StdKit1 + Chinese Perc.	126	0	128	76	E4	88	E5	Bangzi	no	54
+198	StdKit1 + Chinese Perc.	126	0	128	77	F4	89	F5	Muyu Low	no	54
+198	StdKit1 + Chinese Perc.	126	0	128	78	F#4	90	F#5	Zhongluo Mute	no	54
+198	StdKit1 + Chinese Perc.	126	0	128	79	G4	91	G5	Muyu Mid-Low	no	54
+198	StdKit1 + Chinese Perc.	126	0	128	80	G#4	92	G#5	Zhongluo Open	no	54
+198	StdKit1 + Chinese Perc.	126	0	128	81	A4	93	A5	Muyu Middle	no	54
+198	StdKit1 + Chinese Perc.	126	0	128	82	A#4	94	A#5	Xiaoluo Open	no	54
+198	StdKit1 + Chinese Perc.	126	0	128	83	B4	95	B5	Triangle Mute	no	54
+198	StdKit1 + Chinese Perc.	126	0	128	84	C5	96	C6	Triangle Open	no	54
+199	Indian Kit 1	126	0	40	13	C#-1	25	C#0	Surdo Mute	footnote_only	55
+199	Indian Kit 1	126	0	40	14	D-1	26	D0	Surdo Open	footnote_only	55
+199	Indian Kit 1	126	0	40	15	D#-1	27	D#0	Hi Q	footnote_only	55
+199	Indian Kit 1	126	0	40	16	E-1	28	E0	Whip Slap	footnote_only	55
+199	Indian Kit 1	126	0	40	17	F-1	29	F0	Scratch Push	footnote_only	55
+199	Indian Kit 1	126	0	40	18	F#-1	30	F#0	Scratch Pull	footnote_only	55
+199	Indian Kit 1	126	0	40	19	G-1	31	G0	Finger Snap	footnote_only	55
+199	Indian Kit 1	126	0	40	20	G#-1	32	G#0	Click Noise	footnote_only	55
+199	Indian Kit 1	126	0	40	21	A-1	33	A0	Metronome Click	footnote_only	55
+199	Indian Kit 1	126	0	40	22	A#-1	34	A#0	Hateli Long	no	55
+199	Indian Kit 1	126	0	40	23	B-1	35	B0	Hateli Short	no	55
+199	Indian Kit 1	126	0	40	24	C0	36	C1	Baya ge	no	55
+199	Indian Kit 1	126	0	40	25	C#0	37	C#1	Baya ke	no	55
+199	Indian Kit 1	126	0	40	26	D0	38	D1	Baya ghe	no	55
+199	Indian Kit 1	126	0	40	27	D#0	39	D#1	Baya ka	no	55
+199	Indian Kit 1	126	0	40	28	E0	40	E1	Tabla na	no	55
+199	Indian Kit 1	126	0	40	29	F0	41	F1	Tabla tin	no	55
+199	Indian Kit 1	126	0	40	30	F#0	42	F#1	Tablabaya dha	no	55
+199	Indian Kit 1	126	0	40	31	G0	43	G1	Tabla tun	no	55
+199	Indian Kit 1	126	0	40	32	G#0	44	G#1	Tablabaya dhin	no	55
+199	Indian Kit 1	126	0	40	33	A0	45	A1	Tabla di	no	55
+199	Indian Kit 1	126	0	40	34	A#0	46	A#1	Tablabaya dhe	no	55
+199	Indian Kit 1	126	0	40	35	B0	47	B1	Tabla ti	no	55
+199	Indian Kit 1	126	0	40	36	C1	48	C2	Tabla ne	no	55
+199	Indian Kit 1	126	0	40	37	C#1	49	C#2	Tabla taran	no	55
+199	Indian Kit 1	126	0	40	38	D1	50	D2	Tabla tak	no	55
+199	Indian Kit 1	126	0	40	39	D#1	51	D#2	Chipri	no	55
+199	Indian Kit 1	126	0	40	40	E1	52	E2	Kanjira Open	no	55
+199	Indian Kit 1	126	0	40	41	F1	53	F2	Kanjira Slap	no	55
+199	Indian Kit 1	126	0	40	42	F#1	54	F#2	Kanjira Mute	no	55
+199	Indian Kit 1	126	0	40	43	G1	55	G2	Kanjira Bend up	no	55
+199	Indian Kit 1	126	0	40	44	G#1	56	G#2	Kanjira Bend down	no	55
+199	Indian Kit 1	126	0	40	45	A1	57	A2	Dholak Open	no	55
+199	Indian Kit 1	126	0	40	46	A#1	58	A#2	Dholak Mute	no	55
+199	Indian Kit 1	126	0	40	47	B1	59	B2	Dholak Slap	no	55
+199	Indian Kit 1	126	0	40	48	C2	60	C3	Dhol Open	no	55
+199	Indian Kit 1	126	0	40	49	C#2	61	C#3	Dhol Mute	no	55
+199	Indian Kit 1	126	0	40	50	D2	62	D3	Dhol Slap	no	55
+199	Indian Kit 1	126	0	40	51	D#2	63	D#3	Dhol Slide	no	55
+199	Indian Kit 1	126	0	40	52	E2	64	E3	Mridangam Normal	no	55
+199	Indian Kit 1	126	0	40	53	F2	65	F3	Mridangam Open	no	55
+199	Indian Kit 1	126	0	40	54	F#2	66	F#3	Mridangam Mute	no	55
+199	Indian Kit 1	126	0	40	55	G2	67	G3	Mridangam Slap	no	55
+199	Indian Kit 1	126	0	40	56	G#2	68	G#3	Mridangam Rim	no	55
+199	Indian Kit 1	126	0	40	57	A2	69	A3	Chimta Open	no	55
+199	Indian Kit 1	126	0	40	58	A#2	70	A#3	Chimta Normal	no	55
+199	Indian Kit 1	126	0	40	59	B2	71	B3	Chimta Ring	no	55
+199	Indian Kit 1	126	0	40	60	C3	72	C4	Dholki Open	no	55
+199	Indian Kit 1	126	0	40	61	C#3	73	C#4	Dholki Mute	no	55
+199	Indian Kit 1	126	0	40	62	D3	74	D4	Dholki Slap	no	55
+199	Indian Kit 1	126	0	40	63	D#3	75	D#4	Dholki Slide	no	55
+199	Indian Kit 1	126	0	40	64	E3	76	E4	Dholki Rim	no	55
+199	Indian Kit 1	126	0	40	65	F3	77	F4	Khol Open	no	55
+199	Indian Kit 1	126	0	40	66	F#3	78	F#4	Khol Slide	no	55
+199	Indian Kit 1	126	0	40	67	G3	79	G4	Khol Mute	no	55
+199	Indian Kit 1	126	0	40	68	G#3	80	G#4	Manjira Open	no	55
+199	Indian Kit 1	126	0	40	69	A3	81	A4	Manjira Close	no	55
+199	Indian Kit 1	126	0	40	70	A#3	82	A#4	Jhanji Open	no	55
+199	Indian Kit 1	126	0	40	71	B3	83	B4	Jhanji Close	no	55
+199	Indian Kit 1	126	0	40	72	C4	84	C5	Mondira Open	no	55
+199	Indian Kit 1	126	0	40	73	C#4	85	C#5	Mondira Close	no	55
+199	Indian Kit 1	126	0	40	74	D4	86	D5	Mridang Open	no	55
+199	Indian Kit 1	126	0	40	75	D#4	87	D#5	Mridang Mute	no	55
+199	Indian Kit 1	126	0	40	76	E4	88	E5	Mridang Rim	no	55
+199	Indian Kit 1	126	0	40	77	F4	89	F5	Mridang Slide	no	55
+199	Indian Kit 1	126	0	40	78	F#4	90	F#5	Khomokh Normal	no	55
+199	Indian Kit 1	126	0	40	79	G4	91	G5	Khomokh Mute	no	55
+199	Indian Kit 1	126	0	40	80	G#4	92	G#5	Khomokh Mltatk	no	55
+199	Indian Kit 1	126	0	40	81	A4	93	A5	Madal-A2	no	55
+199	Indian Kit 1	126	0	40	82	A#4	94	A#5	Madal-A#2	no	55
+199	Indian Kit 1	126	0	40	83	B4	95	B5	Madal-B2	no	55
+199	Indian Kit 1	126	0	40	84	C5	96	C6	Madal-C3	no	55
+199	Indian Kit 1	126	0	40	85	C#5	97	C#6	Madal-C#3	no	55
+199	Indian Kit 1	126	0	40	86	D5	98	D6	Madal-D3	no	55
+199	Indian Kit 1	126	0	40	87	D#5	99	D#6	Madal-D#3	no	55
+199	Indian Kit 1	126	0	40	88	E5	100	E6	Madal-E3	no	55
+199	Indian Kit 1	126	0	40	89	F5	101	F6	Madal-F3	no	55
+199	Indian Kit 1	126	0	40	90	F#5	102	F#6	Madal-F#3	no	55
+199	Indian Kit 1	126	0	40	91	G5	103	G6	Madal-G3	no	55
+200	Indian Kit 2	126	0	115	13	C#-1	25	C#0	Surdo Mute	footnote_only	55
+200	Indian Kit 2	126	0	115	14	D-1	26	D0	Surdo Open	footnote_only	55
+200	Indian Kit 2	126	0	115	15	D#-1	27	D#0	Indian Hand Clap	no	55
+200	Indian Kit 2	126	0	115	16	E-1	28	E0	Dafli Open	no	55
+200	Indian Kit 2	126	0	115	17	F-1	29	F0	Dafli Slap	no	55
+200	Indian Kit 2	126	0	115	18	F#-1	30	F#0	Dafli Rim	no	55
+200	Indian Kit 2	126	0	115	19	G-1	31	G0	Duff Open	no	55
+200	Indian Kit 2	126	0	115	20	G#-1	32	G#0	Duff Slap	no	55
+200	Indian Kit 2	126	0	115	21	A-1	33	A0	Duff Rim	no	55
+200	Indian Kit 2	126	0	115	22	A#-1	34	A#0	Hatheli Long	no	55
+200	Indian Kit 2	126	0	115	23	B-1	35	B0	Hatheli Short	no	55
+200	Indian Kit 2	126	0	115	24	C0	36	C1	Baya ge	no	55
+200	Indian Kit 2	126	0	115	25	C#0	37	C#1	Baya ke	no	55
+200	Indian Kit 2	126	0	115	26	D0	38	D1	Baya ghe	no	55
+200	Indian Kit 2	126	0	115	27	D#0	39	D#1	Baya ka	no	55
+200	Indian Kit 2	126	0	115	28	E0	40	E1	Tabla na	no	55
+200	Indian Kit 2	126	0	115	29	F0	41	F1	Tabla tin	no	55
+200	Indian Kit 2	126	0	115	30	F#0	42	F#1	Tablabaya dha	no	55
+200	Indian Kit 2	126	0	115	31	G0	43	G1	Dhol 1 Open	no	55
+200	Indian Kit 2	126	0	115	32	G#0	44	G#1	Dhol 1 Slap	no	55
+200	Indian Kit 2	126	0	115	33	A0	45	A1	Dhol 1 Mute	no	55
+200	Indian Kit 2	126	0	115	34	A#0	46	A#1	Dhol 1 Open Slap	no	55
+200	Indian Kit 2	126	0	115	35	B0	47	B1	Dhol 1 Roll	no	55
+200	Indian Kit 2	126	0	115	36	C1	48	C2	Dandia Short	no	55
+200	Indian Kit 2	126	0	115	37	C#1	49	C#2	Dandia Long	no	55
+200	Indian Kit 2	126	0	115	38	D1	50	D2	Chutki	no	55
+200	Indian Kit 2	126	0	115	39	D#1	51	D#2	Chipri	no	55
+200	Indian Kit 2	126	0	115	40	E1	52	E2	Khanjira Open	no	55
+200	Indian Kit 2	126	0	115	41	F1	53	F2	Khanjira Slap	no	55
+200	Indian Kit 2	126	0	115	42	F#1	54	F#2	Khanjira Mute	no	55
+200	Indian Kit 2	126	0	115	43	G1	55	G2	Khanjira Bendup	no	55
+200	Indian Kit 2	126	0	115	44	G#1	56	G#2	Khanjira Benddown	no	55
+200	Indian Kit 2	126	0	115	45	A1	57	A2	Dholak 1 Open	no	55
+200	Indian Kit 2	126	0	115	46	A#1	58	A#2	Dholak 1 Mute	no	55
+200	Indian Kit 2	126	0	115	47	B1	59	B2	Dholak 1 Slap	no	55
+200	Indian Kit 2	126	0	115	48	C2	60	C3	Dhol 2 Open	no	55
+200	Indian Kit 2	126	0	115	49	C#2	61	C#3	Dhol 2 Slap	no	55
+200	Indian Kit 2	126	0	115	50	D2	62	D3	Dhol 2 Rim	no	55
+200	Indian Kit 2	126	0	115	51	D#2	63	D#3	Mridangam na	no	55
+200	Indian Kit 2	126	0	115	52	E2	64	E3	Mridangam din	no	55
+200	Indian Kit 2	126	0	115	53	F2	65	F3	Mridangam ki	no	55
+200	Indian Kit 2	126	0	115	54	F#2	66	F#3	Mridangam ta	no	55
+200	Indian Kit 2	126	0	115	55	G2	67	G3	Mridangam Chapu	no	55
+200	Indian Kit 2	126	0	115	56	G#2	68	G#3	Mridangam Lo Closed	no	55
+200	Indian Kit 2	126	0	115	57	A2	69	A3	Mridangam Lo Open	no	55
+200	Indian Kit 2	126	0	115	58	A#2	70	A#3	Chimta Normal	no	55
+200	Indian Kit 2	126	0	115	59	B2	71	B3	Chimta Ring	no	55
+200	Indian Kit 2	126	0	115	60	C3	72	C4	Dholki Hi Open	no	55
+200	Indian Kit 2	126	0	115	61	C#3	73	C#4	Dholki Hi Mute	no	55
+200	Indian Kit 2	126	0	115	62	D3	74	D4	Dholki Lo Open	no	55
+200	Indian Kit 2	126	0	115	63	D#3	75	D#4	Dholki Hi Slap	no	55
+200	Indian Kit 2	126	0	115	64	E3	76	E4	Dholki Lo Slide	no	55
+200	Indian Kit 2	126	0	115	65	F3	77	F4	Khol Open	no	55
+200	Indian Kit 2	126	0	115	66	F#3	78	F#4	Khol slide	no	55
+200	Indian Kit 2	126	0	115	67	G3	79	G4	Khol Mute	no	55
+200	Indian Kit 2	126	0	115	68	G#3	80	G#4	Manjira Open	no	55
+200	Indian Kit 2	126	0	115	69	A3	81	A4	Manjira Close	no	55
+200	Indian Kit 2	126	0	115	70	A#3	82	A#4	Jhanji Open	no	55
+200	Indian Kit 2	126	0	115	71	B3	83	B4	Jhanji Close	no	55
+200	Indian Kit 2	126	0	115	72	C4	84	C5	Mondira Open	no	55
+200	Indian Kit 2	126	0	115	73	C#4	85	C#5	Mondira Close	no	55
+200	Indian Kit 2	126	0	115	74	D4	86	D5	Indian Bhangra Scat 1	no	55
+200	Indian Kit 2	126	0	115	75	D#4	87	D#5	Indian Bhangra Scat 2	no	55
+200	Indian Kit 2	126	0	115	76	E4	88	E5	Indian Bhangra Scat 3	no	55
+200	Indian Kit 2	126	0	115	77	F4	89	F5	indian Bhangra Scat 4	no	55
+200	Indian Kit 2	126	0	115	78	F#4	90	F#5	Khomokh Normal	no	55
+200	Indian Kit 2	126	0	115	79	G4	91	G5	Khomokh Mute	no	55
+200	Indian Kit 2	126	0	115	80	G#4	92	G#5	Khomokh mltatk	no	55
+200	Indian Kit 2	126	0	115	81	A4	93	A5	Thavil Open	no	55
+200	Indian Kit 2	126	0	115	82	A#4	94	A#5	Thavil Slap	no	55
+200	Indian Kit 2	126	0	115	83	B4	95	B5	Thavil Mute	no	55
+200	Indian Kit 2	126	0	115	84	C5	96	C6	Khartaal	no	55
+200	Indian Kit 2	126	0	115	85	C#5	97	C#6	Dholak 2 Open	no	55
+200	Indian Kit 2	126	0	115	86	D5	98	D6	Dholak 2 Slide	no	55
+200	Indian Kit 2	126	0	115	87	D#5	99	D#6	Dholak 2 Rim 1	no	55
+200	Indian Kit 2	126	0	115	88	E5	100	E6	Dholak 2 Rim 2	no	55
+200	Indian Kit 2	126	0	115	89	F5	101	F6	Dholak 2 Ring	no	55
+200	Indian Kit 2	126	0	115	90	F#5	102	F#6	Dholak 2 Slap	no	55
+201	Arabic Kit	126	0	37	13	C#-1	25	C#0	Zarb Back mf	no	55
+201	Arabic Kit	126	0	37	14	D-1	26	D0	Zarb Tom f	no	55
+201	Arabic Kit	126	0	37	15	D#-1	27	D#0	Zarb Eshareh	no	55
+201	Arabic Kit	126	0	37	16	E-1	28	E0	Zarb Whipping	no	55
+201	Arabic Kit	126	0	37	17	F-1	29	F0	Tombak Tom f	no	55
+201	Arabic Kit	126	0	37	18	F#-1	30	F#0	Neghareh Tom f	no	55
+201	Arabic Kit	126	0	37	19	G-1	31	G0	Tombak Back f	no	55
+201	Arabic Kit	126	0	37	20	G#-1	32	G#0	Neghareh Back f	no	55
+201	Arabic Kit	126	0	37	21	A-1	33	A0	Tombak Snap f	no	55
+201	Arabic Kit	126	0	37	22	A#-1	34	A#0	Neghareh Pelang f	no	55
+201	Arabic Kit	126	0	37	23	B-1	35	B0	Tombak Trill	no	55
+201	Arabic Kit	126	0	37	24	C0	36	C1	Khaligi Clap 1	no	55
+201	Arabic Kit	126	0	37	25	C#0	37	C#1	Arabic Zalgouta Open	no	55
+201	Arabic Kit	126	0	37	26	D0	38	D1	Khaligi Clap 2	no	55
+201	Arabic Kit	126	0	37	27	D#0	39	D#1	Arabic Zalgouta Close	no	55
+201	Arabic Kit	126	0	37	28	E0	40	E1	Arabic Hand Clap	no	55
+201	Arabic Kit	126	0	37	29	F0	41	F1	Tabel Tak 1	no	55
+201	Arabic Kit	126	0	37	30	F#0	42	F#1	Sagat 1	no	55
+201	Arabic Kit	126	0	37	31	G0	43	G1	Tabel Dom	no	55
+201	Arabic Kit	126	0	37	32	G#0	44	G#1	Sagat 2	no	55
+201	Arabic Kit	126	0	37	33	A0	45	A1	Tabel Tak 2	no	55
+201	Arabic Kit	126	0	37	34	A#0	46	A#1	Sagat 3	no	55
+201	Arabic Kit	126	0	37	35	B0	47	B1	Riq Tik 3	no	55
+201	Arabic Kit	126	0	37	36	C1	48	C2	Riq Tik 2	no	55
+201	Arabic Kit	126	0	37	37	C#1	49	C#2	Riq Tik Hard 1	no	55
+201	Arabic Kit	126	0	37	38	D1	50	D2	Riq Tik 1	no	55
+201	Arabic Kit	126	0	37	39	D#1	51	D#2	Riq Tik Hard 2	no	55
+201	Arabic Kit	126	0	37	40	E1	52	E2	Riq Tik Hard 3	no	55
+201	Arabic Kit	126	0	37	41	F1	53	F2	Riq Tish	no	55
+201	Arabic Kit	126	0	37	42	F#1	54	F#2	Riq Snouj 2	no	55
+201	Arabic Kit	126	0	37	43	G1	55	G2	Riq Roll	no	55
+201	Arabic Kit	126	0	37	44	G#1	56	G#2	Riq Snouj 1	no	55
+201	Arabic Kit	126	0	37	45	A1	57	A2	Riq Sak	no	55
+201	Arabic Kit	126	0	37	46	A#1	58	A#2	Riq Snouj 3	no	55
+201	Arabic Kit	126	0	37	47	B1	59	B2	Riq Snouj 4	no	55
+201	Arabic Kit	126	0	37	48	C2	60	C3	Riq Tak 1	no	55
+201	Arabic Kit	126	0	37	49	C#2	61	C#3	Riq Brass 1	no	55
+201	Arabic Kit	126	0	37	50	D2	62	D3	Riq Tak 2	no	55
+201	Arabic Kit	126	0	37	51	D#2	63	D#3	Riq Brass 2	no	55
+201	Arabic Kit	126	0	37	52	E2	64	E3	Riq Dom	no	55
+201	Arabic Kit	126	0	37	53	F2	65	F3	Katem Tak Doff	no	55
+201	Arabic Kit	126	0	37	54	F#2	66	F#3	Katem Dom	no	55
+201	Arabic Kit	126	0	37	55	G2	67	G3	Katem Sak 1	no	55
+201	Arabic Kit	126	0	37	56	G#2	68	G#3	Katem Tak 1	no	55
+201	Arabic Kit	126	0	37	57	A2	69	A3	Katem Sak 2	no	55
+201	Arabic Kit	126	0	37	58	A#2	70	A#3	Katem Tak 2	no	55
+201	Arabic Kit	126	0	37	59	B2	71	B3	Daholla Sak 2	no	55
+201	Arabic Kit	126	0	37	60	C3	72	C4	Daholla Sak 1	no	55
+201	Arabic Kit	126	0	37	61	C#3	73	C#4	Daholla Tak 1	no	55
+201	Arabic Kit	126	0	37	62	D3	74	D4	Daholla Dom	no	55
+201	Arabic Kit	126	0	37	63	D#3	75	D#4	Daholla Tak 2	no	55
+201	Arabic Kit	126	0	37	64	E3	76	E4	Tablah Prok	no	55
+201	Arabic Kit	126	0	37	65	F3	77	F4	Tablah Dom 2	no	55
+201	Arabic Kit	126	0	37	66	F#3	78	F#4	Tablah Roll of Edge	no	55
+201	Arabic Kit	126	0	37	67	G3	79	G4	Tablah Tak Finger 4	no	55
+201	Arabic Kit	126	0	37	68	G#3	80	G#4	Tablah Tak Trill 1	no	55
+201	Arabic Kit	126	0	37	69	A3	81	A4	Tablah Tak Finger 3	no	55
+201	Arabic Kit	126	0	37	70	A#3	82	A#4	Tablah Tak Trill 2	no	55
+201	Arabic Kit	126	0	37	71	B3	83	B4	Tablah Tak Finger 2	no	55
+201	Arabic Kit	126	0	37	72	C4	84	C5	Tablah Tak Finger 1	no	55
+201	Arabic Kit	126	0	37	73	C#4	85	C#5	Tablah Tik 2	no	55
+201	Arabic Kit	126	0	37	74	D4	86	D5	Tablah Tik 4	no	55
+201	Arabic Kit	126	0	37	75	D#4	87	D#5	Tablah Tik 3	no	55
+201	Arabic Kit	126	0	37	76	E4	88	E5	Tablah Tik 1	no	55
+201	Arabic Kit	126	0	37	77	F4	89	F5	Tablah Tak 3	no	55
+201	Arabic Kit	126	0	37	78	F#4	90	F#5	Tablah Tak 1	no	55
+201	Arabic Kit	126	0	37	79	G4	91	G5	Tablah Tak 4	no	55
+201	Arabic Kit	126	0	37	80	G#4	92	G#5	Tablah Tak 2	no	55
+201	Arabic Kit	126	0	37	81	A4	93	A5	Tablah Sak 2	no	55
+201	Arabic Kit	126	0	37	82	A#4	94	A#5	Tablah Tremolo	no	55
+201	Arabic Kit	126	0	37	83	B4	95	B5	Tablah Sak 1	no	55
+201	Arabic Kit	126	0	37	84	C5	96	C6	Tablah Dom 1	no	55
+202	Cuban Kit	126	0	41	13	C#-1	25	C#0	Surdo Mute	footnote_only	55
+202	Cuban Kit	126	0	41	14	D-1	26	D0	Surdo Open	footnote_only	55
+202	Cuban Kit	126	0	41	15	D#-1	27	D#0	Hi Q	footnote_only	55
+202	Cuban Kit	126	0	41	16	E-1	28	E0	Whip Slap	footnote_only	55
+202	Cuban Kit	126	0	41	17	F-1	29	F0	Scratch Push	footnote_only	55
+202	Cuban Kit	126	0	41	18	F#-1	30	F#0	Scratch Pull	footnote_only	55
+202	Cuban Kit	126	0	41	19	G-1	31	G0	Finger Snap	footnote_only	55
+202	Cuban Kit	126	0	41	20	G#-1	32	G#0	Click Noise	footnote_only	55
+202	Cuban Kit	126	0	41	21	A-1	33	A0	Metronome Click	footnote_only	55
+202	Cuban Kit	126	0	41	22	A#-1	34	A#0	Conga H Tip	no	55
+202	Cuban Kit	126	0	41	23	B-1	35	B0	Conga H Heel	no	55
+202	Cuban Kit	126	0	41	24	C0	36	C1	Conga H Open	no	55
+202	Cuban Kit	126	0	41	25	C#0	37	C#1	Conga H Mute	no	55
+202	Cuban Kit	126	0	41	26	D0	38	D1	Conga H Slap Open	no	55
+202	Cuban Kit	126	0	41	27	D#0	39	D#1	Conga H Slap	no	55
+202	Cuban Kit	126	0	41	28	E0	40	E1	Conga H Slap Mute	no	55
+202	Cuban Kit	126	0	41	29	F0	41	F1	Conga L Tip	no	55
+202	Cuban Kit	126	0	41	30	F#0	42	F#1	Conga L Heel	no	55
+202	Cuban Kit	126	0	41	31	G0	43	G1	Conga L Open	no	55
+202	Cuban Kit	126	0	41	32	G#0	44	G#1	Conga L Mute	no	55
+202	Cuban Kit	126	0	41	33	A0	45	A1	Conga L Slap Open	no	55
+202	Cuban Kit	126	0	41	34	A#0	46	A#1	Conga L Slap	no	55
+202	Cuban Kit	126	0	41	35	B0	47	B1	Conga L Slide	no	55
+202	Cuban Kit	126	0	41	36	C1	48	C2	Bongo H Open 1 finger	no	55
+202	Cuban Kit	126	0	41	37	C#1	49	C#2	Bongo H Open 3 finger	no	55
+202	Cuban Kit	126	0	41	38	D1	50	D2	Bongo H Rim	no	55
+202	Cuban Kit	126	0	41	39	D#1	51	D#2	Bongo H Tip	no	55
+202	Cuban Kit	126	0	41	40	E1	52	E2	Bongo H Heel	no	55
+202	Cuban Kit	126	0	41	41	F1	53	F2	Bongo H Slap	no	55
+202	Cuban Kit	126	0	41	42	F#1	54	F#2	Bongo L Open 1 finger	no	55
+202	Cuban Kit	126	0	41	43	G1	55	G2	Bongo L Open 3 finger	no	55
+202	Cuban Kit	126	0	41	44	G#1	56	G#2	Bongo L Rim	no	55
+202	Cuban Kit	126	0	41	45	A1	57	A2	Bongo L Tip	no	55
+202	Cuban Kit	126	0	41	46	A#1	58	A#2	Bongo L Heel	no	55
+202	Cuban Kit	126	0	41	47	B1	59	B2	Bongo L Slap	no	55
+202	Cuban Kit	126	0	41	48	C2	60	C3	Timbale L Open	no	55
+202	Cuban Kit	126	0	41	49	C#2	61	C#3	Crash Cymbal 1	footnote_only	55
+202	Cuban Kit	126	0	41	50	D2	62	D3	High Tom	footnote_only	55
+202	Cuban Kit	126	0	41	51	D#2	63	D#3	Ride Cymbal 1	footnote_only	55
+202	Cuban Kit	126	0	41	52	E2	64	E3	Chinese Cymbal	footnote_only	55
+202	Cuban Kit	126	0	41	53	F2	65	F3	Paila L	no	55
+202	Cuban Kit	126	0	41	54	F#2	66	F#3	Timbale H Open	no	55
+202	Cuban Kit	126	0	41	55	G2	67	G3	Splash Cymbal	footnote_only	55
+202	Cuban Kit	126	0	41	56	G#2	68	G#3	Cowbell	footnote_only	55
+202	Cuban Kit	126	0	41	57	A2	69	A3	Crash Cymbal 2	footnote_only	55
+202	Cuban Kit	126	0	41	58	A#2	70	A#3	Vibraslap	footnote_only	55
+202	Cuban Kit	126	0	41	59	B2	71	B3	Paila H	no	55
+202	Cuban Kit	126	0	41	60	C3	72	C4	Cowbell Top	no	55
+202	Cuban Kit	126	0	41	61	C#3	73	C#4	Bongo L	footnote_only	55
+202	Cuban Kit	126	0	41	62	D3	74	D4	Conga H Mute	footnote_only	55
+202	Cuban Kit	126	0	41	63	D#3	75	D#4	Conga H Open	footnote_only	55
+202	Cuban Kit	126	0	41	64	E3	76	E4	Guiro Short	no	55
+202	Cuban Kit	126	0	41	65	F3	77	F4	Guiro Long	no	55
+202	Cuban Kit	126	0	41	66	F#3	78	F#4	Timbale L	footnote_only	55
+202	Cuban Kit	126	0	41	67	G3	79	G4	Agogo H	footnote_only	55
+202	Cuban Kit	126	0	41	68	G#3	80	G#4	Tambourine	no	55
+202	Cuban Kit	126	0	41	69	A3	81	A4	Cabasa	footnote_only	55
+202	Cuban Kit	126	0	41	70	A#3	82	A#4	Maracas	footnote_only	55
+202	Cuban Kit	126	0	41	71	B3	83	B4	Samba Whistle H	footnote_only	55
+202	Cuban Kit	126	0	41	72	C4	84	C5	Maracas	no	55
+202	Cuban Kit	126	0	41	73	C#4	85	C#5	Shaker	no	55
+202	Cuban Kit	126	0	41	74	D4	86	D5	Cabasa	no	55
+202	Cuban Kit	126	0	41	75	D#4	87	D#5	Claves	footnote_only	55
+202	Cuban Kit	126	0	41	76	E4	88	E5	Wood Block H	footnote_only	55
+202	Cuban Kit	126	0	41	77	F4	89	F5	Wood Block L	footnote_only	55
+202	Cuban Kit	126	0	41	78	F#4	90	F#5	Cuica Mute	footnote_only	55
+202	Cuban Kit	126	0	41	79	G4	91	G5	Cuica Open	footnote_only	55
+202	Cuban Kit	126	0	41	80	G#4	92	G#5	Triangle Mute	footnote_only	55
+202	Cuban Kit	126	0	41	81	A4	93	A5	Triangle Open	footnote_only	55
+202	Cuban Kit	126	0	41	82	A#4	94	A#5	Shaker	footnote_only	55
+202	Cuban Kit	126	0	41	83	B4	95	B5	Jingle Bell	footnote_only	55
+202	Cuban Kit	126	0	41	84	C5	96	C6	Bell Tree	footnote_only	55
+203	SFX Kit 1	126	0	1	13	C#-1	25	C#0	Surdo Mute	footnote_only	55
+203	SFX Kit 1	126	0	1	14	D-1	26	D0	Surdo Open	footnote_only	55
+203	SFX Kit 1	126	0	1	15	D#-1	27	D#0	Hi Q	footnote_only	55
+203	SFX Kit 1	126	0	1	16	E-1	28	E0	Whip Slap	footnote_only	55
+203	SFX Kit 1	126	0	1	17	F-1	29	F0	Scratch Push	footnote_only	55
+203	SFX Kit 1	126	0	1	18	F#-1	30	F#0	Scratch Pull	footnote_only	55
+203	SFX Kit 1	126	0	1	19	G-1	31	G0	Finger Snap	footnote_only	55
+203	SFX Kit 1	126	0	1	20	G#-1	32	G#0	Click Noise	footnote_only	55
+203	SFX Kit 1	126	0	1	21	A-1	33	A0	Metronome Click	footnote_only	55
+203	SFX Kit 1	126	0	1	22	A#-1	34	A#0	Metronome Bell	footnote_only	55
+203	SFX Kit 1	126	0	1	23	B-1	35	B0	Seq Click L	footnote_only	55
+203	SFX Kit 1	126	0	1	24	C0	36	C1	Seq Click H	footnote_only	55
+203	SFX Kit 1	126	0	1	25	C#0	37	C#1	Brush Tap	footnote_only	55
+203	SFX Kit 1	126	0	1	26	D0	38	D1	Brush Swirl	footnote_only	55
+203	SFX Kit 1	126	0	1	27	D#0	39	D#1	Brush Slap	footnote_only	55
+203	SFX Kit 1	126	0	1	28	E0	40	E1	Brush Tap Swirl	footnote_only	55
+203	SFX Kit 1	126	0	1	29	F0	41	F1	Snare Roll	footnote_only	55
+203	SFX Kit 1	126	0	1	30	F#0	42	F#1	Castanet	footnote_only	55
+203	SFX Kit 1	126	0	1	31	G0	43	G1	Snare H Soft	footnote_only	55
+203	SFX Kit 1	126	0	1	32	G#0	44	G#1	Sticks	footnote_only	55
+203	SFX Kit 1	126	0	1	33	A0	45	A1	Bass Drum Soft	footnote_only	55
+203	SFX Kit 1	126	0	1	34	A#0	46	A#1	Open Rim Shot	footnote_only	55
+203	SFX Kit 1	126	0	1	35	B0	47	B1	Bass Drum Hard	footnote_only	55
+203	SFX Kit 1	126	0	1	36	C1	48	C2	Cutting Noise	no	55
+203	SFX Kit 1	126	0	1	37	C#1	49	C#2	Cutting Noise 2	no	55
+203	SFX Kit 1	126	0	1	38	D1	50	D2	Snare M	footnote_only	55
+203	SFX Kit 1	126	0	1	39	D#1	51	D#2	String Slap	no	55
+203	SFX Kit 1	126	0	1	40	E1	52	E2	Snare H Hard	footnote_only	55
+203	SFX Kit 1	126	0	1	41	F1	53	F2	Floor Tom L	footnote_only	55
+203	SFX Kit 1	126	0	1	42	F#1	54	F#2	Hi-Hat Closed	footnote_only	55
+203	SFX Kit 1	126	0	1	43	G1	55	G2	Floor Tom H	footnote_only	55
+203	SFX Kit 1	126	0	1	44	G#1	56	G#2	Hi-Hat Pedal	footnote_only	55
+203	SFX Kit 1	126	0	1	45	A1	57	A2	Low Tom	footnote_only	55
+203	SFX Kit 1	126	0	1	46	A#1	58	A#2	Hi-Hat Open	footnote_only	55
+203	SFX Kit 1	126	0	1	47	B1	59	B2	Mid Tom L	footnote_only	55
+203	SFX Kit 1	126	0	1	48	C2	60	C3	Mid Tom H	footnote_only	55
+203	SFX Kit 1	126	0	1	49	C#2	61	C#3	Crash Cymbal 1	footnote_only	55
+203	SFX Kit 1	126	0	1	50	D2	62	D3	High Tom	footnote_only	55
+203	SFX Kit 1	126	0	1	51	D#2	63	D#3	Ride Cymbal 1	footnote_only	55
+203	SFX Kit 1	126	0	1	52	E2	64	E3	Flute Key Click	no	55
+203	SFX Kit 1	126	0	1	53	F2	65	F3	Ride Cymbal Cup	footnote_only	55
+203	SFX Kit 1	126	0	1	54	F#2	66	F#3	Tambourine	footnote_only	55
+203	SFX Kit 1	126	0	1	55	G2	67	G3	Splash Cymbal	footnote_only	55
+203	SFX Kit 1	126	0	1	56	G#2	68	G#3	Cowbell	footnote_only	55
+203	SFX Kit 1	126	0	1	57	A2	69	A3	Crash Cymbal 2	footnote_only	55
+203	SFX Kit 1	126	0	1	58	A#2	70	A#3	Vibraslap	footnote_only	55
+203	SFX Kit 1	126	0	1	59	B2	71	B3	Ride Cymbal 2	footnote_only	55
+203	SFX Kit 1	126	0	1	60	C3	72	C4	Bongo H	footnote_only	55
+203	SFX Kit 1	126	0	1	61	C#3	73	C#4	Bongo L	footnote_only	55
+203	SFX Kit 1	126	0	1	62	D3	74	D4	Conga H Mute	footnote_only	55
+203	SFX Kit 1	126	0	1	63	D#3	75	D#4	Conga H Open	footnote_only	55
+203	SFX Kit 1	126	0	1	64	E3	76	E4	Conga L	footnote_only	55
+203	SFX Kit 1	126	0	1	65	F3	77	F4	Timbale H	footnote_only	55
+203	SFX Kit 1	126	0	1	66	F#3	78	F#4	Timbale L	footnote_only	55
+203	SFX Kit 1	126	0	1	67	G3	79	G4	Agogo H	footnote_only	55
+203	SFX Kit 1	126	0	1	68	G#3	80	G#4	Shower	no	55
+203	SFX Kit 1	126	0	1	69	A3	81	A4	Thunder	no	55
+203	SFX Kit 1	126	0	1	70	A#3	82	A#4	Wind	no	55
+203	SFX Kit 1	126	0	1	71	B3	83	B4	Stream	no	55
+203	SFX Kit 1	126	0	1	72	C4	84	C5	Bubble	no	55
+203	SFX Kit 1	126	0	1	73	C#4	85	C#5	Feed	no	55
+203	SFX Kit 1	126	0	1	74	D4	86	D5	Guiro Long	footnote_only	55
+203	SFX Kit 1	126	0	1	75	D#4	87	D#5	Claves	footnote_only	55
+203	SFX Kit 1	126	0	1	76	E4	88	E5	Wood Block H	footnote_only	55
+203	SFX Kit 1	126	0	1	77	F4	89	F5	Wood Block L	footnote_only	55
+203	SFX Kit 1	126	0	1	78	F#4	90	F#5	Cuica Mute	footnote_only	55
+203	SFX Kit 1	126	0	1	79	G4	91	G5	Cuica Open	footnote_only	55
+203	SFX Kit 1	126	0	1	80	G#4	92	G#5	Triangle Mute	footnote_only	55
+203	SFX Kit 1	126	0	1	81	A4	93	A5	Triangle Open	footnote_only	55
+203	SFX Kit 1	126	0	1	82	A#4	94	A#5	Shaker	footnote_only	55
+203	SFX Kit 1	126	0	1	83	B4	95	B5	Jingle Bell	footnote_only	55
+203	SFX Kit 1	126	0	1	84	C5	96	C6	Dog	no	55
+203	SFX Kit 1	126	0	1	85	C#5	97	C#6	Horse	no	55
+203	SFX Kit 1	126	0	1	86	D5	98	D6	Bird Tweet 2	no	55
+203	SFX Kit 1	126	0	1	91	G5	103	G6	Maou	no	55
+204	SFX Kit 2	126	0	2	13	C#-1	25	C#0	Surdo Mute	footnote_only	55
+204	SFX Kit 2	126	0	2	14	D-1	26	D0	Surdo Open	footnote_only	55
+204	SFX Kit 2	126	0	2	15	D#-1	27	D#0	Hi Q	footnote_only	55
+204	SFX Kit 2	126	0	2	16	E-1	28	E0	Whip Slap	footnote_only	55
+204	SFX Kit 2	126	0	2	17	F-1	29	F0	Scratch Push	footnote_only	55
+204	SFX Kit 2	126	0	2	18	F#-1	30	F#0	Scratch Pull	footnote_only	55
+204	SFX Kit 2	126	0	2	19	G-1	31	G0	Finger Snap	footnote_only	55
+204	SFX Kit 2	126	0	2	20	G#-1	32	G#0	Click Noise	footnote_only	55
+204	SFX Kit 2	126	0	2	21	A-1	33	A0	Metronome Click	footnote_only	55
+204	SFX Kit 2	126	0	2	22	A#-1	34	A#0	Metronome Bell	footnote_only	55
+204	SFX Kit 2	126	0	2	23	B-1	35	B0	Seq Click L	footnote_only	55
+204	SFX Kit 2	126	0	2	24	C0	36	C1	Seq Click H	footnote_only	55
+204	SFX Kit 2	126	0	2	25	C#0	37	C#1	Brush Tap	footnote_only	55
+204	SFX Kit 2	126	0	2	26	D0	38	D1	Brush Swirl	footnote_only	55
+204	SFX Kit 2	126	0	2	27	D#0	39	D#1	Brush Slap	footnote_only	55
+204	SFX Kit 2	126	0	2	28	E0	40	E1	Brush Tap Swirl	footnote_only	55
+204	SFX Kit 2	126	0	2	29	F0	41	F1	Snare Roll	footnote_only	55
+204	SFX Kit 2	126	0	2	30	F#0	42	F#1	Castanet	footnote_only	55
+204	SFX Kit 2	126	0	2	31	G0	43	G1	Snare H Soft	footnote_only	55
+204	SFX Kit 2	126	0	2	32	G#0	44	G#1	Sticks	footnote_only	55
+204	SFX Kit 2	126	0	2	33	A0	45	A1	Bass Drum Soft	footnote_only	55
+204	SFX Kit 2	126	0	2	34	A#0	46	A#1	Open Rim Shot	footnote_only	55
+204	SFX Kit 2	126	0	2	35	B0	47	B1	Bass Drum Hard	footnote_only	55
+204	SFX Kit 2	126	0	2	36	C1	48	C2	Phone Call	no	55
+204	SFX Kit 2	126	0	2	37	C#1	49	C#2	Door Squeak	no	55
+204	SFX Kit 2	126	0	2	38	D1	50	D2	Door Slam	no	55
+204	SFX Kit 2	126	0	2	39	D#1	51	D#2	Scratch Cut	no	55
+204	SFX Kit 2	126	0	2	40	E1	52	E2	Scratch	no	55
+204	SFX Kit 2	126	0	2	41	F1	53	F2	Wind Chime	no	55
+204	SFX Kit 2	126	0	2	42	F#1	54	F#2	Telephone Ring 2	no	55
+204	SFX Kit 2	126	0	2	43	G1	55	G2	Floor Tom H	footnote_only	55
+204	SFX Kit 2	126	0	2	44	G#1	56	G#2	Hi-Hat Pedal	footnote_only	55
+204	SFX Kit 2	126	0	2	45	A1	57	A2	Low Tom	footnote_only	55
+204	SFX Kit 2	126	0	2	46	A#1	58	A#2	Hi-Hat Open	footnote_only	55
+204	SFX Kit 2	126	0	2	47	B1	59	B2	Mid Tom L	footnote_only	55
+204	SFX Kit 2	126	0	2	48	C2	60	C3	Mid Tom H	footnote_only	55
+204	SFX Kit 2	126	0	2	49	C#2	61	C#3	Crash Cymbal 1	footnote_only	55
+204	SFX Kit 2	126	0	2	50	D2	62	D3	High Tom	footnote_only	55
+204	SFX Kit 2	126	0	2	51	D#2	63	D#3	Ride Cymbal 1	footnote_only	55
+204	SFX Kit 2	126	0	2	52	E2	64	E3	Car Engine Ignition	no	55
+204	SFX Kit 2	126	0	2	53	F2	65	F3	Car Tires Squeal	no	55
+204	SFX Kit 2	126	0	2	54	F#2	66	F#3	Car Passing	no	55
+204	SFX Kit 2	126	0	2	55	G2	67	G3	Car Crash	no	55
+204	SFX Kit 2	126	0	2	56	G#2	68	G#3	Siren	no	55
+204	SFX Kit 2	126	0	2	57	A2	69	A3	Train	no	55
+204	SFX Kit 2	126	0	2	58	A#2	70	A#3	Jet Plane	no	55
+204	SFX Kit 2	126	0	2	59	B2	71	B3	Starship	no	55
+204	SFX Kit 2	126	0	2	60	C3	72	C4	Burst	no	55
+204	SFX Kit 2	126	0	2	61	C#3	73	C#4	Roller Coaster	no	55
+204	SFX Kit 2	126	0	2	62	D3	74	D4	Submarine	no	55
+204	SFX Kit 2	126	0	2	63	D#3	75	D#4	Conga H Open	footnote_only	55
+204	SFX Kit 2	126	0	2	64	E3	76	E4	Conga L	footnote_only	55
+204	SFX Kit 2	126	0	2	65	F3	77	F4	Timbale H	footnote_only	55
+204	SFX Kit 2	126	0	2	66	F#3	78	F#4	Timbale L	footnote_only	55
+204	SFX Kit 2	126	0	2	67	G3	79	G4	Agogo H	footnote_only	55
+204	SFX Kit 2	126	0	2	68	G#3	80	G#4	Laugh	no	55
+204	SFX Kit 2	126	0	2	69	A3	81	A4	Scream	no	55
+204	SFX Kit 2	126	0	2	70	A#3	82	A#4	Punch	no	55
+204	SFX Kit 2	126	0	2	71	B3	83	B4	Heartbeat	no	55
+204	SFX Kit 2	126	0	2	72	C4	84	C5	Footsteps	no	55
+204	SFX Kit 2	126	0	2	73	C#4	85	C#5	Guiro Short	footnote_only	55
+204	SFX Kit 2	126	0	2	74	D4	86	D5	Guiro Long	footnote_only	55
+204	SFX Kit 2	126	0	2	75	D#4	87	D#5	Claves	footnote_only	55
+204	SFX Kit 2	126	0	2	76	E4	88	E5	Wood Block H	footnote_only	55
+204	SFX Kit 2	126	0	2	77	F4	89	F5	Wood Block L	footnote_only	55
+204	SFX Kit 2	126	0	2	78	F#4	90	F#5	Cuica Mute	footnote_only	55
+204	SFX Kit 2	126	0	2	79	G4	91	G5	Cuica Open	footnote_only	55
+204	SFX Kit 2	126	0	2	80	G#4	92	G#5	Triangle Mute	footnote_only	55
+204	SFX Kit 2	126	0	2	81	A4	93	A5	Triangle Open	footnote_only	55
+204	SFX Kit 2	126	0	2	82	A#4	94	A#5	Shaker	footnote_only	55
+204	SFX Kit 2	126	0	2	83	B4	95	B5	Jingle Bell	footnote_only	55
+204	SFX Kit 2	126	0	2	84	C5	96	C6	Machine Gun	no	55
+204	SFX Kit 2	126	0	2	85	C#5	97	C#6	Laser Gun	no	55
+204	SFX Kit 2	126	0	2	86	D5	98	D6	Explosion	no	55
+204	SFX Kit 2	126	0	2	87	D#5	99	D#6	Firework	no	55
+205	Sound Effect Kit	126	0	113	13	C#-1	25	C#0	Surdo Mute	footnote_only	55
+205	Sound Effect Kit	126	0	113	14	D-1	26	D0	Surdo Open	footnote_only	55
+205	Sound Effect Kit	126	0	113	15	D#-1	27	D#0	Hi Q	footnote_only	55
+205	Sound Effect Kit	126	0	113	16	E-1	28	E0	Whip Slap	footnote_only	55
+205	Sound Effect Kit	126	0	113	17	F-1	29	F0	Scratch Push	footnote_only	55
+205	Sound Effect Kit	126	0	113	18	F#-1	30	F#0	Scratch Pull	footnote_only	55
+205	Sound Effect Kit	126	0	113	19	G-1	31	G0	Finger Snap	footnote_only	55
+205	Sound Effect Kit	126	0	113	20	G#-1	32	G#0	Click Noise	footnote_only	55
+205	Sound Effect Kit	126	0	113	21	A-1	33	A0	Metronome Click	footnote_only	55
+205	Sound Effect Kit	126	0	113	22	A#-1	34	A#0	Metronome Bell	footnote_only	55
+205	Sound Effect Kit	126	0	113	23	B-1	35	B0	Seq Click L	footnote_only	55
+205	Sound Effect Kit	126	0	113	24	C0	36	C1	Seq Click H	footnote_only	55
+205	Sound Effect Kit	126	0	113	25	C#0	37	C#1	Brush Tap	footnote_only	55
+205	Sound Effect Kit	126	0	113	26	D0	38	D1	Brush Swirl	footnote_only	55
+205	Sound Effect Kit	126	0	113	27	D#0	39	D#1	Brush Slap	footnote_only	55
+205	Sound Effect Kit	126	0	113	28	E0	40	E1	Brush Tap Swirl	footnote_only	55
+205	Sound Effect Kit	126	0	113	29	F0	41	F1	Snare Roll	footnote_only	55
+205	Sound Effect Kit	126	0	113	30	F#0	42	F#1	Castanet	footnote_only	55
+205	Sound Effect Kit	126	0	113	31	G0	43	G1	Snare H Soft	footnote_only	55
+205	Sound Effect Kit	126	0	113	32	G#0	44	G#1	Sticks	footnote_only	55
+205	Sound Effect Kit	126	0	113	33	A0	45	A1	Bass Drum Soft	footnote_only	55
+205	Sound Effect Kit	126	0	113	34	A#0	46	A#1	Open Rim Shot	footnote_only	55
+205	Sound Effect Kit	126	0	113	35	B0	47	B1	Bass Drum Hard	footnote_only	55
+205	Sound Effect Kit	126	0	113	36	C1	48	C2	Heartbeat	no	55
+205	Sound Effect Kit	126	0	113	37	C#1	49	C#2	Footsteps	no	55
+205	Sound Effect Kit	126	0	113	38	D1	50	D2	Door Squeak	no	55
+205	Sound Effect Kit	126	0	113	39	D#1	51	D#2	Door Slam	no	55
+205	Sound Effect Kit	126	0	113	40	E1	52	E2	Applause	no	55
+205	Sound Effect Kit	126	0	113	41	F1	53	F2	Camera	no	55
+205	Sound Effect Kit	126	0	113	42	F#1	54	F#2	Horn	no	55
+205	Sound Effect Kit	126	0	113	43	G1	55	G2	Hiccup	no	55
+205	Sound Effect Kit	126	0	113	44	G#1	56	G#2	Cuckoo Clock	no	55
+205	Sound Effect Kit	126	0	113	45	A1	57	A2	Stream	no	55
+205	Sound Effect Kit	126	0	113	46	A#1	58	A#2	Frog	no	55
+205	Sound Effect Kit	126	0	113	47	B1	59	B2	Rooster	no	55
+205	Sound Effect Kit	126	0	113	48	C2	60	C3	Dog	no	55
+205	Sound Effect Kit	126	0	113	49	C#2	61	C#3	Cat	no	55
+205	Sound Effect Kit	126	0	113	50	D2	62	D3	Owl	no	55
+205	Sound Effect Kit	126	0	113	51	D#2	63	D#3	Horse Gallop	no	55
+205	Sound Effect Kit	126	0	113	52	E2	64	E3	Horse Neigh	no	55
+205	Sound Effect Kit	126	0	113	53	F2	65	F3	Cow	no	55
+205	Sound Effect Kit	126	0	113	54	F#2	66	F#3	Lion	no	55
+205	Sound Effect Kit	126	0	113	55	G2	67	G3	Scratch	no	55
+205	Sound Effect Kit	126	0	113	56	G#2	68	G#3	Yo!	no	55
+205	Sound Effect Kit	126	0	113	57	A2	69	A3	Go!	no	55
+205	Sound Effect Kit	126	0	113	58	A#2	70	A#3	Get up!	no	55
+205	Sound Effect Kit	126	0	113	59	B2	71	B3	Whoow!	no	55
+205	Sound Effect Kit	126	0	113	60	C3	72	C4	Bongo H	footnote_only	55
+205	Sound Effect Kit	126	0	113	61	C#3	73	C#4	Bongo L	footnote_only	55
+205	Sound Effect Kit	126	0	113	62	D3	74	D4	Conga H Mute	footnote_only	55
+205	Sound Effect Kit	126	0	113	63	D#3	75	D#4	Conga H Open	footnote_only	55
+205	Sound Effect Kit	126	0	113	64	E3	76	E4	Conga L	footnote_only	55
+205	Sound Effect Kit	126	0	113	65	F3	77	F4	Timbale H	footnote_only	55
+205	Sound Effect Kit	126	0	113	66	F#3	78	F#4	Timbale L	footnote_only	55
+205	Sound Effect Kit	126	0	113	67	G3	79	G4	Agogo H	footnote_only	55
+205	Sound Effect Kit	126	0	113	68	G#3	80	G#4	Agogo L	footnote_only	55
+205	Sound Effect Kit	126	0	113	69	A3	81	A4	Cabasa	footnote_only	55
+205	Sound Effect Kit	126	0	113	70	A#3	82	A#4	Maracas	footnote_only	55
+205	Sound Effect Kit	126	0	113	71	B3	83	B4	Samba Whistle H	footnote_only	55
+205	Sound Effect Kit	126	0	113	72	C4	84	C5	Samba Whistle L	footnote_only	55
+205	Sound Effect Kit	126	0	113	73	C#4	85	C#5	Guiro Short	footnote_only	55
+205	Sound Effect Kit	126	0	113	74	D4	86	D5	Guiro Long	footnote_only	55
+205	Sound Effect Kit	126	0	113	75	D#4	87	D#5	Claves	footnote_only	55
+205	Sound Effect Kit	126	0	113	76	E4	88	E5	Wood Block H	footnote_only	55
+205	Sound Effect Kit	126	0	113	77	F4	89	F5	Wood Block L	footnote_only	55
+205	Sound Effect Kit	126	0	113	78	F#4	90	F#5	Uh!+Hit	no	55
+205	Sound Effect Kit	126	0	113	79	G4	91	G5	Cuica Open	footnote_only	55
+205	Sound Effect Kit	126	0	113	80	G#4	92	G#5	Triangle Mute	footnote_only	55
+205	Sound Effect Kit	126	0	113	81	A4	93	A5	Triangle Open	footnote_only	55
+205	Sound Effect Kit	126	0	113	82	A#4	94	A#5	Shaker	footnote_only	55
+205	Sound Effect Kit	126	0	113	83	B4	95	B5	Jingle Bell	footnote_only	55
+205	Sound Effect Kit	126	0	113	84	C5	96	C6	Bell Tree	footnote_only	55
+205	Sound Effect Kit	126	0	113	85	C#5	97	C#6	Applause 1	no	55
+205	Sound Effect Kit	126	0	113	86	D5	98	D6	Applause 2	no	55
+205	Sound Effect Kit	126	0	113	87	D#5	99	D#6	Applause 3	no	55
+205	Sound Effect Kit	126	0	113	88	E5	100	E6	Applause 4	no	55

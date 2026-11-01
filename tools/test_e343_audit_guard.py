@@ -25,4 +25,7 @@ for f in [J + 'midi/MidiMixerOutput.kt', J + 'midi/MidiInputManager.kt', J + 'ui
 added = [l[1:] for l in git('diff', '-U0', BASE, '--', J + 'midi/MidiMixerOutput.kt').splitlines() if l.startswith('+') and not l.startswith('+++')]
 body = '\n'.join(added)
 assert 'written' in body and 'outputReport' in body
+# continuation (Data List extraction): no production source, Gradle or native file changed after the audit commit 7ba5b00
+after = set(git('diff', '--name-only', '7ba5b00', 'HEAD').split()) | set(git('diff', '--name-only', '7ba5b00').split())
+assert not [p for p in after if p.startswith('app/')], 'production changed after 7ba5b00: ' + ', '.join(sorted(p for p in after if p.startswith('app/')))
 print('E343 AUDIT GUARD PASS changed=' + ','.join(sorted(changed)))
