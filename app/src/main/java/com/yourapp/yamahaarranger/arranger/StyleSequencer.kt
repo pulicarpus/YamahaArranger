@@ -1679,6 +1679,19 @@ open class E343DrumNoteOffExperiment {
         if (m != mode) setMode(m)
         return true
     }
+    /** Saved setting (one small text file). Only the mode and the gate are stored; the scope is fixed in code and is never stored. */
+    fun encodeSetting(): String = "mode=" + mode.name + "\ngate=" + gateMs + "\n"
+    /**
+     * Strict restore. Anything missing, unreadable or invalid gives LEGACY (the global default) and the 120 ms gate;
+     * a gate that is not one of [GATES_MS] gives 120 ms. Returns the restored mode.
+     */
+    fun restoreSetting(text: String?): E343DrumNoteOffMode {
+        val kv = (text ?: "").lineSequence().mapNotNull { l -> l.split('=', limit = 2).takeIf { it.size == 2 }?.let { it[0].trim() to it[1].trim() } }.toMap()
+        val m = E343DrumNoteOffMode.values().firstOrNull { it.name == kv["mode"] } ?: E343DrumNoteOffMode.LEGACY
+        val g = kv["gate"]?.toIntOrNull()?.takeIf { it in GATES_MS } ?: 120
+        setGate(g); setMode(m)
+        return m
+    }
     /** Read-only state for the RIGHT DIAG experiment page. */
     fun snapshot(): E343DrumNoteOffSnapshot = synchronized(lock) {
         E343DrumNoteOffSnapshot(mode.name, gateMs, GATES_MS.toList(), styleName, styleName.contains("EnglishWaltz2", true), probe != null,

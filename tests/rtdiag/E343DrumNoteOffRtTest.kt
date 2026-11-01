@@ -25,11 +25,11 @@ class E343DrumNoteOffRtTest {
 
     private class Run(val usb: List<RtRig.Wr>, val engine: List<RtRig.Ev>, val marks: Map<String, Long>, val report: String, val openAfter: Int)
 
-    private fun run(st: ParsedStyle, sec: String, mode: E343DrumNoteOffMode, gate: Int = 120, totalMs: Long, during: (RtRig, MutableMap<String, Long>) -> Unit = { _, _ -> }): Run {
+    private fun run(st: ParsedStyle, sec: String, mode: E343DrumNoteOffMode, gate: Int = 120, totalMs: Long, wired: Boolean = true, during: (RtRig, MutableMap<String, Long>) -> Unit = { _, _ -> }): Run {
         val r = RtRig(true, 120, st)
         val marks = HashMap<String, Long>()
         try {
-            E343DrumNoteOff.probe = r.midi::midiOutNoteProbe
+            E343DrumNoteOff.probe = if (wired) r.midi::midiOutNoteProbe else null   // unwired = the baseline path (experiment can never act)
             E343DrumNoteOff.setGate(gate); E343DrumNoteOff.setMode(mode); E343DrumNoteOff.resetStats()
             r.brain.setTempo(tempo)
             r.brain.selectSection(ArrangerSection.valueOf(sec))
@@ -168,10 +168,10 @@ class E343DrumNoteOffRtTest {
     @Test fun rositaIsOutOfScopeInEveryMode() {
         val st = style(); assumeTrue("ROSITA / HardRock2 run only (any Style other than EnglishWaltz2)", !st.fileName.contains("EnglishWaltz2"))
         val base = run(st, "MainA", E343DrumNoteOffMode.LEGACY, totalMs = 1500)
-        for (m in listOf(E343DrumNoteOffMode.AUTHORED, E343DrumNoteOffMode.SHORT_GATE)) {
-            val r = run(st, "MainA", m, gate = 40, totalMs = 1500)
+        for ((m, gate) in listOf(E343DrumNoteOffMode.AUTHORED to 120, E343DrumNoteOffMode.SHORT_GATE to 40, E343DrumNoteOffMode.SHORT_GATE to 120)) {
+            val r = run(st, "MainA", m, gate = gate, totalMs = 1500)
             val stop = r.marks["stop"]!!
-            row("OUT-OF-SCOPE style=${st.fileName} mode=${m.name} drumOffs=${r.offsBefore(8, stop).size + r.offsBefore(9, stop).size} ${r.report}")
+            row("OUT-OF-SCOPE style=${st.fileName} mode=${m.name} gate=${gate}ms drumOffs=${r.offsBefore(8, stop).size + r.offsBefore(9, stop).size} ${r.report}")
             assertEquals("ROSITA ${m.name}: no drum NOTE OFF", 0, r.offsBefore(8, stop).size + r.offsBefore(9, stop).size)
             assertEquals("nothing tracked", 0, stat(r, "tracked"))
             for (c in 8..9) {
@@ -179,5 +179,79 @@ class E343DrumNoteOffRtTest {
                 val n = minOf(a.size, b.size); assertEquals("ROSITA ch${c + 1} NOTE ON stream unchanged", a.take(n), b.take(n))
             }
         }
+    }
+
+    // ---------------- Checkpoint regressions for the user-verified setting: EnglishWaltz2, SHORT_GATE 120 ms ----------------
+
+    private fun perChannel(r: Run, chs: IntRange) = chs.associateWith { c -> r.ch(c).filter { it.t < r.marks["stop"]!! && (it.status and 0xF0) != 0xF0 }.map { Triple(it.status, it.d1, it.d2) } }
+
+    @Test fun shortGate120ClosesNote26After120msAndLeavesEverythingElseAsLegacy() {
+        val st = ew2()
+        val legacy = run(st, "MainA", E343DrumNoteOffMode.LEGACY, totalMs = 1500)
+        val r = run(st, "MainA", E343DrumNoteOffMode.SHORT_GATE, gate = 120, totalMs = 1500)
+        val stop = r.marks["stop"]!!
+        val g = gatesMs(r, 26)
+        row("SHORT_GATE 120ms MainA gatesMs=${g.take(12)} ${r.report}")
+        assertPaired(r, 26, "SHORT_GATE 120")
+        assertTrue("NOTE OFFs were sent", g.size >= 6)
+        assertTrue("gate ~120 ms, earlier than the authored ~212 ms at this tempo (host jitter allowed): $g", g.all { it in 105L..175L })
+        assertTrue("the 120 ms gate fired (not the authored NOTE OFF)", stat(r, "offGate") >= 6)
+        assertTrue("only note 26 gets a NOTE OFF on ch10", r.offsBefore(9, stop).all { it.d1 == 26 })
+        assertEquals("Rhythm1 untouched", 0, r.offsBefore(8, stop).size)
+        val lo = legacy.onsBefore(9, legacy.marks["stop"]!!).map { it.d1 to it.d2 }; val ao = r.onsBefore(9, stop).map { it.d1 to it.d2 }
+        val n = minOf(lo.size, ao.size); assertTrue(n >= 20)
+        assertEquals("NOTE ON stream (notes, velocities, order) unchanged", lo.take(n), ao.take(n))
+        fun setup(x: Run) = x.usb.filter { (it.status and 0xF0) == 0xC0 || ((it.status and 0xF0) == 0xB0 && it.d1 != 123) }.map { Triple(it.status, it.d1, it.d2) }
+        assertEquals("Bank Select / Program Change / controllers unchanged", setup(legacy), setup(r))
+        fun eng(x: Run) = x.engine.filter { it.ch in 8..9 && it.t < x.marks["stop"]!! }.map { it.kind to it.note }
+        val le = eng(legacy); val re = eng(r); val m = minOf(le.size, re.size); assertTrue(m >= 20)
+        assertEquals("internal engine (BASSMIDI side) drum events identical", le.take(m), re.take(m))
+        assertEquals("internal engine never receives a drum NOTE OFF", 0, r.engine.count { it.ch in 8..9 && it.kind == 'F' && it.t < stop })
+    }
+
+    @Test fun legacyIsIdenticalToTheUnwiredBaselinePathOnEveryStyleChannel() {
+        val st = ew2()
+        val baseline = run(st, "MainA", E343DrumNoteOffMode.LEGACY, totalMs = 1500, wired = false)
+        val legacy = run(st, "MainA", E343DrumNoteOffMode.LEGACY, totalMs = 1500)
+        val b = perChannel(baseline, 4..15); val l = perChannel(legacy, 4..15)
+        for (c in 4..15) {
+            val n = minOf(b[c]!!.size, l[c]!!.size)
+            assertEquals("ch${c + 1}: LEGACY wire == baseline wire", b[c]!!.take(n), l[c]!!.take(n))
+        }
+        row("LEGACY == baseline on ch5..16: " + (4..15).joinToString(" ") { "ch${it + 1}=${minOf(b[it]!!.size, l[it]!!.size)}" })
+        assertEquals(0, legacy.offsBefore(9, legacy.marks["stop"]!!).size)
+    }
+
+    @Test fun englishWaltz3ByNameIsNeverTouchedEvenWithTheSavedShortGate120() {
+        // The user's EnglishWaltz3 file is not in the repository; the same drum data under an EnglishWaltz3 file name proves the scope is by Style.
+        val st = ew2().copy(fileName = "EnglishWaltz3.S520.prs")
+        val r = run(st, "MainA", E343DrumNoteOffMode.SHORT_GATE, gate = 120, totalMs = 1500)
+        val stop = r.marks["stop"]!!
+        row("EnglishWaltz3 (name) SHORT_GATE 120: drumOffs=${r.offsBefore(8, stop).size + r.offsBefore(9, stop).size} on26=${r.onsBefore(9, stop).count { it.d1 == 26 }} ${r.report}")
+        assertTrue("note 26 is played", r.onsBefore(9, stop).count { it.d1 == 26 } >= 6)
+        assertEquals("no drum NOTE OFF", 0, r.offsBefore(8, stop).size + r.offsBefore(9, stop).size)
+        assertEquals("nothing tracked", 0, stat(r, "tracked"))
+    }
+
+    @Test fun keyboardMidiInLeftRightSplitAndAcmpAreUnchangedByShortGate120() {
+        val st = ew2()
+        // LEFT chord below the default split (54) drives ACMP; RIGHT notes above it. Same input in both runs.
+        val play: (RtRig, MutableMap<String, Long>) -> Unit = { rig, _ ->
+            Thread.sleep(150); listOf(48, 52, 55).forEach { rig.noteOn(it) }                      // C major, LEFT
+            Thread.sleep(250); listOf(72, 76).forEach { rig.noteOn(it, 100) }; Thread.sleep(200); listOf(72, 76).forEach { rig.noteOff(it) }
+            Thread.sleep(200); listOf(48, 52, 55).forEach { rig.noteOff(it) }
+            Thread.sleep(50); listOf(45, 48, 52).forEach { rig.noteOn(it) }                        // A minor, LEFT
+            Thread.sleep(400); listOf(45, 48, 52).forEach { rig.noteOff(it) }
+        }
+        val legacy = run(st, "MainA", E343DrumNoteOffMode.LEGACY, totalMs = 1800, during = play)
+        val r = run(st, "MainA", E343DrumNoteOffMode.SHORT_GATE, gate = 120, totalMs = 1800, during = play)
+        fun kb(x: Run) = (0..3).associateWith { c -> x.engine.filter { it.ch == c && it.t < x.marks["stop"]!! }.map { it.kind to it.note } }
+        assertEquals("RIGHT/LEFT engine events (MIDI IN -> split -> parts) identical", kb(legacy), kb(r))
+        val lk = perChannel(legacy, 0..3); val rk = perChannel(r, 0..3)
+        assertEquals("RIGHT/LEFT MIDI OUT bytes identical", lk, rk)
+        fun acmp(x: Run) = (10..15).associateWith { c -> x.engine.filter { it.ch == c && it.kind == 'O' && it.t < x.marks["stop"]!! }.map { it.note }.toSortedSet() }
+        assertEquals("ACMP chord-following parts play the same pitches", acmp(legacy), acmp(r))
+        row("KEYBOARD/SPLIT/ACMP unchanged: rightLeft=" + (0..3).joinToString(" ") { "ch${it + 1}:${kb(r)[it]!!.size}" } + " acmp=" + acmp(r).values.sumOf { it.size } + " pitches")
+        assertTrue("the chord really drove ACMP", acmp(r).values.any { it.isNotEmpty() })
     }
 }

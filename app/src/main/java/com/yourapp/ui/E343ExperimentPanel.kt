@@ -49,7 +49,7 @@ data class E343ExperimentUiState(
 
 object E343ExperimentTags {
     const val PANEL = "e343.panel"; const val CLOSE = "e343.close"; const val SCOPE = "e343.scope"; const val ACTIVE = "e343.active"
-    const val STATS = "e343.stats"; const val RESET = "e343.reset"
+    const val STATS = "e343.stats"; const val RESET = "e343.reset"; const val VERIFIED = "e343.verified"
     fun mode(name: String) = "e343.mode.$name"
     fun gate(ms: Int) = "e343.gate.$ms"
 }
@@ -82,7 +82,7 @@ fun E343ExperimentContent(
         Row(Modifier.fillMaxWidth().background(Panel).padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("E343 DRUM NOTE OFF EXPERIMENT", color = Amber, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                Text("Diagnostic only, not a fix · EnglishWaltz2 · Rhythm 2 (ch 10) · note 26 · MIDI OUT only · resets to LEGACY on app restart", color = Dim, fontSize = 12.sp)
+                Text("EnglishWaltz2 · Rhythm 2 (ch 10) · note 26 · MIDI OUT only · the choice is saved; LEGACY = rollback", color = Dim, fontSize = 12.sp)
             }
             BigButton("CLOSE", E343ExperimentTags.CLOSE, color = Red, minWidth = 110, onClick = onClose)
         }
@@ -97,6 +97,8 @@ fun E343ExperimentContent(
             }
             Text("LEGACY = old behaviour (no drum NOTE OFF) · AUTHORED = NOTE OFF at the Style's own length (~1 beat) · SHORT_GATE = NOTE OFF after the gate below",
                 color = Dim, fontSize = 12.sp)
+            Text("Verified on PSR-E343 (user test): SHORT_GATE 120 ms sounds normal; LEGACY and AUTHORED keep the 'tres-tres-tres'. Other Styles are never changed.",
+                color = Color(0xFF4CD37B), fontSize = 12.sp, modifier = Modifier.testTag(E343ExperimentTags.VERIFIED))
             Text("GATE for SHORT_GATE" + (if (state.mode != "SHORT_GATE") " (used only in SHORT_GATE)" else ""), color = Dim, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 state.gates.forEach { g -> BigButton("$g ms", E343ExperimentTags.gate(g), selected = state.gateMs == g, minWidth = 96) { onGate(g) } }

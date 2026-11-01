@@ -1355,8 +1355,25 @@ class MainViewModel @Inject constructor(
     fun e343ExperimentUi(): E343ExperimentUiState = com.yourapp.yamahaarranger.arranger.E343DrumNoteOff.snapshot().let { x ->
         E343ExperimentUiState(x.mode, x.gateMs, x.gates, x.styleName, x.styleInScope, x.routerWired, x.tracked, x.offAuthored, x.offGate, x.offRetrigger, x.offRelease, x.dropped, x.open)
     }
-    fun e343SetMode(name: String) { com.yourapp.yamahaarranger.arranger.E343DrumNoteOff.setModeByName(name) }
-    fun e343SetGate(ms: Int) { com.yourapp.yamahaarranger.arranger.E343DrumNoteOff.setGate(ms); DebugLog.add("E343 DRUM NOTE OFF gate=${ms}ms") }
+    fun e343SetMode(name: String) { if (com.yourapp.yamahaarranger.arranger.E343DrumNoteOff.setModeByName(name)) persistE343() }
+    fun e343SetGate(ms: Int) { com.yourapp.yamahaarranger.arranger.E343DrumNoteOff.setGate(ms); DebugLog.add("E343 DRUM NOTE OFF gate=${ms}ms"); persistE343() }
+    // Saved E343 experiment choice (e343_drum_noteoff.txt next to keyboard_input.txt). No file / unreadable / invalid -> LEGACY + 120 ms.
+    // The saved mode still acts only on EnglishWaltz2, Rhythm 2, note 26, MIDI OUT (scope is in code, never in the file).
+    private val e343File by lazy { java.io.File(contentResolver.browserMemoryPath().toFile().parentFile, "e343_drum_noteoff.txt") }
+    private fun persistE343() {
+        val text = com.yourapp.yamahaarranger.arranger.E343DrumNoteOff.encodeSetting()
+        viewModelScope.launch(Dispatchers.IO) {
+            try { val tmp = java.io.File(e343File.path + ".tmp"); tmp.writeText(text); if (!tmp.renameTo(e343File)) { e343File.writeText(text); tmp.delete() } }
+            catch (e: Exception) { DebugLog.add("E343 experiment setting not saved: ${e.javaClass.simpleName}") }
+        }
+    }
+    init {
+        viewModelScope.launch(Dispatchers.IO) {
+            val text = try { if (e343File.isFile && e343File.length() <= 4096) e343File.readText() else null } catch (e: Exception) { null }
+            val m = com.yourapp.yamahaarranger.arranger.E343DrumNoteOff.restoreSetting(text)
+            DebugLog.add("E343 DRUM NOTE OFF restored mode=${m.name} gate=${com.yourapp.yamahaarranger.arranger.E343DrumNoteOff.gateMs}ms (acts on EnglishWaltz2 only)")
+        }
+    }
     fun e343ResetStats() { com.yourapp.yamahaarranger.arranger.E343DrumNoteOff.resetStats() }
     fun logRightInputProbe() { DebugLog.add(com.yourapp.yamahaarranger.audio.RightInputProbe.report()) }
 

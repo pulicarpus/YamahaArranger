@@ -94,4 +94,28 @@ class E343DrumNoteOffUnitTest {
         E343DrumNoteOff.styleName = "ROSITA.STY"; assertFalse(E343DrumNoteOff.snapshot().styleInScope)
         E343DrumNoteOff.probe = null; assertFalse(E343DrumNoteOff.snapshot().routerWired)
     }
+    @Test fun savedSettingRoundTripsAndAnythingInvalidFallsBackToLegacy120() {
+        E343DrumNoteOff.setModeByName("SHORT_GATE"); E343DrumNoteOff.setGate(120)
+        val saved = E343DrumNoteOff.encodeSetting()
+        assertEquals("mode=SHORT_GATE\ngate=120\n", saved)
+        E343DrumNoteOff.setModeByName("LEGACY"); E343DrumNoteOff.setGate(40)
+        assertEquals(Mode.SHORT_GATE, E343DrumNoteOff.restoreSetting(saved)); assertEquals(120, E343DrumNoteOff.gateMs)
+        for (bad in listOf(null, "", "garbage", "mode=ALL_DRUMS\ngate=120", "mode=short_gate\ngate=120", "gate=120")) {
+            E343DrumNoteOff.setModeByName("SHORT_GATE")
+            assertEquals("'$bad' -> LEGACY", Mode.LEGACY, E343DrumNoteOff.restoreSetting(bad))
+        }
+        assertEquals(Mode.SHORT_GATE, E343DrumNoteOff.restoreSetting("mode=SHORT_GATE\ngate=999")); assertEquals("gate not in the list -> 120", 120, E343DrumNoteOff.gateMs)
+        assertEquals(Mode.AUTHORED, E343DrumNoteOff.restoreSetting("mode=AUTHORED\ngate=80")); assertEquals(80, E343DrumNoteOff.gateMs)
+        assertFalse("the file never carries a scope", E343DrumNoteOff.encodeSetting().contains("EnglishWaltz", ignoreCase = true))
+    }
+    @Test fun savedShortGateStillOnlyActsOnEnglishWaltz2NotEnglishWaltz3() {
+        E343DrumNoteOff.restoreSetting("mode=SHORT_GATE\ngate=120")
+        assertTrue(E343DrumNoteOff.inScope(9, 26))
+        for (other in listOf("EnglishWaltz3.S520.prs", "EnglishWaltz3.sty", "ENGLISHWALTZ1.STY", "ROSITA.STY", "HardRock2.S578.prs")) {
+            E343DrumNoteOff.styleName = other
+            assertFalse("$other must be out of scope", E343DrumNoteOff.inScope(9, 26))
+            play(26); assertEquals("$other: nothing tracked", 0, E343DrumNoteOff.openCount())
+        }
+        assertTrue("no NOTE OFF was ever sent for the other Styles", wire.none { it.startsWith("OFF") })
+    }
 }

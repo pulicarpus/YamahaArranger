@@ -41,6 +41,7 @@ class E343ExperimentPanelTest {
             onNodeWithTag(T.CLOSE).assertIsDisplayed().assertHeightIsAtLeast(48.dp)          // fixed header: visible without scrolling
             for (tag in everyControl(inScope)) onNodeWithTag(tag).performScrollTo().assertIsDisplayed().assertHeightIsAtLeast(48.dp)
             onNodeWithTag(T.STATS).performScrollTo().assertIsDisplayed()
+            onNodeWithTag(T.VERIFIED).performScrollTo().assertIsDisplayed().assertTextContains("SHORT_GATE 120 ms", substring = true)
             onNodeWithTag(T.CLOSE).assertIsDisplayed()                                           // still visible after scrolling the body
             println("E343UI size=$name ${w}x$h dp: CLOSE + 3 modes + 5 gates + stats + reset reachable, buttons >= 48 dp")
         }

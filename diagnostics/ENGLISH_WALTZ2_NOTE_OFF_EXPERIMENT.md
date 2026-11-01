@@ -40,7 +40,7 @@ Objek `E343DrumNoteOff` (class `E343DrumNoteOffExperiment`, di `StyleSequencer.k
 
 (Chip lama "E343 26 OFF / GATE" di versi `95f6600` ada di kode tetapi tidak terlihat; lihat §8.)
 
-Mode tidak disimpan: setiap aplikasi dibuka, mode kembali ke LEGACY.
+Mode dan gate disimpan sejak checkpoint §11 (tanpa file atau file rusak → LEGACY + 120 ms). Sebelum checkpoint itu (APK `f6b732f` dan lebih lama), mode kembali ke LEGACY setiap aplikasi dibuka.
 
 | Mode | Perilaku |
 |---|---|
@@ -201,7 +201,15 @@ Cache yang dipakai hanya dependensi Gradle (berdasarkan file Gradle) dan JAR uji
 
 **Full Validation tidak diubah isinya** (`style-voice-editor.yml`, semua tes tetap). Perubahannya hanya: timeout host 100 m (`95f6600`) dan tambahan run HardRock2 di langkah eksperimen. Workflow ini berjalan terpisah pada push yang sama. Belum diparalelkan, karena memecah job host lama butuh restrukturisasi yang lebih besar; itu usulan terpisah.
 
-QUICK_RESULT
+**Hasil Quick APK:**
+* Run #1 [`41316193228`](https://github.com/pulicarpus/YamahaArranger/actions/runs/41316193228) (`e606786`): **gagal** karena dua penyebab dari log.
+  - Upload artifact ditolak karena nama artifact berisi `/` dari nama branch. APK-nya sendiri sudah terbangun dan lolos verifikasi.
+  - `:compileKotlin` di `tools/ui_preview` gagal sebelum tes jalan, karena `E343Compat` dan `StyleEditorNavigation` belum ada di daftar sumber renderer.
+  - Diperbaiki di `f6b732f`.
+* Run #2 [`41316937048`](https://github.com/pulicarpus/YamahaArranger/actions/runs/41316937048) (`f6b732f`, workflow_dispatch): **semua hijau**.
+  - Total **3 m 42 s**: apk 3 m 30 s (compile 2 m 31 s), quick-tests 2 m 42 s, ui-test 1 m 32 s (tes UI desktop lulus), report hijau.
+  - Artifact `E343-QUICK-APK-experiment-e343-drum-note-off-f6b732f3e1718fbfa5748c41c4449aa6388cd1fd`. **APK inilah yang diuji pengguna di Redmi Pad + PSR-E343 (§11).**
+* Pembanding: Full Validation untuk menghasilkan APK membutuhkan ~63 menit (run #46).
 
 
 ## 10. Tes di PSR-E343 (yang dibutuhkan dari pengguna)
@@ -212,6 +220,71 @@ QUICK_RESULT
 5. Uji juga MainC (swirl panjang yang memang ditulis Style), Fill, STOP di tengah, dan ganti section.
 6. Kirim angka statistik di halaman E343 (atau RIGHT DIAG → **E343 OFF STATS** / **MIDI OUT STATE**), beserta penilaian Anda per mode.
 6b. Kontrol: muat ROSITA, buka halaman E343. Harus tertulis **"NOT APPLICABLE to the current Style 'ROSITA…'"**, dan ROSITA harus terdengar sama di semua mode.
-7. Kembalikan ke LEGACY setelah selesai (atau tutup aplikasi; mode tidak disimpan).
+7. Mode dan gate disimpan (sejak checkpoint §11). Untuk kembali ke perilaku lama, pilih **LEGACY** di halaman E343.
 
 Keputusan setelah itu: jika AUTHORED menghilangkan masalah tanpa merusak irama, langkah berikutnya adalah memperluas dengan hati-hati, juga di branch eksperimen terpisah. Kandidatnya: not 28 Brush Tap Swirl (juga ditahan oleh Style), lalu opsi per Style. **Tidak ada perluasan ke seluruh drum atau seluruh Style tanpa bukti.**
+
+## 11. Checkpoint: SHORT_GATE 120 ms untuk EnglishWaltz2 (hasil perangkat nyata)
+**Baseline:** `9ae2089` (audit E343 + laporan EnglishWaltz2). Eksperimen dimulai di `8d9a9e8`; APK yang diuji: `f6b732f` (Quick run #2). Checkpoint ini: lihat commit sesudah `f6b732f` di branch ini.
+
+**Hasil uji fisik pengguna** (Redmi Pad + PSR-E343 sebagai tone generator lewat USB MIDI, EnglishWaltz2.S519):
+| Mode | Hasil di PSR-E343 |
+|---|---|
+| LEGACY | "tres-tres-tres" masih mengganggu |
+| AUTHORED | terdengar sama seperti LEGACY |
+| **SHORT_GATE 120 ms** | **drum normal** |
+
+Halaman E343 EXPERIMENT bisa dipakai di Redmi Pad. PSR-E343 merespons NOTE OFF pada Brush Swirl (not 26). Pengguna memutuskan **tidak** memperluas ke EnglishWaltz3, dan keputusan itu dihormati.
+
+**Kenapa 120 ms, dan kenapa AUTHORED tidak membantu** (dihitung dari file Style; tempo meta 666666 µs/ketukan = **90 BPM**, birama 3/4):
+* AUTHORED mematikan swirl setelah 1900/1920 ketukan = **660 ms**, lalu swirl berikutnya mulai **6,9 ms** kemudian. Bagi telinga, ini sama dengan LEGACY: swirl tetap berbunyi hampir terus-menerus.
+* SHORT_GATE 120 ms = **18 % dari satu ketukan**. Swirl menjadi aksen pendek per ketukan (velocity 49/39/29 tetap seperti ditulis Style), dengan jeda jelas sebelum ketukan berikutnya. Irama waltz tetap utuh.
+* 120 ms adalah nilai yang diuji dan dinilai normal oleh pengguna. Nilai gate lain belum dinilai di perangkat.
+
+**Cakupan tepat** (dikunci di kode dan diperiksa guard):
+* nama Style mengandung `EnglishWaltz2`;
+* Rhythm 2 (channel 10), not Style 26 (Brush Swirl);
+* output MIDI OUT saja.
+
+Yang **tidak** berubah: Rhythm1, not drum lain, drum note map (OFF memakai nomor yang benar-benar dikirim), Bank Select/Program Change, velocity, tempo, CASM, BASSMIDI internal, file Style, dan Style lain termasuk **EnglishWaltz3**.
+
+**Pengamanan pilihan (perubahan checkpoint ini):**
+* Pilihan mode dan gate **disimpan** di `e343_drum_noteoff.txt`, satu folder dengan `keyboard_input.txt`. Penulisan atomik (file tmp lalu rename).
+* Isinya hanya `mode=` dan `gate=`. Scope **tidak pernah** disimpan di file.
+* Pemulihan ketat: file tidak ada, tak terbaca, lebih dari 4 KB, atau isinya tidak valid → **LEGACY** + 120 ms. Gate di luar 40/80/120/200/300 → 120 ms.
+* **Default global tetap LEGACY.** Instalasi baru, atau tanpa file, tidak berubah sama sekali.
+* Setelah pengguna memilih SHORT_GATE (gate 120 ms adalah default), pilihan itu tetap aktif setelah aplikasi dibuka ulang. Pilihan ini **hanya** berlaku untuk EnglishWaltz2 (scope di kode). Untuk Style lain, halaman E343 menulis "NOT APPLICABLE".
+* Ketiga mode tetap bisa dipilih untuk perbandingan.
+* Halaman E343 kini menampilkan catatan hasil uji ("Verified on PSR-E343 (user test): SHORT_GATE 120 ms sounds normal …").
+
+**Rollback ke LEGACY:** RIGHT DIAG → **E343 EXPERIMENT ▸** → **LEGACY**. Pilihan itu langsung berlaku: not 26 yang sedang berbunyi dimatikan sekali, lalu perilaku kembali ke baseline. Pilihan LEGACY juga ikut tersimpan. Rollback total: hapus `e343_drum_noteoff.txt`, atau pasang APK baseline.
+
+**Audit implementasi (bukti otomatis, host, rantai produksi, tempo uji 280 BPM):**
+| Kontrak | Bukti |
+|---|---|
+| SHORT_GATE 120 ms memotong not 26 di MIDI OUT | `shortGate120…`: gate **124, 120, 120, 120, 120, 120, 120 ms**; `offGate=7`; lebih awal dari AUTHORED (~212 ms pada tempo uji) |
+| Pairing ON/OFF, tidak ada stuck note | `assertPaired` pada setiap tes (ON tidak pernah tumpang tindih, setiap ON ditutup, ledger kosong setelah STOP); retrigger ditutup lebih dulu (unit test) |
+| Transisi section / STOP / disconnect / ganti mode | OFF saat transisi (MainC→MainA), OFF saat STOP sebelum CC123 lama, `dropped=1` dan 0 OFF yatim setelah MIDI OUT dimatikan lalu dinyalakan, OFF dalam 0 ms saat ganti mode |
+| LEGACY identik dengan baseline | `legacyIsIdenticalToTheUnwiredBaselinePath…`: byte MIDI OUT ch5–16 sama dengan jalur tanpa eksperimen; 0 NOTE OFF drum |
+| BASSMIDI internal tidak terpengaruh | event engine drum (ON/OFF, not, urutan) identik dengan LEGACY; engine tidak pernah menerima NOTE OFF drum |
+| ROSITA / HardRock2 tidak terpengaruh | AUTHORED, SHORT_GATE 40 ms, dan **SHORT_GATE 120 ms**: 0 NOTE OFF drum, `tracked=0`, aliran NOTE ON sama |
+| EnglishWaltz3 tidak terpengaruh | file EW3 tidak ada di repo; data EW2 dengan nama `EnglishWaltz3.S520.prs` + SHORT_GATE 120: not 26 dimainkan 8×, **0 NOTE OFF**, `tracked=0`; unit test nama lain juga di luar scope |
+| MIDI IN / split / ACMP / LEFT tidak berubah | input sama (akor LEFT C lalu Am, not RIGHT): event engine ch1–4 dan byte MIDI OUT ch1–4 identik, nada ACMP sama; `MidiInSplitRtTest` OK (7), `TransposeAcmpLeftTest` OK (18) |
+| Penyimpanan aman | unit test: round-trip, enam input rusak → LEGACY, gate 999 → 120, file tanpa scope |
+
+Hasil lokal checkpoint ini:
+* CPV JVM **334 OK**;
+* `E343DrumNoteOffRtTest` **OK 13** pada EnglishWaltz2, HardRock2, dan ROSITA (tes khusus Style tertentu melewati diri di Style lain);
+* `MidiInSplitRtTest` OK 7, `TransposeAcmpLeftTest` OK 18;
+* guard PASS.
+
+Hasil CI: lihat laporan akhir di percakapan, atau ringkasan run Quick APK untuk commit ini.
+
+**Risiko yang belum diuji:**
+* Hanya Redmi Pad + PSR-E343 + EnglishWaltz2. Modul MIDI lain belum diuji. Gate selain 120 ms belum dinilai di perangkat.
+* Pengujian manusia dilakukan pada section yang dimainkan pengguna. Belum ada konfirmasi di perangkat untuk semua section (MainC dan FillCC berisi swirl panjang; Intro/Ending tidak memakai not 26).
+* Timing gate memakai timer terpisah (presisi ms di host). Jitter pada perangkat Android belum diukur.
+* Mute/solo channel 10 saat swirl berbunyi dilepas oleh router lama (`releaseOwnedNotes`). Kasus ini belum diuji dengan telinga.
+* Penyimpanan baru diuji lewat unit test codec. Siklus tutup/buka aplikasi di perangkat belum diuji.
+* Full Validation (~60 m) berjalan terpisah. Statusnya dilaporkan tersendiri dan **bukan** syarat APK eksperimen.
+
