@@ -166,7 +166,7 @@ jobs:
           if-no-files-found: warn
 
   ui-test:
-    name: E343 page UI test (desktop Compose, Redmi Pad landscape sizes) + PNG
+    name: UI tests (E343 page + DATA CONTROL rotary knob, desktop Compose, Redmi Pad landscape sizes) + PNG
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -186,7 +186,7 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get install -y -qq fontconfig fonts-dejavu-core >/dev/null || true
-          gradle -p tools/ui_preview --no-daemon test --tests E343ExperimentPanelTest --stacktrace 2>&1 | tee ui-test.log
+          gradle -p tools/ui_preview --no-daemon test --tests E343ExperimentPanelTest --tests RotaryDataKnobTest --stacktrace 2>&1 | tee ui-test.log
           ls -la tools/ui_preview/build/png-e343
       - uses: actions/upload-artifact@v4
         if: always()
@@ -195,6 +195,7 @@ jobs:
           path: |
             ui-test.log
             tools/ui_preview/build/png-e343/*.png
+            tools/ui_preview/build/png-knob/*.png
             tools/ui_preview/build/reports/tests/test/**
           if-no-files-found: warn
 

@@ -819,6 +819,17 @@ class MainViewModel @Inject constructor(
         _transpose.value = value
         arrangerBrain.setKeyboardTranspose(value)
     }
+    /**
+     * DATA CONTROL rotary knob: [steps] detents on [param]. The current value is read from the real state (ArrangerBrain tempo,
+     * requested transpose, release knob), clamped like the existing +/- paths, and sent through the same calls, only when it changes.
+     */
+    fun dataKnobSteps(param: String, steps: Int) {
+        when (param) {
+            "TEMPO" -> DataParamSpec.TEMPO.target(arrangerBrain.state.value.tempoBpm, steps)?.let { arrangerBrain.setTempo(it) }
+            "TRANSPOSE" -> DataParamSpec.TRANSPOSE.target(_transpose.value, steps)?.let { _transpose.value = it; arrangerBrain.setKeyboardTranspose(it) }
+            "RELEASE" -> DataParamSpec.RELEASE.target(_releaseControl.value.knobValue, steps)?.let { v -> _releaseControl.update { it.copy(knobValue = v) } }
+        }
+    }
     fun onReleaseDown() { _releaseControl.update { it.step(-1) } }
     fun onReleaseUp() { _releaseControl.update { it.step(1) } }
     fun toggleRelease() { _releaseControl.update { it.toggle() } }

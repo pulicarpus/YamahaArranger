@@ -295,12 +295,11 @@ fun SxMainScreen(
                     Modifier.weight(.18f).fillMaxHeight(),
                     compact = compact,
                     selectedParameter = selectedDataParameter,
-                    parameterValue = when (selectedDataParameter) {
-                        "TEMPO" -> state.tempoBpm.toString()
-                        "TRANSPOSE" -> if (state.transpose >= 0) "+" + state.transpose else state.transpose.toString()
-                        "RELEASE" -> state.releaseTime.toString()
-                        else -> "—"
-                    },
+                    // every value comes from the app state (MainUiState); the knob and the buttons keep no copy
+                    values = mapOf("TEMPO" to state.tempoBpm, "TRANSPOSE" to state.transpose, "RELEASE" to state.releaseTime),
+                    transposePending = state.pendingTranspose != null,
+                    onSelect = { selectedDataParameter = it },
+                    onKnobSteps = { n -> viewModel.dataKnobSteps(selectedDataParameter, n) },
                     onStep = { delta ->
                         when (selectedDataParameter) {
                             "TEMPO" -> if (delta > 0) viewModel.onTempoUp() else viewModel.onTempoDown()
@@ -816,57 +815,23 @@ private fun SxSideMenu(
     modifier: Modifier,
     compact: Boolean,
     selectedParameter: String,
-    parameterValue: String,
+    values: Map<String, Int>,
+    transposePending: Boolean,
+    onSelect: (String) -> Unit,
+    onKnobSteps: (Int) -> Unit,
     onStep: (Int) -> Unit,
     onPickStyle: () -> Unit
 ) {
     Surface(color = SxPanel, shape = RoundedCornerShape(5.dp), modifier = modifier.border(1.dp, Color(0xFF303942), RoundedCornerShape(5.dp))) {
-        Column(Modifier.fillMaxSize().padding(if (compact) 5.dp else 7.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("DATA CONTROL", color = SxBlue, fontSize = if (compact) 8.sp else 9.sp, fontWeight = FontWeight.Bold, letterSpacing = .7.sp)
-            Text("TAP VALUE • DRAG", color = SxDim, fontSize = if (compact) 5.sp else 6.sp, maxLines = 1)
-            Spacer(Modifier.height(if (compact) 4.dp else 6.dp))
-            val dialSize = if (compact) 104.dp else 132.dp
-            Surface(
-                color = Color(0xFF080C10),
-                shape = androidx.compose.foundation.shape.CircleShape,
-                modifier = Modifier.size(dialSize)
-                    .border(if (compact) 3.dp else 4.dp, SxBlue, androidx.compose.foundation.shape.CircleShape)
-                    .draggable(
-                        state = androidx.compose.foundation.gestures.rememberDraggableState { delta ->
-                            if (kotlin.math.abs(delta) >= 1.5f) {
-                                onStep(if (delta < 0f) 1 else -1)
-                            }
-                        },
-                        orientation = androidx.compose.foundation.gestures.Orientation.Vertical
-                    )
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(selectedParameter, color = SxDim, fontSize = if (compact) 7.sp else 8.sp, fontWeight = FontWeight.Bold)
-                        Text(parameterValue, color = Color.White, fontSize = if (compact) 24.sp else 30.sp, fontWeight = FontWeight.Bold)
-                        Text("DATA", color = SxBlue, fontSize = if (compact) 6.sp else 7.sp, letterSpacing = 1.sp)
-                    }
-                }
-            }
-            Spacer(Modifier.height(if (compact) 4.dp else 6.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Button(onClick = { onStep(-1) }, modifier = Modifier.weight(1f).height(if (compact) 31.dp else 36.dp), contentPadding = PaddingValues(0.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF252D35))) { Text("−", fontSize = if (compact) 15.sp else 18.sp) }
-                Button(onClick = { onStep(1) }, modifier = Modifier.weight(1f).height(if (compact) 31.dp else 36.dp), contentPadding = PaddingValues(0.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF252D35))) { Text("+", fontSize = if (compact) 15.sp else 18.sp) }
-            }
-            Spacer(Modifier.height(if (compact) 5.dp else 7.dp))
-            Text("SELECTED", color = SxDim, fontSize = 5.sp, fontWeight = FontWeight.Bold)
-            Row(Modifier.fillMaxWidth().height(if (compact) 35.dp else 42.dp), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                listOf("TEMPO", "TRANSPOSE", "RELEASE").forEach { item ->
-                    val active = selectedParameter == item
-                    Surface(color = if (active) SxBlue else Color(0xFF1D2329), shape = RoundedCornerShape(3.dp), modifier = Modifier.fillMaxHeight().weight(1f).border(1.dp, if (active) SxGreen else Color(0xFF35404A), RoundedCornerShape(3.dp))) {
-                        Box(contentAlignment = Alignment.Center) { Text(item, color = Color.White, fontSize = if (compact) 5.sp else 6.sp, fontWeight = FontWeight.Bold) }
-                    }
-                }
-            }
+        androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize().padding(if (compact) 5.dp else 7.dp)) {
+        val knob = dataKnobSize(maxWidth, maxHeight, reservedBelow = (if (compact) 34 else 40).dp + 8.dp, compact = compact)   // STYLE SELECT + gap
+        Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+            DataControlSection(compact, selectedParameter, values, transposePending, onSelect, onKnobSteps, onStep, knobSize = knob)
             Spacer(Modifier.weight(1f))
             Surface(color = Color(0xFF1D2329), shape = RoundedCornerShape(3.dp), modifier = Modifier.fillMaxWidth().height(if (compact) 34.dp else 40.dp).clickable(onClick = onPickStyle).border(1.dp, Color(0xFF343C45), RoundedCornerShape(3.dp))) {
                 Box(contentAlignment = Alignment.Center) { Text("STYLE SELECT", color = Color.White, fontSize = if (compact) 6.sp else 7.sp, fontWeight = FontWeight.Bold) }
             }
+        }
         }
     }
 }
@@ -962,10 +927,6 @@ private fun SxCenterDisplay(
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     SxValue("CHORD", state.detectedChordLabel.ifBlank { "—" }, Modifier.weight(1f), null, null, compact)
-                    SxValue("TEMPO", state.tempoBpm.toString(), Modifier.weight(.8f), vm::onTempoDown, vm::onTempoUp, compact, selectedDataParameter == "TEMPO") { onDataParameterSelect("TEMPO") }
-                    // Pending transpose: the label shows what still sounds, the orange value is the request that waits for the next ACMP chord.
-                    SxValue(if (state.pendingTranspose != null) "NOW " + signed(state.activeTranspose) + " ▸ NEXT CHORD" else "TRANSPOSE", signed(state.transpose), Modifier.weight(.9f), vm::onTransposeDown, vm::onTransposeUp, compact, selectedDataParameter == "TRANSPOSE", state.pendingTranspose != null) { onDataParameterSelect("TRANSPOSE") }
-                    SxValue("RELEASE", state.releaseTime.toString(), Modifier.weight(.8f), vm::onReleaseDown, vm::onReleaseUp, compact, selectedDataParameter == "RELEASE") { onDataParameterSelect("RELEASE") }
                     TextButton(onClick = vm::toggleRelease, modifier = Modifier.weight(.7f).fillMaxHeight(), contentPadding = PaddingValues(1.dp)) {
                         Text(if (state.releaseEnabled) "RELEASE\nON" else "RELEASE\nOFF · 64", color = if (state.releaseEnabled) SxGreen else SxDim, fontSize = 8.sp)
                     }

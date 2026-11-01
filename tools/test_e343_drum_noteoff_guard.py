@@ -11,7 +11,9 @@ J = 'app/src/main/java/com/yourapp/'
 SEQ = J + 'yamahaarranger/arranger/StyleSequencer.kt'
 ALLOWED = {SEQ, J + 'midi/MidiMixerOutput.kt', J + 'midi/MidiInputManager.kt', J + 'arranger/ArrangerBrain.kt', J + 'ui/MainViewModel.kt',
            J + 'ui/RightVoiceDiagOverlay.kt', 'tests/fixtures/englishwaltz2/EnglishWaltz2.S519.prs',
-           J + 'ui/E343ExperimentPanel.kt', 'tools/ui_preview/build.gradle.kts', 'tools/ui_preview/src/test/kotlin/E343ExperimentPanelTest.kt'}
+           J + 'ui/E343ExperimentPanel.kt', 'tools/ui_preview/build.gradle.kts', 'tools/ui_preview/src/test/kotlin/E343ExperimentPanelTest.kt',
+           # HOME DATA CONTROL rotary knob (separate UI commit): UI files only
+           J + 'ui/SxMainScreen.kt', J + 'ui/RotaryKnobMath.kt', J + 'ui/RotaryDataKnob.kt', 'tools/ui_preview/src/test/kotlin/RotaryDataKnobTest.kt'}
 ALLOWED_PREFIX = ('tests/cpv/', 'tests/rtdiag/', 'docs/', 'diagnostics/', 'tools/test_', '.github/workflows/')
 def git(*a): return subprocess.check_output(['git', *a], cwd=ROOT, text=True)
 changed = set(git('diff', '--name-only', BASE, 'HEAD').split()) | set(git('diff', '--name-only', BASE).split()) | \
@@ -36,6 +38,14 @@ for label in ['RESET STATS', 'LOG PROBE', 'SF2 PITCH/FX', 'MIDI OUT STATE', 'CLE
     assert label in diag_new, 'RIGHT DIAG label missing: ' + label
 panel = (ROOT / J / 'ui/E343ExperimentPanel.kt').read_text()
 assert not re.search(r'^import com\.yourapp', panel, re.M) and 'viewModel' not in panel, 'the E343 page must stay portable (desktop-tested): no app imports'
+# DATA CONTROL knob: pure UI; it may only call the view model's dataKnobSteps / existing +- paths
+for f in [J + 'ui/RotaryKnobMath.kt', J + 'ui/RotaryDataKnob.kt']:
+    src = (ROOT / f).read_text()
+    for banned in ['midiInputManager', 'audioEngine', 'BASSMIDI', 'sendNoteO', 'E343DrumNoteOff', 'StyleSequencer', 'allNotesOff', 'viewModel']:
+        assert banned not in src, f + ' must stay pure UI: found ' + banned
+vm = (ROOT / J / 'ui/MainViewModel.kt').read_text()
+knob_fn = vm[vm.index('fun dataKnobSteps('):vm.index('fun onReleaseDown()')]
+assert 'arrangerBrain.setTempo(' in knob_fn and 'arrangerBrain.setKeyboardTranspose(' in knob_fn and 'knobValue = v' in knob_fn and '.target(' in knob_fn, 'knob must use the existing tempo / transpose / release paths and send only real changes'
 seq = (ROOT / SEQ).read_text()
 assert 'else midiInputManager.sendNoteOn(destinationChannel,midiNote,velocity)' in seq, 'LEGACY NOTE ON path must stay the same call'
 assert '@Volatile var mode = E343DrumNoteOffMode.LEGACY; private set' in seq, 'default must be LEGACY'

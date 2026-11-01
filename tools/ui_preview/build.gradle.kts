@@ -17,6 +17,7 @@ dependencies {
 tasks.withType<Test> {
     systemProperty("java.awt.headless", "true")
     systemProperty("e343.png.dir", layout.buildDirectory.dir("png-e343").get().asFile.path)
+    systemProperty("knob.png.dir", layout.buildDirectory.dir("png-knob").get().asFile.path)
     testLogging { events("passed", "failed", "skipped"); exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL; showStandardStreams = true }
 }
 sourceSets {
@@ -33,6 +34,7 @@ sourceSets {
                 "com/yourapp/yamahaarranger/registration/RegistrationCodec.kt", "com/yourapp/yamahaarranger/registration/RegistrationModel.kt", "com/yourapp/yamahaarranger/audio/MixerConsoleState.kt",
                 "com/yourapp/ui/MetronomePanel.kt", "com/yourapp/yamahaarranger/audio/MetronomeModel.kt",
                 "com/yourapp/ui/E343ExperimentPanel.kt",
+                "com/yourapp/ui/RotaryKnobMath.kt", "com/yourapp/ui/RotaryDataKnob.kt",
                 // used by StyleVoiceEditorScreen.kt on this branch line (E343 audit, Style Editor BACK); pure Kotlin, no Android types
                 "com/yourapp/yamahaarranger/style/E343Compat.kt", "com/yourapp/yamahaarranger/style/StyleEditorNavigation.kt",
             )
