@@ -33,6 +33,8 @@ sourceSets {
                 "com/yourapp/yamahaarranger/registration/RegistrationCodec.kt", "com/yourapp/yamahaarranger/registration/RegistrationModel.kt", "com/yourapp/yamahaarranger/audio/MixerConsoleState.kt",
                 "com/yourapp/ui/MetronomePanel.kt", "com/yourapp/yamahaarranger/audio/MetronomeModel.kt",
                 "com/yourapp/ui/E343ExperimentPanel.kt",
+                // used by StyleVoiceEditorScreen.kt on this branch line (E343 audit, Style Editor BACK); pure Kotlin, no Android types
+                "com/yourapp/yamahaarranger/style/E343Compat.kt", "com/yourapp/yamahaarranger/style/StyleEditorNavigation.kt",
             )
         }
     }

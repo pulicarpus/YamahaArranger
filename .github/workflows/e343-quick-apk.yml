@@ -57,6 +57,7 @@ jobs:
           set -euo pipefail
           gradle --no-daemon --max-workers=2 assembleDebug --stacktrace 2>&1 | tee evidence/android-build.log
       - name: Verify APK = this commit, signature, ABIs and E343 experiment + UI inside
+        id: verify
         run: |
           set -euo pipefail
           short=$(git rev-parse --short=12 HEAD)
@@ -85,9 +86,11 @@ jobs:
           } > evidence/BUILD-INFO.txt
           cp diagnostics/ENGLISH_WALTZ2_NOTE_OFF_EXPERIMENT.md evidence/DEVICE-TEST.txt
           cat evidence/BUILD-INFO.txt
+          # artifact names may not contain '/' (branch names do): replace it
+          echo "artifact=E343-QUICK-APK-${GITHUB_REF_NAME//\//-}-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
         with:
-          name: E343-QUICK-APK-${{ github.ref_name }}-${{ github.sha }}
+          name: ${{ steps.verify.outputs.artifact }}
           path: |
             evidence/YamahaArranger-E343-QUICK-*.apk
             evidence/BUILD-INFO.txt
