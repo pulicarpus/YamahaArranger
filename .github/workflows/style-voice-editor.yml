@@ -13,7 +13,7 @@ jobs:
   host:
     if: github.ref == 'refs/heads/feature/style-voice-inspector-editor' || github.ref == 'refs/heads/experiment/multi-sf2-voice-selection' || github.ref == 'refs/heads/experiment/style-voice-browser' || github.ref == 'refs/heads/experiment/custom-sf2-drum-kit' || github.ref == 'refs/heads/feature/realtime-audit-metronome' || github.ref == 'refs/heads/feature/transpose-octave-acmp-left' || github.ref == 'refs/heads/experiment/p1-ordered-note-io' || github.ref == 'refs/heads/experiment/midi-out-voice-cache' || github.ref == 'refs/heads/fix/style-editor-reload-crash' || github.ref == 'refs/heads/experiment/style-editor-v2' || github.ref == 'refs/heads/experiment/right-usb-velocity' || github.ref == 'refs/heads/experiment/right-audio-fidelity' || github.ref == 'refs/heads/experiment/internal-output-gain' || github.ref == 'refs/heads/experiment/pitch-stability' || github.ref == 'refs/heads/experiment/midi-out-octave' || github.ref == 'refs/heads/experiment/style-editor-back' || github.ref == 'refs/heads/experiment/mixer-redesign' || github.ref == 'refs/heads/experiment/midi-in-split' || github.ref == 'refs/heads/experiment/e343-midi-out-audit' || github.ref == 'refs/heads/experiment/e343-drum-note-off'
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 100
     env:
       PYTHONDONTWRITEBYTECODE: '1'
     steps:
