@@ -3,6 +3,14 @@
 Branch `experiment/e343-midi-out-audit` (experiment only, not merged, no PR).
 Baseline: `a400482` (latest green build, split + MIDI IN). The last build the user explicitly confirmed playable was the mixer APK `9fb34c6`; `a400482` descends from it and differs only in MIDI IN / split work. Nothing here touches that behaviour.
 
+## Update 2026-11-01: official documents still NOT reachable
+Attempted (this session): Owner's Manual `https://usa.yamaha.com/files/download/other_assets/6/329476/psre343_en_om_b0.pdf` and MIDI Reference `https://usa.yamaha.com/files/download/other_assets/4/329464/psre343_en_mr_a0.pdf`.
+* `curl` through the session proxy: `CONNECT tunnel failed, response 403` (host denied by the environment network policy).
+* `WebFetch`: `getaddrinfo ENOTFOUND usa.yamaha.com` (host outside the allowed domains).
+Consequence: **no Voice List, no Drum Kit List, no MSB/LSB/PC table was extracted; `E343_VOICES.tsv` was NOT created.** No table was invented and no data from other Yamaha models was used. Every row below stays UNKNOWN; nothing was classified EXACT or UNSUPPORTED. Production mapping unchanged; no code change in this update.
+To unblock: add `usa.yamaha.com` under Allowed domains (Network access, cloud environment settings), or put the two PDFs in the repo (e.g. `docs/yamaha/`) / paste the Voice List and Drum Kit List pages.
+Planned once readable: extract MSB/LSB/PC (convert 1-based Data List numbers to 0-based), voice names with page provenance, drum kits with BOTH keyboard note names and MIDI note numbers (keep them in separate columns, verify the octave convention against the MIDI Reference), then classify HardRock2/ROSITA requests; investigate kit PC 86 (0-based, display 87) and bank 0/LSB 115 (DistGt) against the list.
+
 ## Verdict (honest)
 * The software path was audited with two real Styles. **No bug was found in what the app sends**: Bank MSB / LSB / Program Change are written in the right order and with exactly the values the Style (CASM) asks for, and drum notes on MIDI OUT are byte-for-byte the notes the Style authored.
 * Whether the PSR-E343 *has* the requested voices and drum kits is **UNKNOWN**. The Yamaha documents (MIDI Reference, Data List, Voice/Drum Kit List) could not be fetched from this session (usa.yamaha.com, manualslib.com not reachable). No bank / program / drum note was invented.
