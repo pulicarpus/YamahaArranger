@@ -700,6 +700,7 @@ class MainViewModel @Inject constructor(
     // Serialized by the shared fontRequests mutex, including cache writes.
     private var fontRequestSucceeded = false
 
+    init { com.yourapp.yamahaarranger.arranger.E343DrumNoteOff.probe = midiInputManager::midiOutNoteProbe } // read-only probe; the experiment stays LEGACY until switched in RIGHT DIAG
     init {
         audioEngine.onMixerControllers = midiInputManager::setMixerControllers
         audioEngine.onMixerMasterVolume = midiInputManager::setMixerMasterVolume
@@ -1345,6 +1346,11 @@ class MainViewModel @Inject constructor(
     /** What MIDI OUT has really been sent (per channel: Bank/Program, controllers, written notes); also copied to the debug log. */
     fun midiOutReport(): String = midiInputManager.midiOutReport().also { DebugLog.add(it) }
     fun resetMidiOutReport() { midiInputManager.resetMidiOutReport() }
+    /** EXPERIMENT (default LEGACY): PSR-E343 NOTE OFF for EnglishWaltz2 Rhythm 2 note 26 on MIDI OUT only. */
+    fun e343DrumNoteOffLabel(): String = com.yourapp.yamahaarranger.arranger.E343DrumNoteOff.let { "E343 26 OFF: " + it.mode.name + (if (it.mode == com.yourapp.yamahaarranger.arranger.E343DrumNoteOffMode.SHORT_GATE) " " + it.gateMs + "ms" else "") }
+    fun e343DrumNoteOffNextMode() { com.yourapp.yamahaarranger.arranger.E343DrumNoteOff.nextMode() }
+    fun e343DrumNoteOffNextGate() { com.yourapp.yamahaarranger.arranger.E343DrumNoteOff.nextGate() }
+    fun e343DrumNoteOffReport(): String = com.yourapp.yamahaarranger.arranger.E343DrumNoteOff.report().also { DebugLog.add(it) }
     fun logRightInputProbe() { DebugLog.add(com.yourapp.yamahaarranger.audio.RightInputProbe.report()) }
 
     fun resetRightDiagStats() {

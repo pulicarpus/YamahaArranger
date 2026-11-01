@@ -715,6 +715,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
             var remainingLoops = loopLimit
             while (true) {
                 val result = playOnce(active.section, active.ppq, masterTimelineTick, 0L)
+                E343DrumNoteOff.releaseAll("SECTION_END ${active.section.name}") // experiment only; no-op when nothing is open
                 masterTimelineTick = result.endTick
                 barClockStartedAtNanos = masterClockStartedAtNanos
 
@@ -797,7 +798,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
         barClockStartedAtNanos=0L
         if(stringTraceEnabled && synchronized(stringTraceLock){stringTrace.isNotEmpty()}) dumpStringTrace()
         // New session identity: staged-but-unexecuted note commands of the old session are skipped, in-flight ones finish before the global kill.
-        io.stopSession(noteLifecycleLock,{ activeTransposedNotes.clear() },{ audioEngine.allNotesOff(); midiInputManager.allNotesOff() })
+        io.stopSession(noteLifecycleLock,{ activeTransposedNotes.clear() },{ audioEngine.allNotesOff(); E343DrumNoteOff.releaseAll("STOP"); midiInputManager.allNotesOff() })
         com.yourapp.yamahaarranger.ui.DebugLog.add("⏹ STOP")
     }
 
@@ -1460,6 +1461,12 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
 
                 if(!s.event.isNoteOn){
                     if(!endScheduledNote(s.event.channel,s.event.note)) {
+                        // E343 drum NOTE OFF experiment: the Style's NOTE OFF of an in-scope drum note goes to MIDI OUT only (never to the engine). No-op in LEGACY.
+                        val offDst=policy?.destinationChannel?:s.event.channel
+                        if(E343DrumNoteOff.openCount()>0&&offDst==E343DrumNoteOffExperiment.CHANNEL&&isDrumDestination(offDst,policy?.voiceName.orEmpty())) {
+                            val offNote=s.event.note
+                            stageIo(offDst,offNote){ E343DrumNoteOff.authoredOff(offDst,offNote) }
+                        }
                         diagnostic("OFF_NO_ACTIVE_LEDGER", detail = "NOTE_OFF_FORWARDED=0 oneShotDrumMayBeNormal=1")
                     }
                     return@lifecycle
@@ -1515,7 +1522,10 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                 stageIo(destinationChannel,internalNote){
                     audioEngine.noteOnStyleChannel(destinationChannel,internalNote,velocity/127f,
                         sourceChannel,srcNote,diagBank,absoluteTick,diagId,sampled,traceChordId)
-                    midiInputManager.sendNoteOn(destinationChannel,midiNote,velocity)
+                    // E343 drum NOTE OFF experiment (LEGACY default = exactly the line below; MIDI OUT only, EnglishWaltz2 ch10 note 26 only)
+                    if(isDrumPart&&destinationChannel==E343DrumNoteOffExperiment.CHANNEL) E343DrumNoteOff.noteOn(destinationChannel,srcNote,midiNote,
+                        { midiInputManager.sendNoteOn(destinationChannel,midiNote,velocity) },{ n->midiInputManager.sendNoteOff(destinationChannel,n) })
+                    else midiInputManager.sendNoteOn(destinationChannel,midiNote,velocity)
                 }
             }
         }
@@ -1584,5 +1594,101 @@ internal class OrderedNoteIo {
     fun stopSession(monitor: Any, clearLedger: () -> Unit, killAll: () -> Unit) {
         val w = gate.writeLock(); w.lock()
         try { synchronized(monitor) { epoch++; clearLedger() }; killAll() } finally { w.unlock() }
+    }
+}
+
+/**
+ * EXPERIMENT (default OFF = LEGACY): NOTE OFF for ONE drum note on MIDI OUT only, for the PSR-E343 "tres-tres-tres" investigation.
+ * Scope is hard-limited: Style file name contains "EnglishWaltz2", Rhythm 2 (destination channel 9, 1-based 10), Style note 26 (Brush Swirl), MIDI OUT.
+ * The internal engine (BASSMIDI) never sees anything from here; velocity, Bank/Program, tempo, CASM and the drum note map are untouched
+ * (the NOTE OFF uses the number that was actually sent, i.e. after the MIDI OUT drum map).
+ *  LEGACY     today's behaviour: no NOTE OFF for drums (byte-identical: the in-scope check is false, the NOTE ON is sent exactly as before).
+ *  AUTHORED   NOTE OFF at the Style's own NOTE OFF tick.
+ *  SHORT_GATE NOTE OFF [gateMs] after the NOTE ON, or at the authored NOTE OFF if that comes first.
+ * Pairing: one open NOTE ON per (channel, sent note). A retrigger first closes the open one; STOP, every section end/transition and a mode change
+ * close what is open; if MIDI OUT was disabled/disconnected in between (router epoch changed) the router has already released it, so nothing is sent.
+ * Never a global All Notes Off.
+ */
+enum class E343DrumNoteOffMode { LEGACY, AUTHORED, SHORT_GATE }
+
+/** The app's single instance (wired in MainViewModel). Tests may create their own [E343DrumNoteOffExperiment]. */
+object E343DrumNoteOff : E343DrumNoteOffExperiment()
+
+open class E343DrumNoteOffExperiment {
+    companion object {
+        const val CHANNEL = 9
+        const val NOTE = 26
+        val GATES_MS = intArrayOf(40, 80, 120, 200, 300)
+    }
+    @Volatile var mode = E343DrumNoteOffMode.LEGACY; private set
+    @Volatile var gateMs = 120; private set
+    /** File name of the loaded Style (set by ArrangerBrain.loadStyle). */
+    @Volatile var styleName = ""
+    /** Router probe: (channel, note) -> (epoch shl 32) or (NOTE_ONs written and not yet released for that note). Null = no MIDI OUT router wired: never in scope. */
+    @Volatile var probe: ((Int, Int) -> Long)? = null
+
+    private class Open(val sentNote: Int, val gen: Long, val epoch: Long, val off: (Int) -> Unit)
+    private val lock = Any()
+    private val open = HashMap<Int, Open>()       // key = Style note (only NOTE is ever in scope); the entry keeps the number actually sent
+    private var gen = 0L
+    private val stats = LongArray(6)              // 0 on tracked, 1 off authored, 2 off gate, 3 off retrigger, 4 off release, 5 dropped (epoch changed / not written)
+    private val timer by lazy { java.util.concurrent.Executors.newSingleThreadScheduledExecutor { r -> Thread(r, "E343DrumNoteOffGate").apply { isDaemon = true } } }
+
+    fun inScope(channel: Int, styleNote: Int) =
+        mode != E343DrumNoteOffMode.LEGACY && channel == CHANNEL && styleNote == NOTE && probe != null && styleName.contains("EnglishWaltz2", ignoreCase = true)
+
+    /** Wraps the MIDI OUT NOTE_ON of a drum event. Out of scope: just [send]. */
+    fun noteOn(channel: Int, styleNote: Int, sentNote: Int, send: () -> Unit, off: (Int) -> Unit) {
+        if (!inScope(channel, styleNote)) { send(); return }
+        val p = probe ?: run { send(); return }
+        synchronized(lock) {
+            open.remove(styleNote)?.let { closeLocked(it, 3) }      // retrigger: close the previous instance first, then the new NOTE ON
+            val before = p(channel, sentNote)
+            send()
+            val after = p(channel, sentNote)
+            if ((after and 0xFFFFFFFFL) <= (before and 0xFFFFFFFFL) || (after ushr 32) != (before ushr 32)) { stats[5]++; return } // not written (muted / off / disconnected)
+            val o = Open(sentNote, ++gen, after ushr 32, off); open[styleNote] = o; stats[0]++
+            if (mode == E343DrumNoteOffMode.SHORT_GATE) { val g = o.gen; timer.schedule({ gateExpired(styleNote, g) }, gateMs.toLong(), java.util.concurrent.TimeUnit.MILLISECONDS) }
+        }
+    }
+
+    /** The Style's own NOTE OFF of a drum note (the sequencer drops it otherwise). True if a NOTE OFF was sent. */
+    fun authoredOff(channel: Int, styleNote: Int): Boolean {
+        if (channel != CHANNEL || styleNote != NOTE) return false
+        synchronized(lock) { val o = open.remove(styleNote) ?: return false; return closeLocked(o, 1) }
+    }
+
+    /** STOP / section end / transition / mode change: close every open instance (only ours, never All Notes Off). */
+    fun releaseAll(reason: String): Int = synchronized(lock) {
+        if (open.isEmpty()) return 0
+        val list = open.values.toList(); open.clear()
+        val n = list.count { closeLocked(it, 4) }
+        com.yourapp.yamahaarranger.ui.DebugLog.add("E343 DRUM NOTE OFF release reason=$reason open=${list.size} sent=$n")
+        n
+    }
+
+    fun setMode(m: E343DrumNoteOffMode) { releaseAll("MODE ${mode.name}->${m.name}"); mode = m; com.yourapp.yamahaarranger.ui.DebugLog.add("E343 DRUM NOTE OFF mode=${m.name} gate=${gateMs}ms scope=EnglishWaltz2 ch10 note$NOTE") }
+    fun setGate(ms: Int) { gateMs = ms.coerceIn(10, 1000) }
+    fun nextMode() = setMode(E343DrumNoteOffMode.values()[(mode.ordinal + 1) % E343DrumNoteOffMode.values().size])
+    fun nextGate() = setGate(GATES_MS.firstOrNull { it > gateMs } ?: GATES_MS[0])
+    fun openCount() = synchronized(lock) { open.size }
+    fun resetStats() = synchronized(lock) { stats.fill(0) }
+    fun report(): String = synchronized(lock) {
+        "E343 DRUM NOTE OFF experiment: mode=${mode.name} gate=${gateMs}ms style='${styleName}' inScopeStyle=${styleName.contains("EnglishWaltz2", true)} " +
+            "tracked=${stats[0]} offAuthored=${stats[1]} offGate=${stats[2]} offRetrigger=${stats[3]} offRelease=${stats[4]} dropped=${stats[5]} open=${open.size}"
+    }
+
+    private fun gateExpired(styleNote: Int, g: Long) = synchronized(lock) {
+        val o = open[styleNote] ?: return@synchronized
+        if (o.gen != g) return@synchronized
+        open.remove(styleNote); closeLocked(o, 2)
+    }
+
+    private fun closeLocked(o: Open, kind: Int): Boolean {
+        val p = probe
+        val now = p?.invoke(CHANNEL, o.sentNote)
+        if (now == null || (now ushr 32) != o.epoch || (now and 0xFFFFFFFFL) == 0L) { stats[5]++; return false } // router already released it (disabled/disconnected/panic)
+        o.off(o.sentNote); stats[kind]++
+        return true
     }
 }

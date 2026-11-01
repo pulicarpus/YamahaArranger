@@ -239,6 +239,9 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
         catch (e: Exception) { DebugLog.traceError("MIDI CC72 failed ch=$ch: ${e.message}"); Timber.w(e, "sendReleaseTime failed") }
     }
 
+    /** E343 drum NOTE OFF experiment: router epoch + written-not-released count for one note (read-only). */
+    fun midiOutNoteProbe(channel: Int, note: Int): Long = mixerOutput.noteProbe(channel, note)
+
     fun sendNoteOff(channel: Int, note: Int) {
         if (channel !in 0..15) return
         mixerOutput.noteOff(channel, note)

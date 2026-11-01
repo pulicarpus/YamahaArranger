@@ -61,6 +61,13 @@ fun RightVoiceDiagOverlay(viewModel: MainViewModel, modifier: Modifier = Modifie
             Chip("CLEAR OUT NOTES", Color(0xFF444C56)) { viewModel.resetMidiOutReport() }
             Chip("CLOSE", Color(0xFF7A2B2B)) { ToolPanels.diag = false }
         }
+        var e343Label by remember { mutableStateOf(viewModel.e343DrumNoteOffLabel()) }
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 4.dp)) {
+            Text("E343 EXPERIMENT (EnglishWaltz2, Rhythm 2, note 26, MIDI OUT only)", color = Color(0xFFFFC857), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Chip(e343Label, Color(0xFF7A5A2B)) { viewModel.e343DrumNoteOffNextMode(); e343Label = viewModel.e343DrumNoteOffLabel() }
+            Chip("GATE", Color(0xFF444C56)) { viewModel.e343DrumNoteOffNextGate(); e343Label = viewModel.e343DrumNoteOffLabel() }
+            Chip("E343 OFF STATS", Color(0xFF2B5C7A)) { fxText = viewModel.e343DrumNoteOffReport() }
+        }
         val touch by viewModel.touchResponse.collectAsState()
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(bottom = 4.dp)) {
             Text("TOUCH RESPONSE (USB→RIGHT only)", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)

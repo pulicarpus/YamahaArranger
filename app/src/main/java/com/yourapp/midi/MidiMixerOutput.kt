@@ -30,14 +30,21 @@ class MidiMixerOutput(private val write: (ByteArray) -> Boolean) {
     private var connected = false
     private var master = 100
 
+    /** Bumped whenever MIDI OUT is enabled/disabled or (dis)connected: a NOTE_ON written in an older epoch has already been released by the router. */
+    private var epoch = 0L
+    /** Read-only probe for the E343 drum NOTE OFF experiment: (epoch shl 32) or (NOTE_ONs of [note] written on [channel] and not yet released); 0 count when inactive. */
+    @Synchronized fun noteProbe(channel: Int, note: Int): Long =
+        (epoch shl 32) or (if (active() && channel in 0..15 && note in 0..127) notes[channel][note].toLong().coerceAtLeast(0) else 0L)
     @Synchronized fun setEnabled(value: Boolean) {
         if (enabled == value) return
+        epoch++
         if (!value) releaseOwnedNotes()
         enabled = value
         invalidateSent()
         if (value && connected) { releaseOwnedNotes(); replay() }
     }
     @Synchronized fun setConnected(value: Boolean) {
+        if (connected != value) epoch++
         if (!value) releaseOwnedNotes()
         connected = value
         if (!value) { notes.forEach { it.fill(0) }; pendingOff.fill(false); paired.forEach { it.fill(0) } }

@@ -150,6 +150,7 @@ class ArrangerBrain @Inject constructor(
 
     fun loadStyle(style: ParsedStyle) {
         loadedStyle = style
+        com.yourapp.yamahaarranger.arranger.E343DrumNoteOff.releaseAll("STYLE_CHANGE"); com.yourapp.yamahaarranger.arranger.E343DrumNoteOff.styleName = style.fileName
         ensureSequencer()
         sequencer.tempoBpm = style.defaultTempoBpm
         // CPV: manual voices belong to one style; the caller restores the new style's own pins.
