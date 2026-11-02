@@ -12,7 +12,7 @@ changed = set(git('diff', '--name-only', BASE, 'HEAD').split()) | set(git('diff'
     {p for p in git('ls-files', '--others', '--exclude-standard').split() if not p.startswith(('evidence/', 'build/')) and '__pycache__' not in p}
 ADDITIVE = [J + 'yamahaarranger/audio/AudioEngineManager.kt', J + 'yamahaarranger/audio/NativeAudioBridge.kt', J + 'midi/MidiInputManager.kt',
             C + 'bassmidi_player.h', C + 'bassmidi_player.cpp', C + 'audio_engine.h', C + 'audio_engine.cpp', C + 'native_lib.cpp', 'tests/mocks/bassmidi.h']
-ALLOWED = set(ADDITIVE) | {J + 'ui/MainViewModel.kt', J + 'ui/SxMainScreen.kt', J + 'ui/SongPanel.kt', J + 'ui/SongPage.kt',
+ALLOWED = set(ADDITIVE) | {J + 'ui/MainViewModel.kt', J + 'ui/SxMainScreen.kt', J + 'ui/SongPanel.kt', J + 'ui/SongPage.kt', J + 'ui/SongMixerPanel.kt',
            'tests/song_native_test.cpp', 'tests/song_xg_real_bass_test.cpp', 'tools/midi_fixture_gen.py'}
 PREFIX = (J + 'yamahaarranger/song/', 'tests/cpv/', 'tests/fixtures/midi/', 'tools/test_', 'tools/ui_preview/', 'diagnostics/', '.github/workflows/', 'docs/')
 extra = {p for p in changed if p not in ALLOWED and not p.startswith(PREFIX)}
@@ -41,11 +41,19 @@ outs = (ROOT / J / 'yamahaarranger/song/SongOutputs.kt').read_text()
 ext = outs[outs.index('class ExternalSongOutput'):outs.index('fun songOutputsFor')]
 assert 'override val acceptsSysEx get() = false' in ext and '< 0xF0) sink(bytes)' in ext, 'MIDI OUT output never forwards SysEx'
 pl = (ROOT / J / 'yamahaarranger/song/SongPlayer.kt').read_text()
-assert 'if (e.isSysEx) { for (o in outputs) if (o.acceptsSysEx) o.send(e.bytes); return }' in pl, 'player sends SysEx only to SysEx-capable outputs'
+assert 'for (o in outputs) if (o.acceptsSysEx) { o.send(e.bytes); applyOverridesLocked(o) }' in pl, 'player sends SysEx only to SysEx-capable outputs'
 assert 'm.dbank = 0;' in cpp[cpp.index('bool BassMidiPlayer::ensureSongStreamLocked'):] and 'm.dbank = -1' not in cpp, 'Song font map keeps bank numbers (dbank offset 0)'
 assert 'BASS_ATTRIB_MIDI_SRC, static_cast<float>(interpolation_)' in cpp[cpp.index('bool BassMidiPlayer::ensureSongStreamLocked'):], 'Song stream SRC = main stream SRC'
 assert cpp.count('renderSong(out,numFrames);') == 1 and 'BASS_MIDI_StreamEvents(stream_' not in cpp, 'Song events go only to songStream_'
 vm = (ROOT / J / 'ui/MainViewModel.kt').read_text()
 assert 'fun onStartStop() { if (!arrangerBrain.state.value.isPlaying) stopSongForStyle(); arrangerBrain.startStop() }' in vm, 'Song/Style policy'
 assert 'songNote = "STYLE is playing: stop the Style first' in vm, 'PLAY SONG refused while the Style runs'
+# V1A.2 SONG MIXER: voice pins live on songStream_ only; the keyboard/Style font table (applyFonts) never sees them
+pin = cpp[cpp.index('int BassMidiPlayer::songSetChannelVoice'):cpp.index('std::string BassMidiPlayer::songChannelReport')]
+assert 'songStream_' in pin and 'applyFonts' not in pin and 'BASS_MIDI_StreamEvent(stream_' not in pin and 'BASS_MIDI_StreamSetFonts(stream_' not in pin, 'Song voice pins: Song stream only'
+apply = cpp[cpp.index('bool BassMidiPlayer::applyFonts'):cpp.index('bool BassMidiPlayer::publishedFontTableIntact')]
+assert 'songPins_' not in apply, 'the keyboard/Style font table never includes Song pins'
+mix = (ROOT / J / 'yamahaarranger/song/SongMixer.kt').read_text()
+assert 'val voice = if (internal) o.voice else null' in mix, 'voice overrides never reach MIDI OUT'
+assert 'allNotesOff' not in mix and '120' not in mix.split('fun transform')[1].split('fun state')[0], 'sustain filter never uses All Notes/Sound Off'
 print('MIDI SONG GUARD PASS changed=' + ','.join(sorted(changed)))

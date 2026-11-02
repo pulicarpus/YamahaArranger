@@ -8,6 +8,7 @@
 #include <bassmidi.h>
 #include "sf2_rich_fixture.h"
 #include "pitch_analysis.h"
+#include <algorithm>
 #include <cstdio>
 #include <fstream>
 #include <iostream>
@@ -20,8 +21,8 @@ const double kExpectHz = 44100.0 / 168.0;
 // presets: (bank 0, pc 0) piano, (bank 0, pc 58) melodic, (bank 128, pc 0) drum kit; one plain looped harmonic sample (root 60)
 std::string makeFont(const std::string& dir) {
     struct P { const char* name; int bank, pc; };
-    const P ps[] = {{"Piano", 0, 0}, {"Melodic58", 0, 58}, {"Kit", 128, 0}};
-    const int NP = 3;
+    const P ps[] = {{"Piano", 0, 0}, {"Melodic58", 0, 58}, {"Kit", 128, 0}, {"Kit25", 128, 25}};
+    const int NP = 4;
     Bytes pd = {'p','d','t','a'}, ph(38 * (NP + 1)), pb(4 * (NP + 1)), pg, ins(22 * 2), ib(4 * 2), ig, sh(46 * 2);
     for (int i = 0; i < NP; ++i) {
         std::memcpy(ph.data() + 38 * i, ps[i].name, std::strlen(ps[i].name));
@@ -101,6 +102,76 @@ DWORD rhythm9(HSOUNDFONT font, const char* name, const std::vector<Msg>& setup) 
 }
 }
 
+// ---- V1A.2 SONG MIXER: what the synth does with the exact messages / maps the mixer produces ----
+struct Timed { int block; Msg m; };   // 1 block = 10 ms at 48 kHz
+std::vector<float> renderTimed(HSTREAM s, const std::vector<Timed>& ev, int blocks) {
+    std::vector<float> pcm, buf(480 * 2); size_t k = 0;
+    for (int b = 0; b < blocks; ++b) {
+        while (k < ev.size() && ev[k].block <= b) raw(s, ev[k++].m);
+        const int got = BASS_ChannelGetData(s, buf.data(), buf.size() * 4 | BASS_DATA_FLOAT); if (got <= 0) break;
+        pcm.insert(pcm.end(), buf.begin(), buf.begin() + got / 4);
+    }
+    return pcm;
+}
+double rmsDb(const std::vector<float>& pcm, double t0, double t1, int side = -1) {   // side: -1 both, 0 left, 1 right
+    double e = 0; size_t n = 0;
+    for (size_t i = size_t(t0 * 48000) * 2; i < std::min(pcm.size(), size_t(t1 * 48000) * 2); ++i) { if (side >= 0 && int(i % 2) != side) continue; e += double(pcm[i]) * pcm[i]; ++n; }
+    return n && e > 0 ? 10 * std::log10(e / n) : -180.0;
+}
+HSTREAM pinnedStream(HSOUNDFONT font, int ch, int spreset, int sbank) {   // as songSetChannelVoice: pin first, then the general map
+    HSTREAM s = BASS_MIDI_StreamCreate(16, BASS_STREAM_DECODE | BASS_SAMPLE_FLOAT | BASS_MIDI_NOTEOFF1, 48000);
+    BASS_MIDI_FONTEX2 m[2]{};
+    m[0].font = font; m[0].spreset = spreset; m[0].sbank = sbank; m[0].dpreset = 0; m[0].dbank = sbank >= 127 ? 128 : 0; m[0].dbanklsb = 0; m[0].minchan = ch; m[0].numchan = 1;
+    m[1].font = font; m[1].spreset = -1; m[1].sbank = -1; m[1].dpreset = -1; m[1].dbank = 0; m[1].dbanklsb = 0; m[1].minchan = 0; m[1].numchan = 16;
+    BASS_MIDI_StreamSetFonts(s, m, 2 | BASS_MIDI_FONT_EX2);
+    BASS_ChannelSetAttribute(s, BASS_ATTRIB_MIDI_SRC, 2);
+    return s;
+}
+void mixerChecks(HSOUNDFONT font) {
+    // voice override: CH3 pinned to "Melodic58"; the mixer sends Bank 0 / LSB 0 / Program 0 instead of the file's program
+    {
+        HSTREAM s = pinnedStream(font, 2, 58, 0);
+        raw(s, GM_ON); raw(s, {0xB2, 0, 0}); raw(s, {0xB2, 32, 0}); raw(s, {0xC2, 0}); raw(s, {0xC0, 0});
+        std::vector<float> buf(960); BASS_ChannelGetData(s, buf.data(), buf.size() * 4 | BASS_DATA_FLOAT);
+        BASS_MIDI_FONT a{}, b{}; const bool ga = BASS_MIDI_StreamGetPreset(s, 2, &a), gb = BASS_MIDI_StreamGetPreset(s, 0, &b);
+        std::printf("SXG mixer voice pin CH3 -> preset=%d bank=%d | CH1 untouched preset=%d bank=%d\n", ga ? a.preset : -1, ga ? a.bank : -1, gb ? b.preset : -1, gb ? b.bank : -1);
+        check(ga && a.preset == 58 && a.bank == 0, "CH3 voice pin must play preset 58 on Program 0");
+        check(gb && b.preset == 0, "CH1 must keep its own preset");
+        BASS_StreamFree(s);
+    }
+    // drum kit override on an XG drum part: file bank 127 passes, Program 0 selects the pinned kit 25
+    {
+        HSTREAM s = pinnedStream(font, 8, 25, 128);
+        raw(s, GM_ON); raw(s, XG_ON); raw(s, XG_P8_DRUM_S2); raw(s, {0xB8, 0, 127}); raw(s, {0xC8, 0}); raw(s, {0x98, 36, 100});
+        std::vector<float> buf(960); BASS_ChannelGetData(s, buf.data(), buf.size() * 4 | BASS_DATA_FLOAT);
+        BASS_MIDI_FONT a{}; const bool ga = BASS_MIDI_StreamGetPreset(s, 8, &a);
+        std::printf("SXG mixer kit pin CH9 drums=%u -> preset=%d bank=%d\n", unsigned(BASS_MIDI_StreamGetEvent(s, 8, MIDI_EVENT_DRUMS)), ga ? a.preset : -1, ga ? a.bank : -1);
+        check(ga && a.preset == 25 && a.bank == 128, "CH9 kit pin must play kit 25");
+        BASS_StreamFree(s);
+    }
+    // volume / pan: CC7 / CC10 really change the Song stream's audio
+    auto level = [&](std::vector<Msg> pre, int side) {
+        HSTREAM s = songStream(font); raw(s, GM_ON);
+        std::vector<Timed> ev; for (auto& m : pre) ev.push_back({0, m}); ev.push_back({0, {0xC0, 0}}); ev.push_back({0, {0x90, 60, 100}});
+        const auto pcm = renderTimed(s, ev, 60); BASS_StreamFree(s); return rmsDb(pcm, 0.2, 0.55, side);
+    };
+    const double v127 = level(std::vector<Msg>{Msg{0xB0, 7, 127}}, -1), v30 = level(std::vector<Msg>{Msg{0xB0, 7, 30}}, -1);
+    const double panL = level(std::vector<Msg>{Msg{0xB0, 10, 0}}, 0), panR = level(std::vector<Msg>{Msg{0xB0, 10, 0}}, 1);
+    std::printf("SXG mixer volume CC7 127 = %.1f dB, CC7 30 = %.1f dB (diff %.1f) | pan CC10 0: left %.1f dB right %.1f dB\n", v127, v30, v127 - v30, panL, panR);
+    check(v127 - v30 > 10.0, "CC7 30 must be clearly quieter than CC7 127");
+    check(panL - panR > 10.0, "CC10 0 must put the sound left");
+    // sustain: the file presses the pedal, the note ends at 0.2 s. FOLLOW keeps it ringing; IGNORE / FORCE OFF (no pedal / pedal 0) do not
+    auto tail = [&](bool pedal) {
+        HSTREAM s = songStream(font); raw(s, GM_ON);
+        std::vector<Timed> ev{{0, {0xC2, 0}}, {0, pedal ? Msg{0xB2, 64, 127} : Msg{0xB2, 64, 0}}, {0, {0x92, 60, 100}}, {20, {0x82, 60, 0}}};
+        const auto pcm = renderTimed(s, ev, 100); BASS_StreamFree(s); return std::make_pair(rmsDb(pcm, 0.05, 0.18), rmsDb(pcm, 0.6, 0.95));
+    };
+    const auto follow = tail(true), off = tail(false);
+    std::printf("SXG mixer sustain CH3 FOLLOW: held %.1f dB tail %.1f dB | IGNORE/FORCE OFF: held %.1f dB tail %.1f dB\n", follow.first, follow.second, off.first, off.second);
+    check(follow.second > follow.first - 6.0, "FOLLOW: the pedal keeps the note after NOTE OFF");
+    check(off.first > -60.0 && off.second < off.first - 30.0, "IGNORE / FORCE OFF: the note ends at its NOTE OFF");
+}
+
 int main(int argc, char** argv) {
     if (argc != 2 || !BASS_Init(0, 48000, 0, nullptr, nullptr)) return 1;
     HSOUNDFONT font = BASS_MIDI_FontInit(makeFont(argv[1]).c_str(), 0);
@@ -118,6 +189,7 @@ int main(int argc, char** argv) {
     const DWORD d1 = rhythm9(font, "V1A1_xg_on_only", {XG_ON});
     const DWORD d2 = rhythm9(font, "V1A1_xg_on_part_mode_drum", {XG_ON, XG_P8_DRUM_S2});
     (void)xgOnly; (void)d1; (void)oldMap;
+    mixerChecks(font);
     // The V1A.1 claims: the report's symptom is reproduced without SysEx, and the file's own XG setup removes it.
     check(v1a.valid && v1a.p2pCents > 0.0 && v1a.frames > 0, "the piano must actually sound (analysis on real audio)");
     check(v1a.valid && v1a.modCents > 10.0, "without SysEx CC1=82 should vibrate (reproduces the report)");
