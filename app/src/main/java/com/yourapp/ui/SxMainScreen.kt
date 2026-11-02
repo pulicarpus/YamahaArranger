@@ -94,6 +94,7 @@ fun SxMainScreen(
     var navigation by remember { mutableStateOf(LiveNavigation()) }
     val showMixer = navigation.page == LivePage.MIXER
     var showSf2Manager by remember { mutableStateOf(false) }
+    var showSong by remember { mutableStateOf(false) }          // MIDI Song Player page (V1A)
     var rightVoicePickerLayer by remember { mutableStateOf<Int?>(null) }
     var voiceBrowser by remember { mutableStateOf(KeyboardVoiceBrowserState()) }
     val selectedVoiceCategory = voiceBrowser.category
@@ -282,7 +283,8 @@ fun SxMainScreen(
                 onMixer = { navigation = navigation.mixer() },
                 onLive = { navigation = navigation.live() },
                 onUtility = { viewModel.logKeyboardVoiceSnapshot(); showUtilityLog = true },
-                onInspector = onOpenInspector
+                onInspector = onOpenInspector,
+                onSong = { showSong = true }
             )
             Spacer(Modifier.height(gap))
             // Arranger-style hardware panel: the center is a dedicated LCD,
@@ -442,6 +444,8 @@ fun SxMainScreen(
             )
         }
     }
+
+    if (showSong) SongDialog(viewModel) { showSong = false }   // MIDI Song Player (V1A)
 
     if (showSf2Manager) {
         SxSf2ManagerDialog(
@@ -701,7 +705,8 @@ private fun SxNavBar(
     onMixer: () -> Unit,
     onLive: () -> Unit,
     onUtility: () -> Unit,
-    onInspector: () -> Unit
+    onInspector: () -> Unit,
+    onSong: () -> Unit = {}
 ) {
     val tabs = listOf("HOME", "STYLE", "VOICE", "SONG", "MULTI PAD", "REGIST", "MIXER", "LIVE", "UTILITY")
     Row(
@@ -716,6 +721,7 @@ private fun SxNavBar(
                     "MIXER" -> Modifier.clickable(onClick = onMixer)
                     "LIVE" -> Modifier.clickable(onClick = onLive)
                     "UTILITY" -> Modifier.clickable(onClick = onUtility)
+                    "SONG" -> Modifier.clickable(onClick = onSong)          // MIDI Song Player (V1A)
                     else -> Modifier
                 }
             )
