@@ -1,0 +1,223 @@
+name: Quick Experimental APK (MIDI Song V1A)
+# Device-test build for the MIDI Song Player V1A. NOT a production certification.
+# The APK job does not wait for any test job: it runs the isolation guard (seconds), compiles, verifies and uploads.
+# Quick tests and the desktop UI test run in parallel; the final "report" job turns red if any of them failed.
+# Full Validation stays in style-voice-editor.yml (unchanged test set) and runs independently on the same push.
+on:
+  push:
+    branches: [feature/midi-song-v1]
+  workflow_dispatch: {}
+permissions:
+  contents: read
+concurrency:
+  group: midi-song-quick-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  PYTHONDONTWRITEBYTECODE: '1'
+jobs:
+  apk:
+    name: Quick APK (guard + compile + verify)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r26d
+          link-to-sdk: true
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+          # dependency/wrapper cache only (keyed by Gradle files); build outputs are never cached, so nothing mixes between commits
+          cache-read-only: false
+      - name: Essential safety - MIDI Song isolation guard and baseline ancestry
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          python3 tools/test_midi_song_guard.py 2>&1 | tee evidence/guard.log
+          python3 tools/verify_cpv_build.py --out evidence/provenance-source.json
+      - name: Install byte-pinned official SDK inputs
+        run: |
+          set -euo pipefail
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install 'cmake;3.22.1' 'build-tools;34.0.0' 'platforms;android-34' > /dev/null
+          python3 tools/install_u01_android_sdk.py > evidence/sdk-identities.json
+      - name: Compile debug APK (both ARM ABIs)
+        run: |
+          set -euo pipefail
+          gradle --no-daemon --max-workers=2 assembleDebug --stacktrace 2>&1 | tee evidence/android-build.log
+      - name: Verify APK = this commit, signature, ABIs and SONG player + native Song stream inside
+        id: verify
+        run: |
+          set -euo pipefail
+          short=$(git rev-parse --short=12 HEAD)
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA" || { echo "checkout $(git rev-parse HEAD) != GITHUB_SHA $GITHUB_SHA"; exit 1; }
+          apk="evidence/YamahaArranger-SONG-QUICK-${short}.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "$apk"
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose "$apk" > evidence/apk-signature.txt
+          python3 tools/verify_cpv_build.py --apk "$apk" --out evidence/apk-provenance.json
+          python3 - "$apk" "$GITHUB_SHA" <<'PY'
+          import json, sys, zipfile
+          apk, sha = sys.argv[1], sys.argv[2]
+          prov = json.load(open('evidence/apk-provenance.json'))
+          assert prov['source_sha'] == sha, ('provenance source', prov['source_sha'], sha)
+          dex = b''.join(zipfile.ZipFile(apk).read(n) for n in zipfile.ZipFile(apk).namelist() if n.startswith('classes') and n.endswith('.dex'))
+          need = [b'SongPlayer', b'SongTimeline', b'SmfException', b'SongPanel', b'SongDialog', b'song.play', b'E343DrumNoteOffExperiment', b'RotaryDataKnob']
+          missing = [n.decode() for n in need if n not in dex]
+          assert not missing, 'APK does not contain: ' + ', '.join(missing)
+          z = zipfile.ZipFile(apk)
+          for abi in ('arm64-v8a', 'armeabi-v7a'):
+              so = [n for n in z.namelist() if n.startswith('lib/' + abi + '/') and n.endswith('.so') and b'nativeSongEvents' in z.read(n)]
+              assert so, 'no native Song JNI in ' + abi
+          print('APK contains the SONG player, SONG page and native Song JNI (both ABIs); source_sha', sha)
+          PY
+          {
+            echo "branch: ${GITHUB_REF_NAME}"
+            echo "commit: ${GITHUB_SHA}"
+            echo "workflow: ${GITHUB_WORKFLOW} run #${GITHUB_RUN_NUMBER} (id ${GITHUB_RUN_ID})"
+            echo "apk: $(basename "$apk") sha256 $(sha256sum "$apk" | cut -d' ' -f1)"
+            echo "QUICK device-test build. Not production-certified. Check the 'report' job for the quick tests and the UI test."
+          } > evidence/BUILD-INFO.txt
+          cp diagnostics/MIDI_SONG_V1A_REPORT.md evidence/DEVICE-TEST.txt
+          cat evidence/BUILD-INFO.txt
+          # artifact names may not contain '/' (branch names do): replace it
+          echo "artifact=SONG-QUICK-APK-${GITHUB_REF_NAME//\//-}-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.verify.outputs.artifact }}
+          path: |
+            evidence/YamahaArranger-SONG-QUICK-*.apk
+            evidence/BUILD-INFO.txt
+            evidence/DEVICE-TEST.txt
+            evidence/apk-provenance.json
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: SONG-QUICK-apk-evidence-${{ github.run_id }}
+          path: |
+            evidence/*.log
+            evidence/*.json
+            evidence/*.txt
+          if-no-files-found: warn
+
+  quick-tests:
+    name: Quick tests (guard, fixtures, CPV JVM, native Song, E343 EW2, MIDI IN / split / ACMP / LEFT)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/cache@v4
+        with:
+          path: build/sff1-jvm/dependencies
+          key: sff1-jvm-deps-${{ hashFiles('tests/fixtures/sff1_jvm_dependencies.json') }}
+      - name: Fetch (if not cached) and sha256-verify pinned JVM test inputs
+        run: |
+          set -euo pipefail
+          mkdir -p evidence build/sff1-jvm/dependencies
+          python3 - <<'PY'
+          import hashlib, json, subprocess
+          from pathlib import Path
+          for e in json.loads(Path('tests/fixtures/sff1_jvm_dependencies.json').read_text())['dependencies']:
+              p = Path('build/sff1-jvm/dependencies') / e['filename']
+              if not p.exists() or hashlib.sha256(p.read_bytes()).hexdigest() != e['sha256']:
+                  subprocess.run(['curl', '-fsSL', '--retry', '3', e['url'], '-o', str(p)], check=True)
+              assert hashlib.sha256(p.read_bytes()).hexdigest() == e['sha256'], e['filename']
+          PY
+      - name: Isolation guard
+        run: python3 tools/test_midi_song_guard.py 2>&1 | tee evidence/guard.log
+      - name: MIDI fixtures (independent Python writer/reader)
+        run: python3 tools/midi_fixture_gen.py --check 2>&1 | tee evidence/midi-fixtures.log
+      - name: CPV JVM (incl. SongPlayerTest - SMF parser, timeline, player, routing)
+        run: |
+          set -euo pipefail
+          python3 tools/test_cpv.py --suite jvm --out evidence/cpv-jvm 2>&1 | tee evidence/cpv-jvm.log
+      - name: Native Song stream contract (separate stream, SysEx refused, isolated reset)
+        run: python3 tools/test_song_native.py --out evidence/song-native 2>&1 | tee evidence/song-native.log
+      - name: Protected paths unchanged - E343 SHORT_GATE (EW2), MIDI IN / split, transpose / ACMP / LEFT
+        run: |
+          set -euo pipefail
+          python3 tools/test_rtdiag.py --out evidence/noteoff-ew2 --rosita --style tests/fixtures/englishwaltz2/EnglishWaltz2.S519.prs --style-name EnglishWaltz2.S519.prs --only com.yourapp.rtdiag.E343DrumNoteOffRtTest 2>&1 | tee evidence/noteoff-ew2.log
+          python3 tools/test_rtdiag.py --out evidence/midi-in-split --only com.yourapp.rtdiag.MidiInSplitRtTest 2>&1 | tee evidence/midi-in-split.log
+          python3 tools/test_rtdiag.py --out evidence/transpose-acmp-left --rosita --only com.yourapp.rtdiag.TransposeAcmpLeftTest 2>&1 | tee evidence/transpose-acmp-left.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: SONG-QUICK-test-evidence-${{ github.run_id }}
+          path: evidence/**/*.log
+          if-no-files-found: warn
+
+  ui-test:
+    name: UI tests (SONG page + E343 page + DATA CONTROL rotary knob, desktop Compose, Redmi Pad landscape sizes) + PNG
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+          cache-read-only: false
+      - name: Desktop Compose UI test of the real SongPanel.kt (+ E343 / knob regression)
+        run: |
+          set -euo pipefail
+          sudo apt-get install -y -qq fontconfig fonts-dejavu-core >/dev/null || true
+          gradle -p tools/ui_preview --no-daemon test --tests SongPanelTest --tests E343ExperimentPanelTest --tests RotaryDataKnobTest --stacktrace 2>&1 | tee ui-test.log
+          ls -la tools/ui_preview/build/png-song
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: SONG-QUICK-ui-${{ github.sha }}
+          path: |
+            ui-test.log
+            tools/ui_preview/build/png-song/*.png
+            tools/ui_preview/build/png-e343/*.png
+            tools/ui_preview/build/png-knob/*.png
+            tools/ui_preview/build/reports/tests/test/**
+          if-no-files-found: warn
+
+  report:
+    name: Quick report (fails if any quick job failed)
+    needs: [apk, quick-tests, ui-test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summary
+        run: |
+          {
+            echo "## Quick Experimental APK (MIDI Song V1A) - ${GITHUB_REF_NAME} @ ${GITHUB_SHA}"
+            echo "| job | result |"; echo "|---|---|"
+            echo "| apk | ${{ needs.apk.result }} |"
+            echo "| quick-tests | ${{ needs.quick-tests.result }} |"
+            echo "| ui-test | ${{ needs.ui-test.result }} |"
+            echo
+            echo "Device-test build only. Full Validation: workflow 'Style Voice Inspector & Editor APK' on the same commit."
+          } >> "$GITHUB_STEP_SUMMARY"
+          test "${{ needs.apk.result }}" = success && test "${{ needs.quick-tests.result }}" = success && test "${{ needs.ui-test.result }}" = success
