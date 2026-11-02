@@ -13,7 +13,7 @@ changed = set(git('diff', '--name-only', BASE, 'HEAD').split()) | set(git('diff'
 ADDITIVE = [J + 'yamahaarranger/audio/AudioEngineManager.kt', J + 'yamahaarranger/audio/NativeAudioBridge.kt', J + 'midi/MidiInputManager.kt',
             C + 'bassmidi_player.h', C + 'bassmidi_player.cpp', C + 'audio_engine.h', C + 'audio_engine.cpp', C + 'native_lib.cpp', 'tests/mocks/bassmidi.h']
 ALLOWED = set(ADDITIVE) | {J + 'ui/MainViewModel.kt', J + 'ui/SxMainScreen.kt', J + 'ui/SongPanel.kt', J + 'ui/SongPage.kt',
-           'tests/song_native_test.cpp', 'tools/midi_fixture_gen.py'}
+           'tests/song_native_test.cpp', 'tests/song_xg_real_bass_test.cpp', 'tools/midi_fixture_gen.py'}
 PREFIX = (J + 'yamahaarranger/song/', 'tests/cpv/', 'tests/fixtures/midi/', 'tools/test_', 'tools/ui_preview/', 'diagnostics/', '.github/workflows/', 'docs/')
 extra = {p for p in changed if p not in ALLOWED and not p.startswith(PREFIX)}
 assert not extra, 'Unapproved file changed: ' + ', '.join(sorted(extra))
@@ -34,6 +34,15 @@ mim = (ROOT / J / 'midi/MidiInputManager.kt').read_text()
 assert '!in 0x80..0xEF) return false' in mim[mim.index('fun sendSongBytes'):], 'MIDI OUT Song path must refuse SysEx/system bytes'
 cpp = (ROOT / C / 'bassmidi_player.cpp').read_text()
 assert 'data[i] >= 0xF0' in cpp[cpp.index('bool BassMidiPlayer::songEvents'):], 'native Song path must refuse SysEx/system bytes'
+# V1A.1: setup SysEx only through songSysEx, whitelisted, Song stream only; MIDI OUT never takes SysEx
+sx = cpp[cpp.index('bool BassMidiPlayer::songSysEx'):cpp.index('void BassMidiPlayer::songReset')]
+assert "data[0] != 0xF0 || data[length - 1] != 0xF7" in sx and 'data[3] == 0x4C' in sx and 'BASS_MIDI_StreamEvents(songStream_' in sx and 'stream_,' not in sx.replace('songStream_', ''), 'songSysEx whitelist / Song stream only'
+outs = (ROOT / J / 'yamahaarranger/song/SongOutputs.kt').read_text()
+ext = outs[outs.index('class ExternalSongOutput'):outs.index('fun songOutputsFor')]
+assert 'override val acceptsSysEx get() = false' in ext and '< 0xF0) sink(bytes)' in ext, 'MIDI OUT output never forwards SysEx'
+pl = (ROOT / J / 'yamahaarranger/song/SongPlayer.kt').read_text()
+assert 'if (e.isSysEx) { for (o in outputs) if (o.acceptsSysEx) o.send(e.bytes); return }' in pl, 'player sends SysEx only to SysEx-capable outputs'
+assert 'BASS_ATTRIB_MIDI_SRC, static_cast<float>(interpolation_)' in cpp[cpp.index('bool BassMidiPlayer::ensureSongStreamLocked'):], 'Song stream SRC = main stream SRC'
 assert cpp.count('renderSong(out,numFrames);') == 1 and 'BASS_MIDI_StreamEvents(stream_' not in cpp, 'Song events go only to songStream_'
 vm = (ROOT / J / 'ui/MainViewModel.kt').read_text()
 assert 'fun onStartStop() { if (!arrangerBrain.state.value.isPlaying) stopSongForStyle(); arrangerBrain.startStop() }' in vm, 'Song/Style policy'

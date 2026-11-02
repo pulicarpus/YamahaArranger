@@ -5,13 +5,20 @@
 - **Status:** dibangun dan dites di host/CI. **Belum diuji di Redmi Pad maupun PSR-E343 fisik.**
 - **V1B (recorder) / V1C (full arranger recording):** belum dikerjakan; menunggu hasil tes Player oleh pengguna.
 
+## 0. V1A.1 (perbaikan suara setelah tes perangkat)
+
+Tes pengguna V1A: Song berbunyi, tetapi piano bervibra dan drum/bass lemah. Penyebabnya: SysEx setup XG dari file dibuang.
+V1A.1 mengirim SysEx setup (whitelist XG/GS/GM) **hanya ke synth internal Song**, me-reset synth Song di awal lagu dan saat chase,
+dan menyamakan SRC stream Song dengan stream utama. MIDI OUT tetap tanpa SysEx.
+Detail: `diagnostics/MIDI_VOYAGER_SONG_AUDIT.md`.
+
 ## 1. Arsitektur
 
 ```
  OPEN (SAF OpenDocument, .mid/.midi, ≤ 8 MB)
         │
         ▼
- Smf.parse ─ Type 0/1, VLQ, running status, PPQ, meta, SysEx (dihitung saja), End of Track,
+ Smf.parse ─ Type 0/1, VLQ, running status, PPQ, meta, SysEx (setup XG/GS/GM → INTERNAL saja), End of Track,
         │     file rusak → SmfException(offset) ; Type 2 / SMPTE → ditolak dengan pesan jelas
         ▼
  SongTimeline ─ merge semua track (tick → NOTE OFF dulu → track → urutan file), tempo map → µs,
@@ -21,7 +28,7 @@
    ledger note/sustain/bend milik SONG → panic HANYA untuk note SONG pada STOP/PAUSE/SEEK/MUTE/ganti output
         │ satu event → satu salinan per output
         ├── INTERNAL → nativeSongEvents → BassMidiPlayer::songEvents → songStream_ (stream BASSMIDI KE-2,
-        │               16 ch, di-mix di render(); stream keyboard/Style tidak disentuh). Byte ≥ 0xF0 ditolak.
+        │               16 ch, di-mix di render(); stream keyboard/Style tidak disentuh). songEvents menolak byte ≥ 0xF0; songSysEx hanya setup XG/GS/GM utuh.
         └── MIDI OUT → MidiInputManager.sendSongBytes (raw, hanya 0x80..0xEF; SysEx tidak pernah dikirim)
 
  Kebijakan SONG vs STYLE (V1): PLAY SONG ditolak saat Style berjalan;
@@ -68,7 +75,7 @@ Status GitHub Actions dan link APK: lihat laporan chat untuk commit ini.
 2. **Beban CPU**: stream BASSMIDI kedua hanya di-decode saat Song aktif (+ ekor 4 s); polifoni penuh belum diukur di Redmi Pad.
 3. **MIDI OUT ke PSR-E343**: Song memakai ch 1–16 yang sama dengan RIGHT/LEFT/Style di modul eksternal. Default output INTERNAL. Song berbunyi tunggal (Style dilarang bersamaan) di V1.
 4. **Pemetaan SoundFont Song** sederhana (font drum lalu font melodi); voice GM bisa berbeda dari yang diharapkan file.
-5. **SysEx** di file diabaikan (tidak dikirim), jadi file yang bergantung pada setup XG/GS SysEx bisa terdengar berbeda.
+5. **SysEx**: sejak V1A.1 setup XG/GS/GM diterapkan di synth internal; SysEx lain dan semua SysEx ke MIDI OUT tetap dibuang.
 
 ## 6. Langkah tes pengguna (Redmi Pad, landscape)
 

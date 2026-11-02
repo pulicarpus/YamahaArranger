@@ -155,6 +155,15 @@ jobs:
           python3 tools/test_cpv.py --suite jvm --out evidence/cpv-jvm 2>&1 | tee evidence/cpv-jvm.log
       - name: Native Song stream contract (separate stream, SysEx refused, isolated reset)
         run: python3 tools/test_song_native.py --out evidence/song-native 2>&1 | tee evidence/song-native.log
+      - name: Real BASSMIDI - Song stream with Yamaha XG setup SysEx (CC1 vibrato depth, channel 9 drum part)
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/bass-linux /tmp/bassmidi-linux
+          curl -fL --retry 3 https://www.un4seen.com/files/bass24-linux.zip -o /tmp/bass-linux.zip
+          curl -fL --retry 3 https://www.un4seen.com/files/bassmidi24-linux.zip -o /tmp/bassmidi-linux.zip
+          unzip -q /tmp/bass-linux.zip -d /tmp/bass-linux
+          unzip -q /tmp/bassmidi-linux.zip -d /tmp/bassmidi-linux
+          python3 tools/test_song_xg_real_bass.py /tmp/bass-linux /tmp/bassmidi-linux --out evidence/song-xg-real 2>&1 | tee evidence/song-xg-real.log
       - name: Protected paths unchanged - E343 SHORT_GATE (EW2), MIDI IN / split, transpose / ACMP / LEFT
         run: |
           set -euo pipefail

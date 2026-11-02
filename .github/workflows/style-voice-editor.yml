@@ -159,6 +159,12 @@ jobs:
           set -euo pipefail
           python3 tools/midi_fixture_gen.py --check 2>&1 | tee evidence/midi-fixtures.log
           python3 tools/test_song_native.py --out evidence/song-native 2>&1 | tee evidence/song-native.log
+          mkdir -p /tmp/bass-linux /tmp/bassmidi-linux
+          curl -fL --retry 3 https://www.un4seen.com/files/bass24-linux.zip -o /tmp/bass-linux.zip
+          curl -fL --retry 3 https://www.un4seen.com/files/bassmidi24-linux.zip -o /tmp/bassmidi-linux.zip
+          unzip -qo /tmp/bass-linux.zip -d /tmp/bass-linux
+          unzip -qo /tmp/bassmidi-linux.zip -d /tmp/bassmidi-linux
+          python3 tools/test_song_xg_real_bass.py /tmp/bass-linux /tmp/bassmidi-linux --out evidence/song-xg-real 2>&1 | tee evidence/song-xg-real.log
       - name: Style Editor V2 - octave shift and drum note maps on the production chain (ROSITA + HardRock2)
         if: github.ref == 'refs/heads/experiment/style-editor-v2'
         run: |
