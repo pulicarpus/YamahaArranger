@@ -14,6 +14,12 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.semantics.SemanticsActions
+import com.yourapp.yamahaarranger.song.SongVoice
+import com.yourapp.yamahaarranger.song.SustainMode
+import com.yourapp.yamahaarranger.ui.SongMixerActions
+import com.yourapp.yamahaarranger.ui.SongMixerTags as M
 import androidx.compose.ui.test.runDesktopComposeUiTest
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -87,6 +93,73 @@ class SongPanelTest {
         setContent { SongPanel(p.status(0), SongRouting.INTERNAL, null, 0, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}) }
         onNodeWithTag(T.TITLE).assertTextContains("No MIDI song loaded", substring = true)
         onNodeWithTag(T.OPEN).assertIsEnabled(); onNodeWithTag(T.PLAY).assertIsNotEnabled(); onNodeWithTag(T.STOP).assertIsNotEnabled()
+    }
+
+    // ---------------- V1A.2 SONG MIXER ----------------
+    private val voices = listOf(SongVoice(1, "colombo.sf2", 0, 48, "Strings Ensemble"), SongVoice(1, "colombo.sf2", 128, 0, "Standard Kit"),
+        SongVoice(2, "tyros4.sf2", 0, 49, "Slow Strings"), SongVoice(2, "tyros4.sf2", 128, 25, "Analog Kit"))
+
+    @Test fun mixerControlsAreLargeAndReachableAtRedmiPadSizes() {
+        for ((name, w, h) in sizes) runDesktopComposeUiTest(w, h) {
+            val p = loadedPlayer()
+            setContent { SongPanel(p.status(0), SongRouting.INTERNAL, null, 0, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, voices = voices) }
+            onNodeWithTag(M.TAB_MIXER).performScrollTo().performClick()
+            for (ch in 0 until 16) onNodeWithTag(M.strip(ch)).performScrollTo().assertIsDisplayed()
+            for (tag in listOf(M.VOICE, M.MUTE, M.SOLO, M.RESET, M.VOL_MIDI, M.PAN_MIDI) + SustainMode.values().map { M.sustain(it) })
+                onNodeWithTag(tag).performScrollTo().assertIsDisplayed().assertHeightIsAtLeast(48.dp)
+            onNodeWithTag(M.VOL).performScrollTo().assertIsDisplayed(); onNodeWithTag(M.PAN).performScrollTo().assertIsDisplayed()
+            onNodeWithTag(T.CLOSE).assertIsDisplayed()
+            println("SONGUI $name mixer: 16 strips, voice / mute / solo / reset / volume / pan / 3 sustain modes reachable, keys >= 48 dp")
+        }
+    }
+
+    @Test fun mixerDrivesTheRealPlayer() = runDesktopComposeUiTest(1333, 800) {
+        val p = loadedPlayer(); var st by mutableStateOf(p.status(0))
+        fun r() { st = p.status(0) }
+        val acts = SongMixerActions(onVoice = { c, v -> p.setVoice(c, v); r() }, onVolume = { c, v -> p.setVolume(c, v); r() }, onPan = { c, v -> p.setPan(c, v); r() },
+            onSustain = { c, m -> p.setSustainMode(c, m); r() }, onMute = { p.setMute(it, !st.muted[it]); r() }, onSolo = { p.setSolo(it, !st.solo[it]); r() },
+            onReset = { p.resetChannel(it); r() })
+        setContent { SongPanel(st, SongRouting.INTERNAL, null, 0, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, voices = voices, mixer = acts) }
+        onNodeWithTag(M.TAB_MIXER).performScrollTo().performClick()
+        onNodeWithTag(M.strip(2)).performScrollTo().performClick()
+        onNodeWithTag(M.sustain(SustainMode.IGNORE)).performScrollTo().performClick()
+        assertEquals(SustainMode.IGNORE, p.overrides()[2].sustain)
+        onNodeWithTag(M.VOL).performScrollTo().performSemanticsAction(SemanticsActions.SetProgress) { it(30f) }
+        assertEquals(30, p.overrides()[2].volume); onNodeWithTag(M.VOL_TEXT).assertTextContains("30 USER")
+        onNodeWithTag(M.PAN).performScrollTo().performSemanticsAction(SemanticsActions.SetProgress) { it(20f) }
+        assertEquals(20, p.overrides()[2].pan); onNodeWithTag(M.PAN_TEXT).assertTextContains("L44", substring = true)
+        onNodeWithTag(M.SOLO).performScrollTo().performClick(); assertTrue(p.status(0).solo[2]); assertTrue(p.status(0).silent[0])
+        onNodeWithTag(M.VOICE).performScrollTo().performClick()
+        onNodeWithTag(M.PICKER).assertIsDisplayed()
+        onNodeWithTag(M.pickerSf2("tyros4.sf2")).performClick()
+        onNodeWithTag(M.pickerItem(0)).performClick()
+        assertEquals("melodic channel: only melodic presets, filtered by SF2", "Slow Strings", p.overrides()[2].voice?.name)
+        onNodeWithTag(M.VOICE_TEXT).assertTextContains("Slow Strings", substring = true)
+        onNodeWithTag(M.RESET).performScrollTo().performClick()
+        assertTrue(p.overrides()[2].isDefault); assertTrue(!p.status(0).solo[2])
+        // the drum channel offers drum kits only
+        onNodeWithTag(M.strip(9)).performScrollTo().performClick()
+        onNodeWithTag(M.VOICE).performScrollTo().performClick()
+        onNodeWithTag(M.pickerItem(0)).assertTextContains("Standard Kit", substring = true)
+        onNodeWithTag(M.pickerItem(1)).assertTextContains("Analog Kit", substring = true); onNodeWithTag(M.pickerItem(2)).assertDoesNotExist()
+        onNodeWithTag(M.PICKER_CANCEL).performClick(); onNodeWithTag(M.PICKER).assertDoesNotExist()
+        assertTrue(p.overrides()[9].isDefault)
+    }
+
+    @OptIn(ExperimentalComposeUiApi::class)
+    @Test fun renderMixerPngEvidence() {
+        val dir = File(System.getProperty("song.png.dir") ?: "build/png-song").apply { mkdirs() }
+        val p = loadedPlayer(); p.setVoice(2, voices[2]); p.setVolume(2, 90); p.setSustainMode(2, SustainMode.IGNORE); p.setSolo(9, true)
+        for ((name, w, h) in sizes) for ((kind, picker) in listOf("mixer" to false, "picker" to true)) {
+            val d = 1.5f
+            val scene = ImageComposeScene((w * d).toInt(), (h * d).toInt(), Density(d)) {
+                SongPanel(p.status(0), SongRouting.INTERNAL, "CH3: Slow Strings — voice active", 0, {}, {}, {}, {}, {}, {}, {}, {}, {}, {},
+                    voices = voices, startInMixer = true, startChannel = 2, startPicker = picker)
+            }
+            scene.render(0L); val img = scene.render(250_000_000L)
+            File(dir, "song_${kind}_$name.png").writeBytes(img.encodeToData(EncodedImageFormat.PNG)!!.bytes); scene.close()
+        }
+        assertTrue(dir.listFiles()!!.count { it.name.startsWith("song_mixer_") } >= 3)
     }
 
     @OptIn(ExperimentalComposeUiApi::class)

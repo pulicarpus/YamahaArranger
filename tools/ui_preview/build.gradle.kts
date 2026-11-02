@@ -38,7 +38,7 @@ sourceSets {
                 "com/yourapp/ui/E343ExperimentPanel.kt",
                 "com/yourapp/ui/RotaryKnobMath.kt", "com/yourapp/ui/RotaryDataKnob.kt",
                 "com/yourapp/ui/SongPanel.kt", "com/yourapp/yamahaarranger/song/Smf.kt", "com/yourapp/yamahaarranger/song/SongTimeline.kt",
-                "com/yourapp/yamahaarranger/song/SongPlayer.kt", "com/yourapp/yamahaarranger/song/SongOutputs.kt",
+                "com/yourapp/yamahaarranger/song/SongPlayer.kt", "com/yourapp/yamahaarranger/song/SongOutputs.kt", "com/yourapp/yamahaarranger/song/SongMixer.kt", "com/yourapp/ui/SongMixerPanel.kt",
                 // used by StyleVoiceEditorScreen.kt on this branch line (E343 audit, Style Editor BACK); pure Kotlin, no Android types
                 "com/yourapp/yamahaarranger/style/E343Compat.kt", "com/yourapp/yamahaarranger/style/StyleEditorNavigation.kt",
             )

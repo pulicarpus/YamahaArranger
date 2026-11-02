@@ -42,6 +42,7 @@ import com.yourapp.yamahaarranger.song.GmNames
 import com.yourapp.yamahaarranger.song.SongRouting
 import com.yourapp.yamahaarranger.song.SongState
 import com.yourapp.yamahaarranger.song.SongStatus
+import com.yourapp.yamahaarranger.song.SongVoice
 
 object SongTags {
     const val PANEL = "song.panel"; const val CLOSE = "song.close"; const val OPEN = "song.open"; const val PLAY = "song.play"; const val STOP = "song.stop"
@@ -94,9 +95,17 @@ fun SongPanel(
     onOpen: () -> Unit, onPlayPause: () -> Unit, onStop: () -> Unit, onPrevBar: () -> Unit, onNextBar: () -> Unit,
     onSeek: (Float) -> Unit, onTempoPercent: (Int) -> Unit, onRouting: (SongRouting) -> Unit, onMute: (Int) -> Unit, onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    voices: List<SongVoice> = emptyList(), mixer: SongMixerActions = SongMixerActions(), liveReport: String = "",
+    onPickerOpen: () -> Unit = {},
+    /** initial view (previews / evidence renders): MIXER tab, selected channel, Voice Selector open */
+    startInMixer: Boolean = false, startChannel: Int = 0, startPicker: Boolean = false,
 ) {
     val loaded = status.state != SongState.EMPTY
-    Column(modifier.fillMaxSize().background(SBg).testTag(SongTags.PANEL)) {
+    var mixerTab by remember { mutableStateOf(startInMixer) }
+    var selected by remember { mutableStateOf(startChannel.coerceIn(0, 15)) }
+    var picker by remember { mutableStateOf(startPicker) }
+    Box(modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().background(SBg).testTag(SongTags.PANEL)) {
         Row(Modifier.fillMaxWidth().background(SPanel).padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("SONG", color = SBlue, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.width(14.dp))
@@ -143,20 +152,30 @@ fun SongPanel(
                 colors = SliderDefaults.colors(thumbColor = SBlue, activeTrackColor = SBlue),
                 modifier = Modifier.fillMaxWidth().height(40.dp).testTag(SongTags.SEEK)
             )
+            // CHANNELS (tap = mute) or MIXER (V1A.2: voice / volume / pan / sustain / solo per channel)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                SmallSongKey("CHANNELS", SongMixerTags.TAB_CHANNELS, true, selected = !mixerTab) { mixerTab = false }
+                SmallSongKey("MIXER", SongMixerTags.TAB_MIXER, true, selected = mixerTab) { mixerTab = true }
+                Text(if (mixerTab) "tap a channel to edit it" else "tap = MUTE", color = SDim, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
+            if (mixerTab) {
+                SongMixerSection(status, nowNs, selected, { selected = it }, { picker = true; onPickerOpen() }, mixer, liveReport)
+            } else {
+                for (row in 0 until 2) Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                    for (ch in row * 8 until row * 8 + 8) ChannelCell(status, ch, nowNs, Modifier.weight(1f)) { onMute(ch) }
+                }
+            }
             // recording mode (not available in V1A)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("RECORD MODE", color = SDim, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 SongKey("KEYBOARD ONLY", SongTags.MODE_KEYBOARD, enabled = false, minWidth = 150, sub = "not available yet (V1B)") {}
                 SongKey("FULL ARRANGER", SongTags.MODE_FULL, enabled = false, minWidth = 150, sub = "not available yet (V1C)") {}
             }
-            // 16-channel mixer: name, program, activity, mute (tap)
-            Text("CHANNELS  (tap = MUTE)", color = SDim, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-            for (row in 0 until 2) Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-                for (ch in row * 8 until row * 8 + 8) ChannelCell(status, ch, nowNs, Modifier.weight(1f)) { onMute(ch) }
-            }
             Text(notice ?: "", color = SAmber, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.testTag(SongTags.NOTICE))
             Spacer(Modifier.height(8.dp))
         }
+    }
+    if (picker) SongVoicePicker(selected, selected in status.drumChannels, voices, { v -> picker = false; mixer.onVoice(selected, v) }, { picker = false })
     }
 }
 
@@ -183,7 +202,7 @@ private fun ChannelCell(status: SongStatus, ch: Int, nowNs: Long, modifier: Modi
             Text("CH ${ch + 1}", color = if (used) Color.White else Color(0xFF4A545E), fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
             Box(Modifier.size(10.dp).background(if (activeNote) Color(0xFF4CD37B) else Color(0xFF26303A), CircleShape))
         }
-        Text(if (used) GmNames.name(ch, status.programs.getOrElse(ch) { -1 }, status.bankMsb.getOrElse(ch) { -1 }) else "—",
+        Text(if (used) status.overrides.getOrNull(ch)?.voice?.name ?: GmNames.name(ch, status.programs.getOrElse(ch) { -1 }, status.bankMsb.getOrElse(ch) { -1 }) else "—",
             color = if (used) SDim else Color(0xFF3A444E), fontSize = 10.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
         if (muted) Text("MUTE", color = Color(0xFFFF6B6B), fontSize = 10.sp, fontWeight = FontWeight.Bold)
     }
