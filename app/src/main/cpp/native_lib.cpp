@@ -324,4 +324,12 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_Nati
 }
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSongReset(JNIEnv*,jobject){if(g_engine)g_engine->songReset();}
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSongSetActive(JNIEnv*,jobject,jboolean active){if(g_engine)g_engine->songSetActive(active==JNI_TRUE);}
+// MIDI SONG: one complete setup SysEx (XG / GS / GM) for the Song stream only; validated again natively.
+extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSongSysEx(JNIEnv* env,jobject,jbyteArray data,jint length){
+    if(!g_engine||!data||length<=0||length>256) return JNI_FALSE;
+    const jsize n=env->GetArrayLength(data); if(length>n) return JNI_FALSE;
+    std::vector<uint8_t> bytes(static_cast<size_t>(length));
+    env->GetByteArrayRegion(data,0,length,reinterpret_cast<jbyte*>(bytes.data()));
+    return g_engine->songSysEx(bytes.data(),bytes.size())?JNI_TRUE:JNI_FALSE;
+}
 

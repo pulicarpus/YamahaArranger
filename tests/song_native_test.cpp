@@ -26,6 +26,27 @@ int main(int argc, char** argv) {
     check(!p.songEvents(sysex, sizeof sysex) && mock_bass::rawEvents.size() == raw0, "SysEx refused, nothing sent");
     const uint8_t sneaky[] = {0x90, 61, 90, 0xFF};
     check(!p.songEvents(sneaky, sizeof sneaky) && mock_bass::rawEvents.size() == raw0, "any system byte refuses the batch");
+    // V1A.1: setup SysEx has its own entry point, Song stream only, whitelisted families only
+    const uint8_t xgOn[] = {0xF0, 0x43, 0x10, 0x4C, 0x00, 0x00, 0x7E, 0x00, 0xF7};
+    const uint8_t xgVib[] = {0xF0, 0x43, 0x10, 0x4C, 0x08, 0x00, 0x20, 0x00, 0xF7};
+    const uint8_t gs[] = {0xF0, 0x41, 0x10, 0x42, 0x12, 0x40, 0x00, 0x7F, 0x00, 0x41, 0xF7};
+    for (const auto& m : {std::vector<uint8_t>(sysex, sysex + 6), std::vector<uint8_t>(xgOn, xgOn + 9), std::vector<uint8_t>(xgVib, xgVib + 9), std::vector<uint8_t>(gs, gs + 11)}) {
+        const size_t n0 = mock_bass::rawEvents.size();
+        check(p.songSysEx(m.data(), m.size()), "setup SysEx accepted");
+        check(mock_bass::rawEvents.size() == n0 + 1 && mock_bass::rawEvents.back().first == song && mock_bass::rawEvents.back().second == m, "setup SysEx to the Song stream only, unchanged");
+    }
+    const uint8_t styleCtl[] = {0xF0, 0x43, 0x7E, 0x00, 0x08, 0x7F, 0xF7};      // Yamaha style section control: not a synth setup
+    const uint8_t privateMsg[] = {0xF0, 0x43, 0x73, 0x01, 0x51, 0x05, 0xF7};    // Yamaha instrument-private
+    const uint8_t other[] = {0xF0, 0x00, 0x20, 0x33, 0x01, 0xF7};               // other manufacturer
+    const uint8_t open[] = {0xF0, 0x43, 0x10, 0x4C, 0x00, 0x00, 0x7E, 0x00};    // no F7 (split packet)
+    const uint8_t badData[] = {0xF0, 0x43, 0x10, 0x4C, 0x08, 0x90, 0x20, 0x00, 0xF7};
+    const uint8_t chan[] = {0x90, 60, 100};
+    const size_t r1 = mock_bass::rawEvents.size();
+    check(!p.songSysEx(styleCtl, sizeof styleCtl) && !p.songSysEx(privateMsg, sizeof privateMsg) && !p.songSysEx(other, sizeof other) &&
+          !p.songSysEx(open, sizeof open) && !p.songSysEx(badData, sizeof badData) && !p.songSysEx(chan, sizeof chan) &&
+          mock_bass::rawEvents.size() == r1, "non-setup / malformed SysEx refused, nothing sent");
+    check(!p.songEvents(xgOn, sizeof xgOn) && mock_bass::rawEvents.size() == r1, "the channel entry point still refuses SysEx");
+    for (const auto& e : mock_bass::rawEvents) check(e.first == song, "nothing raw ever reaches the keyboard/Style stream");
     p.songReset();
     int songResets = 0, mainTouched = 0;
     for (size_t i = hist0; i < mock_bass::history.size(); ++i) {
@@ -41,6 +62,6 @@ int main(int argc, char** argv) {
     check(p.loadDrum(d + "/prime_drum.sf2"), "load drum font");
     check(p.songEvents(on, 3), "song event after font change");
     check(maps.size() == 2 && maps[0].font != maps[1].font, "drum font first, then melody, after the change");
-    std::cout << "SONG NATIVE PASS song_stream=" << song << " reset_events=" << songResets << " main_stream_touched=" << mainTouched << "\n";
+    std::cout << "SONG NATIVE PASS song_stream=" << song << " reset_events=" << songResets << " main_stream_touched=" << mainTouched << " setup_sysex=song_stream_only\n";
     return 0;
 }

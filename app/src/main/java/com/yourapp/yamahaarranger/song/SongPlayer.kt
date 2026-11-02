@@ -6,6 +6,8 @@ import java.util.concurrent.locks.LockSupport
 interface SongOutput {
     val id: String
     fun send(bytes: ByteArray)
+    /** Only the internal Song synth takes setup SysEx (F0 .. F7). MIDI OUT never does. */
+    val acceptsSysEx: Boolean get() = false
 }
 
 enum class SongState { EMPTY, STOPPED, PLAYING, PAUSED }
@@ -30,7 +32,9 @@ data class SongStatus(
  *    (and CC64 0 where sustained) only for notes the SONG started — never All Notes Off, never other sources' notes;
  *  - a NOTE OFF whose NOTE ON was not sent (muted channel, or before a panic) is not sent (no orphan NOTE OFF);
  *  - SEEK and RESUME first send the channel state reached at that point (bank, program, controllers, pitch bend; no notes);
- *  - SysEx is never sent (not part of the timeline).
+ *  - setup SysEx (XG / GS / GM, see [SongSysEx]) goes ONLY to outputs with [SongOutput.acceptsSysEx] (the internal synth), never to
+ *    MIDI OUT. Before playing from the start or chasing, that synth is reset with GM System On and the setup SysEx before the
+ *    position is re-sent, so a new song never inherits the previous song's XG / drum-part / vibrato-depth setup.
  */
 class SongPlayer(private val clock: () -> Long = System::nanoTime) {
     private val lock = Object()
@@ -76,6 +80,7 @@ class SongPlayer(private val clock: () -> Long = System::nanoTime) {
         val t = timeline ?: return "No MIDI song loaded"
         if (state == SongState.PLAYING) return null
         if (pausedUs >= t.durationUs && t.durationUs > 0) { pausedUs = 0; next = 0 }
+        if (pausedUs <= 0) resetSynthLocked(outputs)
         chaseLocked(pausedUs, outputs)
         next = firstIndexAtOrAfterUs(t, pausedUs)
         anchorSongUs = pausedUs; anchorWallNs = clock(); state = SongState.PLAYING; message = null
@@ -175,6 +180,7 @@ class SongPlayer(private val clock: () -> Long = System::nanoTime) {
     }
 
     private fun dispatchLocked(e: SongEvent, nowNs: Long) {
+        if (e.isSysEx) { for (o in outputs) if (o.acceptsSysEx) o.send(e.bytes); return }
         val ch = e.channel
         when {
             e.isNoteOn -> {
@@ -219,7 +225,10 @@ class SongPlayer(private val clock: () -> Long = System::nanoTime) {
         if (us <= 0 || to.isEmpty()) return
         val tick = t.tickAt(us)
         // events exactly at the target are played by the scheduler; the chase covers what happened strictly before it
-        for (m in t.chaseBefore(firstTickAtOrAfterUs(t, us, tick))) {
+        val before = firstTickAtOrAfterUs(t, us, tick)
+        val synths = to.filter { it.acceptsSysEx }
+        if (synths.isNotEmpty()) { resetSynthLocked(synths); for (m in t.sysExBefore(before)) for (o in synths) o.send(m) }
+        for (m in t.chaseBefore(before)) {
             val st = m[0].toInt() and 0xFF; val ch = st and 0x0F
             when (st and 0xF0) {
                 0xB0 -> when (m[1].toInt()) { 64 -> sustain[ch] = m[2] >= 64; 0 -> bankMsb[ch] = m[2].toInt() }
@@ -234,6 +243,9 @@ class SongPlayer(private val clock: () -> Long = System::nanoTime) {
         val i = firstIndexAtOrAfterUs(t, us)
         return if (i < t.events.size) t.events[i].tick else fallback + 1
     }
+
+    /** GM System On to the internal synth only (all Song notes were already ended by the caller's panic, or none sound yet). */
+    private fun resetSynthLocked(to: List<SongOutput>) { for (o in to) if (o.acceptsSysEx) o.send(SongSysEx.GM_SYSTEM_ON) }
 
     private fun stopLocked() {
         val wasActive = state == SongState.PLAYING || state == SongState.PAUSED

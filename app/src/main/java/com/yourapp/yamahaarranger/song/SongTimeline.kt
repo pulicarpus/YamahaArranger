@@ -1,10 +1,12 @@
 package com.yourapp.yamahaarranger.song
 
 /**
- * One playable channel message at an absolute time. [us] = microseconds from the song start at the file's own tempo map.
+ * One playable message at an absolute time: a channel message, or a complete setup SysEx ([isSysEx], bytes F0 .. F7) that
+ * passed [SongSysEx.forInternal]. [us] = microseconds from the song start at the file's own tempo map.
  * [index] is the position in the merged, ordered list.
  */
 class SongEvent(val index: Int, val tick: Long, val us: Long, val bytes: ByteArray) {
+    val isSysEx get() = (bytes[0].toInt() and 0xFF) == 0xF0
     val status get() = bytes[0].toInt() and 0xFF
     val channel get() = status and 0x0F
     val command get() = status and 0xF0
@@ -12,6 +14,33 @@ class SongEvent(val index: Int, val tick: Long, val us: Long, val bytes: ByteArr
     val data2 get() = if (bytes.size > 2) bytes[2].toInt() and 0x7F else -1
     val isNoteOn get() = command == 0x90 && data2 > 0
     val isNoteOff get() = command == 0x80 || (command == 0x90 && data2 == 0)
+}
+
+/**
+ * Which file SysEx may reach the INTERNAL Song synth (never MIDI OUT). Only complete single-packet messages of the standard setup
+ * families that BASSMIDI interprets: Universal Non-Realtime GM System On/Off (7E dd 09 ..), Universal Realtime Device Control
+ * (7F dd 04 .., master volume / balance), Roland GS parameter set (41 dd 42 12 ..) and Yamaha XG parameter change (43 1n 4C ..).
+ * Everything else (manufacturer-private data, Yamaha style / panel messages 43 7E / 43 73, F7 escapes, split packets) is dropped.
+ */
+object SongSysEx {
+    const val MAX_LENGTH = 256
+    /** Wire bytes F0 .. F7 for an SMF SysEx event, or null if it must not be forwarded. */
+    fun forInternal(e: SmfEvent): ByteArray? {
+        val p = e.payload ?: return null
+        if (e.status != 0xF0 || p.size < 4 || p.size + 1 > MAX_LENGTH || (p.last().toInt() and 0xFF) != 0xF7) return null
+        for (i in 0 until p.size - 1) if ((p[i].toInt() and 0xFF) > 0x7F) return null
+        val b0 = p[0].toInt(); val b2 = p[2].toInt(); val b3 = p[3].toInt()
+        val ok = when (b0) {
+            0x7E -> b2 == 0x09                                   // GM System On / Off
+            0x7F -> b2 == 0x04                                   // device control (master volume / balance)
+            0x41 -> b2 == 0x42 && b3 == 0x12                     // Roland GS DT1
+            0x43 -> (p[1].toInt() and 0xF0) == 0x10 && b2 == 0x4C // Yamaha XG parameter change
+            else -> false
+        }
+        return if (ok) byteArrayOf(0xF0.toByte()) + p else null
+    }
+    /** GM System On: puts the internal Song synth back to defaults (a new song, or before a chase). */
+    val GM_SYSTEM_ON = byteArrayOf(0xF0.toByte(), 0x7E, 0x7F, 0x09, 0x01, 0xF7.toByte())
 }
 
 data class TempoPoint(val tick: Long, val usPerQuarter: Int, val us: Long) { val bpm get() = 60_000_000.0 / usPerQuarter }
@@ -22,13 +51,16 @@ data class BarBeat(val bar: Int, val beat: Int, val tickInBeat: Int) { override 
  * The merged, timed view of an [SmfFile] for playback.
  * Merge order: tick, then NOTE OFF before any other event at the same tick (a note ending and a new one starting on the
  * same key at the same tick must not cut the new one), then track index, then file order.
- * SysEx is never part of [events] (counted in [sysExCount]); meta events feed the tempo / time-signature maps and names.
+ * SysEx: all counted in [sysExCount]; only the setup messages accepted by [SongSysEx.forInternal] are part of [events]
+ * ([sysExForwarded]), and the player sends those to the internal synth only. Meta events feed the tempo / time-signature maps and names.
  */
 class SongTimeline private constructor(
     val ppq: Int, val format: Int, val events: List<SongEvent>, val tempos: List<TempoPoint>, val timeSigs: List<TimeSigPoint>,
     val lastTick: Long, val durationUs: Long, val sysExCount: Int, val trackNames: List<String>, val channelNames: Map<Int, String>,
-    val channelsUsed: Set<Int>, val warnings: List<String>,
+    val channelsUsed: Set<Int>, val warnings: List<String>, val sysExForwarded: Int = 0,
 ) {
+    /** Channel messages only (no SysEx). */
+    val channelEventCount get() = events.size - sysExForwarded
     fun usAt(tick: Long): Long {
         val t = tempos.lastOrNull { it.tick <= tick } ?: tempos.first()
         return t.us + (tick - t.tick) * t.usPerQuarter / ppq
@@ -66,11 +98,15 @@ class SongTimeline private constructor(
      * Channel state reached just before [tick] (for SEEK): per channel, in send order: Bank MSB, Bank LSB, Program, then every other
      * controller's last value (sustain included), then the last pitch bend. Never a NOTE ON.
      */
+    /** Forwardable setup SysEx strictly before [tick], in file order (re-sent to the internal synth before a chase). */
+    fun sysExBefore(tick: Long): List<ByteArray> = events.asSequence().takeWhile { it.tick < tick }.filter { it.isSysEx }.map { it.bytes }.toList()
+
     fun chaseBefore(tick: Long): List<ByteArray> {
         val msb = IntArray(16) { -1 }; val lsb = IntArray(16) { -1 }; val prog = IntArray(16) { -1 }
         val cc = Array(16) { IntArray(128) { -1 } }; val bend = Array<ByteArray?>(16) { null }
         for (e in events) {
             if (e.tick >= tick) break
+            if (e.isSysEx) continue
             val ch = e.channel
             when (e.command) {
                 0xB0 -> when (e.data1) { 0 -> msb[ch] = e.data2; 32 -> lsb[ch] = e.data2; else -> if (e.data1 < 120) cc[ch][e.data1] = e.data2 }
@@ -124,8 +160,11 @@ class SongTimeline private constructor(
             }
             fun usAt(tick: Long): Long { val t = tempos.last { it.tick <= tick }; return t.us + (tick - t.tick) * t.usPerQuarter / f.ppq }
             val channelEvents = all.filter { it.isChannel }
+            val sysEx = all.mapNotNull { e -> if (e.isSysEx) SongSysEx.forInternal(e)?.let { e to it } else null }
+            val wire = HashMap<SmfEvent, ByteArray>(); for ((e, b) in sysEx) wire[e] = b
+            val merged = (channelEvents + sysEx.map { it.first })
                 .sortedWith(compareBy<SmfEvent>({ it.tick }, { if (it.isNoteOff) 0 else 1 }, { it.track }, { it.order }))
-            val events = channelEvents.mapIndexed { i, e -> SongEvent(i, e.tick, usAt(e.tick), e.channelBytes()) }
+            val events = merged.mapIndexed { i, e -> SongEvent(i, e.tick, usAt(e.tick), wire[e] ?: e.channelBytes()) }
             val lastTick = all.maxOfOrNull { it.tick } ?: 0L
             val names = HashMap<Int, String>()
             for (t in f.tracks) if (t.name.isNotBlank()) {
@@ -133,7 +172,7 @@ class SongTimeline private constructor(
                 if (chs.size == 1) names.putIfAbsent(chs.first(), t.name)
             }
             return SongTimeline(f.ppq, f.format, events, tempos, sigs, lastTick, usAt(lastTick), all.count { it.isSysEx },
-                f.tracks.map { it.name }, names, channelEvents.map { it.channel }.toSet(), f.warnings)
+                f.tracks.map { it.name }, names, channelEvents.map { it.channel }.toSet(), f.warnings, sysEx.size)
         }
     }
 }

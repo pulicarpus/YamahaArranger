@@ -3,16 +3,18 @@ package com.yourapp.yamahaarranger.song
 /** Where the Song plays. Default INTERNAL (the external module may share channels with RIGHT/LEFT and the Style). */
 enum class SongRouting(val label: String) { INTERNAL("INTERNAL"), EXTERNAL("MIDI OUT"), BOTH("BOTH") }
 
-/** Internal BASSMIDI Song stream (a separate stream from the keyboard/Style one). */
-class InternalSongOutput(private val sink: (ByteArray) -> Boolean) : SongOutput {
+/** Internal BASSMIDI Song stream (a separate stream from the keyboard/Style one). Setup SysEx goes to [sysExSink]. */
+class InternalSongOutput(private val sink: (ByteArray) -> Boolean, private val sysExSink: (ByteArray) -> Boolean = { false }) : SongOutput {
     override val id = "INTERNAL"
-    override fun send(bytes: ByteArray) { sink(bytes) }
+    override val acceptsSysEx get() = true
+    override fun send(bytes: ByteArray) { if ((bytes[0].toInt() and 0xFF) == 0xF0) sysExSink(bytes) else sink(bytes) }
 }
 
-/** External module over USB MIDI. The sink refuses SysEx/system bytes; the Song never produces them anyway. */
+/** External module over USB MIDI. Never receives SysEx (the player does not offer it; the sink refuses it as well). */
 class ExternalSongOutput(private val sink: (ByteArray) -> Boolean) : SongOutput {
     override val id = "MIDI OUT"
-    override fun send(bytes: ByteArray) { sink(bytes) }
+    override val acceptsSysEx get() = false
+    override fun send(bytes: ByteArray) { if ((bytes[0].toInt() and 0xFF) < 0xF0) sink(bytes) }
 }
 
 /** The outputs for a routing choice. Each event goes once to each of them (see SongPlayer). */

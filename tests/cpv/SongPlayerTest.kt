@@ -2,6 +2,8 @@ package com.yourapp.yamahaarranger.cpv
 
 import com.yourapp.yamahaarranger.song.Smf
 import com.yourapp.yamahaarranger.song.SmfException
+import com.yourapp.yamahaarranger.song.SmfEvent
+import com.yourapp.yamahaarranger.song.SongSysEx
 import com.yourapp.yamahaarranger.song.SongOutput
 import com.yourapp.yamahaarranger.song.SongPlayer
 import com.yourapp.yamahaarranger.song.SongState
@@ -30,7 +32,7 @@ class SongPlayerTest {
     private fun load(name: String) = Smf.parse(File(dir, "$name.mid").readBytes())
     private fun timeline(name: String) = SongTimeline.from(load(name))
 
-    private class Rec(override val id: String) : SongOutput {
+    private class Rec(override val id: String, override val acceptsSysEx: Boolean = false) : SongOutput {
         val msgs = ArrayList<Pair<Long, ByteArray>>(); var now = 0L
         override fun send(bytes: ByteArray) { msgs += now to bytes.copyOf() }
         fun st(i: Int) = msgs[i].second[0].toInt() and 0xFF
@@ -59,8 +61,9 @@ class SongPlayerTest {
             val m = manifest.getValue(name); val f = load(name); val t = SongTimeline.from(f)
             assertEquals(name, m["format"]!!.toInt(), f.format); assertEquals(name, m["ppq"]!!.toInt(), f.ppq)
             assertEquals(name, m["tracks"]!!.toInt(), f.tracks.size)
-            assertEquals("$name channel events (incl. running status)", m["channelEvents"]!!.toInt(), t.events.size)
+            assertEquals("$name channel events (incl. running status)", m["channelEvents"]!!.toInt(), t.channelEventCount)
             assertEquals(name, m["sysex"]!!.toInt(), t.sysExCount)
+            assertEquals("$name: the GM System On is a forwardable setup SysEx", m["sysex"]!!.toInt(), t.sysExForwarded)
             val ons = IntArray(16); t.events.filter { it.isNoteOn }.forEach { ons[it.channel]++ }
             assertEquals(name, m["noteOns"], ons.joinToString(","))
             assertEquals(name, m["tempos"], t.tempos.joinToString(",") { "${it.tick}:${it.usPerQuarter}" })
@@ -114,15 +117,19 @@ class SongPlayerTest {
 
     // ---------------- player ----------------
     @Test fun fullPlayBothOutputsGetEveryEventExactlyOnceInOrderAndOnTime() {
-        val t = timeline("type1_16ch"); val c = Clock(); val a = Rec("internal"); val b = Rec("external")
+        val t = timeline("type1_16ch"); val c = Clock(); val a = Rec("internal", acceptsSysEx = true); val b = Rec("external")
         val p = SongPlayer { c.ns }; p.load(t, "type1"); p.setOutputs(listOf(a, b))
         val start = c.ns; assertNull(p.play()); run(p, c, listOf(a, b))
         assertEquals(SongState.STOPPED, p.status(c.ns).state); assertEquals("End of song", p.status(c.ns).message)
-        assertEquals("internal: every channel event once", t.events.size, a.msgs.size)
-        assertEquals("external identical to internal", a.msgs.map { it.second.toList() }, b.msgs.map { it.second.toList() })
-        assertEquals("no SysEx ever sent", 0, a.msgs.count { (it.second[0].toInt() and 0xFF) >= 0xF0 })
+        assertEquals("internal synth reset (GM System On) before the song", SongSysEx.GM_SYSTEM_ON.toList(), a.msgs[0].second.toList())
+        val played = a.msgs.drop(1)
+        assertEquals("internal: every event (channel + setup SysEx) once", t.events.size, played.size)
+        assertEquals("external: every channel event once", t.channelEventCount, b.msgs.size)
+        assertEquals("external = internal without SysEx", played.map { it.second }.filter { (it[0].toInt() and 0xFF) < 0xF0 }.map { it.toList() }, b.msgs.map { it.second.toList() })
+        assertEquals("MIDI OUT never gets SysEx", 0, b.msgs.count { (it.second[0].toInt() and 0xFF) >= 0xF0 })
+        assertEquals("the file's GM System On reached the internal synth", 1, played.count { (it.second[0].toInt() and 0xFF) == 0xF0 })
         assertEquals("notes balanced", a.noteOns(), a.noteOffs()); assertEquals(0, p.activeNotes())
-        for ((i, e) in t.events.withIndex()) assertEquals("event $i on time", start + e.us * 1000, a.msgs[i].first)
+        for ((i, e) in t.events.withIndex()) assertEquals("event $i on time", start + e.us * 1000, played[i].first)
         for (ch in 0 until 16) {
             val seq = a.msgs.map { it.second }.filter { (it[0].toInt() and 0x0F) == ch && ((it[0].toInt() and 0xF0) == 0xC0 || ((it[0].toInt() and 0xF0) == 0xB0 && it[1].toInt() in listOf(0, 32))) }
             assertEquals("ch${ch + 1} bank MSB -> LSB -> program", listOf(0xB0 to 0, 0xB0 to 32, 0xC0 to -1), seq.map { (it[0].toInt() and 0xF0) to (if (it.size > 2) it[1].toInt() else -1) })
@@ -228,14 +235,66 @@ class SongPlayerTest {
     @Test fun routingSendsEachEventOncePerSelectedOutput() {
         val t = timeline("type0_basic")
         val internal = ArrayList<ByteArray>(); val external = ArrayList<ByteArray>()
-        val i = InternalSongOutput { internal += it; true }; val e = ExternalSongOutput { external += it; false }   // MIDI OUT refusing (off) must not matter
+        val i = InternalSongOutput({ internal += it; true }); val e = ExternalSongOutput { external += it; false }   // MIDI OUT refusing (off) must not matter
         for ((r, expI, expE) in listOf(Triple(SongRouting.INTERNAL, 1, 0), Triple(SongRouting.EXTERNAL, 0, 1), Triple(SongRouting.BOTH, 1, 1))) {
             internal.clear(); external.clear()
             val c = Clock(); val p = SongPlayer { c.ns }; p.load(t, "x"); p.setOutputs(songOutputsFor(r, i, e)); p.play()
             var g = 0; while (g++ < 100_000) { val n = p.step(c.ns); if (n < 0) break; c.ns = maxOf(n, c.ns) }
-            assertEquals("$r internal", expI * t.events.size, internal.size); assertEquals("$r external", expE * t.events.size, external.size)
+            assertEquals("$r internal", expI * t.channelEventCount, internal.size); assertEquals("$r external", expE * t.channelEventCount, external.size)
         }
         assertEquals("Drums (kit 1)", GmNames.name(9, 0)); assertEquals("Acoustic Grand Piano", GmNames.name(0, 0)); assertEquals("Drums (kit 26)", GmNames.name(3, 25, 127))
+    }
+
+    // ---------------- V1A.1: XG / GS / GM setup SysEx, internal synth only ----------------
+    private fun sx(vararg b: Int) = byteArrayOf(0xF0.toByte(), (b.size).toByte()) + b.map { it.toByte() }.toByteArray()   // SMF: F0 <len> payload(.. F7)
+    private fun cc(ch: Int, n: Int, v: Int) = byteArrayOf((0xB0 or ch).toByte(), n.toByte(), v.toByte())
+    private fun pc(ch: Int, v: Int) = byteArrayOf((0xC0 or ch).toByte(), v.toByte())
+
+    @Test fun setupSysExWhitelistMatchesTheSynthFamiliesOnly() {
+        fun ok(vararg payload: Int) = SongSysEx.forInternal(SmfEvent(0, 0, 0, 0xF0, 0, 0, -1, payload.map { it.toByte() }.toByteArray())) != null
+        assertTrue("GM System On", ok(0x7E, 0x7F, 0x09, 0x01, 0xF7))
+        assertTrue("XG System On", ok(0x43, 0x10, 0x4C, 0x00, 0x00, 0x7E, 0x00, 0xF7))
+        assertTrue("XG part mode", ok(0x43, 0x10, 0x4C, 0x08, 0x08, 0x07, 0x03, 0xF7))
+        assertTrue("GS reset", ok(0x41, 0x10, 0x42, 0x12, 0x40, 0x00, 0x7F, 0x00, 0x41, 0xF7))
+        assertTrue("master volume", ok(0x7F, 0x7F, 0x04, 0x01, 0x00, 0x7F, 0xF7))
+        assertFalse("Yamaha style section control", ok(0x43, 0x7E, 0x00, 0x08, 0x7F, 0xF7))
+        assertFalse("Yamaha instrument-private", ok(0x43, 0x73, 0x01, 0x51, 0x05, 0x00, 0x03, 0xF7))
+        assertFalse("other manufacturer", ok(0x00, 0x20, 0x33, 0x01, 0x00, 0xF7))
+        assertFalse("split packet (no F7)", ok(0x43, 0x10, 0x4C, 0x00, 0x00, 0x7E, 0x00))
+        assertFalse("data byte > 0x7F", ok(0x43, 0x10, 0x4C, 0x08, 0x88, 0x07, 0x03, 0xF7))
+        assertFalse("F7 escape event", SongSysEx.forInternal(SmfEvent(0, 0, 0, 0xF7, 0, 0, -1, byteArrayOf(0x43, 0x10, 0x4C, 0, 0, 0x7E, 0, 0xF7.toByte()))) != null)
+    }
+
+    @Test fun xgSetupGoesOnlyToTheInternalSynthInFileOrderAndIsReplayedOnSeek() {
+        // a PSR-style XG file: XG On, ch9 = drum part, MW vibrato depth 0 on ch1, a style control + a private message (dropped), then voices and notes
+        val xgOn = sx(0x43, 0x10, 0x4C, 0x00, 0x00, 0x7E, 0x00, 0xF7); val part = sx(0x43, 0x10, 0x4C, 0x08, 0x08, 0x07, 0x03, 0xF7)
+        val vib = sx(0x43, 0x10, 0x4C, 0x08, 0x00, 0x20, 0x00, 0xF7)
+        val ev = listOf(0L to sx(0x7E, 0x7F, 0x09, 0x01, 0xF7), 480L to xgOn, 480L to part, 480L to vib, 480L to sx(0x43, 0x7E, 0x00, 0x08, 0x7F, 0xF7),
+            480L to sx(0x43, 0x73, 0x01, 0x51, 0x05, 0xF7), 960L to cc(8, 0, 127), 960L to pc(8, 58), 960L to cc(0, 1, 82), 960L to pc(0, 0)) +
+            (0 until 8).flatMap { listOf(1920L + it * 480 to on(0, 60), 1920L + it * 480 + 400 to off(0, 60), 1920L + it * 480 to on(8, 36), 1920L + it * 480 + 100 to off(8, 36)) }
+        val t = SongTimeline.from(Smf.parse(smfBytes(0, 480, listOf(track(ev)))))
+        assertEquals(6, t.sysExCount); assertEquals("GM On + XG On + part mode + vibrato depth", 4, t.sysExForwarded)
+        val c = Clock(); val a = Rec("internal", acceptsSysEx = true); val b = Rec("external"); val p = SongPlayer { c.ns }
+        p.load(t, "xg"); p.setOutputs(listOf(a, b)); p.play(); run(p, c, listOf(a, b), untilNs = c.ns + 2_500_000_000L)
+        val sys = a.msgs.map { it.second }.filter { (it[0].toInt() and 0xFF) == 0xF0 }.map { it.toList() }
+        val wire = { m: ByteArray -> (byteArrayOf(0xF0.toByte()) + m.copyOfRange(2, m.size)).toList() }
+        assertEquals("reset, then the file's setup in order", listOf(SongSysEx.GM_SYSTEM_ON.toList(), wire(ev[0].second), wire(xgOn), wire(part), wire(vib)), sys)
+        val firstVoice = a.msgs.indexOfFirst { (it.second[0].toInt() and 0xF0) == 0xC0 }; val lastSys = a.msgs.indexOfLast { (it.second[0].toInt() and 0xFF) == 0xF0 }
+        assertTrue("setup before the voices", lastSys < firstVoice)
+        assertEquals("MIDI OUT never gets SysEx", 0, b.msgs.count { (it.second[0].toInt() and 0xFF) >= 0xF0 })
+        // seek while playing: internal = notes ended, reset, setup again, then the channel chase; external = notes ended + chase only
+        a.msgs.clear(); b.msgs.clear(); p.seekTick(1920L + 5 * 480)
+        val after = a.msgs.map { it.second }
+        val r = after.indexOfFirst { it.toList() == SongSysEx.GM_SYSTEM_ON.toList() }
+        assertTrue("reset after the Song's NOTE OFFs", r >= 0 && after.take(r).all { (it[0].toInt() and 0xF0) == 0x80 || (it[0].toInt() and 0xF0) == 0xB0 })
+        assertEquals("setup replayed", listOf(wire(ev[0].second), wire(xgOn), wire(part), wire(vib)), after.drop(r + 1).take(4).map { it.toList() })
+        assertTrue("then ch9 bank 127 / program 58 chased", after.drop(r + 5).map { it.toList() }.containsAll(listOf(cc(8, 0, 127).toList(), pc(8, 58).toList())))
+        assertEquals("MIDI OUT: still no SysEx after seek", 0, b.msgs.count { (it.second[0].toInt() and 0xFF) >= 0xF0 })
+        assertTrue("MIDI OUT got the chase", b.msgs.any { it.second.toList() == pc(8, 58).toList() })
+        p.stop(); assertEquals(0, p.activeNotes())
+        // the next song starts from a clean internal synth
+        a.msgs.clear(); p.load(timeline("type0_basic"), "next"); p.play()
+        assertEquals("new song: GM System On first", SongSysEx.GM_SYSTEM_ON.toList(), a.msgs.first().second.toList())
     }
 
     // ---------------- tiny SMF builder for edge cases (writes bytes only; parsing is under test) ----------------

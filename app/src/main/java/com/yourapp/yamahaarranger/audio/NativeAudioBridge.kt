@@ -59,6 +59,7 @@ class NativeAudioBridge @Inject constructor() {
     external fun nativeSongEvents(data: ByteArray, length: Int): Boolean
     external fun nativeSongReset()
     external fun nativeSongSetActive(active: Boolean)
+    external fun nativeSongSysEx(data: ByteArray, length: Int): Boolean
     external fun nativeSetKeyboardSustain(enabled: Boolean)
     external fun nativeSetKeyboardReleaseTime(releaseTime: Int): Boolean
     external fun nativeSetMasterGain(gain: Float)

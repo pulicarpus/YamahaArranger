@@ -812,7 +812,7 @@ class MainViewModel @Inject constructor(
     // Own player thread, own BASSMIDI stream (internal) and raw MIDI OUT path; never the keyboard/Style channels.
     // Policy: PLAY SONG is refused while the Style runs; START STYLE stops a playing/paused Song cleanly (only the Song's notes).
     private val songPlayer = com.yourapp.yamahaarranger.song.SongPlayer().also { it.start() }
-    private val songInternal = com.yourapp.yamahaarranger.song.InternalSongOutput { audioEngine.songEvents(it) }
+    private val songInternal = com.yourapp.yamahaarranger.song.InternalSongOutput({ audioEngine.songEvents(it) }, { audioEngine.songSysEx(it) })
     private val songExternal = com.yourapp.yamahaarranger.song.ExternalSongOutput { midiInputManager.sendSongBytes(it) }
     private val _songRouting = MutableStateFlow(com.yourapp.yamahaarranger.song.SongRouting.INTERNAL)
     val songRouting: StateFlow<com.yourapp.yamahaarranger.song.SongRouting> = _songRouting
@@ -836,8 +836,8 @@ class MainViewModel @Inject constructor(
                     com.yourapp.yamahaarranger.song.SongTimeline.from(com.yourapp.yamahaarranger.song.Smf.parse(bytes))
                 }
                 songPlayer.load(t, name)
-                songNote = "Loaded $name: SMF Type ${t.format}, PPQ ${t.ppq}, ${t.events.size} events, ${t.bars} bars" +
-                    (if (t.sysExCount > 0) " (${t.sysExCount} SysEx ignored)" else "")
+                songNote = "Loaded $name: SMF Type ${t.format}, PPQ ${t.ppq}, ${t.channelEventCount} events, ${t.bars} bars" +
+                    (if (t.sysExCount > 0) " (SysEx: ${t.sysExForwarded} XG/GS/GM setup to INTERNAL only, ${t.sysExCount - t.sysExForwarded} ignored)" else "")
                 DebugLog.add("🎵 SONG $songNote")
             } catch (e: com.yourapp.yamahaarranger.song.SmfException) { songNote = "Not a playable MIDI file: ${e.message}"; DebugLog.add("🎵 SONG ${songNote}") }
             catch (e: Exception) { songNote = "Cannot open: ${e.javaClass.simpleName}"; DebugLog.add("🎵 SONG ${songNote}") }

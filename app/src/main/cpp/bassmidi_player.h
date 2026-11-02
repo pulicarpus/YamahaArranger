@@ -52,6 +52,7 @@ public:
     bool songEvents(const uint8_t* data, size_t length);
     void songReset();                 // NOTESOFF + sustain 0 on the Song stream's 16 channels only
     void songSetActive(bool active);  // decode the Song stream while active, then a release tail
+    bool songSysEx(const uint8_t* data, size_t length); // ONE complete XG/GS/GM setup SysEx (F0..F7) for the Song stream only
     void noteOn(int channel, int key, float velocity, const AudioPathOrigin& origin = {});
     void noteOff(int channel, int key, const AudioPathOrigin& origin = {});
     void armChordDiagnostic();

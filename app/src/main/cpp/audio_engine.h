@@ -50,6 +50,7 @@ public:
     bool songEvents(const uint8_t* data,size_t length);
     void songReset();
     void songSetActive(bool active);
+    bool songSysEx(const uint8_t* data,size_t length);
     void sfSetKeyboardSustain(bool enabled);
     bool sfSetKeyboardReleaseTime(int releaseTime);
     void sfSetMasterGain(float gain);

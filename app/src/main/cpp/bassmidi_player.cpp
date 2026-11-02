@@ -3368,6 +3368,8 @@ bool BassMidiPlayer::ensureSongStreamLocked() {
     if (!songStream_) {
         songStream_ = BASS_MIDI_StreamCreate(16, BASS_STREAM_DECODE | BASS_SAMPLE_FLOAT | BASS_MIDI_NOTEOFF1, sampleRate_);
         if (!songStream_) { LOGE("Song BASS_MIDI_StreamCreate failed error=%d", BASS_ErrorGetCode()); return false; }
+        // same resampling quality as the keyboard/Style stream (the BASSMIDI default is linear interpolation)
+        BASS_ChannelSetAttribute(songStream_, BASS_ATTRIB_MIDI_SRC, static_cast<float>(interpolation_));
         songScratch_.assign(4096 * 2, 0.0f);
         songFontsMelody_ = songFontsDrum_ = 0;
     }
@@ -3392,6 +3394,20 @@ bool BassMidiPlayer::songEvents(const uint8_t* data, size_t length) {
     // channel messages only; a status >= 0xF0 is refused (SysEx / system messages never reach the synth from a Song)
     for (size_t i = 0; i < length; ++i) if (data[i] >= 0xF0) return false;
     songActive_.store(true, std::memory_order_relaxed);
+    return BASS_MIDI_StreamEvents(songStream_, BASS_MIDI_EVENTS_RAW, data, DWORD(length)) != DWORD(-1);
+}
+
+// The same whitelist as SongSysEx.forInternal (Kotlin): GM System On/Off, device control, Roland GS DT1, Yamaha XG parameter change.
+// Applied to songStream_ only: BASSMIDI then handles XG/GS mode, drum parts and modulation depths for the Song, like a file player.
+bool BassMidiPlayer::songSysEx(const uint8_t* data, size_t length) {
+    if (!data || length < 5 || length > 256 || data[0] != 0xF0 || data[length - 1] != 0xF7) return false;
+    for (size_t i = 1; i + 1 < length; ++i) if (data[i] > 0x7F) return false;
+    const bool ok = (data[1] == 0x7E && data[3] == 0x09) || (data[1] == 0x7F && data[3] == 0x04) ||
+                    (data[1] == 0x41 && length > 5 && data[3] == 0x42 && data[4] == 0x12) ||
+                    (data[1] == 0x43 && (data[2] & 0xF0) == 0x10 && data[3] == 0x4C);
+    if (!ok) return false;
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!ensureSongStreamLocked()) return false;
     return BASS_MIDI_StreamEvents(songStream_, BASS_MIDI_EVENTS_RAW, data, DWORD(length)) != DWORD(-1);
 }
 
