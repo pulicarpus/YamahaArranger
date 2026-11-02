@@ -13,7 +13,7 @@ changed = set(git('diff', '--name-only', BASE, 'HEAD').split()) | set(git('diff'
 ADDITIVE = [J + 'yamahaarranger/audio/AudioEngineManager.kt', J + 'yamahaarranger/audio/NativeAudioBridge.kt', J + 'midi/MidiInputManager.kt',
             C + 'bassmidi_player.h', C + 'bassmidi_player.cpp', C + 'audio_engine.h', C + 'audio_engine.cpp', C + 'native_lib.cpp', 'tests/mocks/bassmidi.h', J + 'ui/ContentResolverProvider.kt']
 ALLOWED = set(ADDITIVE) | {J + 'ui/MainViewModel.kt', J + 'ui/SxMainScreen.kt', J + 'ui/SongPanel.kt', J + 'ui/SongPage.kt', J + 'ui/SongMixerPanel.kt',
-           'tests/song_native_test.cpp', 'tests/song_xg_real_bass_test.cpp', 'tools/midi_fixture_gen.py', 'tests/rtdiag/RecorderRtTest.kt', 'tools/check_recorded_midi.py'}
+           'tests/song_native_test.cpp', 'tests/song_xg_real_bass_test.cpp', 'tools/midi_fixture_gen.py', 'tests/rtdiag/RecorderRtTest.kt', 'tools/check_recorded_midi.py', 'tests/rtdiag/FullArrangerRecorderRtTest.kt', J + 'yamahaarranger/audio/VirtualKeyRouter.kt'}
 PREFIX = (J + 'yamahaarranger/song/', 'tests/cpv/', 'tests/fixtures/midi/', 'tools/test_', 'tools/ui_preview/', 'diagnostics/', '.github/workflows/', 'docs/')
 extra = {p for p in changed if p not in ALLOWED and not p.startswith(PREFIX)}
 assert not extra, 'Unapproved file changed: ' + ', '.join(sorted(extra))
@@ -23,9 +23,16 @@ FROZEN = [J + 'yamahaarranger/arranger', J + 'arranger', J + 'style', J + 'yamah
           'tests/fixtures/englishwaltz2', 'tests/fixtures/r23', 'tests/fixtures/hardrock2', '.github/workflows/e343-quick-apk.yml']
 assert not git('diff', BASE, '--', *FROZEN).strip(), 'Style engine / CASM / style parser / router / E343 / DATA CONTROL changed'
 def removed(f): return [l[1:].strip() for l in git('diff', '-U0', BASE, '--', f).splitlines() if l.startswith('-') and not l.startswith('---')]
+AEM_ALLOWED = ['fun allNotesOff() { DebugLog.traceAudio("ALL_NOTES_OFF"); bridge.nativeAllNotesOff() }']   # V1C: + noteTap?.allStopped()
 for f in ADDITIVE:
-    r = removed(f); assert not r, f + ': only additions allowed, removed ' + (r[0][:100] if r else '')
-assert removed(J + 'ui/MainViewModel.kt') in ([], ['fun onStartStop() = arrangerBrain.startStop()']), removed(J + 'ui/MainViewModel.kt')
+    r = [x for x in removed(f) if not (f.endswith('AudioEngineManager.kt') and x in AEM_ALLOWED)]
+    assert not r, f + ': only additions allowed, removed ' + (r[0][:100] if r else '')
+VM_ALLOWED = {'fun onStartStop() = arrangerBrain.startStop()',
+              # V1C: the on-screen keyboard sink calls the VirtualKeyRouter (lower area = USB ACMP/LEFT policy) instead of the RIGHT path directly
+              'if (picked != null) applySplit(picked) else base.noteOn(pitch, velocity127)',
+              'override fun noteOff(pitch: Int) { if (!splitByKey.onRelease(com.yourapp.yamahaarranger.audio.KeySource.TOUCH, pitch)) base.noteOff(pitch) }',
+              'override fun releaseAll() = base.releaseAll()'}
+assert set(removed(J + 'ui/MainViewModel.kt')) <= VM_ALLOWED, removed(J + 'ui/MainViewModel.kt')
 assert sorted(removed(J + 'ui/SxMainScreen.kt')) in ([], sorted(['onInspector: () -> Unit', 'onInspector = onOpenInspector'])), removed(J + 'ui/SxMainScreen.kt')
 # Song invariants
 song = ''.join((ROOT / J / 'yamahaarranger/song' / n).read_text() for n in ['Smf.kt', 'SongTimeline.kt', 'SongPlayer.kt', 'SongOutputs.kt'])
@@ -60,7 +67,9 @@ assert 'allNotesOff' not in mix and '120' not in mix.split('fun transform')[1].s
 aem = (ROOT / J / 'yamahaarranger/audio/AudioEngineManager.kt').read_text()
 on_ch = aem[aem.index('    fun noteOnChannel('):aem.index('    fun noteOnStyleChannel(')]
 assert on_ch.index('bridge.nativeSfNoteOnChannel(channel, midiNote, velocity01)') < on_ch.index('noteTap?.noteOn(channel, midiNote, velocity01)'), 'tap after the native NOTE ON'
-assert 'noteTap' not in aem[aem.index('    fun noteOnStyleChannel('):aem.index('    fun noteOffChannel(')], 'V1B does not tap the Style path'
+sty = aem[aem.index('    fun noteOnStyleChannel('):aem.index('    fun armChordDiagnostic(')]
+assert sty.index('bridge.nativeSfNoteOnStyleChannel(') < sty.index('if (soundFontLoaded) noteTap?.noteOn(channel, note, velocity)'), 'V1C: Style tap after the native NOTE ON'
+assert 'bridge.nativeAllNotesOff(); noteTap?.allStopped()' in aem, 'V1C: All Notes Off closes the recorded notes'
 for f in [J + 'midi/MidiInputManager.kt', J + 'midi/MidiMixerOutput.kt', J + 'yamahaarranger/arranger/StyleSequencer.kt']:
     assert 'noteTap' not in (ROOT / f).read_text(), f + ' must not record (no double recording through MIDI OUT / Style)'
 print('MIDI SONG GUARD PASS changed=' + ','.join(sorted(changed)))

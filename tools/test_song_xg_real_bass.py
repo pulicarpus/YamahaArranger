@@ -9,6 +9,7 @@ exe = out / 'song-xg-real'
 cmd = ['g++', '-std=c++17', '-O2', '-I', str(bass / 'c'), '-I', str(midi / 'c'), '-I', str(ROOT / 'tests'), str(ROOT / 'tests/song_xg_real_bass_test.cpp')]
 for sdk in (bass, midi): cmd += ['-L', str(sdk / 'libs/x86_64'), '-Wl,-rpath,' + str(sdk / 'libs/x86_64')]
 subprocess.run(cmd + ['-lbassmidi', '-lbass', '-o', str(exe)], check=True)
-res = subprocess.run([str(exe), str(out)], capture_output=True, text=True)
+ev = ROOT / 'build/recorder-evidence'   # V1C: recorded files from MidiRecorderTest / FullArrangerRecorderRtTest, if they ran before
+res = subprocess.run([str(exe), str(out)] + ([str(ev)] if ev.is_dir() else []), capture_output=True, text=True)
 (out / 'song-xg-real.log').write_text(res.stdout + res.stderr); print(res.stdout, res.stderr[-400:])
 raise SystemExit(res.returncode)

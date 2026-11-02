@@ -172,8 +172,35 @@ void mixerChecks(HSOUNDFONT font) {
     check(off.first > -60.0 && off.second < off.first - 30.0, "IGNORE / FORCE OFF: the note ends at its NOTE OFF");
 }
 
+// ---- V1C: real BASSMIDI plays a RECORDED file directly (as a MIDI player / MIDI Voyager would), with the file's own setup SysEx ----
+void recordedFileChecks(HSOUNDFONT font, const std::string& dir) {
+    for (const char* name : {"v1c_rt_full_native.mid", "v1c_rt_full_gm.mid"}) {
+        const std::string path = dir + "/" + name;
+        if (!std::ifstream(path).good()) { std::printf("SXG recorded %s: not present (skipped)\n", name); continue; }
+        HSTREAM s = BASS_MIDI_StreamCreateFile(FALSE, path.c_str(), 0, 0, BASS_STREAM_DECODE | BASS_SAMPLE_FLOAT, 48000);
+        check(s != 0, std::string("BASSMIDI must open the recorded file ") + name);
+        if (!s) continue;
+        BASS_MIDI_FONTEX2 m{}; m.font = font; m.spreset = -1; m.sbank = -1; m.dpreset = -1; m.dbank = 0; m.dbanklsb = 0; m.minchan = 0; m.numchan = 16;
+        BASS_MIDI_StreamSetFonts(s, &m, 1 | BASS_MIDI_FONT_EX2);
+        std::vector<float> buf(480 * 2); float peak = 0; int blocks = 0;
+        for (; blocks < 300; ++blocks) {                                       // 3 s
+            const int got = BASS_ChannelGetData(s, buf.data(), buf.size() * 4 | BASS_DATA_FLOAT); if (got <= 0) break;
+            for (int i = 0; i < got / 4; ++i) peak = std::max(peak, std::fabs(buf[i]));
+        }
+        const DWORD d8 = BASS_MIDI_StreamGetEvent(s, 8, MIDI_EVENT_DRUMS), d9 = BASS_MIDI_StreamGetEvent(s, 9, MIDI_EVENT_DRUMS);
+        DWORD evCount = BASS_MIDI_StreamGetEvents(s, -1, 0, nullptr);
+        const bool gm = std::string(name).find("_gm") != std::string::npos;
+        std::printf("SXG recorded %s: opened, %u events, ch9 drums=%u ch10 drums=%u, peak %.1f dBFS over %.2f s\n", name, unsigned(evCount), unsigned(d8), unsigned(d9),
+                    peak > 0 ? 20 * std::log10(peak) : -180.0, blocks / 100.0);
+        check(peak > 0.003f, std::string(name) + " must sound");
+        check(d9 != 0, std::string(name) + ": channel 10 is a drum channel");
+        if (!gm) check(d8 != 0, std::string(name) + ": NATIVE Rhythm1 (channel 9) must be a drum part via the file's XG System On + bank 127");
+        BASS_StreamFree(s);
+    }
+}
+
 int main(int argc, char** argv) {
-    if (argc != 2 || !BASS_Init(0, 48000, 0, nullptr, nullptr)) return 1;
+    if (argc < 2 || !BASS_Init(0, 48000, 0, nullptr, nullptr)) return 1;
     HSOUNDFONT font = BASS_MIDI_FontInit(makeFont(argv[1]).c_str(), 0);
     if (!font) { std::cout << "SXG font_init_failed err=" << BASS_ErrorGetCode() << "\n"; return 2; }
     BASS_MIDI_FONTINFO info{}; BASS_MIDI_FontGetInfo(font, &info);
@@ -190,6 +217,7 @@ int main(int argc, char** argv) {
     const DWORD d2 = rhythm9(font, "V1A1_xg_on_part_mode_drum", {XG_ON, XG_P8_DRUM_S2});
     (void)xgOnly; (void)d1; (void)oldMap;
     mixerChecks(font);
+    if (argc >= 3) recordedFileChecks(font, argv[2]);
     // The V1A.1 claims: the report's symptom is reproduced without SysEx, and the file's own XG setup removes it.
     check(v1a.valid && v1a.p2pCents > 0.0 && v1a.frames > 0, "the piano must actually sound (analysis on real audio)");
     check(v1a.valid && v1a.modCents > 10.0, "without SysEx CC1=82 should vibrate (reproduces the report)");
