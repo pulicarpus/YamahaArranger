@@ -53,6 +53,10 @@ public:
     void songReset();                 // NOTESOFF + sustain 0 on the Song stream's 16 channels only
     void songSetActive(bool active);  // decode the Song stream while active, then a release tail
     bool songSysEx(const uint8_t* data, size_t length); // ONE complete XG/GS/GM setup SysEx (F0..F7) for the Song stream only
+    // SONG MIXER (V1A.2): a loaded SF2 preset on one Song channel (Song stream only). fontId 0 = clear.
+    // Returns -1 preset not found (nothing changed), 0 mapped (not yet confirmed by readback), 1 verified, 2 cleared.
+    int songSetChannelVoice(int channel, uint64_t fontId, int bank, int program);
+    std::string songChannelReport() const;  // live preset per Song channel (readback), for the mixer diagnostics
     void noteOn(int channel, int key, float velocity, const AudioPathOrigin& origin = {});
     void noteOff(int channel, int key, const AudioPathOrigin& origin = {});
     void armChordDiagnostic();
@@ -325,6 +329,9 @@ private:
     std::atomic<bool> songActive_{false};
     std::atomic<int> songTailFrames_{0};
     std::vector<float> songScratch_;
+    struct SongPin { uint64_t fontId = 0; int bank = 0, program = 0; };
+    SongPin songPins_[16];
+    bool songMapDirty_ = false;
     bool ensureSongStreamLocked();
     void renderSong(float* out, int numFrames);
     HSOUNDFONT melodyFont_ = 0;

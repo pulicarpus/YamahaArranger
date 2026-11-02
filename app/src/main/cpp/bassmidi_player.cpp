@@ -2013,6 +2013,7 @@ void BassMidiPlayer::refreshBrowserPresets() {
     }
     collect(drumFont_, drumFontId_, drumPath_, "DRUM", nullptr);
     for (auto& s : keyboardPresets_) s.verified = false;
+    songMapDirty_ = true; // SONG MIXER: re-validate the Song channel pins against the new inventory at the next Song event
 }
 
 bool BassMidiPlayer::restoreKeyboardPresets(int onlyChannel) {
@@ -3373,8 +3374,20 @@ bool BassMidiPlayer::ensureSongStreamLocked() {
         songScratch_.assign(4096 * 2, 0.0f);
         songFontsMelody_ = songFontsDrum_ = 0;
     }
-    if (songFontsMelody_ != melodyFont_ || songFontsDrum_ != drumFont_) {
+    if (songFontsMelody_ != melodyFont_ || songFontsDrum_ != drumFont_ || songMapDirty_) {
         std::vector<BASS_MIDI_FONTEX2> maps;
+        // SONG MIXER pins first (one channel each, highest priority): the chosen preset answers Bank 0 / LSB 0 / Program 0
+        // (melodic) or Program 0 of the drum bank (kit) on that channel only. A pin whose preset is no longer loaded is dropped.
+        for (int ch = 0; ch < 16; ++ch) {
+            auto& pin = songPins_[ch];
+            if (!pin.fontId) continue;
+            const KeyboardPreset key{pin.fontId, pin.bank, pin.program, false};
+            const auto* p = keyboardPreset(key);
+            if (!p) { LOGI("SONG PIN dropped ch=%d fontId=%llu (preset no longer loaded)", ch, static_cast<unsigned long long>(pin.fontId)); pin = {}; continue; }
+            BASS_MIDI_FONTEX2 m{}; m.font = p->font; m.spreset = p->program; m.sbank = p->nativeBank; m.dpreset = 0;
+            m.dbank = (p->bank == 127 || p->bank == 128) ? 128 : 0; m.dbanklsb = 0; m.minchan = ch; m.numchan = 1;
+            maps.push_back(m);
+        }
         for (HSOUNDFONT f : {drumFont_, melodyFont_}) {
             if (!f) continue;
             // all presets, all banks, unchanged numbers: with sbank = -1, dbank is a bank OFFSET (0 = same bank). -1 shifted every bank by
@@ -3384,9 +3397,54 @@ bool BassMidiPlayer::ensureSongStreamLocked() {
         }
         if (!maps.empty() && !BASS_MIDI_StreamSetFonts(songStream_, maps.data(), DWORD(maps.size()) | BASS_MIDI_FONT_EX2))
             LOGE("Song StreamSetFonts failed error=%d", BASS_ErrorGetCode());
-        songFontsMelody_ = melodyFont_; songFontsDrum_ = drumFont_;
+        songFontsMelody_ = melodyFont_; songFontsDrum_ = drumFont_; songMapDirty_ = false;
     }
     return true;
+}
+
+int BassMidiPlayer::songSetChannelVoice(int channel, uint64_t fontId, int bank, int program) {
+    if (channel < 0 || channel > 15) return -1;
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!ensureSongStreamLocked()) return -1;
+    if (!fontId) {
+        songPins_[channel] = {}; songMapDirty_ = true; ensureSongStreamLocked();
+        LOGI("SONG VOICE ch=%d cleared (MIDI voice)", channel);
+        return 2;
+    }
+    const KeyboardPreset key{fontId, bank, program, false};
+    const auto* p = keyboardPreset(key);                       // only presets of the SF2s loaded now
+    if (!p) { LOGI("SONG VOICE ch=%d fontId=%llu bank=%d pc=%d not found", channel, static_cast<unsigned long long>(fontId), bank, program); return -1; }
+    songPins_[channel] = {fontId, bank, program}; songMapDirty_ = true;
+    if (!ensureSongStreamLocked()) return -1;
+    const bool drum = p->bank == 127 || p->bank == 128;
+    if (!drum) {                                               // a drum channel keeps the file's bank (XG drum mode)
+        BASS_MIDI_StreamEvent(songStream_, channel, MIDI_EVENT_BANK, 0);
+        BASS_MIDI_StreamEvent(songStream_, channel, MIDI_EVENT_BANK_LSB, 0);
+    }
+    BASS_MIDI_StreamEvent(songStream_, channel, MIDI_EVENT_PROGRAM, 0);
+    BASS_MIDI_FONT live{};
+    const bool verified = BASS_MIDI_StreamGetPreset(songStream_, channel, &live) && live.font == p->font && live.preset == p->program;
+    BASS_MIDI_FontLoadEx(p->font, p->program, p->nativeBank, 0, BASS_MIDI_FONTLOAD_NOWAIT);
+    LOGI("SONG VOICE ch=%d sf2='%s' bank=%d nativeBank=%d pc=%d '%s' verified=%d", channel, p->file.c_str(), p->bank, p->nativeBank,
+         p->program, p->name.c_str(), verified ? 1 : 0);
+    return verified ? 1 : 0;
+}
+
+std::string BassMidiPlayer::songChannelReport() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::string out;
+    for (int ch = 0; ch < 16; ++ch) {
+        out += "SONGCH ch=" + std::to_string(ch + 1);
+        BASS_MIDI_FONT live{};
+        if (songStream_ && BASS_MIDI_StreamGetPreset(songStream_, ch, &live)) {
+            std::string file = "?", name = "?";
+            for (const auto& b : browserPresets_) if (b.font == live.font) { file = b.file; if (b.nativeBank == live.bank && b.program == live.preset) { name = b.name; break; } }
+            out += " sf2=" + file + " bank=" + std::to_string(live.bank) + " pc=" + std::to_string(live.preset) + " name=" + name;
+        } else out += " none";
+        out += songPins_[ch].fontId ? " pin=USER" : " pin=MIDI";
+        out += "\n";
+    }
+    return out;
 }
 
 bool BassMidiPlayer::songEvents(const uint8_t* data, size_t length) {

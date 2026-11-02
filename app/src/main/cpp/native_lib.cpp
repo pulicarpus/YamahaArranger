@@ -324,6 +324,14 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_Nati
 }
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSongReset(JNIEnv*,jobject){if(g_engine)g_engine->songReset();}
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSongSetActive(JNIEnv*,jobject,jboolean active){if(g_engine)g_engine->songSetActive(active==JNI_TRUE);}
+// SONG MIXER (V1A.2): a loaded SF2 preset on one Song channel (Song stream only), and the live readback per Song channel.
+extern "C" JNIEXPORT jint JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSongSetChannelVoice(JNIEnv*,jobject,jint channel,jlong fontId,jint bank,jint program){
+    return g_engine?g_engine->songSetChannelVoice(channel,static_cast<uint64_t>(fontId),bank,program):-1;
+}
+extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSongChannelReport(JNIEnv* env,jobject){
+    const auto s=g_engine?g_engine->songChannelReport():std::string("SONGCH engine_absent\n");
+    return env->NewStringUTF(sanitizeUtf8ForJni(s.c_str()).c_str());
+}
 // MIDI SONG: one complete setup SysEx (XG / GS / GM) for the Song stream only; validated again natively.
 extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSongSysEx(JNIEnv* env,jobject,jbyteArray data,jint length){
     if(!g_engine||!data||length<=0||length>256) return JNI_FALSE;

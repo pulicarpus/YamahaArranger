@@ -320,6 +320,8 @@ bool AudioEngine::songEvents(const uint8_t* data,size_t length) { return soundFo
 void AudioEngine::songReset() { soundFont_.songReset(); }
 void AudioEngine::songSetActive(bool active) { soundFont_.songSetActive(active); }
 bool AudioEngine::songSysEx(const uint8_t* data,size_t length) { return soundFont_.songSysEx(data,length); }
+int AudioEngine::songSetChannelVoice(int channel,uint64_t fontId,int bank,int program) { return soundFont_.songSetChannelVoice(channel,fontId,bank,program); }
+std::string AudioEngine::songChannelReport() const { return soundFont_.songChannelReport(); }
 std::vector<unsigned char> AudioEngine::sfDiagnosticDrumWav(int bank,int pc,int key,int velocity) {
     return soundFont_.diagnosticDrumWav(bank,pc,key,velocity);
 }

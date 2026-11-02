@@ -564,6 +564,10 @@ class AudioEngineManager @Inject constructor(
     // ---- MIDI SONG (V1A): the Song's own BASSMIDI stream. Never the keyboard/Style stream; no global All Notes Off. ----
     fun songEvents(bytes: ByteArray): Boolean = try { bridge.nativeSongEvents(bytes, bytes.size) } catch (e: Throwable) { false }
     fun songSysEx(bytes: ByteArray): Boolean = try { bridge.nativeSongSysEx(bytes, bytes.size) } catch (e: Throwable) { false }
+    /** SONG MIXER: -1 not found, 0 mapped, 1 verified, 2 cleared (fontId 0). Song stream only. */
+    fun songSetChannelVoice(channel: Int, fontId: Long, bank: Int, program: Int): Int =
+        try { bridge.nativeSongSetChannelVoice(channel, fontId, bank, program) } catch (e: Throwable) { -1 }
+    fun songChannelReport(): String = try { bridge.nativeSongChannelReport() } catch (e: Throwable) { "" }
     fun songReset() { try { bridge.nativeSongReset() } catch (_: Throwable) {} }
     fun songSetActive(active: Boolean) { try { bridge.nativeSongSetActive(active) } catch (_: Throwable) {} }
 

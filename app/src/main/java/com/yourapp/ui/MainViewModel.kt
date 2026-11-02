@@ -819,6 +819,13 @@ class MainViewModel @Inject constructor(
     @Volatile private var songNote: String? = null
     init {
         songPlayer.setOutputs(com.yourapp.yamahaarranger.song.songOutputsFor(_songRouting.value, songInternal, songExternal))
+        // SONG MIXER (V1A.2): user voices go to the Song stream only (Song channel pins), never the keyboard/Style mapping
+        songPlayer.voiceBinder = com.yourapp.yamahaarranger.song.SongVoiceBinder { ch, v ->
+            val r = audioEngine.songSetChannelVoice(ch, v?.fontId ?: 0L, v?.bank ?: 0, v?.program ?: 0)
+            DebugLog.add("🎚 SONG CH${ch + 1} voice=${v?.label ?: "MIDI"} result=$r")
+            when (r) { 1 -> com.yourapp.yamahaarranger.song.VoiceBind.VERIFIED; 0 -> com.yourapp.yamahaarranger.song.VoiceBind.BOUND
+                2 -> com.yourapp.yamahaarranger.song.VoiceBind.CLEARED; else -> com.yourapp.yamahaarranger.song.VoiceBind.NOT_FOUND }
+        }
         songPlayer.onStopped = {
             audioEngine.songSetActive(false); audioEngine.songReset()            // Song stream only
             midiInputManager.forgetAllSentMidiState()                           // the Style router resends its voices to the module next time
@@ -862,6 +869,25 @@ class MainViewModel @Inject constructor(
         _songRouting.value = r
         songPlayer.setOutputs(com.yourapp.yamahaarranger.song.songOutputsFor(r, songInternal, songExternal))
     }
+    // ---------------- SONG MIXER (V1A.2) ----------------
+    /** Every preset of the SF2s loaded now (melodic and drum kits), for the Song Voice Selector. */
+    fun songVoices(): List<com.yourapp.yamahaarranger.song.SongVoice> =
+        audioEngine.loadedSoundFontPresets().filter { it.soundFontId > 0 }
+            .map { com.yourapp.yamahaarranger.song.SongVoice(it.soundFontId, it.soundFontName, it.bank, it.program, it.name) }
+    fun songSetVoice(channel: Int, voice: com.yourapp.yamahaarranger.song.SongVoice?) {
+        val r = songPlayer.setVoice(channel, voice)
+        songNote = "CH${channel + 1}: ${voice?.label ?: "MIDI voice"} — ${r.label}"
+    }
+    fun songSetVolume(channel: Int, value: Int?) { songPlayer.setVolume(channel, value) }
+    fun songSetPan(channel: Int, value: Int?) { songPlayer.setPan(channel, value) }
+    fun songSetSustain(channel: Int, mode: com.yourapp.yamahaarranger.song.SustainMode) {
+        songPlayer.setSustainMode(channel, mode); songNote = "CH${channel + 1}: sustain ${mode.label}"
+    }
+    fun songToggleSolo(channel: Int) { songPlayer.setSolo(channel, !songPlayer.status().solo[channel]) }
+    fun songResetChannel(channel: Int) { songPlayer.resetChannel(channel); songNote = "CH${channel + 1}: back to the MIDI file's settings" }
+    /** Live readback of the internal Song synth (which SF2 preset each channel really plays). */
+    fun songChannelReport(): String = audioEngine.songChannelReport()
+
     private fun stopSongForStyle() {
         val st = songPlayer.status().state
         if (st == com.yourapp.yamahaarranger.song.SongState.PLAYING || st == com.yourapp.yamahaarranger.song.SongState.PAUSED) {
