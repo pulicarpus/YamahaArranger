@@ -1,0 +1,130 @@
+package com.yourapp.yamahaarranger.cpv
+
+import com.yourapp.yamahaarranger.song.MidiRecorder
+import com.yourapp.yamahaarranger.song.RecVoice
+import com.yourapp.yamahaarranger.song.Smf
+import com.yourapp.yamahaarranger.song.SmfWriter
+import com.yourapp.yamahaarranger.song.SongTimeline
+import org.junit.Assert.*
+import org.junit.Test
+import java.io.File
+
+/** MIDI RECORDER V1B: musical timeline, SMF Type 1 structure, note ledger, tempo map, snapshot and round trip through the SONG parser. */
+class MidiRecorderTest {
+    private class Clock { var ns = 5_000_000_000L; fun at(s: Double) { ns = 5_000_000_000L + (s * 1e9).toLong() } }
+    private val piano = RecVoice(0, 0, "Grand Piano", "colombo.sf2")
+    private val evidence = File("build/recorder-evidence").apply { mkdirs() }
+    private fun save(name: String, b: ByteArray) = File(evidence, "$name.mid").writeBytes(b)
+    private fun ch(e: com.yourapp.yamahaarranger.song.SmfEvent) = e.status and 0x0F
+
+    @Test fun writerProducesAValidType1FileWithEndOfTrackOnEveryTrack() {
+        val b = SmfWriter.write(1, 960, listOf(listOf(SmfWriter.Ev(0, SmfWriter.tempo(500_000))), listOf(SmfWriter.Ev(0, byteArrayOf(0x90.toByte(), 60, 100)),
+            SmfWriter.Ev(960, byteArrayOf(0x80.toByte(), 60, 0)))), listOf(1920, 1920))
+        val f = Smf.parse(b)
+        assertEquals(1, f.format); assertEquals(960, f.ppq); assertEquals(2, f.tracks.size); assertTrue(f.tracks.all { it.endOfTrack })
+        assertEquals("EOT at tick 1920", 1920L, f.tracks[1].events.last().tick)
+        assertEquals(listOf<Byte>(0x81.toByte(), 0x00), SmfWriter.vlq(128).toList()); assertEquals(listOf<Byte>(0x7F), SmfWriter.vlq(127).toList())
+        assertTrue(try { SmfWriter.write(1, 960, listOf(listOf(SmfWriter.Ev(10, byteArrayOf(0x90.toByte(), 1, 1)), SmfWriter.Ev(5, byteArrayOf(0x80.toByte(), 1, 0)))), listOf(0)); false } catch (e: IllegalArgumentException) { true })
+    }
+
+    @Test fun keyboardTakeHasMusicalTicksTracksVoicesAndSustain() {
+        val c = Clock(); val r = MidiRecorder({ c.ns }, 960)
+        c.at(0.0); r.start(120.0, mapOf(0 to piano, 3 to RecVoice(32, 33, "Finger Bass", "sx.sf2")), false, "Take A")
+        c.at(0.5); r.noteOn(0, 64, 100 / 127f); r.noteOn(1, 76, 0.5f)            // RIGHT1 + RIGHT2 (octave up) layer
+        c.at(0.75); r.sustain(true)
+        c.at(1.0); r.noteOff(0, 64); r.noteOff(1, 76); r.noteOn(3, 40, 0.8f)
+        c.at(1.5); r.sustain(false); r.noteOff(3, 40)
+        r.noteOn(9, 36, 1f)                                                         // not a keyboard channel: ignored
+        c.at(2.0); val take = r.stop()!!
+        save("v1b_keyboard_take", take.bytes)
+        val f = Smf.parse(take.bytes)
+        assertEquals(1, f.format); assertEquals(960, f.ppq)
+        assertEquals("conductor + RIGHT1 + RIGHT2 + LEFT", listOf("Take A", "RIGHT1", "RIGHT2", "LEFT"), f.tracks.map { it.name })
+        assertTrue(f.tracks.all { it.endOfTrack }); assertTrue(f.tracks.all { it.events.last().tick == 3840L })   // 2.0 s at 120 BPM = 4 beats
+        val cond = f.tracks[0].events
+        assertTrue("tempo 120", cond.any { it.metaType == 0x51 && it.payload!!.toList() == listOf<Byte>(0x07, 0xA1.toByte(), 0x20) })
+        assertTrue("4/4", cond.any { it.metaType == 0x58 && it.payload!![0].toInt() == 4 && it.payload[1].toInt() == 2 })
+        val r1 = f.tracks[1].events.filter { it.isChannel }
+        assertEquals("voice at tick 0: bank, LSB, program", listOf(Triple(0L, 0xB0, 0), Triple(0L, 0xB0, 32), Triple(0L, 0xC0, 0)),
+            r1.take(3).map { Triple(it.tick, it.command, it.data1) })
+        val on = r1.first { it.isNoteOn }; assertEquals(960L, on.tick); assertEquals(64, on.data1); assertEquals(100, on.data2)
+        assertEquals("NOTE OFF at 1.0 s", 1920L, r1.first { it.isNoteOff }.tick)
+        assertEquals("pedal down 0.75 s, up 1.5 s", listOf(1440L to 127, 2880L to 0), r1.filter { it.command == 0xB0 && it.data1 == 64 }.map { it.tick to it.data2 })
+        val left = f.tracks[3].events.filter { it.isChannel }
+        assertTrue("LEFT on channel 4 with its own voice", left.all { ch(it) == 3 } && left.any { it.command == 0xC0 && it.data1 == 33 } && left.any { it.command == 0xB0 && it.data1 == 0 && it.data2 == 32 })
+        assertTrue("text names the SF2 preset", f.tracks[3].events.any { it.metaType == 0x01 && String(it.payload!!, Charsets.ISO_8859_1).contains("Finger Bass (sx.sf2 32:33)") })
+        assertEquals(3, take.notes); assertEquals(setOf(0, 1, 3), take.channels); assertEquals(2_000_000L, take.durationUs)
+        // played back by the SONG parser/timeline at the recorded times
+        val t = SongTimeline.from(f)
+        assertEquals(500_000L, t.events.first { it.isNoteOn && it.channel == 0 }.us)
+        assertEquals(1_000_000L, t.events.first { it.isNoteOn && it.channel == 3 }.us)
+        assertEquals("notes balanced", t.events.count { it.isNoteOn }, t.events.count { it.isNoteOff })
+    }
+
+    @Test fun stopInTheMiddleOfALongNoteClosesItAndThePedal() {
+        val c = Clock(); val r = MidiRecorder({ c.ns }, 960)
+        r.start(100.0, mapOf(), true, "Long")
+        c.at(0.3); r.noteOn(0, 60, 0.7f); r.noteOn(0, 60, 0.7f)                    // the same pitch twice (retrigger): two instances
+        c.at(1.2); val take = r.stop()!!
+        save("v1b_stop_mid_note", take.bytes)
+        val f = Smf.parse(take.bytes); val ev = f.tracks[1].events.filter { it.isChannel }
+        val end = (1.2 * 100 / 60 * 960).toLong()
+        assertEquals("two NOTE OFFs at the stop tick", listOf(end, end), ev.filter { it.isNoteOff }.map { it.tick })
+        assertEquals("pedal pressed at start (SUSTAIN was ON), released at stop", listOf(0L to 127, end to 0), ev.filter { it.command == 0xB0 && it.data1 == 64 }.map { it.tick to it.data2 })
+        assertTrue(f.tracks.all { it.endOfTrack })
+    }
+
+    @Test fun noOrphanNoteOffsAndPartStopClosesOnlyThatPart() {
+        val c = Clock(); val r = MidiRecorder({ c.ns }, 960)
+        r.start(120.0, mapOf(), false, "Orphans")
+        c.at(0.1); r.noteOff(0, 50)                                                 // key held before RECORD: its NOTE OFF is not recorded
+        c.at(0.2); r.noteOn(0, 60, 0.5f); r.noteOn(1, 60, 0.5f)
+        c.at(0.4); r.channelStopped(1)                                               // RIGHT2 part OFF (no per-note NOTE OFF from the engine)
+        c.at(0.6); r.noteOff(1, 60)                                                  // late engine NOTE OFF after the part stop: dropped
+        c.at(0.8); r.noteOff(0, 60)
+        c.at(1.0); val f = Smf.parse(r.stop()!!.bytes)
+        val r1 = f.tracks[1].events.filter { it.isChannel && (it.isNoteOn || it.isNoteOff) }
+        val r2 = f.tracks[2].events.filter { it.isChannel && (it.isNoteOn || it.isNoteOff) }
+        assertEquals(listOf(384L to "on", 1536L to "off"), r1.map { it.tick to if (it.isNoteOn) "on" else "off" })
+        assertEquals("RIGHT2 closed at the part stop", listOf(384L to "on", 768L to "off"), r2.map { it.tick to if (it.isNoteOn) "on" else "off" })
+    }
+
+    @Test fun tempoChangesBecomeATempoMapAndTicksFollowIt() {
+        val c = Clock(); val r = MidiRecorder({ c.ns }, 960)
+        r.start(120.0, mapOf(), false, "Tempo")
+        c.at(1.0); r.tempo(60.0); r.tempo(60.0)                                      // a repeated value adds nothing
+        c.at(2.0); r.noteOn(0, 60, 0.5f)
+        c.at(3.0); r.noteOff(0, 60)
+        c.at(3.5); val take = r.stop()!!
+        save("v1b_tempo_change", take.bytes)
+        val f = Smf.parse(take.bytes); val t = SongTimeline.from(f)
+        assertEquals("tempos", listOf(0L to 500_000, 1920L to 1_000_000), t.tempos.map { it.tick to it.usPerQuarter })
+        val on = t.events.first { it.isNoteOn }; assertEquals(1920L + 960, on.tick); assertEquals(2_000_000L, on.us)
+        assertEquals(3_000_000L, t.events.first { it.isNoteOff }.us)
+        assertEquals(1, take.tempoChanges); assertEquals(3_500_000L, take.durationUs); assertEquals(3_500_000L, t.durationUs)
+    }
+
+    @Test fun voiceChangeDuringTheTakeAndSnapshotIsValidWithoutChangingTheTake() {
+        val c = Clock(); val r = MidiRecorder({ c.ns }, 960)
+        r.start(120.0, mapOf(0 to piano), false, "Voices")
+        c.at(0.5); r.noteOn(0, 60, 0.5f)
+        c.at(0.7); val snap = r.snapshot()!!                                         // e.g. the periodic autosave while recording
+        val sf = Smf.parse(snap.bytes); assertTrue(sf.tracks.all { it.endOfTrack })
+        assertEquals("snapshot closes the open note at its own tick", 1344L, sf.tracks[1].events.last { it.isChannel && it.isNoteOff }.tick)
+        c.at(1.0); r.noteOff(0, 60); r.voice(0, RecVoice(8, 48, "Strings", "tyros4.sf2"))
+        c.at(1.5); r.noteOn(0, 67, 0.5f); c.at(2.0); r.noteOff(0, 67)
+        val f = Smf.parse(r.stop()!!.bytes); val ev = f.tracks[1].events.filter { it.isChannel }
+        assertEquals("the live NOTE OFF, not the snapshot's", listOf(1920L, 3840L), ev.filter { it.isNoteOff }.map { it.tick })
+        assertEquals("voice change at 1.0 s: bank 8, program 48", listOf(Triple(1920L, 0xB0, 8), Triple(1920L, 0xC0, 48)),
+            ev.filter { it.tick == 1920L && (it.command == 0xC0 || (it.command == 0xB0 && it.data1 == 0)) }.map { Triple(it.tick, it.command, if (it.command == 0xC0) it.data1 else it.data2) })
+        assertFalse(r.isRecording); assertNull(r.snapshot())
+    }
+
+    @Test fun emptyTakeIsStillAValidFile() {
+        val c = Clock(); val r = MidiRecorder({ c.ns }, 960)
+        r.start(90.0, mapOf(0 to piano), false, "Empty"); c.at(1.0)
+        val f = Smf.parse(r.stop()!!.bytes)
+        assertEquals("conductor only", 1, f.tracks.size); assertTrue(f.tracks[0].endOfTrack)
+        assertTrue(r.status().hasTake); assertFalse(r.status().recording)
+    }
+}
