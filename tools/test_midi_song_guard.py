@@ -42,6 +42,7 @@ ext = outs[outs.index('class ExternalSongOutput'):outs.index('fun songOutputsFor
 assert 'override val acceptsSysEx get() = false' in ext and '< 0xF0) sink(bytes)' in ext, 'MIDI OUT output never forwards SysEx'
 pl = (ROOT / J / 'yamahaarranger/song/SongPlayer.kt').read_text()
 assert 'if (e.isSysEx) { for (o in outputs) if (o.acceptsSysEx) o.send(e.bytes); return }' in pl, 'player sends SysEx only to SysEx-capable outputs'
+assert 'm.dbank = 0;' in cpp[cpp.index('bool BassMidiPlayer::ensureSongStreamLocked'):] and 'm.dbank = -1' not in cpp, 'Song font map keeps bank numbers (dbank offset 0)'
 assert 'BASS_ATTRIB_MIDI_SRC, static_cast<float>(interpolation_)' in cpp[cpp.index('bool BassMidiPlayer::ensureSongStreamLocked'):], 'Song stream SRC = main stream SRC'
 assert cpp.count('renderSong(out,numFrames);') == 1 and 'BASS_MIDI_StreamEvents(stream_' not in cpp, 'Song events go only to songStream_'
 vm = (ROOT / J / 'ui/MainViewModel.kt').read_text()

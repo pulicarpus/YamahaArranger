@@ -3377,7 +3377,9 @@ bool BassMidiPlayer::ensureSongStreamLocked() {
         std::vector<BASS_MIDI_FONTEX2> maps;
         for (HSOUNDFONT f : {drumFont_, melodyFont_}) {
             if (!f) continue;
-            BASS_MIDI_FONTEX2 m{}; m.font = f; m.spreset = -1; m.sbank = -1; m.dpreset = -1; m.dbank = -1; m.dbanklsb = 0; m.minchan = 0; m.numchan = 16;
+            // all presets, all banks, unchanged numbers: with sbank = -1, dbank is a bank OFFSET (0 = same bank). -1 shifted every bank by
+            // one (bank 0 -> -1: piano not found; bank 128 kits -> 127), proven on real BASSMIDI (tests/song_xg_real_bass_test.cpp).
+            BASS_MIDI_FONTEX2 m{}; m.font = f; m.spreset = -1; m.sbank = -1; m.dpreset = -1; m.dbank = 0; m.dbanklsb = 0; m.minchan = 0; m.numchan = 16;
             maps.push_back(m);
         }
         if (!maps.empty() && !BASS_MIDI_StreamSetFonts(songStream_, maps.data(), DWORD(maps.size()) | BASS_MIDI_FONT_EX2))
