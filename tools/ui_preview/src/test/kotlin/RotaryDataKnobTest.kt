@@ -30,10 +30,9 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.runDesktopComposeUiTest
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
-import com.yourapp.yamahaarranger.ui.DataControlSection
+import com.yourapp.yamahaarranger.ui.DataControlPanel
 import com.yourapp.yamahaarranger.ui.DataParamSpec
 import com.yourapp.yamahaarranger.ui.RotaryKnobTags as K
-import com.yourapp.yamahaarranger.ui.dataKnobSize
 import org.jetbrains.skia.EncodedImageFormat
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -52,21 +51,17 @@ class RotaryDataKnobTest {
     private class Harness {
         val values = mutableStateMapOf("TEMPO" to 120, "TRANSPOSE" to 0, "RELEASE" to 64)
         var selected by mutableStateOf("TEMPO")
-        val sent = ArrayList<Pair<String, Int>>()      // what would reach the engine (only real changes)
+        val sent = ArrayList<Pair<String, Int>>()      // what would reach the engine (only real changes; -/+ recorded as STEP)
         var detentCalls = 0
         fun steps(n: Int) { detentCalls++; val s = DataParamSpec.of(selected); s.target(values[selected]!!, n)?.let { values[selected] = it; sent += selected to it } }
     }
 
-    /** Side column like SxSideMenu: DataControlSection + STYLE SELECT, knob sized from the space. */
+    /** The real DATA CONTROL column (DataControlPanel, as SxSideMenu uses it) in a panel of the given size. */
     @androidx.compose.runtime.Composable
     private fun SideColumn(h: Harness, widthDp: Int, heightDp: Int) {
-        BoxWithConstraints(Modifier.size(widthDp.dp, heightDp.dp).background(Color(0xFF151A20)).padding(7.dp)) {
-            val knob = dataKnobSize(maxWidth, maxHeight, reservedBelow = 48.dp, compact = false)
-            Column(Modifier.fillMaxSize()) {
-                DataControlSection(false, h.selected, h.values, transposePending = false, onSelect = { h.selected = it }, onKnobSteps = { h.steps(it) }, onStep = {}, knobSize = knob)
-                Spacer(Modifier.weight(1f))
-                Box(Modifier.fillMaxWidth().height(40.dp).testTag("style.select")) { Text("STYLE SELECT", color = Color.White) }
-            }
+        Box(Modifier.size(widthDp.dp, heightDp.dp).background(Color(0xFF151A20))) {
+            DataControlPanel(h.selected, h.values, transposePending = false, onSelect = { h.selected = it }, onKnobSteps = { h.steps(it) },
+                onStep = { h.sent += "STEP" to it }, onPickStyle = {}, modifier = Modifier.fillMaxSize().padding(6.dp))
         }
     }
 
@@ -134,28 +129,44 @@ class RotaryDataKnobTest {
         waitForIdle(); assertEquals(92, h.values["TEMPO"])
     }
 
-    @Test fun everythingFitsInTheSideColumnAtRedmiPadLandscapeHeights() {
-        for (hgt in listOf(420, 470, 560, 640)) runDesktopComposeUiTest(240, hgt) {
-            val h = Harness(); setContent { SideColumn(h, 240, hgt) }
+    /** Panel heights from ~1000x600 dp (tight, MIUI large display size) to 1333x800 dp; widths of the 18 % side column. */
+    @Test fun allThreeParametersAndTheBottomRowAreFullyInsideThePanelWithoutOverlap() {
+        for (w in listOf(180, 210, 240)) for (hgt in listOf(220, 260, 300, 340, 420, 560)) runDesktopComposeUiTest(w, hgt) {
+            val h = Harness(); setContent { SideColumn(h, w, hgt) }
+            fun b(tag: String) = onNodeWithTag(tag, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+            val knob = b(K.KNOB); val params = b(K.PARAMS); val style = b(K.STYLE); val minus = b(K.MINUS); val plus = b(K.PLUS)
+            for ((name, r) in listOf("knob" to knob, "params" to params, "style" to style, "minus" to minus, "plus" to plus) +
+                    listOf("TEMPO", "TRANSPOSE", "RELEASE").map { it to b(K.param(it)) }) {
+                assertTrue("${w}x$hgt $name inside the panel: $r", r.left >= -0.5f && r.top >= -0.5f && r.right <= w + 0.5f && r.bottom <= hgt + 0.5f)
+                assertTrue("${w}x$hgt $name has a size: $r", r.width > 1f && r.height > 1f)
+            }
+            assertTrue("${w}x$hgt knob above the parameters", knob.bottom <= params.top + 0.5f)
+            assertTrue("${w}x$hgt parameters above the bottom row", params.bottom <= minOf(style.top, minus.top, plus.top) + 0.5f)
+            for (p in listOf("TEMPO", "TRANSPOSE", "RELEASE")) {
+                onNodeWithTag(K.param(p)).assertIsDisplayed().assertHeightIsAtLeast(40.dp)
+                assertTrue("${w}x$hgt $p button wide enough to touch", b(K.param(p)).width >= 40f)
+            }
             onNodeWithTag(K.KNOB).assertIsDisplayed().assertHeightIsAtLeast(80.dp)
-            for (p in listOf("TEMPO", "TRANSPOSE", "RELEASE")) onNodeWithTag(K.param(p)).assertIsDisplayed().assertHeightIsAtLeast(44.dp)
-            onNodeWithTag(K.MINUS).assertIsDisplayed(); onNodeWithTag(K.PLUS).assertIsDisplayed(); onNodeWithTag("style.select").assertIsDisplayed()
-            val bottom = onNodeWithTag("style.select").fetchSemanticsNode().boundsInRoot.bottom
-            assertTrue("height $hgt: STYLE SELECT inside the column (bottom=$bottom)", bottom <= hgt + 0.5f)
-            println("KNOBUI side column 240x$hgt dp: knob, 3 parameter buttons (>=44 dp), -/+ and STYLE SELECT visible")
+            // RELEASE can be selected and changed at every size
+            onNodeWithTag(K.param("RELEASE")).performClick(); waitForIdle()
+            onNodeWithTag(K.LABEL).assertTextEquals("RELEASE")
+            onNodeWithTag(K.KNOB).performTouchInput { turn(90f, 130f) }        // +40 deg / 4 = +10
+            waitForIdle(); assertEquals("${w}x$hgt RELEASE changed by the knob", 74, h.values["RELEASE"])
+            onNodeWithTag(K.paramValue("RELEASE"), useUnmergedTree = true).assertTextEquals("74")
+            println("KNOBUI panel ${w}x$hgt dp: knob ${knob.height.toInt()} dp, TEMPO/TRANSPOSE/RELEASE row ${params.height.toInt()} dp, [-] STYLE [+] ${style.height.toInt()} dp, inside and no overlap; RELEASE 64->74")
         }
     }
 
     @OptIn(ExperimentalComposeUiApi::class)
     @Test fun renderPngEvidence() {
         val dir = File(System.getProperty("knob.png.dir") ?: "build/png-knob").apply { mkdirs() }
-        for ((label, sel) in listOf("tempo" to "TEMPO", "transpose" to "TRANSPOSE", "release" to "RELEASE")) {
-            val h = Harness(); h.selected = sel; h.values["TRANSPOSE"] = 3
+        for ((label, sel) in listOf("tempo" to "TEMPO", "transpose" to "TRANSPOSE", "release" to "RELEASE")) for ((w, hgt) in listOf(210 to 280, 230 to 440)) {
+            val h = Harness(); h.selected = sel; h.values["TRANSPOSE"] = 3; h.values["TEMPO"] = 96
             val d = 1.5f
-            val scene = ImageComposeScene((240 * d).toInt(), (520 * d).toInt(), Density(d)) { SideColumn(h, 240, 520) }
+            val scene = ImageComposeScene((w * d).toInt(), (hgt * d).toInt(), Density(d)) { SideColumn(h, w, hgt) }
             scene.render(0L); val img = scene.render(250_000_000L)
-            File(dir, "data_control_$label.png").writeBytes(img.encodeToData(EncodedImageFormat.PNG)!!.bytes); scene.close()
+            File(dir, "data_control_${label}_${w}x$hgt.png").writeBytes(img.encodeToData(EncodedImageFormat.PNG)!!.bytes); scene.close()
         }
-        assertTrue(dir.listFiles()!!.size >= 3)
+        assertTrue(dir.listFiles()!!.size >= 6)
     }
 }

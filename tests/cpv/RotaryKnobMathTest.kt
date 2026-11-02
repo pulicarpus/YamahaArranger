@@ -1,5 +1,6 @@
 package com.yourapp.yamahaarranger.cpv
 
+import com.yourapp.yamahaarranger.ui.DataControlLayout
 import com.yourapp.yamahaarranger.ui.DataParamSpec
 import com.yourapp.yamahaarranger.ui.RotaryAccumulator
 import com.yourapp.yamahaarranger.ui.RotaryKnobMath
@@ -75,5 +76,21 @@ class RotaryKnobMathTest {
         assertEquals(135f, RotaryKnobMath.indicatorAngle(280, 20, 280), 1e-3f)
         assertEquals(0f, RotaryKnobMath.indicatorAngle(0, -12, 12), 1e-3f)
         assertEquals("clamped", 135f, RotaryKnobMath.indicatorAngle(999, 0, 127), 1e-3f)
+    }
+    @Test fun dataControlLayoutAlwaysFitsAndKeepsTheThreeParametersTouchable() {
+        for (w in 140..320 step 10) for (h in 200..720 step 5) {
+            val p = DataControlLayout.plan(w.toFloat(), h.toFloat())
+            assertTrue("w=$w h=$h used=${p.used}", p.used <= h + 0.01f)
+            assertTrue("w=$w h=$h knob ${p.knob} fits the width", p.knob <= w + 0.01f)
+            assertTrue("w=$w h=$h parameter row >= 40 dp", p.paramH >= 40f)
+            assertTrue("w=$w h=$h bottom row >= 32 dp", p.bottomH >= 32f)
+            assertTrue("w=$w h=$h knob stays usable", p.knob >= 80f)
+        }
+    }
+    @Test fun dataControlKnobGetsTheRoomThatIsLeft() {
+        val tight = DataControlLayout.plan(210f, 280f); val roomy = DataControlLayout.plan(230f, 440f)
+        assertTrue("tight panel still has a big knob: ${tight.knob}", tight.knob >= 160f)
+        assertEquals("roomy panel: knob limited by the width", 230f, roomy.knob, 0.01f)
+        assertTrue("tight: smaller gaps/rows first", tight.gap < roomy.gap && tight.paramH < roomy.paramH)
     }
 }

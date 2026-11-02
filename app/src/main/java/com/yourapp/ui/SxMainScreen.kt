@@ -823,16 +823,9 @@ private fun SxSideMenu(
     onPickStyle: () -> Unit
 ) {
     Surface(color = SxPanel, shape = RoundedCornerShape(5.dp), modifier = modifier.border(1.dp, Color(0xFF303942), RoundedCornerShape(5.dp))) {
-        androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize().padding(if (compact) 5.dp else 7.dp)) {
-        val knob = dataKnobSize(maxWidth, maxHeight, reservedBelow = (if (compact) 34 else 40).dp + 8.dp, compact = compact)   // STYLE SELECT + gap
-        Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-            DataControlSection(compact, selectedParameter, values, transposePending, onSelect, onKnobSteps, onStep, knobSize = knob)
-            Spacer(Modifier.weight(1f))
-            Surface(color = Color(0xFF1D2329), shape = RoundedCornerShape(3.dp), modifier = Modifier.fillMaxWidth().height(if (compact) 34.dp else 40.dp).clickable(onClick = onPickStyle).border(1.dp, Color(0xFF343C45), RoundedCornerShape(3.dp))) {
-                Box(contentAlignment = Alignment.Center) { Text("STYLE SELECT", color = Color.White, fontSize = if (compact) 6.sp else 7.sp, fontWeight = FontWeight.Bold) }
-            }
-        }
-        }
+        // Heights follow the real panel size (DataControlLayout): knob takes what is left; TEMPO/TRANSPOSE/RELEASE are always visible.
+        DataControlPanel(selectedParameter, values, transposePending, onSelect, onKnobSteps, onStep, onPickStyle,
+            Modifier.fillMaxSize().padding(if (compact) 4.dp else 6.dp))
     }
 }
 

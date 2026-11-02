@@ -85,3 +85,27 @@ class RotaryAccumulator(private val deadZoneFraction: Float = 0.22f) {
 
     private fun inside(x: Float, y: Float, cx: Float, cy: Float, radius: Float) = hypot(x - cx, y - cy) < radius * deadZoneFraction
 }
+
+/**
+ * Vertical budget of the HOME DATA CONTROL column, from the column's REAL size (dp). Fixed parts first (title, the three
+ * parameter buttons in one row, the bottom row [-] STYLE SELECT [+]); the knob gets everything that is left, so nothing
+ * can be pushed out of the panel and no scrolling is needed. When space is tight, gaps and heights shrink, the parameters stay.
+ */
+data class DataControlLayout(val gap: Float, val titleH: Float, val knob: Float, val paramH: Float, val bottomH: Float) {
+    /** Total height used: title, knob, parameter row, bottom row and the 3 gaps between them. */
+    val used get() = titleH + knob + paramH + bottomH + 3 * gap
+
+    companion object {
+        const val MIN_TOUCH = 40f
+        fun plan(widthDp: Float, heightDp: Float): DataControlLayout {
+            val tight = heightDp < 300f
+            val gap = if (tight) 3f else 6f
+            val titleH = if (tight) 12f else 15f
+            val paramH = if (heightDp < 260f) MIN_TOUCH else if (tight) 44f else 50f
+            val bottomH = if (tight) 32f else 38f
+            val room = heightDp - (titleH + paramH + bottomH + 3 * gap)
+            val knob = minOf(widthDp, room).coerceAtLeast(0f)
+            return DataControlLayout(gap, titleH, knob, paramH, bottomH)
+        }
+    }
+}
