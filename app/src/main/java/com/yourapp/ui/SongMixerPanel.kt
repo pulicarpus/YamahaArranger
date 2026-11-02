@@ -78,7 +78,7 @@ private fun MixKey(text: String, tag: String, modifier: Modifier = Modifier, on:
     }
 }
 
-private fun panText(v: Int) = when { v == 64 -> "C"; v < 64 -> "L${64 - v}"; else -> "R${v - 64}" }
+private fun songPanText(v: Int) = when { v == 64 -> "C"; v < 64 -> "L${64 - v}"; else -> "R${v - 64}" }
 
 /** The file's voice of [ch] as a short label. */
 fun songFileVoiceLabel(s: SongStatus, ch: Int): String {
@@ -96,14 +96,14 @@ fun SongMixerSection(status: SongStatus, nowNs: Long, selected: Int, onSelect: (
                      liveReport: String, modifier: Modifier = Modifier) {
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         for (row in 0 until 2) Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-            for (ch in row * 8 until row * 8 + 8) MixerStrip(status, ch, nowNs, ch == selected, Modifier.weight(1f)) { onSelect(ch) }
+            for (ch in row * 8 until row * 8 + 8) SongMixerStrip(status, ch, nowNs, ch == selected, Modifier.weight(1f)) { onSelect(ch) }
         }
         ChannelDetail(status, selected, onOpenPicker, actions, liveReport)
     }
 }
 
 @Composable
-private fun MixerStrip(s: SongStatus, ch: Int, nowNs: Long, sel: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun SongMixerStrip(s: SongStatus, ch: Int, nowNs: Long, sel: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val used = ch in s.channelsUsed; val o = s.overrides.getOrNull(ch); val silent = s.silent.getOrElse(ch) { false }
     val active = used && !silent && nowNs - s.lastNoteOnNs.getOrElse(ch) { 0L } in 0..150_000_000L
     Column(modifier.testTag(SongMixerTags.strip(ch)).heightIn(min = 66.dp)
@@ -145,7 +145,7 @@ private fun ChannelDetail(s: SongStatus, ch: Int, onOpenPicker: () -> Unit, a: S
         }
         MixSlider("VOLUME", o?.volume, s.fileVolume.getOrElse(ch) { -1 }, 100, { it.toString() }, SongMixerTags.VOL, SongMixerTags.VOL_TEXT, SongMixerTags.VOL_MIDI,
             { a.onVolume(ch, it) })
-        MixSlider("PAN", o?.pan, s.filePan.getOrElse(ch) { -1 }, 64, ::panText, SongMixerTags.PAN, SongMixerTags.PAN_TEXT, SongMixerTags.PAN_MIDI, { a.onPan(ch, it) })
+        MixSlider("PAN", o?.pan, s.filePan.getOrElse(ch) { -1 }, 64, ::songPanText, SongMixerTags.PAN, SongMixerTags.PAN_TEXT, SongMixerTags.PAN_MIDI, { a.onPan(ch, it) })
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Text("SUSTAIN", color = MDim, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(70.dp))
             SustainMode.values().forEach { m -> MixKey(m.label, SongMixerTags.sustain(m), on = (o?.sustain ?: SustainMode.FOLLOW) == m, minWidth = 140) { a.onSustain(ch, m) } }
