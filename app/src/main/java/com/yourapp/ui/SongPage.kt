@@ -30,6 +30,8 @@ fun SongDialog(viewModel: MainViewModel, onClose: () -> Unit) {
     val saver = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("audio/midi")) { uri -> uri?.let(viewModel::recorderSave) }
     var rec by remember { mutableStateOf(viewModel.recorderStatus()) }
     var recNote by remember { mutableStateOf(viewModel.recorderNotice()) }
+    var recMode by remember { mutableStateOf(viewModel.recorderMode == com.yourapp.yamahaarranger.song.RecordMode.FULL) }
+    var recGm by remember { mutableStateOf(viewModel.recorderFlavor == com.yourapp.yamahaarranger.song.ExportFlavor.GM) }
     var status by remember { mutableStateOf(viewModel.songStatus()) }
     var notice by remember { mutableStateOf(viewModel.songNotice()) }
     var now by remember { mutableLongStateOf(System.nanoTime()) }
@@ -56,7 +58,11 @@ fun SongDialog(viewModel: MainViewModel, onClose: () -> Unit) {
             onSeek = { viewModel.songSeekFraction(it); refresh() }, onTempoPercent = { viewModel.songSetTempoPercent(it); refresh() },
             onRouting = { viewModel.songSetRouting(it); refresh() }, onMute = { viewModel.songToggleMute(it); refresh() }, onClose = onClose,
             voices = voices, mixer = mixer, liveReport = live,
-            recorder = RecorderUi(true, rec.recording, rec.elapsedUs, rec.events, rec.hasTake, rec.takeInfo, recNote),
+            recorder = RecorderUi(true, rec.recording, rec.elapsedUs, rec.events, rec.hasTake, rec.takeInfo, recNote, fullAvailable = true,
+                full = if (rec.recording) rec.mode == com.yourapp.yamahaarranger.song.RecordMode.FULL else recMode,
+                gm = recGm),
+            onRecordMode = { f -> viewModel.recorderSetMode(if (f) com.yourapp.yamahaarranger.song.RecordMode.FULL else com.yourapp.yamahaarranger.song.RecordMode.KEYBOARD); recMode = viewModel.recorderMode == com.yourapp.yamahaarranger.song.RecordMode.FULL },
+            onExportGm = { g -> viewModel.recorderSetFlavor(if (g) com.yourapp.yamahaarranger.song.ExportFlavor.GM else com.yourapp.yamahaarranger.song.ExportFlavor.NATIVE); recGm = g },
             onRecord = { viewModel.recorderToggle(); rec = viewModel.recorderStatus(); recNote = viewModel.recorderNotice() },
             onSaveTake = { saver.launch(viewModel.recorderSuggestedName()) },
             onLoadTake = { viewModel.recorderLoadIntoPlayer(); refresh(); recNote = viewModel.recorderNotice() },

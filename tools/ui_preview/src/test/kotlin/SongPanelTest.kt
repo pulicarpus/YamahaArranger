@@ -171,6 +171,26 @@ class SongPanelTest {
         }
     }
 
+    @Test fun fullArrangerModeAndExportFlavourAreSelectable() {
+        for ((name, w, h) in sizes) runDesktopComposeUiTest(w, h) {
+            val p = loadedPlayer(); val calls = ArrayList<String>()
+            var rec by mutableStateOf(com.yourapp.yamahaarranger.ui.RecorderUi(available = true, fullAvailable = true))
+            setContent {
+                SongPanel(p.status(0), SongRouting.INTERNAL, null, 0, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, recorder = rec,
+                    onRecord = { calls += "rec"; rec = rec.copy(recording = !rec.recording) },
+                    onRecordMode = { f -> calls += "full:$f"; rec = rec.copy(full = f) }, onExportGm = { g -> calls += "gm:$g"; rec = rec.copy(gm = g) })
+            }
+            onNodeWithTag(T.MODE_FULL).performScrollTo().assertIsEnabled().assertHeightIsAtLeast(40.dp).performClick()
+            onNodeWithTag(T.RECORD).performScrollTo().assertTextContains("FULL ARRANGER", substring = true)
+            onNodeWithTag(T.EXPORT_GM).performScrollTo().assertHeightIsAtLeast(40.dp).performClick()
+            onNodeWithTag(T.EXPORT_NATIVE).performScrollTo().performClick()
+            onNodeWithTag(T.RECORD).performScrollTo().performClick()
+            onNodeWithTag(T.MODE_KEYBOARD).performScrollTo().assertIsNotEnabled(); onNodeWithTag(T.MODE_FULL).assertIsNotEnabled()   // locked while recording
+            assertEquals(listOf("full:true", "gm:true", "gm:false", "rec"), calls)
+            println("SONGUI $name recorder V1C: FULL ARRANGER + export YA NATIVE / GM selectable, mode locked while recording")
+        }
+    }
+
     @OptIn(ExperimentalComposeUiApi::class)
     @Test fun renderMixerPngEvidence() {
         val dir = File(System.getProperty("song.png.dir") ?: "build/png-song").apply { mkdirs() }

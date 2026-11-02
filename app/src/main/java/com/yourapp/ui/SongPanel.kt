@@ -48,6 +48,8 @@ import com.yourapp.yamahaarranger.song.SongVoice
 data class RecorderUi(
     val available: Boolean = false, val recording: Boolean = false, val elapsedUs: Long = 0, val events: Int = 0,
     val hasTake: Boolean = false, val takeInfo: String = "", val notice: String? = null,
+    /** V1C: FULL ARRANGER available; [full] = selected mode; [gm] = GM COMPATIBLE export selected (else YA NATIVE) */
+    val fullAvailable: Boolean = false, val full: Boolean = false, val gm: Boolean = false,
 )
 
 object SongTags {
@@ -57,6 +59,7 @@ object SongTags {
     const val TEMPO_UP = "song.tempo.up"; const val TEMPO_RESET = "song.tempo.reset"; const val TIMESIG = "song.timesig"; const val NOTICE = "song.notice"
     const val TITLE = "song.title"; const val MODE_KEYBOARD = "song.mode.keyboard"; const val MODE_FULL = "song.mode.full"
     const val REC_TIME = "song.rec.time"; const val REC_LOAD = "song.rec.load"; const val REC_INFO = "song.rec.info"
+    const val EXPORT_NATIVE = "song.export.native"; const val EXPORT_GM = "song.export.gm"
     fun routing(r: SongRouting) = "song.routing.${r.name}"
     fun channel(ch: Int) = "song.ch.$ch"
 }
@@ -107,6 +110,7 @@ fun SongPanel(
     /** initial view (previews / evidence renders): MIXER tab, selected channel, Voice Selector open */
     startInMixer: Boolean = false, startChannel: Int = 0, startPicker: Boolean = false,
     recorder: RecorderUi = RecorderUi(), onRecord: () -> Unit = {}, onSaveTake: () -> Unit = {}, onLoadTake: () -> Unit = {},
+    onRecordMode: (Boolean) -> Unit = {}, onExportGm: (Boolean) -> Unit = {},
 ) {
     val loaded = status.state != SongState.EMPTY
     var mixerTab by remember { mutableStateOf(startInMixer) }
@@ -132,7 +136,7 @@ fun SongPanel(
                 Spacer(Modifier.width(8.dp))
                 if (recorder.available) {
                     SongKey(if (recorder.recording) "■ STOP REC" else "● RECORD", SongTags.RECORD, color = if (recorder.recording) SRed else Color(0xFF5A2330),
-                        minWidth = 120, sub = if (recorder.recording) "${mmss(recorder.elapsedUs)} · ${recorder.events} ev" else "KEYBOARD ONLY", onClick = onRecord)
+                        minWidth = 120, sub = if (recorder.recording) "${mmss(recorder.elapsedUs)} · ${recorder.events} ev" else if (recorder.full) "FULL ARRANGER" else "KEYBOARD ONLY", onClick = onRecord)
                     SongKey("SAVE MIDI", SongTags.SAVE, enabled = recorder.hasTake && !recorder.recording, minWidth = 110, sub = "SMF Type 1", onClick = onSaveTake)
                 } else {
                     SongKey("● RECORD", SongTags.RECORD, enabled = false, minWidth = 110, sub = "next step (V1B)") {}
@@ -183,8 +187,14 @@ fun SongPanel(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("RECORD MODE", color = SDim, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 if (recorder.available) {
-                    SmallSongKey("KEYBOARD ONLY", SongTags.MODE_KEYBOARD, true, selected = true) {}
-                    SongKey("FULL ARRANGER", SongTags.MODE_FULL, enabled = false, minWidth = 150, sub = "V1C, after V1B is verified") {}
+                    SmallSongKey("KEYBOARD ONLY", SongTags.MODE_KEYBOARD, !recorder.recording, selected = !recorder.full) { onRecordMode(false) }
+                    if (recorder.fullAvailable) SmallSongKey("FULL ARRANGER", SongTags.MODE_FULL, !recorder.recording, selected = recorder.full) { onRecordMode(true) }
+                    else SongKey("FULL ARRANGER", SongTags.MODE_FULL, enabled = false, minWidth = 150, sub = "V1C, after V1B is verified") {}
+                    if (recorder.fullAvailable) {
+                        Text("EXPORT", color = SDim, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        SmallSongKey("YA NATIVE", SongTags.EXPORT_NATIVE, true, selected = !recorder.gm) { onExportGm(false) }
+                        SmallSongKey("GM", SongTags.EXPORT_GM, true, selected = recorder.gm) { onExportGm(true) }
+                    }
                     SongKey("LOAD TAKE", SongTags.REC_LOAD, enabled = recorder.hasTake && !recorder.recording, minWidth = 120, sub = "into the player", onClick = onLoadTake)
                     Text(if (recorder.recording) "● REC ${mmss(recorder.elapsedUs)}" else "", color = Color(0xFFFF6B6B), fontSize = 16.sp,
                         fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace, modifier = Modifier.testTag(SongTags.REC_TIME))
