@@ -72,7 +72,7 @@ jobs:
           prov = json.load(open('evidence/apk-provenance.json'))
           assert prov['source_sha'] == sha, ('provenance source', prov['source_sha'], sha)
           dex = b''.join(zipfile.ZipFile(apk).read(n) for n in zipfile.ZipFile(apk).namelist() if n.startswith('classes') and n.endswith('.dex'))
-          need = [b'SongPlayer', b'SongTimeline', b'SmfException', b'SongPanel', b'SongDialog', b'song.play', b'SongMixerSection', b'SongVoicePicker', b'SongMixerRules', b'song.mixer.sustain.', b'E343DrumNoteOffExperiment', b'RotaryDataKnob']
+          need = [b'SongPlayer', b'SongTimeline', b'SmfException', b'SongPanel', b'SongDialog', b'song.play', b'SongMixerSection', b'SongVoicePicker', b'SongMixerRules', b'song.mixer.sustain.', b'MidiRecorder', b'SmfWriter', b'RecorderBadge', b'song.rec.load', b'E343DrumNoteOffExperiment', b'RotaryDataKnob']
           missing = [n.decode() for n in need if n not in dex]
           assert not missing, 'APK does not contain: ' + ', '.join(missing)
           z = zipfile.ZipFile(apk)
@@ -88,7 +88,7 @@ jobs:
             echo "apk: $(basename "$apk") sha256 $(sha256sum "$apk" | cut -d' ' -f1)"
             echo "QUICK device-test build. Not production-certified. Check the 'report' job for the quick tests and the UI test."
           } > evidence/BUILD-INFO.txt
-          cp diagnostics/SONG_MIXER_V1A2_REPORT.md evidence/DEVICE-TEST.txt
+          cp diagnostics/MIDI_RECORDER_IMPLEMENTATION.md evidence/DEVICE-TEST.txt
           cat evidence/BUILD-INFO.txt
           # artifact names may not contain '/' (branch names do): replace it
           echo "artifact=SONG-QUICK-APK-${GITHUB_REF_NAME//\//-}-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
@@ -153,6 +153,10 @@ jobs:
         run: |
           set -euo pipefail
           python3 tools/test_cpv.py --suite jvm --out evidence/cpv-jvm 2>&1 | tee evidence/cpv-jvm.log
+      - name: MIDI RECORDER V1B - recorded files re-read by the independent Python reader (written by MidiRecorderTest above)
+        run: python3 tools/check_recorded_midi.py build/recorder-evidence 2>&1 | tee evidence/recorded-midi.log
+      - name: MIDI RECORDER V1B on the production keyboard chain (USB + on-screen keyboard -> ArrangerBrain -> engine tap)
+        run: python3 tools/test_rtdiag.py --out evidence/recorder-rt --only com.yourapp.rtdiag.RecorderRtTest 2>&1 | tee evidence/recorder-rt.log
       - name: Native Song stream contract (separate stream, SysEx refused, isolated reset)
         run: python3 tools/test_song_native.py --out evidence/song-native 2>&1 | tee evidence/song-native.log
       - name: Real BASSMIDI - Song stream with Yamaha XG setup SysEx (CC1 vibrato depth, channel 9 drum part)

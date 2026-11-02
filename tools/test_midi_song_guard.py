@@ -11,9 +11,9 @@ def git(*a): return subprocess.check_output(['git', *a], cwd=ROOT, text=True)
 changed = set(git('diff', '--name-only', BASE, 'HEAD').split()) | set(git('diff', '--name-only', BASE).split()) | \
     {p for p in git('ls-files', '--others', '--exclude-standard').split() if not p.startswith(('evidence/', 'build/')) and '__pycache__' not in p}
 ADDITIVE = [J + 'yamahaarranger/audio/AudioEngineManager.kt', J + 'yamahaarranger/audio/NativeAudioBridge.kt', J + 'midi/MidiInputManager.kt',
-            C + 'bassmidi_player.h', C + 'bassmidi_player.cpp', C + 'audio_engine.h', C + 'audio_engine.cpp', C + 'native_lib.cpp', 'tests/mocks/bassmidi.h']
+            C + 'bassmidi_player.h', C + 'bassmidi_player.cpp', C + 'audio_engine.h', C + 'audio_engine.cpp', C + 'native_lib.cpp', 'tests/mocks/bassmidi.h', J + 'ui/ContentResolverProvider.kt']
 ALLOWED = set(ADDITIVE) | {J + 'ui/MainViewModel.kt', J + 'ui/SxMainScreen.kt', J + 'ui/SongPanel.kt', J + 'ui/SongPage.kt', J + 'ui/SongMixerPanel.kt',
-           'tests/song_native_test.cpp', 'tests/song_xg_real_bass_test.cpp', 'tools/midi_fixture_gen.py'}
+           'tests/song_native_test.cpp', 'tests/song_xg_real_bass_test.cpp', 'tools/midi_fixture_gen.py', 'tests/rtdiag/RecorderRtTest.kt', 'tools/check_recorded_midi.py'}
 PREFIX = (J + 'yamahaarranger/song/', 'tests/cpv/', 'tests/fixtures/midi/', 'tools/test_', 'tools/ui_preview/', 'diagnostics/', '.github/workflows/', 'docs/')
 extra = {p for p in changed if p not in ALLOWED and not p.startswith(PREFIX)}
 assert not extra, 'Unapproved file changed: ' + ', '.join(sorted(extra))
@@ -56,4 +56,11 @@ assert 'songPins_' not in apply, 'the keyboard/Style font table never includes S
 mix = (ROOT / J / 'yamahaarranger/song/SongMixer.kt').read_text()
 assert 'val voice = if (internal) o.voice else null' in mix, 'voice overrides never reach MIDI OUT'
 assert 'allNotesOff' not in mix and '120' not in mix.split('fun transform')[1].split('fun state')[0], 'sustain filter never uses All Notes/Sound Off'
+# V1B MIDI RECORDER: one tap at the engine, after the native call; MIDI OUT / Style router never tapped; brain unchanged (FROZEN arranger)
+aem = (ROOT / J / 'yamahaarranger/audio/AudioEngineManager.kt').read_text()
+on_ch = aem[aem.index('    fun noteOnChannel('):aem.index('    fun noteOnStyleChannel(')]
+assert on_ch.index('bridge.nativeSfNoteOnChannel(channel, midiNote, velocity01)') < on_ch.index('noteTap?.noteOn(channel, midiNote, velocity01)'), 'tap after the native NOTE ON'
+assert 'noteTap' not in aem[aem.index('    fun noteOnStyleChannel('):aem.index('    fun noteOffChannel(')], 'V1B does not tap the Style path'
+for f in [J + 'midi/MidiInputManager.kt', J + 'midi/MidiMixerOutput.kt', J + 'yamahaarranger/arranger/StyleSequencer.kt']:
+    assert 'noteTap' not in (ROOT / f).read_text(), f + ' must not record (no double recording through MIDI OUT / Style)'
 print('MIDI SONG GUARD PASS changed=' + ','.join(sorted(changed)))
