@@ -59,7 +59,19 @@ ditekan, sedangkan voice string Yamaha punya envelope sendiri. Ini perbedaan voi
 |---|---|
 | CPV JVM (whitelist, urutan, hanya internal, replay saat seek, reset saat lagu baru) | OK, 361 tes |
 | Native mock (`songSysEx` → stream Song saja, yang ditolak tidak terkirim, `songEvents` tetap menolak SysEx) | PASS |
-| **BASSMIDI asli** `tests/song_xg_real_bass_test.cpp` (CI: SF2 sintetis, stream sama seperti app) | lihat laporan CI. Klaimnya: tanpa SysEx CC1=82 bervibra dan ch 9 bukan drum; dengan SysEx XG dari file, vibrato hilang dan ch 9 menjadi drum. |
+| **BASSMIDI asli 2.4.16** `tests/song_xg_real_bass_test.cpp` (Quick run #5, `2e74d80`, SF2 sintetis) | **PASS**, lihat tabel di bawah |
+
+| Skenario (stream Song, CC1 = 82 di piano) | Piano | Ch 9 (bank 127 / PC 58) |
+|---|---|---|
+| Peta font V1A (`dbank = -1`) | **diam** (preset tidak ditemukan) | tidak ada preset |
+| V1A.1, tanpa SysEx | vibrato **20,4 c @ 8,25 Hz** (keluhan direproduksi) | melodi (preset 58, bukan drum) |
+| V1A.1 + XG System On | vibrato 20,1 c | **drum** (kit bank 128) |
+| V1A.1 + XG On + MW LFO PMOD DEPTH 0 (seperti file) | **stabil, 0,03 c** | — |
+| V1A.1 + XG On + PART MODE drum | — | **drum** (kit bank 128) |
+
+**Temuan tambahan (bug V1A):** peta font stream Song memakai `dbank = -1`. Untuk peta "semua bank", BASSMIDI membaca `dbank` sebagai
+offset bank, sehingga bank 0 bergeser ke -1 (piano tidak ditemukan) dan kit bank 128 bergeser ke 127. Di BASSMIDI Linux hasilnya diam;
+di Redmi Pad suara masih keluar, kemungkinan lewat fallback, dengan voice yang salah. Diperbaiki menjadi `dbank = 0` dan dikunci di guard.
 
 Belum terbukti: suara dengan SoundFont asli Bos di Redmi Pad, dan kit Yamaha PC 58/89 (diganti kit drum yang ada di SF2).
 
