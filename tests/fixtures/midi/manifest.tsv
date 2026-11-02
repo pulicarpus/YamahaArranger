@@ -1,0 +1,25 @@
+type0_basic	format	0
+type0_basic	ppq	480
+type0_basic	tracks	1
+type0_basic	channelEvents	18
+type0_basic	sysex	0
+type0_basic	noteOns	8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+type0_basic	tempos	0:500000
+type0_basic	timeSigs	0:4/4
+type0_basic	lastTick	3760
+type0_basic	durationUs	3916666
+type1_16ch	format	1
+type1_16ch	ppq	960
+type1_16ch	tracks	17
+type1_16ch	channelEvents	262
+type1_16ch	sysex	1
+type1_16ch	noteOns	6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6
+type1_16ch	tempos	0:600000,7680:428571
+type1_16ch	timeSigs	0:4/4,15360:3/4
+type1_16ch	lastTick	19140
+type1_16ch	durationUs	9916066
+bad_truncated	error	truncated
+bad_type2	error	type 2
+bad_vlq	error	vlq
+bad_no_status	error	no status
+bad_not_midi	error	no MThd
