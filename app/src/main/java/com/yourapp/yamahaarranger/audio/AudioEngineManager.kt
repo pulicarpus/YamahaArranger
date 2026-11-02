@@ -285,11 +285,19 @@ class AudioEngineManager @Inject constructor(
         fun allStopped()
         fun sustain(on: Boolean)
         fun keyboardVoice(channel: Int, bank: Int, program: Int, name: String, sf2: String)
+        // V1C (FULL ARRANGER): the Style parts' final voice and mixer (defaults keep V1B adapters valid)
+        fun styleVoice(channel: Int, bank: Int, program: Int, name: String, sf2: String, bank14: Boolean) {}
+        fun controllers(channel: Int, pairs: IntArray) {}
     }
     @Volatile var noteTap: NoteTap? = null
     /** Last voice set per keyboard part (bank, program, name, sf2), for the start of a recording. */
     private val keyboardVoices = arrayOfNulls<Array<Any>>(4)
     fun keyboardVoiceIdentity(channel: Int): Array<Any>? = keyboardVoices.getOrNull(channel)
+    /** Last voice (bank, program, name, sf2, bank14) and mixer controllers per channel 4..15, for the start of a FULL ARRANGER take. */
+    private val styleVoices = arrayOfNulls<Array<Any>>(16)
+    private val channelControllers = arrayOfNulls<IntArray>(16)
+    fun styleVoiceIdentity(channel: Int): Array<Any>? = styleVoices.getOrNull(channel)
+    fun channelControllerSnapshot(channel: Int): IntArray? = channelControllers.getOrNull(channel)?.copyOf()
 
     fun noteOn(midiNote: Int, velocity01: Float) {
         noteOnLegacy(midiNote, velocity01)
@@ -336,6 +344,7 @@ class AudioEngineManager @Inject constructor(
             if (sampled || chordId != 0L) DebugLog.add("AUDIO BRIDGE id=$id ch=$channel NOTE_ON_NATIVE=0 reason=sf2_not_loaded existing_sample_fallback=1")
             noteOnChannel(channel, note, velocity)
         }
+        if (soundFontLoaded) noteTap?.noteOn(channel, note, velocity)
     }
 
     fun armChordDiagnostic() = bridge.nativeArmChordDiagnostic()
@@ -348,6 +357,7 @@ class AudioEngineManager @Inject constructor(
         if (soundFontLoaded) bridge.nativeSfNoteOffStyleChannel(channel, note,
             sourceChannel, sourceNote, bank, tick, id, chordId, operation)
         else noteOffChannel(channel, note)
+        if (soundFontLoaded) noteTap?.noteOff(channel, note)
     }
 
     fun noteOffChannel(channel: Int, midiNote: Int) {
@@ -396,6 +406,8 @@ class AudioEngineManager @Inject constructor(
         val r = reverbSend.coerceIn(0, 127); val c = chorusSend.coerceIn(0, 127)
         bridge.nativeSetChannelMixer(channel, v, p, e, r, c)
         onMixerControllers?.invoke(channel, intArrayOf(7, v, 10, p, 11, e, 91, r, 93, c))
+        channelControllers[channel] = intArrayOf(7, v, 10, p, 11, e, 91, r, 93, c)
+        noteTap?.controllers(channel, intArrayOf(7, v, 10, p, 11, e, 91, r, 93, c))
         Unit
     }
     fun setChannelVolume(channel: Int, volume: Int) = setChannelMixer(channel, volume=volume)
@@ -404,6 +416,8 @@ class AudioEngineManager @Inject constructor(
         val effective = effectiveMixerExpression(channel, expression)
         bridge.nativeSetChannelExpression(channel, effective)
         onMixerControllers?.invoke(channel, intArrayOf(11, effective))
+        channelControllers[channel]?.let { a -> a[5] = effective }
+        noteTap?.controllers(channel, intArrayOf(11, effective))
         Unit
     }
     fun shadowDrumSnapshot(): String = bridge.nativeShadowDrumSnapshot()
@@ -472,6 +486,10 @@ class AudioEngineManager @Inject constructor(
         }
         DebugLog.add("CPV OVERRIDE ch=$channel sf2=${pin.soundFontName} bank=${pin.bank} pc=${pin.program} " +
             "name='${pin.presetName}' loaded=${preset != null} verified=$ok")
+        if (ok) {
+            styleVoices[channel] = arrayOf(pin.bank, pin.program, pin.presetName, pin.soundFontName, false)
+            noteTap?.styleVoice(channel, pin.bank, pin.program, pin.presetName, pin.soundFontName, false)
+        }
         return ok
     }
 
@@ -590,9 +608,13 @@ class AudioEngineManager @Inject constructor(
             keyboardVoices[channel] = arrayOf(bank, program, voiceName ?: "", "")
             noteTap?.keyboardVoice(channel, bank, program, voiceName ?: "", "")
         }
+        if (channel in 4..15) {
+            styleVoices[channel] = arrayOf(bank, program, voiceName ?: "", "", true)
+            noteTap?.styleVoice(channel, bank, program, voiceName ?: "", "", true)
+        }
     }
 
-    fun allNotesOff() { DebugLog.traceAudio("ALL_NOTES_OFF"); bridge.nativeAllNotesOff() }
+    fun allNotesOff() { DebugLog.traceAudio("ALL_NOTES_OFF"); bridge.nativeAllNotesOff(); noteTap?.allStopped() }
     // ---- MIDI SONG (V1A): the Song's own BASSMIDI stream. Never the keyboard/Style stream; no global All Notes Off. ----
     fun songEvents(bytes: ByteArray): Boolean = try { bridge.nativeSongEvents(bytes, bytes.size) } catch (e: Throwable) { false }
     fun songSysEx(bytes: ByteArray): Boolean = try { bridge.nativeSongSysEx(bytes, bytes.size) } catch (e: Throwable) { false }

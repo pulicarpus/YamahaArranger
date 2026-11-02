@@ -902,20 +902,33 @@ class MainViewModel @Inject constructor(
         override fun sustain(on: Boolean) = recorder.sustain(on)
         override fun keyboardVoice(channel: Int, bank: Int, program: Int, name: String, sf2: String) =
             recorder.voice(channel, com.yourapp.yamahaarranger.song.RecVoice(bank, program, name, sf2))
+        override fun styleVoice(channel: Int, bank: Int, program: Int, name: String, sf2: String, bank14: Boolean) =
+            recorder.voice(channel, com.yourapp.yamahaarranger.song.RecVoice(bank, program, name, sf2, bank14))
+        override fun controllers(channel: Int, pairs: IntArray) = recorder.controllers(channel, pairs)
     }
+    @Volatile var recorderMode = com.yourapp.yamahaarranger.song.RecordMode.KEYBOARD; private set
+    @Volatile var recorderFlavor = com.yourapp.yamahaarranger.song.ExportFlavor.NATIVE; private set
+    fun recorderSetMode(m: com.yourapp.yamahaarranger.song.RecordMode) { if (!recorder.isRecording) recorderMode = m }
+    fun recorderSetFlavor(f: com.yourapp.yamahaarranger.song.ExportFlavor) { recorderFlavor = f }
     init {
         viewModelScope.launch { arrangerBrain.state.collect { s -> if (recorder.isRecording) recorder.tempo(s.tempoBpm.toDouble()) } }
     }
     private fun recordingsDir(): java.io.File = java.io.File(contentResolver.getFilesDir(), "recordings").apply { mkdirs() }
     fun recorderToggle() { if (recorder.isRecording) recorderStop("STOP") else recorderStart() }
     private fun recorderStart() {
+        val full = recorderMode == com.yourapp.yamahaarranger.song.RecordMode.FULL
         val voices = (0..3).mapNotNull { ch ->
             audioEngine.keyboardVoiceIdentity(ch)?.let { a -> ch to com.yourapp.yamahaarranger.song.RecVoice(a[0] as Int, a[1] as Int, a[2] as String, a[3] as String) }
-        }.toMap()
+        }.toMap() + (if (full) (4..15).mapNotNull { ch ->
+            audioEngine.styleVoiceIdentity(ch)?.let { a -> ch to com.yourapp.yamahaarranger.song.RecVoice(a[0] as Int, a[1] as Int, a[2] as String, a[3] as String, a[4] as Boolean) }
+        }.toMap() else emptyMap())
+        val controllers = if (full) (4..15).mapNotNull { ch -> audioEngine.channelControllerSnapshot(ch)?.let { ch to it } }.toMap() else emptyMap()
         val title = "YA take " + java.text.SimpleDateFormat("yyyy-MM-dd HH-mm-ss", java.util.Locale.US).format(java.util.Date())
-        recorder.start(arrangerBrain.state.value.tempoBpm.toDouble(), voices, _sustainEnabled.value, title)
+        recorder.start(arrangerBrain.state.value.tempoBpm.toDouble(), voices, _sustainEnabled.value, title,
+            if (full) (0..15).toSet() else (0..3).toSet(), recorderMode, controllers)
         audioEngine.noteTap = recorderTap
-        recorderNote = "RECORDING (KEYBOARD ONLY): RIGHT1/2/3 + LEFT as they sound"
+        recorderNote = if (full) "RECORDING (FULL ARRANGER): keyboard + every Style part as they sound, one timeline. Use START / sections / chords as usual."
+                       else "RECORDING (KEYBOARD ONLY): RIGHT1/2/3 + LEFT as they sound"
         DebugLog.add("⏺ RECORDER start tempo=${arrangerBrain.state.value.tempoBpm} voices=${voices.keys}")
         recorderSnapshotJob = viewModelScope.launch(Dispatchers.IO) {
             while (recorder.isRecording) {                                     // a valid file on disk even if the app is killed
@@ -930,6 +943,7 @@ class MainViewModel @Inject constructor(
         val take = recorder.stop() ?: return
         try {
             java.io.File(recordingsDir(), "last_take.mid").writeBytes(take.bytes)
+            if (take.mode == com.yourapp.yamahaarranger.song.RecordMode.FULL) java.io.File(recordingsDir(), "last_take_GM.mid").writeBytes(take.gmBytes)
             java.io.File(recordingsDir(), "recording_in_progress.mid").delete()
         } catch (e: Exception) { DebugLog.add("⏺ RECORDER autosave failed: ${e.javaClass.simpleName}") }
         recorderNote = "Recorded ${take.info} (autosaved). SAVE MIDI to export, or LOAD TAKE to play it back."
@@ -937,12 +951,15 @@ class MainViewModel @Inject constructor(
     }
     fun recorderStatus(): com.yourapp.yamahaarranger.song.RecorderStatus = recorder.status()
     fun recorderNotice(): String? = recorderNote
-    fun recorderSuggestedName(): String = (recorder.lastTake()?.title ?: "YA take").replace(' ', '_') + ".mid"
+    fun recorderSuggestedName(): String = (recorder.lastTake()?.title ?: "YA take").replace(' ', '_') +
+        (if (recorder.lastTake()?.mode == com.yourapp.yamahaarranger.song.RecordMode.FULL && recorderFlavor == com.yourapp.yamahaarranger.song.ExportFlavor.GM) "_GM" else "") + ".mid"
     fun recorderSave(uri: Uri) {
         val take = recorder.lastTake() ?: run { recorderNote = "Nothing recorded yet"; return }
         viewModelScope.launch {
-            val ok = withContext(Dispatchers.IO) { contentResolver.writeBytes(uri, take.bytes) }
-            recorderNote = if (ok) "Saved ${contentResolver.fileName(uri) ?: "MIDI file"} (${take.bytes.size} bytes, SMF Type 1)" else "SAVE failed"
+            val bytes = take.bytesFor(recorderFlavor)
+            val ok = withContext(Dispatchers.IO) { contentResolver.writeBytes(uri, bytes) }
+            recorderNote = if (ok) "Saved ${contentResolver.fileName(uri) ?: "MIDI file"} (${bytes.size} bytes, SMF Type 1" +
+                (if (take.mode == com.yourapp.yamahaarranger.song.RecordMode.FULL) ", ${recorderFlavor.label}" else "") + ")" else "SAVE failed"
             DebugLog.add("⏺ RECORDER save ok=$ok ${take.info}")
         }
     }
@@ -951,8 +968,8 @@ class MainViewModel @Inject constructor(
         val take = recorder.lastTake() ?: run { recorderNote = "Nothing recorded yet"; return }
         if (recorder.isRecording) { recorderNote = "Stop the recording first"; return }
         try {
-            val t = com.yourapp.yamahaarranger.song.SongTimeline.from(com.yourapp.yamahaarranger.song.Smf.parse(take.bytes))
-            songPlayer.load(t, take.title + ".mid")
+            val t = com.yourapp.yamahaarranger.song.SongTimeline.from(com.yourapp.yamahaarranger.song.Smf.parse(take.bytesFor(recorderFlavor)))
+            songPlayer.load(t, take.title + (if (take.mode == com.yourapp.yamahaarranger.song.RecordMode.FULL && recorderFlavor == com.yourapp.yamahaarranger.song.ExportFlavor.GM) " (GM)" else "") + ".mid")
             recorderNote = "Take loaded into the player: ${t.channelEventCount} events, ${t.bars} bars"
         } catch (e: Exception) { recorderNote = "Take could not be re-read: ${e.message}" }
     }
@@ -1326,13 +1343,17 @@ class MainViewModel @Inject constructor(
     /** On-screen keyboard: plays RIGHT 1/2/3 through ArrangerBrain's virtual path (engine only, never MIDI OUT). */
     val virtualKeyboard = com.yourapp.yamahaarranger.audio.VirtualKeyboardController(object : com.yourapp.yamahaarranger.audio.VirtualKeyboardSink {
         private val base = arrangerBrain.virtualKeyboardSink
+        // V1C: lower-area keys follow the USB split / ACMP / LEFT policy (chord + LEFT); upper area = the unchanged on-screen RIGHT path
+        private val router = com.yourapp.yamahaarranger.audio.VirtualKeyRouter(
+            split = { arrangerBrain.splitNoteValue() }, acmp = { arrangerBrain.state.value.acmpEnabled }, left = { arrangerBrain.state.value.leftVoiceEnabled },
+            lowerOn = { p, v -> arrangerBrain.onKeyboardNoteOn(p, v) }, lowerOff = { p -> arrangerBrain.onKeyboardNoteOff(p) }, right = base)
         override fun noteOn(pitch: Int, velocity127: Int) {
             val picked = splitByKey.onPress(com.yourapp.yamahaarranger.audio.KeySource.TOUCH, pitch)
-            if (picked != null) applySplit(picked) else base.noteOn(pitch, velocity127)
+            if (picked != null) applySplit(picked) else router.noteOn(pitch, velocity127)
         }
-        override fun noteOff(pitch: Int) { if (!splitByKey.onRelease(com.yourapp.yamahaarranger.audio.KeySource.TOUCH, pitch)) base.noteOff(pitch) }
+        override fun noteOff(pitch: Int) { if (!splitByKey.onRelease(com.yourapp.yamahaarranger.audio.KeySource.TOUCH, pitch)) router.noteOff(pitch) }
         override fun setSustain(enabled: Boolean) = base.setSustain(enabled)
-        override fun releaseAll() = base.releaseAll()
+        override fun releaseAll() = router.releaseAll()
     })
     private val _virtualKeyboardEpoch = MutableStateFlow(0)
     /** Bumps whenever the keyboard was force-closed (pause/focus loss) so the panel resyncs its controls. */
