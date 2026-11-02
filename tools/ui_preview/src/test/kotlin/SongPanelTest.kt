@@ -146,6 +146,31 @@ class SongPanelTest {
         assertTrue(p.overrides()[9].isDefault)
     }
 
+    // ---------------- V1B MIDI RECORDER (KEYBOARD ONLY) ----------------
+    @Test fun recorderControlsAreEnabledOnlyWhereTheyWork() {
+        for ((name, w, h) in sizes) runDesktopComposeUiTest(w, h) {
+            val p = loadedPlayer(); val calls = ArrayList<String>()
+            var rec by mutableStateOf(com.yourapp.yamahaarranger.ui.RecorderUi(available = true))
+            setContent {
+                SongPanel(p.status(0), SongRouting.INTERNAL, null, 0, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, recorder = rec,
+                    onRecord = { calls += "rec"; rec = rec.copy(recording = !rec.recording, elapsedUs = 65_000_000, events = 12, hasTake = rec.recording) },
+                    onSaveTake = { calls += "save" }, onLoadTake = { calls += "load" })
+            }
+            onNodeWithTag(T.RECORD).performScrollTo().assertIsEnabled().assertHeightIsAtLeast(48.dp)
+            onNodeWithTag(T.SAVE).assertIsNotEnabled(); onNodeWithTag(T.REC_LOAD).performScrollTo().assertIsNotEnabled()
+            onNodeWithTag(T.MODE_FULL).performScrollTo().assertIsNotEnabled()                        // V1C: not before V1B is verified
+            onNodeWithTag(T.RECORD).performScrollTo().performClick()                                  // start
+            onNodeWithTag(T.RECORD).assertTextContains("STOP REC", substring = true)
+            onNodeWithTag(T.REC_TIME).performScrollTo().assertTextContains("● REC 1:05")
+            onNodeWithTag(T.SAVE).assertIsNotEnabled()                                               // not while recording
+            onNodeWithTag(T.RECORD).performScrollTo().performClick()                                  // stop -> a take exists
+            onNodeWithTag(T.SAVE).performScrollTo().assertIsEnabled().performClick()
+            onNodeWithTag(T.REC_LOAD).performScrollTo().assertIsEnabled().performClick()
+            assertEquals(listOf("rec", "rec", "save", "load"), calls)
+            println("SONGUI $name recorder: RECORD / STOP REC / SAVE MIDI / LOAD TAKE reachable; FULL ARRANGER disabled (V1C)")
+        }
+    }
+
     @OptIn(ExperimentalComposeUiApi::class)
     @Test fun renderMixerPngEvidence() {
         val dir = File(System.getProperty("song.png.dir") ?: "build/png-song").apply { mkdirs() }

@@ -44,12 +44,19 @@ import com.yourapp.yamahaarranger.song.SongState
 import com.yourapp.yamahaarranger.song.SongStatus
 import com.yourapp.yamahaarranger.song.SongVoice
 
+/** MIDI RECORDER state for the SONG page. [available] = false keeps RECORD / SAVE disabled (older callers, previews). */
+data class RecorderUi(
+    val available: Boolean = false, val recording: Boolean = false, val elapsedUs: Long = 0, val events: Int = 0,
+    val hasTake: Boolean = false, val takeInfo: String = "", val notice: String? = null,
+)
+
 object SongTags {
     const val PANEL = "song.panel"; const val CLOSE = "song.close"; const val OPEN = "song.open"; const val PLAY = "song.play"; const val STOP = "song.stop"
     const val PREV = "song.prev"; const val NEXT = "song.next"; const val RECORD = "song.record"; const val SAVE = "song.save"; const val SEEK = "song.seek"
     const val POSITION = "song.position"; const val TIME = "song.time"; const val TEMPO = "song.tempo"; const val TEMPO_DOWN = "song.tempo.down"
     const val TEMPO_UP = "song.tempo.up"; const val TEMPO_RESET = "song.tempo.reset"; const val TIMESIG = "song.timesig"; const val NOTICE = "song.notice"
     const val TITLE = "song.title"; const val MODE_KEYBOARD = "song.mode.keyboard"; const val MODE_FULL = "song.mode.full"
+    const val REC_TIME = "song.rec.time"; const val REC_LOAD = "song.rec.load"; const val REC_INFO = "song.rec.info"
     fun routing(r: SongRouting) = "song.routing.${r.name}"
     fun channel(ch: Int) = "song.ch.$ch"
 }
@@ -99,6 +106,7 @@ fun SongPanel(
     onPickerOpen: () -> Unit = {},
     /** initial view (previews / evidence renders): MIXER tab, selected channel, Voice Selector open */
     startInMixer: Boolean = false, startChannel: Int = 0, startPicker: Boolean = false,
+    recorder: RecorderUi = RecorderUi(), onRecord: () -> Unit = {}, onSaveTake: () -> Unit = {}, onLoadTake: () -> Unit = {},
 ) {
     val loaded = status.state != SongState.EMPTY
     var mixerTab by remember { mutableStateOf(startInMixer) }
@@ -122,8 +130,14 @@ fun SongPanel(
                 SongKey("■ STOP", SongTags.STOP, enabled = loaded, onClick = onStop)
                 SongKey("BAR ▶▶", SongTags.NEXT, enabled = loaded, onClick = onNextBar)
                 Spacer(Modifier.width(8.dp))
-                SongKey("● RECORD", SongTags.RECORD, enabled = false, minWidth = 110, sub = "next step (V1B)") {}
-                SongKey("SAVE MIDI", SongTags.SAVE, enabled = false, minWidth = 110, sub = "next step (V1B)") {}
+                if (recorder.available) {
+                    SongKey(if (recorder.recording) "■ STOP REC" else "● RECORD", SongTags.RECORD, color = if (recorder.recording) SRed else Color(0xFF5A2330),
+                        minWidth = 120, sub = if (recorder.recording) "${mmss(recorder.elapsedUs)} · ${recorder.events} ev" else "KEYBOARD ONLY", onClick = onRecord)
+                    SongKey("SAVE MIDI", SongTags.SAVE, enabled = recorder.hasTake && !recorder.recording, minWidth = 110, sub = "SMF Type 1", onClick = onSaveTake)
+                } else {
+                    SongKey("● RECORD", SongTags.RECORD, enabled = false, minWidth = 110, sub = "next step (V1B)") {}
+                    SongKey("SAVE MIDI", SongTags.SAVE, enabled = false, minWidth = 110, sub = "next step (V1B)") {}
+                }
             }
             // position / time / tempo / signature / output
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -165,12 +179,22 @@ fun SongPanel(
                     for (ch in row * 8 until row * 8 + 8) ChannelCell(status, ch, nowNs, Modifier.weight(1f)) { onMute(ch) }
                 }
             }
-            // recording mode (not available in V1A)
+            // recording mode: V1B KEYBOARD ONLY; FULL ARRANGER is V1C (after V1B is verified on the device)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("RECORD MODE", color = SDim, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                SongKey("KEYBOARD ONLY", SongTags.MODE_KEYBOARD, enabled = false, minWidth = 150, sub = "not available yet (V1B)") {}
-                SongKey("FULL ARRANGER", SongTags.MODE_FULL, enabled = false, minWidth = 150, sub = "not available yet (V1C)") {}
+                if (recorder.available) {
+                    SmallSongKey("KEYBOARD ONLY", SongTags.MODE_KEYBOARD, true, selected = true) {}
+                    SongKey("FULL ARRANGER", SongTags.MODE_FULL, enabled = false, minWidth = 150, sub = "V1C, after V1B is verified") {}
+                    SongKey("LOAD TAKE", SongTags.REC_LOAD, enabled = recorder.hasTake && !recorder.recording, minWidth = 120, sub = "into the player", onClick = onLoadTake)
+                    Text(if (recorder.recording) "● REC ${mmss(recorder.elapsedUs)}" else "", color = Color(0xFFFF6B6B), fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace, modifier = Modifier.testTag(SongTags.REC_TIME))
+                } else {
+                    SongKey("KEYBOARD ONLY", SongTags.MODE_KEYBOARD, enabled = false, minWidth = 150, sub = "not available yet (V1B)") {}
+                    SongKey("FULL ARRANGER", SongTags.MODE_FULL, enabled = false, minWidth = 150, sub = "not available yet (V1C)") {}
+                }
             }
+            if (recorder.available && (recorder.notice != null || recorder.takeInfo.isNotEmpty()))
+                Text(recorder.notice ?: recorder.takeInfo, color = Color(0xFFFF9E9E), fontSize = 12.sp, modifier = Modifier.testTag(SongTags.REC_INFO))
             Text(notice ?: "", color = SAmber, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.testTag(SongTags.NOTICE))
             Spacer(Modifier.height(8.dp))
         }

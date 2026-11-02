@@ -14,6 +14,11 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.Dispatchers
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -22,6 +27,9 @@ import kotlinx.coroutines.withContext
 @Composable
 fun SongDialog(viewModel: MainViewModel, onClose: () -> Unit) {
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(viewModel::openSong) }
+    val saver = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("audio/midi")) { uri -> uri?.let(viewModel::recorderSave) }
+    var rec by remember { mutableStateOf(viewModel.recorderStatus()) }
+    var recNote by remember { mutableStateOf(viewModel.recorderNotice()) }
     var status by remember { mutableStateOf(viewModel.songStatus()) }
     var notice by remember { mutableStateOf(viewModel.songNotice()) }
     var now by remember { mutableLongStateOf(System.nanoTime()) }
@@ -29,7 +37,8 @@ fun SongDialog(viewModel: MainViewModel, onClose: () -> Unit) {
     var voices by remember { mutableStateOf(emptyList<com.yourapp.yamahaarranger.song.SongVoice>()) }
     var live by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
-    LaunchedEffect(Unit) { while (true) { status = viewModel.songStatus(); notice = viewModel.songNotice(); now = System.nanoTime(); delay(100) } }
+    LaunchedEffect(Unit) { while (true) { status = viewModel.songStatus(); notice = viewModel.songNotice(); now = System.nanoTime()
+        rec = viewModel.recorderStatus(); recNote = viewModel.recorderNotice(); delay(100) } }
     LaunchedEffect(Unit) { while (true) { live = withContext(Dispatchers.Default) { viewModel.songChannelReport() }; delay(500) } }
     val mixer = SongMixerActions(
         onVoice = { ch, v -> viewModel.songSetVoice(ch, v); status = viewModel.songStatus(); notice = viewModel.songNotice() },
@@ -47,7 +56,35 @@ fun SongDialog(viewModel: MainViewModel, onClose: () -> Unit) {
             onSeek = { viewModel.songSeekFraction(it); refresh() }, onTempoPercent = { viewModel.songSetTempoPercent(it); refresh() },
             onRouting = { viewModel.songSetRouting(it); refresh() }, onMute = { viewModel.songToggleMute(it); refresh() }, onClose = onClose,
             voices = voices, mixer = mixer, liveReport = live,
+            recorder = RecorderUi(true, rec.recording, rec.elapsedUs, rec.events, rec.hasTake, rec.takeInfo, recNote),
+            onRecord = { viewModel.recorderToggle(); rec = viewModel.recorderStatus(); recNote = viewModel.recorderNotice() },
+            onSaveTake = { saver.launch(viewModel.recorderSuggestedName()) },
+            onLoadTake = { viewModel.recorderLoadIntoPlayer(); refresh(); recNote = viewModel.recorderNotice() },
             onPickerOpen = { scope.launch { voices = withContext(Dispatchers.Default) { viewModel.songVoices() } } },
         )
+    }
+}
+
+/**
+ * MIDI RECORDER: a small floating "● REC mm:ss  STOP" badge on the main screen while a take is recording (the SONG page may be closed
+ * while the player uses the on-screen keyboard). It is a Popup, so it never moves the main screen's layout. Nothing is shown otherwise.
+ */
+@Composable
+fun RecorderBadge(viewModel: MainViewModel) {
+    var rec by remember { mutableStateOf(viewModel.recorderStatus()) }
+    LaunchedEffect(Unit) { while (true) { rec = viewModel.recorderStatus(); delay(250) } }
+    if (!rec.recording) return
+    androidx.compose.ui.window.Popup(alignment = androidx.compose.ui.Alignment.TopCenter) {
+        androidx.compose.foundation.layout.Row(
+            androidx.compose.ui.Modifier.padding(top = 6.dp)
+                .background(androidx.compose.ui.graphics.Color(0xE68E2B2B), androidx.compose.foundation.shape.RoundedCornerShape(18.dp))
+                .clickable { viewModel.recorderToggle(); rec = viewModel.recorderStatus() }
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+        ) {
+            val s = rec.elapsedUs / 1_000_000
+            androidx.compose.material3.Text("● REC %d:%02d   ■ STOP".format(s / 60, s % 60), color = androidx.compose.ui.graphics.Color.White,
+                fontSize = 15.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+        }
     }
 }

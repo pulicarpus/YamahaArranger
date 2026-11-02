@@ -446,6 +446,7 @@ fun SxMainScreen(
     }
 
     if (showSong) SongDialog(viewModel) { showSong = false }   // MIDI Song Player (V1A)
+    RecorderBadge(viewModel)   // MIDI RECORDER V1B: floating REC badge while a take is recording (Popup, layout unchanged)
 
     if (showSf2Manager) {
         SxSf2ManagerDialog(
