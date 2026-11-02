@@ -55,7 +55,9 @@ def main():
            A / 'yamahaarranger/audio/ReleaseControlState.kt', A / 'yamahaarranger/audio/RightVoiceDiag.kt', A / 'yamahaarranger/audio/RightUsbTouch.kt', A / 'yamahaarranger/audio/VirtualKeyboard.kt',
            A / 'yamahaarranger/audio/MixerConsoleState.kt', A / 'yamahaarranger/audio/StyleMixerChannels.kt', A / 'yamahaarranger/lifecycle/ReadyToPlayGate.kt',
            A / 'arranger/ArrangerBrain.kt', A / 'style/StyleModel.kt', A / 'midi/MidiInputManager.kt', A / 'midi/MidiMixerOutput.kt', A / 'midi/LiveKeyState.kt', A / 'midi/ChannelActivity.kt', A / 'midi/MidiInStats.kt', A / 'yamahaarranger/audio/SplitPoint.kt',
-           A / 'yamahaarranger/audio/PcmSessionControls.kt']
+           A / 'yamahaarranger/audio/PcmSessionControls.kt',
+           # MIDI RECORDER V1B (pure Kotlin, used by RecorderRtTest only): writer, recorder, and the SONG parser to re-read the take
+           A / 'yamahaarranger/song/SmfWriter.kt', A / 'yamahaarranger/song/MidiRecorder.kt', A / 'yamahaarranger/song/Smf.kt', A / 'yamahaarranger/song/SongTimeline.kt']
     src += sorted((A / 'chord').glob('*.kt'))
     src += [A / 'yamahaarranger/audio/MetronomeModel.kt', A / 'yamahaarranger/audio/MetronomeController.kt']
     arr = A / 'yamahaarranger/arranger'

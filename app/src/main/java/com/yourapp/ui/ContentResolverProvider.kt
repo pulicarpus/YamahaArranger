@@ -247,6 +247,14 @@ class ContentResolverProvider @Inject constructor(
         null
     }
 
+    /** MIDI RECORDER: write a saved take to a document the user picked (SAF CreateDocument). */
+    fun writeBytes(uri: Uri, bytes: ByteArray): Boolean = try {
+        context.contentResolver.openOutputStream(uri, "wt")?.use { it.write(bytes) } != null
+    } catch (e: Exception) {
+        Timber.e(e, "Failed writing $uri")
+        false
+    }
+
     fun openInputStream(uri: Uri): InputStream? =
         context.contentResolver.openInputStream(uri)
 

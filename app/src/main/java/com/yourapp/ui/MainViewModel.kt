@@ -789,6 +789,7 @@ class MainViewModel @Inject constructor(
         audioEngine.onMixerControllers = null; audioEngine.onMixerMasterVolume = null
         midiInputManager.onOutputReady = null
         songPlayer.shutdown()   // MIDI SONG: ends only the Song's own notes
+        if (recorder.isRecording) recorderStop("app closing")   // MIDI RECORDER: the take is closed and autosaved
         metronome.release(); midiInputManager.close(); audioEngine.stop(); super.onCleared()
     }
 
@@ -887,6 +888,74 @@ class MainViewModel @Inject constructor(
     fun songResetChannel(channel: Int) { songPlayer.resetChannel(channel); songNote = "CH${channel + 1}: back to the MIDI file's settings" }
     /** Live readback of the internal Song synth (which SF2 preset each channel really plays). */
     fun songChannelReport(): String = audioEngine.songChannelReport()
+
+    // ---------------- MIDI RECORDER V1B (KEYBOARD ONLY) ----------------
+    // One tap at the engine (what RIGHT1/2/3 + LEFT really sound); MIDI OUT is never tapped, so nothing is recorded twice.
+    private val recorder = com.yourapp.yamahaarranger.song.MidiRecorder()
+    @Volatile private var recorderNote: String? = null
+    private var recorderSnapshotJob: kotlinx.coroutines.Job? = null
+    private val recorderTap = object : AudioEngineManager.NoteTap {
+        override fun noteOn(channel: Int, note: Int, velocity01: Float) = recorder.noteOn(channel, note, velocity01)
+        override fun noteOff(channel: Int, note: Int) = recorder.noteOff(channel, note)
+        override fun partStopped(channel: Int) = recorder.channelStopped(channel)
+        override fun allStopped() = recorder.allStopped()
+        override fun sustain(on: Boolean) = recorder.sustain(on)
+        override fun keyboardVoice(channel: Int, bank: Int, program: Int, name: String, sf2: String) =
+            recorder.voice(channel, com.yourapp.yamahaarranger.song.RecVoice(bank, program, name, sf2))
+    }
+    init {
+        viewModelScope.launch { arrangerBrain.state.collect { s -> if (recorder.isRecording) recorder.tempo(s.tempoBpm.toDouble()) } }
+    }
+    private fun recordingsDir(): java.io.File = java.io.File(contentResolver.getFilesDir(), "recordings").apply { mkdirs() }
+    fun recorderToggle() { if (recorder.isRecording) recorderStop("STOP") else recorderStart() }
+    private fun recorderStart() {
+        val voices = (0..3).mapNotNull { ch ->
+            audioEngine.keyboardVoiceIdentity(ch)?.let { a -> ch to com.yourapp.yamahaarranger.song.RecVoice(a[0] as Int, a[1] as Int, a[2] as String, a[3] as String) }
+        }.toMap()
+        val title = "YA take " + java.text.SimpleDateFormat("yyyy-MM-dd HH-mm-ss", java.util.Locale.US).format(java.util.Date())
+        recorder.start(arrangerBrain.state.value.tempoBpm.toDouble(), voices, _sustainEnabled.value, title)
+        audioEngine.noteTap = recorderTap
+        recorderNote = "RECORDING (KEYBOARD ONLY): RIGHT1/2/3 + LEFT as they sound"
+        DebugLog.add("⏺ RECORDER start tempo=${arrangerBrain.state.value.tempoBpm} voices=${voices.keys}")
+        recorderSnapshotJob = viewModelScope.launch(Dispatchers.IO) {
+            while (recorder.isRecording) {                                     // a valid file on disk even if the app is killed
+                kotlinx.coroutines.delay(10_000)
+                recorder.snapshot()?.let { java.io.File(recordingsDir(), "recording_in_progress.mid").writeBytes(it.bytes) }
+            }
+        }
+    }
+    private fun recorderStop(reason: String) {
+        audioEngine.noteTap = null
+        recorderSnapshotJob?.cancel(); recorderSnapshotJob = null
+        val take = recorder.stop() ?: return
+        try {
+            java.io.File(recordingsDir(), "last_take.mid").writeBytes(take.bytes)
+            java.io.File(recordingsDir(), "recording_in_progress.mid").delete()
+        } catch (e: Exception) { DebugLog.add("⏺ RECORDER autosave failed: ${e.javaClass.simpleName}") }
+        recorderNote = "Recorded ${take.info} (autosaved). SAVE MIDI to export, or LOAD TAKE to play it back."
+        DebugLog.add("⏺ RECORDER stop ($reason) ${take.info}")
+    }
+    fun recorderStatus(): com.yourapp.yamahaarranger.song.RecorderStatus = recorder.status()
+    fun recorderNotice(): String? = recorderNote
+    fun recorderSuggestedName(): String = (recorder.lastTake()?.title ?: "YA take").replace(' ', '_') + ".mid"
+    fun recorderSave(uri: Uri) {
+        val take = recorder.lastTake() ?: run { recorderNote = "Nothing recorded yet"; return }
+        viewModelScope.launch {
+            val ok = withContext(Dispatchers.IO) { contentResolver.writeBytes(uri, take.bytes) }
+            recorderNote = if (ok) "Saved ${contentResolver.fileName(uri) ?: "MIDI file"} (${take.bytes.size} bytes, SMF Type 1)" else "SAVE failed"
+            DebugLog.add("⏺ RECORDER save ok=$ok ${take.info}")
+        }
+    }
+    /** Re-read the take with the SONG parser and load it into the player (record → play back). */
+    fun recorderLoadIntoPlayer() {
+        val take = recorder.lastTake() ?: run { recorderNote = "Nothing recorded yet"; return }
+        if (recorder.isRecording) { recorderNote = "Stop the recording first"; return }
+        try {
+            val t = com.yourapp.yamahaarranger.song.SongTimeline.from(com.yourapp.yamahaarranger.song.Smf.parse(take.bytes))
+            songPlayer.load(t, take.title + ".mid")
+            recorderNote = "Take loaded into the player: ${t.channelEventCount} events, ${t.bars} bars"
+        } catch (e: Exception) { recorderNote = "Take could not be re-read: ${e.message}" }
+    }
 
     private fun stopSongForStyle() {
         val st = songPlayer.status().state

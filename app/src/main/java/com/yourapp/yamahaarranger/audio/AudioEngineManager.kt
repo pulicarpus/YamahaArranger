@@ -277,7 +277,26 @@ class AudioEngineManager @Inject constructor(
         readiness.clearFonts()
     } }
 
+    // ---- MIDI RECORDER (V1B): one tap for what the keyboard parts really sound. Called AFTER the native call; null = not recording. ----
+    interface NoteTap {
+        fun noteOn(channel: Int, note: Int, velocity01: Float)
+        fun noteOff(channel: Int, note: Int)
+        fun partStopped(channel: Int)
+        fun allStopped()
+        fun sustain(on: Boolean)
+        fun keyboardVoice(channel: Int, bank: Int, program: Int, name: String, sf2: String)
+    }
+    @Volatile var noteTap: NoteTap? = null
+    /** Last voice set per keyboard part (bank, program, name, sf2), for the start of a recording. */
+    private val keyboardVoices = arrayOfNulls<Array<Any>>(4)
+    fun keyboardVoiceIdentity(channel: Int): Array<Any>? = keyboardVoices.getOrNull(channel)
+
     fun noteOn(midiNote: Int, velocity01: Float) {
+        noteOnLegacy(midiNote, velocity01)
+        noteTap?.noteOn(0, midiNote, velocity01)
+    }
+
+    private fun noteOnLegacy(midiNote: Int, velocity01: Float) {
         val probeEntry = System.nanoTime() // LATENCY_PROBE
         if (!NoteLogTuning.skip()) DebugLog.traceAudio("NOTE_ON ch=legacy note=$midiNote vel=${"%.3f".format(java.util.Locale.US, velocity01)} sf2=$soundFontLoaded")
         if (soundFontLoaded) {
@@ -294,6 +313,7 @@ class AudioEngineManager @Inject constructor(
     fun noteOff(midiNote: Int) {
         if (!NoteLogTuning.skip()) DebugLog.traceAudio("NOTE_OFF ch=legacy note=$midiNote sf2=$soundFontLoaded")
         if (soundFontLoaded) bridge.nativeSfNoteOffChannel(0, midiNote) else bridge.nativeNoteOff(midiNote)
+        noteTap?.noteOff(0, midiNote)
     }
 
     fun noteOnChannel(channel: Int, midiNote: Int, velocity01: Float) {
@@ -304,6 +324,7 @@ class AudioEngineManager @Inject constructor(
             if (channel < 4) LatencyProbe.preJniLogging(probeEntry, probeStart)
             bridge.nativeSfNoteOnChannel(channel, midiNote, velocity01)
             if (channel < 4) LatencyProbe.jniKeyboardNote(probeStart)
+            noteTap?.noteOn(channel, midiNote, velocity01)
         } else noteOn(midiNote, velocity01)
     }
 
@@ -333,12 +354,14 @@ class AudioEngineManager @Inject constructor(
         if (!NoteLogTuning.skip()) DebugLog.traceAudio("NOTE_OFF ch=$channel note=$midiNote sf2=$soundFontLoaded")
         if (soundFontLoaded) bridge.nativeSfNoteOffChannel(channel, midiNote)
         else noteOff(midiNote)
+        if (soundFontLoaded) noteTap?.noteOff(channel, midiNote)
     }
 
     fun stopRightPart(channel: Int): Boolean {
         if (channel !in 0..2) return false
         val stopped = bridge.nativeStopKeyboardPart(channel)
         DebugLog.add("RIGHT PART OFF channel=$channel nativeStopped=$stopped")
+        noteTap?.partStopped(channel)
         return stopped
     }
 
@@ -462,6 +485,7 @@ class AudioEngineManager @Inject constructor(
     fun setKeyboardSustain(enabled: Boolean) {
         DebugLog.add(if (enabled) "🎹 SUSTAIN: ON" else "🎹 SUSTAIN: OFF")
         bridge.nativeSetKeyboardSustain(enabled)
+        noteTap?.sustain(enabled)
     }
 
     fun setKeyboardReleaseTime(releaseTime: Int): Boolean = runBlocking { readiness.operations.withLock {
@@ -509,6 +533,10 @@ class AudioEngineManager @Inject constructor(
         val ok = bridge.nativeSetKeyboardPreset(channel, preset.soundFontId, preset.bank, preset.program)
         DebugLog.add("🎹 VOICE ch=$channel sf2=${preset.soundFontName} id=${preset.soundFontId} " +
             "bank=${preset.bank} pc=${preset.program} verified=$ok")
+        if (ok) {
+            keyboardVoices[channel] = arrayOf(preset.bank, preset.program, preset.name, preset.soundFontName)
+            noteTap?.keyboardVoice(channel, preset.bank, preset.program, preset.name, preset.soundFontName)
+        }
         ok
     } }
 
@@ -558,6 +586,10 @@ class AudioEngineManager @Inject constructor(
             bridge.nativeSetChannelPresetWithName(channel, bank, program, voiceName)
         }
         DebugLog.add("🎼 Ch$channel → prog=$program bank=$bank voice=${voiceName ?: "AUTO"}")
+        if (channel in 0..3) {
+            keyboardVoices[channel] = arrayOf(bank, program, voiceName ?: "", "")
+            noteTap?.keyboardVoice(channel, bank, program, voiceName ?: "", "")
+        }
     }
 
     fun allNotesOff() { DebugLog.traceAudio("ALL_NOTES_OFF"); bridge.nativeAllNotesOff() }
