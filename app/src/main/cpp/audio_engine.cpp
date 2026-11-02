@@ -316,6 +316,9 @@ std::string AudioEngine::sfPresetList() const {
 void AudioEngine::sfSetChannelExpression(int channel, int expression) {
     soundFont_.setChannelExpression(channel, expression);
 }
+bool AudioEngine::songEvents(const uint8_t* data,size_t length) { return soundFont_.songEvents(data,length); }
+void AudioEngine::songReset() { soundFont_.songReset(); }
+void AudioEngine::songSetActive(bool active) { soundFont_.songSetActive(active); }
 std::vector<unsigned char> AudioEngine::sfDiagnosticDrumWav(int bank,int pc,int key,int velocity) {
     return soundFont_.diagnosticDrumWav(bank,pc,key,velocity);
 }

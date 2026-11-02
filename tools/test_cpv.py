@@ -23,7 +23,7 @@ CPV_SOURCES = [
     MAIN / 'yamahaarranger/style/StyleVoiceEditorOps.kt',
     MAIN / 'yamahaarranger/style/E343Compat.kt',
     ROOT / 'app/src/main/java/com/yourapp/ui/RotaryKnobMath.kt',
-    MAIN / 'yamahaarranger/song/Smf.kt', MAIN / 'yamahaarranger/song/SongTimeline.kt', MAIN / 'yamahaarranger/song/SongPlayer.kt',
+    MAIN / 'yamahaarranger/song/Smf.kt', MAIN / 'yamahaarranger/song/SongTimeline.kt', MAIN / 'yamahaarranger/song/SongPlayer.kt', MAIN / 'yamahaarranger/song/SongOutputs.kt',
     MAIN / 'yamahaarranger/style/Sf2KeyCoverage.kt',
     MAIN / 'yamahaarranger/audio/SoundFontRolePlanner.kt',
     MAIN / 'yamahaarranger/audio/ManagedSf2Policy.kt',

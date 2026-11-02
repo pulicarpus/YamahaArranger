@@ -6,6 +6,11 @@ import com.yourapp.yamahaarranger.song.SongOutput
 import com.yourapp.yamahaarranger.song.SongPlayer
 import com.yourapp.yamahaarranger.song.SongState
 import com.yourapp.yamahaarranger.song.SongTimeline
+import com.yourapp.yamahaarranger.song.SongRouting
+import com.yourapp.yamahaarranger.song.InternalSongOutput
+import com.yourapp.yamahaarranger.song.ExternalSongOutput
+import com.yourapp.yamahaarranger.song.GmNames
+import com.yourapp.yamahaarranger.song.songOutputsFor
 import org.junit.Assert.*
 import org.junit.Test
 import java.io.ByteArrayOutputStream
@@ -218,6 +223,19 @@ class SongPlayerTest {
         for ((i, e) in t.events.withIndex()) { val late = a.msgs[i].first - (start + e.us * 1000); assertTrue("never early", late >= 0); maxLate = maxOf(maxLate, late) }
         assertTrue("lateness bounded by one wake-up (no accumulation): ${maxLate / 1e6} ms", maxLate <= 3_000_000)
         println("SONGTEST long song: ${t.events.size} events over ${t.durationUs / 1e6} s, max lateness ${maxLate / 1e6} ms")
+    }
+
+    @Test fun routingSendsEachEventOncePerSelectedOutput() {
+        val t = timeline("type0_basic")
+        val internal = ArrayList<ByteArray>(); val external = ArrayList<ByteArray>()
+        val i = InternalSongOutput { internal += it; true }; val e = ExternalSongOutput { external += it; false }   // MIDI OUT refusing (off) must not matter
+        for ((r, expI, expE) in listOf(Triple(SongRouting.INTERNAL, 1, 0), Triple(SongRouting.EXTERNAL, 0, 1), Triple(SongRouting.BOTH, 1, 1))) {
+            internal.clear(); external.clear()
+            val c = Clock(); val p = SongPlayer { c.ns }; p.load(t, "x"); p.setOutputs(songOutputsFor(r, i, e)); p.play()
+            var g = 0; while (g++ < 100_000) { val n = p.step(c.ns); if (n < 0) break; c.ns = maxOf(n, c.ns) }
+            assertEquals("$r internal", expI * t.events.size, internal.size); assertEquals("$r external", expE * t.events.size, external.size)
+        }
+        assertEquals("Drums (kit 1)", GmNames.name(9, 0)); assertEquals("Acoustic Grand Piano", GmNames.name(0, 0)); assertEquals("Drums (kit 26)", GmNames.name(3, 25, 127))
     }
 
     // ---------------- tiny SMF builder for edge cases (writes bytes only; parsing is under test) ----------------

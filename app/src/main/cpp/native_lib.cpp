@@ -313,3 +313,15 @@ extern "C" JNIEXPORT jint JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAu
 /** Packed beat counter for the visual indicator: (beatSeq << 2) | lastLevel. */
 extern "C" JNIEXPORT jlong JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeMetronomeBeat(JNIEnv*,jobject){if(!g_engine)return 0;auto&m=g_engine->metronomeEngine();return jlong((m.beatSeq()<<2)|uint64_t(m.lastLevel()&3));}
 extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeMetronomeReport(JNIEnv* env,jobject){const auto s=g_engine?g_engine->metronomeReport():std::string("METRONOME engine_absent\n");return env->NewStringUTF(sanitizeUtf8ForJni(s.c_str()).c_str());}
+
+// MIDI SONG (V1A): raw channel messages for the Song's own BASSMIDI stream (never the keyboard/Style stream).
+extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSongEvents(JNIEnv* env,jobject,jbyteArray data,jint length){
+    if(!g_engine||!data||length<=0) return JNI_FALSE;
+    const jsize n=env->GetArrayLength(data); if(length>n) return JNI_FALSE;
+    std::vector<uint8_t> bytes(static_cast<size_t>(length));
+    env->GetByteArrayRegion(data,0,length,reinterpret_cast<jbyte*>(bytes.data()));
+    return g_engine->songEvents(bytes.data(),bytes.size())?JNI_TRUE:JNI_FALSE;
+}
+extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSongReset(JNIEnv*,jobject){if(g_engine)g_engine->songReset();}
+extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSongSetActive(JNIEnv*,jobject,jboolean active){if(g_engine)g_engine->songSetActive(active==JNI_TRUE);}
+

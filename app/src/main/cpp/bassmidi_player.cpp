@@ -2417,6 +2417,7 @@ void BassMidiPlayer::render(float* out, int numFrames) {
 #endif
 // HEADROOM_OBSERVER_END
     renderPercussion(out,numFrames);
+    renderSong(out,numFrames); // MIDI SONG: no-op unless a Song is playing (or its release tail)
     if (liveCapture_.load(std::memory_order_relaxed)==2) appendLiveCapture(out,numFrames); // diagnostic tap, armed only
     if (probeEnter) latency_probe::probe.renderDone(probeEnter, probeLocked, latency_probe::now()); // LATENCY_PROBE
 // HEADROOM_OBSERVER_BEGIN
@@ -3358,3 +3359,71 @@ std::string BassMidiPlayer::fontPdta(uint64_t fontId) const {
     return fp != pdtaFingerprints_.end() && fp->second.valid ? fp->second.sha256 : std::string();
 }
 // CPV_CHANNEL_PIN_END
+
+// ---------------- MIDI SONG (V1A) ----------------
+// A second BASSMIDI stream so a MIDI file never changes the keyboard (ch 0-3) or Style (ch 4-15) channels of stream_.
+// Same SoundFonts (drum font first, then melody font, all presets, all channels; GM channel 10 = drums).
+bool BassMidiPlayer::ensureSongStreamLocked() {
+    if (!stream_) return false;                                   // engine not started
+    if (!songStream_) {
+        songStream_ = BASS_MIDI_StreamCreate(16, BASS_STREAM_DECODE | BASS_SAMPLE_FLOAT | BASS_MIDI_NOTEOFF1, sampleRate_);
+        if (!songStream_) { LOGE("Song BASS_MIDI_StreamCreate failed error=%d", BASS_ErrorGetCode()); return false; }
+        songScratch_.assign(4096 * 2, 0.0f);
+        songFontsMelody_ = songFontsDrum_ = 0;
+    }
+    if (songFontsMelody_ != melodyFont_ || songFontsDrum_ != drumFont_) {
+        std::vector<BASS_MIDI_FONTEX2> maps;
+        for (HSOUNDFONT f : {drumFont_, melodyFont_}) {
+            if (!f) continue;
+            BASS_MIDI_FONTEX2 m{}; m.font = f; m.spreset = -1; m.sbank = -1; m.dpreset = -1; m.dbank = -1; m.dbanklsb = 0; m.minchan = 0; m.numchan = 16;
+            maps.push_back(m);
+        }
+        if (!maps.empty() && !BASS_MIDI_StreamSetFonts(songStream_, maps.data(), DWORD(maps.size()) | BASS_MIDI_FONT_EX2))
+            LOGE("Song StreamSetFonts failed error=%d", BASS_ErrorGetCode());
+        songFontsMelody_ = melodyFont_; songFontsDrum_ = drumFont_;
+    }
+    return true;
+}
+
+bool BassMidiPlayer::songEvents(const uint8_t* data, size_t length) {
+    if (!data || length == 0) return false;
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!ensureSongStreamLocked()) return false;
+    // channel messages only; a status >= 0xF0 is refused (SysEx / system messages never reach the synth from a Song)
+    for (size_t i = 0; i < length; ++i) if (data[i] >= 0xF0) return false;
+    songActive_.store(true, std::memory_order_relaxed);
+    return BASS_MIDI_StreamEvents(songStream_, BASS_MIDI_EVENTS_RAW, data, DWORD(length)) != DWORD(-1);
+}
+
+void BassMidiPlayer::songReset() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!songStream_) return;
+    for (DWORD ch = 0; ch < 16; ++ch) {
+        BASS_MIDI_StreamEvent(songStream_, ch, MIDI_EVENT_SUSTAIN, 0);
+        BASS_MIDI_StreamEvent(songStream_, ch, MIDI_EVENT_NOTESOFF, 0);
+    }
+}
+
+void BassMidiPlayer::songSetActive(bool active) {
+    if (!active && songActive_.exchange(false)) songTailFrames_.store(sampleRate_ * 4, std::memory_order_relaxed);   // let releases ring out
+    else if (active) songActive_.store(true, std::memory_order_relaxed);
+}
+
+// Called from render() with mutex_ held. Adds the Song stream to `out`; nothing at all when no Song is active.
+void BassMidiPlayer::renderSong(float* out, int numFrames) {
+    if (!songStream_) return;
+    const bool active = songActive_.load(std::memory_order_relaxed);
+    int tail = songTailFrames_.load(std::memory_order_relaxed);
+    if (!active && tail <= 0) return;
+    const int chunk = int(songScratch_.size() / 2);
+    for (int done = 0; done < numFrames; ) {
+        const int n = std::min(chunk, numFrames - done);
+        const DWORD got = BASS_ChannelGetData(songStream_, songScratch_.data(), DWORD(n * 2 * sizeof(float)) | BASS_DATA_FLOAT);
+        if (got == DWORD(-1)) break;
+        const int samples = int(got / sizeof(float));
+        for (int i = 0; i < samples; ++i) out[done * 2 + i] += songScratch_[i];
+        done += n;
+    }
+    if (!active) songTailFrames_.store(tail - numFrames, std::memory_order_relaxed);
+}
+

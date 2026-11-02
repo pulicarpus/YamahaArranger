@@ -788,6 +788,7 @@ class MainViewModel @Inject constructor(
     override fun onCleared() {
         audioEngine.onMixerControllers = null; audioEngine.onMixerMasterVolume = null
         midiInputManager.onOutputReady = null
+        songPlayer.shutdown()   // MIDI SONG: ends only the Song's own notes
         metronome.release(); midiInputManager.close(); audioEngine.stop(); super.onCleared()
     }
 
@@ -805,7 +806,68 @@ class MainViewModel @Inject constructor(
         if (section in MAIN_VARIATIONS) arrangerBrain.selectMainVariation(section) else arrangerBrain.selectSection(section)
     }
     fun onSyncStart() { }
-    fun onStartStop() = arrangerBrain.startStop()
+    fun onStartStop() { if (!arrangerBrain.state.value.isPlaying) stopSongForStyle(); arrangerBrain.startStop() }
+
+    // ---------------- MIDI SONG (V1A) ----------------
+    // Own player thread, own BASSMIDI stream (internal) and raw MIDI OUT path; never the keyboard/Style channels.
+    // Policy: PLAY SONG is refused while the Style runs; START STYLE stops a playing/paused Song cleanly (only the Song's notes).
+    private val songPlayer = com.yourapp.yamahaarranger.song.SongPlayer().also { it.start() }
+    private val songInternal = com.yourapp.yamahaarranger.song.InternalSongOutput { audioEngine.songEvents(it) }
+    private val songExternal = com.yourapp.yamahaarranger.song.ExternalSongOutput { midiInputManager.sendSongBytes(it) }
+    private val _songRouting = MutableStateFlow(com.yourapp.yamahaarranger.song.SongRouting.INTERNAL)
+    val songRouting: StateFlow<com.yourapp.yamahaarranger.song.SongRouting> = _songRouting
+    @Volatile private var songNote: String? = null
+    init {
+        songPlayer.setOutputs(com.yourapp.yamahaarranger.song.songOutputsFor(_songRouting.value, songInternal, songExternal))
+        songPlayer.onStopped = {
+            audioEngine.songSetActive(false); audioEngine.songReset()            // Song stream only
+            midiInputManager.forgetAllSentMidiState()                           // the Style router resends its voices to the module next time
+            DebugLog.add("🎵 SONG stopped: Song notes ended, Style/keyboard untouched")
+        }
+    }
+    fun songStatus(): com.yourapp.yamahaarranger.song.SongStatus = songPlayer.status()
+    fun songNotice(): String? = songNote ?: songPlayer.status().message
+    fun openSong(uri: Uri) {
+        viewModelScope.launch {
+            try {
+                val bytes = withContext(Dispatchers.IO) { contentResolver.readBytes(uri) } ?: run { songNote = "Cannot read the file"; return@launch }
+                val name = contentResolver.fileName(uri) ?: uri.path?.substringAfterLast('/') ?: "song.mid"
+                val t = withContext(Dispatchers.Default) {
+                    com.yourapp.yamahaarranger.song.SongTimeline.from(com.yourapp.yamahaarranger.song.Smf.parse(bytes))
+                }
+                songPlayer.load(t, name)
+                songNote = "Loaded $name: SMF Type ${t.format}, PPQ ${t.ppq}, ${t.events.size} events, ${t.bars} bars" +
+                    (if (t.sysExCount > 0) " (${t.sysExCount} SysEx ignored)" else "")
+                DebugLog.add("🎵 SONG $songNote")
+            } catch (e: com.yourapp.yamahaarranger.song.SmfException) { songNote = "Not a playable MIDI file: ${e.message}"; DebugLog.add("🎵 SONG ${songNote}") }
+            catch (e: Exception) { songNote = "Cannot open: ${e.javaClass.simpleName}"; DebugLog.add("🎵 SONG ${songNote}") }
+        }
+    }
+    fun songPlayPause() {
+        when (songPlayer.status().state) {
+            com.yourapp.yamahaarranger.song.SongState.PLAYING -> { songPlayer.pause(); songNote = null }
+            else -> {
+                if (arrangerBrain.state.value.isPlaying) { songNote = "STYLE is playing: stop the Style first (SONG and STYLE do not play together in V1)"; return }
+                audioEngine.songSetActive(true)
+                songNote = songPlayer.play()
+            }
+        }
+    }
+    fun songStop() { songPlayer.stop(); songNote = null }
+    fun songSeekFraction(f: Float) { val d = songPlayer.status().durationUs; songPlayer.seekUs((d * f.coerceIn(0f, 1f).toDouble()).toLong()) }
+    fun songSeekBars(delta: Int) { val bb = songPlayer.status().barBeat ?: return; songPlayer.seekBar((bb.bar + delta).coerceAtLeast(1)) }
+    fun songToggleMute(channel: Int) { songPlayer.setMute(channel, !songPlayer.status().muted[channel]) }
+    fun songSetTempoPercent(p: Int) { songPlayer.setTempoPercent(p) }
+    fun songSetRouting(r: com.yourapp.yamahaarranger.song.SongRouting) {
+        _songRouting.value = r
+        songPlayer.setOutputs(com.yourapp.yamahaarranger.song.songOutputsFor(r, songInternal, songExternal))
+    }
+    private fun stopSongForStyle() {
+        val st = songPlayer.status().state
+        if (st == com.yourapp.yamahaarranger.song.SongState.PLAYING || st == com.yourapp.yamahaarranger.song.SongState.PAUSED) {
+            songPlayer.stop(); songNote = "SONG stopped because the Style started"; DebugLog.add("🎵 $songNote")
+        }
+    }
     fun onTapTempo() { }
     fun onTempoDown() { arrangerBrain.setTempo((arrangerBrain.state.value.tempoBpm - 5).coerceIn(20, 280)) }
     fun onTempoUp() { arrangerBrain.setTempo((arrangerBrain.state.value.tempoBpm + 5).coerceIn(20, 280)) }

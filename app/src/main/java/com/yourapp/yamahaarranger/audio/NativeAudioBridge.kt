@@ -56,6 +56,9 @@ class NativeAudioBridge @Inject constructor() {
     external fun nativeSetChannelPresetWithName(channel: Int, bank: Int, program: Int, voiceName: String)
     external fun nativeSetChannelMixer(channel: Int, volume: Int, pan: Int, expression: Int, reverbSend: Int, chorusSend: Int)
     external fun nativeSetChannelExpression(channel: Int, expression: Int)
+    external fun nativeSongEvents(data: ByteArray, length: Int): Boolean
+    external fun nativeSongReset()
+    external fun nativeSongSetActive(active: Boolean)
     external fun nativeSetKeyboardSustain(enabled: Boolean)
     external fun nativeSetKeyboardReleaseTime(releaseTime: Int): Boolean
     external fun nativeSetMasterGain(gain: Float)

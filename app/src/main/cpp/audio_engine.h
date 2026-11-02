@@ -47,6 +47,9 @@ public:
     void sfSetChannelPresetWithName(int channel,int bank,int program,const std::string& voiceName);
     void sfSetChannelMixer(int channel,int volume,int pan,int expression,int reverbSend,int chorusSend);
     void sfSetChannelExpression(int channel,int expression);
+    bool songEvents(const uint8_t* data,size_t length);
+    void songReset();
+    void songSetActive(bool active);
     void sfSetKeyboardSustain(bool enabled);
     bool sfSetKeyboardReleaseTime(int releaseTime);
     void sfSetMasterGain(float gain);

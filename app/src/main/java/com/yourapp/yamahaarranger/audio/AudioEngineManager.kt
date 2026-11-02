@@ -561,6 +561,10 @@ class AudioEngineManager @Inject constructor(
     }
 
     fun allNotesOff() { DebugLog.traceAudio("ALL_NOTES_OFF"); bridge.nativeAllNotesOff() }
+    // ---- MIDI SONG (V1A): the Song's own BASSMIDI stream. Never the keyboard/Style stream; no global All Notes Off. ----
+    fun songEvents(bytes: ByteArray): Boolean = try { bridge.nativeSongEvents(bytes, bytes.size) } catch (e: Throwable) { false }
+    fun songReset() { try { bridge.nativeSongReset() } catch (_: Throwable) {} }
+    fun songSetActive(active: Boolean) { try { bridge.nativeSongSetActive(active) } catch (_: Throwable) {} }
 
     fun testTone(note: Int, velocity: Float) {
         if (soundFontLoaded) {

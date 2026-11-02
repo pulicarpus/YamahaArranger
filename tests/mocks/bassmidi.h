@@ -164,3 +164,13 @@ inline HSTREAM BASS_MIDI_StreamGetChannel(HSTREAM parent,DWORD channel) {
     mock_bass::roleChannelRequests.emplace_back(parent,channel);
     return mock_bass::failRoleChannel?0:10000+channel;
 }
+
+// MIDI SONG (V1A) test doubles: raw event batches per stream.
+constexpr DWORD BASS_MIDI_EVENTS_RAW=0x10000;
+namespace mock_bass { inline std::vector<std::pair<HSTREAM,std::vector<uint8_t>>> rawEvents; }
+inline DWORD BASS_MIDI_StreamEvents(HSTREAM stream, DWORD mode, const void* events, DWORD length) {
+    if(mode!=BASS_MIDI_EVENTS_RAW) return DWORD(-1);
+    const auto* b=static_cast<const uint8_t*>(events);
+    mock_bass::rawEvents.emplace_back(stream,std::vector<uint8_t>(b,b+length)); return length;
+}
+

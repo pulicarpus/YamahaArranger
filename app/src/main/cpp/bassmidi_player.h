@@ -47,6 +47,11 @@ public:
     bool isMelodyLoaded() const { return stream_ != 0 && melodyFont_ != 0; }
     bool isDrumLoaded() const { return stream_ != 0 && drumFont_ != 0; }
     void render(float* out, int numFrames);
+    // MIDI SONG (V1A): a separate 16-channel BASSMIDI stream owned by the Song player, fed raw MIDI bytes (channel messages only;
+    // SysEx is filtered by the caller). It never touches stream_ (keyboard + Style). Created lazily on the first Song event.
+    bool songEvents(const uint8_t* data, size_t length);
+    void songReset();                 // NOTESOFF + sustain 0 on the Song stream's 16 channels only
+    void songSetActive(bool active);  // decode the Song stream while active, then a release tail
     void noteOn(int channel, int key, float velocity, const AudioPathOrigin& origin = {});
     void noteOff(int channel, int key, const AudioPathOrigin& origin = {});
     void armChordDiagnostic();
@@ -314,6 +319,13 @@ private:
     bool percussionOff(int channel,int key,const AudioPathOrigin& origin);
     void renderPercussion(float* out,int frames);
     HSTREAM stream_ = 0;
+    HSTREAM songStream_ = 0;                       // MIDI SONG stream (see songEvents)
+    HSOUNDFONT songFontsMelody_ = 0, songFontsDrum_ = 0;
+    std::atomic<bool> songActive_{false};
+    std::atomic<int> songTailFrames_{0};
+    std::vector<float> songScratch_;
+    bool ensureSongStreamLocked();
+    void renderSong(float* out, int numFrames);
     HSOUNDFONT melodyFont_ = 0;
     HSOUNDFONT drumFont_ = 0;
     bool bassInitialized_ = false;

@@ -264,6 +264,15 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
     fun forgetSentVoice(channel: Int) { if (channel in 0..15) mixerOutput.forgetSentVoice(channel) }
     /** The keyboard may have reset or been changed by hand: the next replay writes every Bank/Program/controller again. */
     fun forgetAllSentMidiState() = mixerOutput.forgetAllSent()
+    /**
+     * MIDI SONG (V1A): one channel message straight to the external module (not through the Style router: the Song keeps its own note
+     * ledger). Refused when MIDI OUT is off/disconnected, and for any status >= 0xF0 (SysEx is never sent to the device from a Song).
+     */
+    fun sendSongBytes(bytes: ByteArray): Boolean {
+        if (!midiOutEnabled || bytes.isEmpty() || (bytes[0].toInt() and 0xFF) !in 0x80..0xEF) return false
+        val port = inputPort ?: return false
+        return try { port.send(bytes, 0, bytes.size); true } catch (e: Exception) { DebugLog.traceError("SONG MIDI OUT failed: ${e.message}"); false }
+    }
 
     /** MIDI OUT octave correction of a melodic Style part (10..15), -2..+2. MIDI OUT only: the internal synthesizer is not involved. */
     fun setStyleOctaveCorrection(channel: Int, octaves: Int): Boolean = mixerOutput.setOctaveCorrection(channel, octaves)
