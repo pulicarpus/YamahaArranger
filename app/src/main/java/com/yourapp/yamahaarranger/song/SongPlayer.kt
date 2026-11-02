@@ -17,6 +17,18 @@ data class SongStatus(
     val bars: Int, val fileBpm: Double, val effectiveBpm: Double, val tempoPercent: Int, val timeSig: String, val muted: List<Boolean>,
     val channelsUsed: Set<Int>, val programs: List<Int>, val bankMsb: List<Int>, val lastNoteOnNs: List<Long>, val outputs: List<String>,
     val message: String?,
+    // ---- V1A.2 mixer (defaults keep older callers compiling) ----
+    val overrides: List<ChannelOverride> = List(16) { ChannelOverride() },
+    val solo: List<Boolean> = List(16) { false },
+    /** muted, or another channel is soloed */
+    val silent: List<Boolean> = List(16) { false },
+    val bankLsb: List<Int> = List(16) { -1 },
+    /** the file's own last CC7 / CC10 / CC64 per channel (-1 = not sent yet) */
+    val fileVolume: List<Int> = List(16) { -1 },
+    val filePan: List<Int> = List(16) { -1 },
+    val filePedal: List<Int> = List(16) { -1 },
+    val voiceBind: List<VoiceBind?> = List(16) { null },
+    val drumChannels: Set<Int> = setOf(9),
 ) {
     val progress get() = if (durationUs <= 0) 0f else (positionUs.toFloat() / durationUs).coerceIn(0f, 1f)
 }
@@ -32,6 +44,11 @@ data class SongStatus(
  *    (and CC64 0 where sustained) only for notes the SONG started — never All Notes Off, never other sources' notes;
  *  - a NOTE OFF whose NOTE ON was not sent (muted channel, or before a panic) is not sent (no orphan NOTE OFF);
  *  - SEEK and RESUME first send the channel state reached at that point (bank, program, controllers, pitch bend; no notes);
+ *  - V1A.2 mixer: per-channel user overrides ([ChannelOverride]: voice on the internal synth only, volume, pan, sustain mode) and solo.
+ *    Every file message passes [SongMixerRules.transform] per output, so the file can never silently undo a user choice; the full
+ *    override state is re-sent after a synth reset, a setup SysEx and every chase. The file's own values stay tracked for display
+ *    and for RESET CHANNEL. Overrides are remembered per song title while the app runs (reopening the song restores them;
+ *    a different song starts clean).
  *  - setup SysEx (XG / GS / GM, see [SongSysEx]) goes ONLY to outputs with [SongOutput.acceptsSysEx] (the internal synth), never to
  *    MIDI OUT. Before playing from the start or chasing, that synth is reset with GM System On and the setup SysEx before the
  *    position is re-sent, so a new song never inherits the previous song's XG / drum-part / vibrato-depth setup.
@@ -55,13 +72,33 @@ class SongPlayer(private val clock: () -> Long = System::nanoTime) {
     private val bankMsb = IntArray(16) { -1 }
     private val lastNoteOn = LongArray(16)
     private var message: String? = null
+    private val ov = Array(16) { ChannelOverride() }
+    private val solo = BooleanArray(16)
+    private val voiceBind = arrayOfNulls<VoiceBind>(16)
+    private val bankLsb = IntArray(16) { -1 }
+    private val fileCc = Array(16) { IntArray(128) { -1 } }     // the file's own last controller values (before overrides)
+    private val saved = HashMap<String, Array<ChannelOverride>>()
+    /** Installs user voices in the internal Song synth (see [SongVoiceBinder]); null in pure tests = mapping assumed. */
+    @Volatile var voiceBinder: SongVoiceBinder? = null
     /** Called after STOP / end of song (e.g. to let the Style router resend its voices to the external module). */
     @Volatile var onStopped: (() -> Unit)? = null
     @Volatile private var thread: Thread? = null
 
     fun load(t: SongTimeline, name: String) = synchronized(lock) {
-        stopLocked(); timeline = t; title = name; state = SongState.STOPPED; pausedUs = 0; next = 0
-        muted.fill(false); programs.fill(-1); bankMsb.fill(-1); lastNoteOn.fill(0); message = null
+        stopLocked()
+        if (title.isNotEmpty()) { if (ov.all { it.isDefault }) saved.remove(title) else saved[title] = ov.copyOf() }
+        val restore = saved[name]
+        for (ch in 0 until 16) {
+            val target = restore?.get(ch) ?: ChannelOverride()
+            if (target.voice != ov[ch].voice) {
+                val r = bindLocked(ch, target.voice)
+                ov[ch] = if (r == VoiceBind.NOT_FOUND) target.copy(voice = null) else target
+                voiceBind[ch] = if (target.voice == null) null else r
+            } else ov[ch] = target
+        }
+        timeline = t; title = name; state = SongState.STOPPED; pausedUs = 0; next = 0
+        muted.fill(false); solo.fill(false); programs.fill(-1); bankMsb.fill(-1); bankLsb.fill(-1); lastNoteOn.fill(0); message = null
+        for (a in fileCc) a.fill(-1)
         wake()
     }
 
@@ -80,7 +117,7 @@ class SongPlayer(private val clock: () -> Long = System::nanoTime) {
         val t = timeline ?: return "No MIDI song loaded"
         if (state == SongState.PLAYING) return null
         if (pausedUs >= t.durationUs && t.durationUs > 0) { pausedUs = 0; next = 0 }
-        if (pausedUs <= 0) resetSynthLocked(outputs)
+        if (pausedUs <= 0) { resetSynthLocked(outputs); for (o in outputs) applyOverridesLocked(o) }
         chaseLocked(pausedUs, outputs)
         next = firstIndexAtOrAfterUs(t, pausedUs)
         anchorSongUs = pausedUs; anchorWallNs = clock(); state = SongState.PLAYING; message = null
@@ -111,10 +148,65 @@ class SongPlayer(private val clock: () -> Long = System::nanoTime) {
 
     fun setMute(channel: Int, mute: Boolean) = synchronized(lock) {
         if (channel !in 0..15 || muted[channel] == mute) return
-        muted[channel] = mute
-        if (mute) panicLocked(channel..channel, outputs, clearState = false, keepSustainFlag = true)
-        else if (sustain[channel]) sendLocked(byteArrayOf((0xB0 or channel).toByte(), 64, 127), outputs)
+        val before = silentSnapshot(); muted[channel] = mute; silenceChangedLocked(before)
     }
+
+    /** SOLO: while any channel is soloed, every other channel is silent (its Song notes end; it keeps receiving controllers). */
+    fun setSolo(channel: Int, on: Boolean) = synchronized(lock) {
+        if (channel !in 0..15 || solo[channel] == on) return
+        val before = silentSnapshot(); solo[channel] = on; silenceChangedLocked(before)
+    }
+
+    // ---------------- V1A.2 mixer ----------------
+    /** Use [voice] (a loaded SF2 preset) on [channel] in the internal synth; null = back to the file's voice. MIDI OUT is unchanged. */
+    fun setVoice(channel: Int, voice: SongVoice?): VoiceBind = synchronized(lock) {
+        if (channel !in 0..15) return VoiceBind.NOT_FOUND
+        val r = bindLocked(channel, voice)
+        voiceBind[channel] = if (voice == null) null else r
+        if (r == VoiceBind.NOT_FOUND) { message = "CH${channel + 1}: ${r.label}"; return r }
+        ov[channel] = ov[channel].copy(voice = voice)
+        val msgs = if (voice != null) SongMixerRules.voiceSelect(channel, voice) else fileVoiceLocked(channel)
+        for (o in outputs) if (o.acceptsSysEx) msgs.forEach(o::send)
+        r
+    }
+
+    /** CC7 0..127 for [channel] on every output; null = back to the file's volume. */
+    fun setVolume(channel: Int, value: Int?) = synchronized(lock) {
+        if (channel !in 0..15) return
+        ov[channel] = ov[channel].copy(volume = value?.coerceIn(0, 127))
+        sendLocked(SongMixerRules.cc(channel, 7, value ?: fileCc[channel][7].takeIf { it >= 0 } ?: 100), liveLocked())
+    }
+
+    /** CC10 0..127 (64 = centre) for [channel] on every output; null = back to the file's pan. */
+    fun setPan(channel: Int, value: Int?) = synchronized(lock) {
+        if (channel !in 0..15) return
+        ov[channel] = ov[channel].copy(pan = value?.coerceIn(0, 127))
+        sendLocked(SongMixerRules.cc(channel, 10, value ?: fileCc[channel][10].takeIf { it >= 0 } ?: 64), liveLocked())
+    }
+
+    /** Sustain pedal policy for [channel]. Leaving FOLLOW releases the pedal now; NOTE OFFs are always played normally. */
+    fun setSustainMode(channel: Int, mode: SustainMode) = synchronized(lock) {
+        if (channel !in 0..15) return
+        ov[channel] = ov[channel].copy(sustain = mode)
+        if (mode != SustainMode.FOLLOW) { sustain[channel] = false; sendLocked(SongMixerRules.cc(channel, 64, 0), liveLocked()) }
+        else if (fileCc[channel][64] >= 64 && !silentLocked(channel) && (state == SongState.PLAYING || state == SongState.PAUSED)) {
+            sustain[channel] = true; sendLocked(SongMixerRules.cc(channel, 64, 127), outputs)
+        }
+    }
+
+    /** RESET CHANNEL: voice, volume, pan and sustain back to what the file says; mute and solo off. */
+    fun resetChannel(channel: Int) = synchronized(lock) {
+        if (channel !in 0..15) return
+        val before = silentSnapshot(); muted[channel] = false; solo[channel] = false; silenceChangedLocked(before)
+        if (ov[channel].voice != null) setVoice(channel, null)
+        voiceBind[channel] = null
+        if (ov[channel].volume != null) setVolume(channel, null)
+        if (ov[channel].pan != null) setPan(channel, null)
+        if (ov[channel].sustain != SustainMode.FOLLOW) setSustainMode(channel, SustainMode.FOLLOW)
+        ov[channel] = ChannelOverride()
+    }
+
+    fun overrides(): List<ChannelOverride> = synchronized(lock) { ov.toList() }
 
     /** Tempo override in percent of the file's tempo map (25..300). Re-anchored at the current position: no jump. */
     fun setTempoPercent(p: Int) = synchronized(lock) {
@@ -147,7 +239,9 @@ class SongPlayer(private val clock: () -> Long = System::nanoTime) {
         val ts = t?.timeSigAt(tick)
         SongStatus(state, title, us, t?.durationUs ?: 0, tick, t?.barBeat(tick), t?.bars ?: 0, tempo?.bpm ?: 0.0,
             (tempo?.bpm ?: 0.0) * tempoPercent / 100.0, tempoPercent, ts?.let { "${it.numerator}/${it.denominator}" } ?: "-", muted.toList(),
-            t?.channelsUsed ?: emptySet(), programs.toList(), bankMsb.toList(), lastNoteOn.toList(), outputs.map { it.id }, message)
+            t?.channelsUsed ?: emptySet(), programs.toList(), bankMsb.toList(), lastNoteOn.toList(), outputs.map { it.id }, message,
+            ov.toList(), solo.toList(), List(16) { silentLocked(it) }, bankLsb.toList(), List(16) { fileCc[it][7] }, List(16) { fileCc[it][10] },
+            List(16) { fileCc[it][64] }, voiceBind.toList(), t?.drumChannels ?: setOf(9))
     }
 
     /** Song-owned notes still sounding (for tests and diagnostics). */
@@ -180,11 +274,15 @@ class SongPlayer(private val clock: () -> Long = System::nanoTime) {
     }
 
     private fun dispatchLocked(e: SongEvent, nowNs: Long) {
-        if (e.isSysEx) { for (o in outputs) if (o.acceptsSysEx) o.send(e.bytes); return }
+        if (e.isSysEx) {
+            // a setup SysEx can reset the synth or change a part's voice / volume: re-assert the user's overrides right after it
+            for (o in outputs) if (o.acceptsSysEx) { o.send(e.bytes); applyOverridesLocked(o) }
+            return
+        }
         val ch = e.channel
         when {
             e.isNoteOn -> {
-                if (muted[ch]) return
+                if (silentLocked(ch)) return
                 active[ch * 128 + e.data1]++; lastNoteOn[ch] = nowNs
                 sendLocked(e.bytes, outputs)
             }
@@ -195,17 +293,60 @@ class SongPlayer(private val clock: () -> Long = System::nanoTime) {
                 sendLocked(e.bytes, outputs)
             }
             else -> {
-                when (e.command) {
-                    0xB0 -> when (e.data1) { 64 -> sustain[ch] = e.data2 >= 64; 0 -> bankMsb[ch] = e.data2 }
-                    0xC0 -> programs[ch] = e.data1
-                    0xE0 -> bent[ch] = !(e.data1 == 0 && e.data2 == 64)
-                }
-                sendLocked(e.bytes, outputs)
+                noteFileStateLocked(e.bytes)
+                for (o in outputs) for (m in SongMixerRules.transform(e.bytes, ov[ch], o.acceptsSysEx)) o.send(m)
             }
         }
     }
 
+    /** Track the file's own channel state (display, RESET CHANNEL) and the pedal the SONG actually holds. */
+    private fun noteFileStateLocked(m: ByteArray) {
+        val st = m[0].toInt() and 0xFF; val ch = st and 0x0F
+        when (st and 0xF0) {
+            0xB0 -> {
+                val n = m[1].toInt(); val v = m[2].toInt(); fileCc[ch][n] = v
+                when (n) { 64 -> sustain[ch] = v >= 64 && ov[ch].sustain == SustainMode.FOLLOW; 0 -> bankMsb[ch] = v; 32 -> bankLsb[ch] = v }
+            }
+            0xC0 -> programs[ch] = m[1].toInt()
+            0xE0 -> bent[ch] = !(m[1].toInt() == 0 && m[2].toInt() == 64)
+        }
+    }
+
     private fun sendLocked(bytes: ByteArray, to: List<SongOutput>) { for (o in to) o.send(bytes) }
+
+    /**
+     * Where a mixer change is sent right away: every output while the Song is playing or paused; only the internal Song synth
+     * (its own stream) while stopped, so a stopped Song never touches the external module's channels. PLAY re-sends everything.
+     */
+    private fun liveLocked() = if (state == SongState.PLAYING || state == SongState.PAUSED) outputs else outputs.filter { it.acceptsSysEx }
+
+    private fun silentLocked(ch: Int) = muted[ch] || (solo.any { it } && !solo[ch])
+    private fun silentSnapshot() = BooleanArray(16) { silentLocked(it) }
+    /** End the Song notes of channels that just became silent; give the pedal back to channels that just became audible. */
+    private fun silenceChangedLocked(before: BooleanArray) {
+        for (ch in 0 until 16) {
+            val now = silentLocked(ch)
+            if (now && !before[ch]) panicLocked(ch..ch, outputs, clearState = false, keepSustainFlag = true)
+            else if (!now && before[ch] && sustain[ch]) sendLocked(SongMixerRules.cc(ch, 64, 127), outputs)
+        }
+    }
+
+    private fun bindLocked(ch: Int, voice: SongVoice?): VoiceBind =
+        voiceBinder?.bind(ch, voice) ?: if (voice == null) VoiceBind.CLEARED else VoiceBind.BOUND
+
+    /** The file's own voice for [ch] as far as known (internal synth only). Bank messages only if the file sent them (XG drum mode). */
+    private fun fileVoiceLocked(ch: Int): List<ByteArray> {
+        val out = ArrayList<ByteArray>()
+        if (bankMsb[ch] >= 0) out += SongMixerRules.cc(ch, 0, bankMsb[ch])
+        if (bankLsb[ch] >= 0) out += SongMixerRules.cc(ch, 32, bankLsb[ch])
+        out += SongMixerRules.pc(ch, programs[ch].coerceAtLeast(0))
+        return out
+    }
+
+    /** Re-assert every channel override on one output (after a synth reset, a setup SysEx or a chase). */
+    private fun applyOverridesLocked(o: SongOutput) {
+        for (ch in 0 until 16) if (!ov[ch].isDefault) SongMixerRules.state(ch, ov[ch], o.acceptsSysEx).forEach(o::send)
+    }
 
     /** NOTE OFF for every song-owned note on [channels] (one per instance) and CC64 0 where the song held the sustain. */
     private fun panicLocked(channels: IntRange, to: List<SongOutput>, clearState: Boolean, keepSustainFlag: Boolean = false) {
@@ -230,14 +371,11 @@ class SongPlayer(private val clock: () -> Long = System::nanoTime) {
         if (synths.isNotEmpty()) { resetSynthLocked(synths); for (m in t.sysExBefore(before)) for (o in synths) o.send(m) }
         for (m in t.chaseBefore(before)) {
             val st = m[0].toInt() and 0xFF; val ch = st and 0x0F
-            when (st and 0xF0) {
-                0xB0 -> when (m[1].toInt()) { 64 -> sustain[ch] = m[2] >= 64; 0 -> bankMsb[ch] = m[2].toInt() }
-                0xC0 -> programs[ch] = m[1].toInt()
-                0xE0 -> bent[ch] = !(m[1].toInt() == 0 && m[2].toInt() == 64)
-            }
-            if ((st and 0xF0) == 0xB0 && m[1].toInt() == 64 && muted[ch]) continue
-            sendLocked(m, to)
+            noteFileStateLocked(m)
+            if ((st and 0xF0) == 0xB0 && m[1].toInt() == 64 && silentLocked(ch)) continue
+            for (o in to) for (x in SongMixerRules.transform(m, ov[ch], o.acceptsSysEx)) o.send(x)
         }
+        for (o in to) applyOverridesLocked(o)
     }
     private fun firstTickAtOrAfterUs(t: SongTimeline, us: Long, fallback: Long): Long {
         val i = firstIndexAtOrAfterUs(t, us)

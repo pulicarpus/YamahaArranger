@@ -58,6 +58,8 @@ class SongTimeline private constructor(
     val ppq: Int, val format: Int, val events: List<SongEvent>, val tempos: List<TempoPoint>, val timeSigs: List<TimeSigPoint>,
     val lastTick: Long, val durationUs: Long, val sysExCount: Int, val trackNames: List<String>, val channelNames: Map<Int, String>,
     val channelsUsed: Set<Int>, val warnings: List<String>, val sysExForwarded: Int = 0,
+    /** Channels the file plays as drums: channel 10, bank MSB 126/127 (XG), or an XG PART MODE drum message. */
+    val drumChannels: Set<Int> = setOf(9),
 ) {
     /** Channel messages only (no SysEx). */
     val channelEventCount get() = events.size - sysExForwarded
@@ -126,6 +128,17 @@ class SongTimeline private constructor(
     }
 
     companion object {
+        private fun drums(channel: List<SmfEvent>, sysEx: List<ByteArray>): Set<Int> {
+            val d = HashSet<Int>(); d += 9
+            for (e in channel) if (e.command == 0xB0 && e.data1 == 0 && (e.data2 == 127 || e.data2 == 126)) d += e.channel
+            for (m in sysEx) {   // F0 43 1n 4C 08 pp 07 dd F7: XG multi part, PART MODE (0 = normal, else drum)
+                if (m.size >= 9 && m[1].toInt() == 0x43 && m[3].toInt() == 0x4C && m[4].toInt() == 0x08 && m[6].toInt() == 0x07 && m[5] in 0..15) {
+                    if (m[7].toInt() != 0) d += m[5].toInt()
+                }
+            }
+            return d
+        }
+
         fun from(f: SmfFile): SongTimeline {
             val all = f.tracks.flatMap { it.events }
             // tempo map (any track; Type 1 normally track 0). Same tick: the last one wins.
@@ -172,7 +185,7 @@ class SongTimeline private constructor(
                 if (chs.size == 1) names.putIfAbsent(chs.first(), t.name)
             }
             return SongTimeline(f.ppq, f.format, events, tempos, sigs, lastTick, usAt(lastTick), all.count { it.isSysEx },
-                f.tracks.map { it.name }, names, channelEvents.map { it.channel }.toSet(), f.warnings, sysEx.size)
+                f.tracks.map { it.name }, names, channelEvents.map { it.channel }.toSet(), f.warnings, sysEx.size, drums(channelEvents, sysEx.map { it.second }))
         }
     }
 }

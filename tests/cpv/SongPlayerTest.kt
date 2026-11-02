@@ -4,6 +4,11 @@ import com.yourapp.yamahaarranger.song.Smf
 import com.yourapp.yamahaarranger.song.SmfException
 import com.yourapp.yamahaarranger.song.SmfEvent
 import com.yourapp.yamahaarranger.song.SongSysEx
+import com.yourapp.yamahaarranger.song.SongVoice
+import com.yourapp.yamahaarranger.song.SongVoiceBinder
+import com.yourapp.yamahaarranger.song.SustainMode
+import com.yourapp.yamahaarranger.song.VoiceBind
+import com.yourapp.yamahaarranger.song.ChannelOverride
 import com.yourapp.yamahaarranger.song.SongOutput
 import com.yourapp.yamahaarranger.song.SongPlayer
 import com.yourapp.yamahaarranger.song.SongState
@@ -295,6 +300,167 @@ class SongPlayerTest {
         // the next song starts from a clean internal synth
         a.msgs.clear(); p.load(timeline("type0_basic"), "next"); p.play()
         assertEquals("new song: GM System On first", SongSysEx.GM_SYSTEM_ON.toList(), a.msgs.first().second.toList())
+    }
+
+    // ---------------- V1A.2 SONG MIXER ----------------
+    // PSR-like song: ch3 strings (bank 0/117 PC 49, CC7 71, CC10 40, CC64 pedal), a mid-song PC change, ch10 drums (bank 127 PC 58), ch1 piano
+    private fun mixSong(): SongTimeline {
+        val ev = ArrayList<Pair<Long, ByteArray>>()
+        ev += 0L to cc(2, 0, 0); ev += 0L to cc(2, 32, 117); ev += 0L to pc(2, 49); ev += 0L to cc(2, 7, 71); ev += 0L to cc(2, 10, 40)
+        ev += 0L to cc(9, 0, 127); ev += 0L to pc(9, 58); ev += 0L to pc(0, 0)
+        for (b in 0 until 8) {
+            val t = 480L + b * 960
+            ev += t to cc(2, 64, 127); ev += t to on(2, 60); ev += (t + 400) to off(2, 60); ev += (t + 900) to cc(2, 64, 0)
+            ev += t to on(9, 36); ev += (t + 100) to off(9, 36); ev += t to on(0, 72); ev += (t + 300) to off(0, 72)
+        }
+        ev += 4320L to pc(2, 50)                                                  // the file changes the strings voice mid-song
+        return SongTimeline.from(Smf.parse(smfBytes(0, 480, listOf(track(ev)))))
+    }
+    private val strings = SongVoice(7, "tyros4.sf2", 0, 44, "Tremolo Strings")
+    private val kit = SongVoice(9, "drums.sf2", 128, 25, "Analog Kit")
+    private class Binder : SongVoiceBinder { val calls = ArrayList<Pair<Int, SongVoice?>>(); var answer = VoiceBind.VERIFIED
+        override fun bind(channel: Int, voice: SongVoice?): VoiceBind { calls += channel to voice; return if (voice == null) VoiceBind.CLEARED else answer } }
+    private fun ByteArray.k() = toList()
+    private fun msgs(r: Rec, ch: Int) = r.msgs.map { it.second }.filter { (it[0].toInt() and 0xFF) < 0xF0 && (it[0].toInt() and 0x0F) == ch }
+    private fun cmd(m: ByteArray) = m[0].toInt() and 0xF0
+    private fun setup(): Triple<SongPlayer, Pair<Rec, Rec>, Pair<Clock, Binder>> {
+        val c = Clock(); val i = Rec("internal", acceptsSysEx = true); val x = Rec("external"); val b = Binder()
+        val p = SongPlayer { c.ns }; p.voiceBinder = b; p.load(mixSong(), "mix.mid"); p.setOutputs(listOf(i, x))
+        return Triple(p, i to x, c to b)
+    }
+
+    @Test fun voiceOverrideReachesOnlyTheInternalSynthAndTheFileCannotUndoIt() {
+        val (p, io, cb) = setup(); val (i, x) = io; val (c, b) = cb
+        assertEquals(VoiceBind.VERIFIED, p.setVoice(2, strings)); assertEquals(listOf(2 to strings), b.calls)
+        p.play(); run(p, c, listOf(i, x))
+        val ip = msgs(i, 2).filter { cmd(it) == 0xC0 || (cmd(it) == 0xB0 && it[1].toInt() in listOf(0, 32)) }.map { it.k() }
+        assertTrue("internal never receives the file's bank 0/117 or PC 49/50 on CH3", ip.none { it == pc(2, 49).k() || it == pc(2, 50).k() || it == cc(2, 32, 117).k() })
+        assertTrue("internal selects the user preset (Bank 0 / LSB 0 / PC 0)", ip.containsAll(listOf(cc(2, 0, 0).k(), cc(2, 32, 0).k(), pc(2, 0).k())))
+        val xp = msgs(x, 2).filter { cmd(it) == 0xC0 }.map { it.k() }
+        assertEquals("MIDI OUT keeps the file's voices", listOf(pc(2, 49).k(), pc(2, 50).k()), xp)
+        assertEquals("file voice still tracked for display", 50, p.status(c.ns).programs[2])
+        assertEquals(strings, p.status(c.ns).overrides[2].voice)
+    }
+
+    @Test fun drumKitOverrideKeepsTheFilesDrumBankAndReplacesOnlyTheProgram() {
+        val (p, io, cb) = setup(); val (i, x) = io; val (c, _) = cb
+        p.setVoice(9, kit); p.play(); run(p, c, listOf(i, x), untilNs = c.ns + 400_000_000L)
+        val m = msgs(i, 9).filter { cmd(it) != 0x90 && cmd(it) != 0x80 }.map { it.k() }
+        assertTrue("file bank 127 still reaches the synth (XG drum mode)", m.contains(cc(9, 0, 127).k()))
+        assertTrue("kit = Program 0 of the pinned drum bank", m.contains(pc(9, 0).k()) && !m.contains(pc(9, 58).k()))
+        assertTrue("MIDI OUT: file kit", msgs(x, 9).any { it.k() == pc(9, 58).k() })
+        assertEquals(setOf(9), p.status(c.ns).drumChannels)
+    }
+
+    @Test fun overridesSurviveSeekPauseResumeRepeatAndASetupReset() {
+        val (p, io, cb) = setup(); val (i, x) = io; val (c, _) = cb
+        p.setVoice(2, strings); p.setVolume(2, 30); p.setSustainMode(2, SustainMode.IGNORE)
+        p.play(); run(p, c, listOf(i, x), untilNs = c.ns + 1_500_000_000L)
+        fun checkState(what: String) {
+            val m = msgs(i, 2).map { it.k() }
+            assertTrue("$what: voice re-asserted", m.containsAll(listOf(cc(2, 0, 0).k(), cc(2, 32, 0).k(), pc(2, 0).k())))
+            assertTrue("$what: volume re-asserted", m.contains(cc(2, 7, 30).k()) && !m.contains(cc(2, 7, 71).k()))
+            assertTrue("$what: no file voice", !m.contains(pc(2, 49).k()) && !m.contains(pc(2, 50).k()))
+            assertTrue("$what: no pedal ON", !m.contains(cc(2, 64, 127).k()))
+        }
+        i.msgs.clear(); p.seekTick(3000); checkState("seek forward")
+        i.msgs.clear(); p.seekTick(500); checkState("seek back")
+        p.pause(); i.msgs.clear(); p.play(); checkState("resume")
+        run(p, c, listOf(i, x)); assertEquals(SongState.STOPPED, p.status(c.ns).state)
+        i.msgs.clear(); p.play(); checkState("repeat from the start")
+        val first = i.msgs.indexOfFirst { it.second.k() == SongSysEx.GM_SYSTEM_ON.k() }
+        assertTrue("repeat: synth reset first, overrides right after it", first == 0 && i.msgs.drop(1).take(6).map { it.second.k() }.contains(cc(2, 7, 30).k()))
+        // a setup SysEx in the file (XG System On) re-asserts the overrides right after it
+        val ev = listOf(0L to pc(2, 49), 0L to cc(2, 7, 71), 960L to sx(0x43, 0x10, 0x4C, 0x00, 0x00, 0x7E, 0x00, 0xF7), 960L to on(2, 60), 1200L to off(2, 60))
+        val c2 = Clock(); val i2 = Rec("internal", acceptsSysEx = true); val p2 = SongPlayer { c2.ns }
+        p2.load(SongTimeline.from(Smf.parse(smfBytes(0, 480, listOf(track(ev))))), "xg.mid"); p2.setOutputs(listOf(i2)); p2.setVolume(2, 30); p2.setVoice(2, strings)
+        p2.play(); run(p2, c2, listOf(i2))
+        val all = i2.msgs.map { it.second.k() }; val xg = all.indexOfFirst { it.size > 4 && it[1] == 0x43.toByte() }
+        assertTrue("after XG System On: volume and voice again", all.drop(xg + 1).take(5).containsAll(listOf(cc(2, 7, 30).k(), pc(2, 0).k())))
+    }
+
+    @Test fun volumeAndPanOverridesReplaceTheFileValuesOnEveryOutputAndMidiRestoresThem() {
+        val (p, io, cb) = setup(); val (i, x) = io; val (c, _) = cb
+        p.setVolume(2, 30); p.setPan(2, 100); p.play(); run(p, c, listOf(i, x), untilNs = c.ns + 300_000_000L)
+        for (r in listOf(i, x)) {
+            val m = msgs(r, 2).map { it.k() }
+            assertTrue("${r.id}: CC7 30 / CC10 100, never the file's 71 / 40", m.contains(cc(2, 7, 30).k()) && m.contains(cc(2, 10, 100).k()) &&
+                !m.contains(cc(2, 7, 71).k()) && !m.contains(cc(2, 10, 40).k()))
+        }
+        assertEquals(71, p.status(c.ns).fileVolume[2]); assertEquals(40, p.status(c.ns).filePan[2])
+        i.msgs.clear(); x.msgs.clear(); p.setVolume(2, null); p.setPan(2, null)
+        assertEquals("MIDI: back to the file's values", listOf(cc(2, 7, 71).k(), cc(2, 10, 40).k()), msgs(x, 2).map { it.k() })
+        p.setVolume(2, 200); assertEquals("clamped", 127, p.status(c.ns).overrides[2].volume)
+        // stopped: a mixer change only reaches the internal synth (never the external module's channels)
+        p.stop(); i.msgs.clear(); x.msgs.clear(); p.setVolume(5, 90)
+        assertEquals(listOf(cc(5, 7, 90).k()), msgs(i, 5).map { it.k() }); assertTrue(x.msgs.isEmpty())
+    }
+
+    @Test fun soloSilencesOtherChannelsAndEndsOnlyTheirSongNotes() {
+        val (p, io, cb) = setup(); val (i, x) = io; val (c, _) = cb
+        p.play(); run(p, c, listOf(i, x), untilNs = c.ns + 1_050_000_000L)       // inside bar 2: ch1 note sounding
+        val sounding0 = msgs(i, 0).count { cmd(it) == 0x90 } - msgs(i, 0).count { cmd(it) == 0x80 }
+        i.msgs.clear(); p.setSolo(2, true)
+        assertEquals("ch1's sounding note ended once", sounding0, msgs(i, 0).count { cmd(it) == 0x80 })
+        assertTrue(p.status(c.ns).silent[0] && p.status(c.ns).silent[9] && !p.status(c.ns).silent[2])
+        i.msgs.clear(); run(p, c, listOf(i, x), untilNs = c.ns + 2_000_000_000L)
+        assertEquals("no new notes on silenced channels", 0, msgs(i, 0).count { cmd(it) == 0x90 } + msgs(i, 9).count { cmd(it) == 0x90 })
+        assertTrue("the soloed channel keeps playing", msgs(i, 2).any { cmd(it) == 0x90 })
+        p.setSolo(2, false); i.msgs.clear(); run(p, c, listOf(i, x), untilNs = c.ns + 1_000_000_000L)
+        assertTrue("un-solo: everyone again", msgs(i, 0).any { cmd(it) == 0x90 })
+        p.stop(); assertEquals(0, p.activeNotes())
+        assertEquals("balanced", i.noteOns(), i.noteOffs())
+    }
+
+    @Test fun sustainModesFilterOnlyCc64AndNoteOffsStillPlay() {
+        for (mode in SustainMode.values()) {
+            val (p, io, cb) = setup(); val (i, x) = io; val (c, _) = cb
+            p.setSustainMode(2, mode); p.play(); run(p, c, listOf(i, x))
+            for (r in listOf(i, x)) {
+                val ped = msgs(r, 2).filter { cmd(it) == 0xB0 && it[1].toInt() == 64 }.map { it[2].toInt() }
+                when (mode) {
+                    SustainMode.FOLLOW -> assertTrue("$mode ${r.id}: file pedal played", ped.contains(127))
+                    SustainMode.IGNORE -> assertTrue("$mode ${r.id}: no file pedal at all (only the mixer's own releases) $ped", ped.none { it > 0 } && ped.size < 4)
+                    SustainMode.FORCE_OFF -> assertTrue("$mode ${r.id}: every file pedal turned into OFF", ped.isNotEmpty() && ped.all { it == 0 } && ped.size >= 16)
+                }
+                assertEquals("$mode ${r.id}: every NOTE OFF played", msgs(r, 2).count { cmd(it) == 0x90 }, msgs(r, 2).count { cmd(it) == 0x80 })
+                assertTrue("$mode ${r.id}: never All Notes Off / All Sound Off", r.msgs.none { (it.second[0].toInt() and 0xF0) == 0xB0 && it.second[1].toInt() in 120..127 })
+            }
+            assertEquals(0, p.activeNotes())
+        }
+        // switching while the pedal is down releases it right away (only that channel)
+        val (p, io, cb) = setup(); val (i, x) = io; val (c, _) = cb
+        p.play(); run(p, c, listOf(i, x), untilNs = c.ns + 600_000_000L)                // pedal pressed at tick 480 (0.5 s)
+        i.msgs.clear(); p.setSustainMode(2, SustainMode.IGNORE)
+        assertEquals(listOf(cc(2, 64, 0).k()), i.msgs.map { it.second.k() })
+        assertEquals("file pedal still shown", 127, p.status(c.ns).filePedal[2])
+    }
+
+    @Test fun resetChannelRestoresTheFileAndANewSongStartsCleanWhileReopeningRestores() {
+        val (p, io, cb) = setup(); val (i, x) = io; val (c, b) = cb
+        p.setVoice(2, strings); p.setVolume(2, 30); p.setPan(2, 0); p.setSustainMode(2, SustainMode.FORCE_OFF); p.setMute(2, true)
+        p.play(); run(p, c, listOf(i, x), untilNs = c.ns + 600_000_000L)
+        i.msgs.clear(); x.msgs.clear(); p.resetChannel(2)
+        val m = msgs(i, 2).map { it.k() }
+        assertTrue("file voice back (bank 0/117 PC 49)", m.containsAll(listOf(cc(2, 0, 0).k(), cc(2, 32, 117).k(), pc(2, 49).k())))
+        assertTrue("file volume / pan / pedal back", m.containsAll(listOf(cc(2, 7, 71).k(), cc(2, 10, 40).k(), cc(2, 64, 127).k())))
+        assertEquals(2 to null, b.calls.last()); assertEquals(ChannelOverride(), p.status(c.ns).overrides[2])
+        assertFalse(p.status(c.ns).muted[2])
+        // per song: another file starts clean, reopening the first one restores its overrides
+        p.setVoice(2, strings); p.setVolume(2, 30); b.calls.clear()
+        p.load(timeline("type0_basic"), "other.mid")
+        assertEquals("new song: the user voice is unbound", listOf(2 to null), b.calls); assertTrue(p.overrides().all { it.isDefault })
+        b.calls.clear(); p.load(mixSong(), "mix.mid")
+        assertEquals("reopened: voice bound again", listOf(2 to strings), b.calls); assertEquals(30, p.overrides()[2].volume)
+    }
+
+    @Test fun aPresetThatIsNotLoadedKeepsTheFileVoice() {
+        val (p, io, cb) = setup(); val (i, x) = io; val (c, b) = cb
+        b.answer = VoiceBind.NOT_FOUND
+        assertEquals(VoiceBind.NOT_FOUND, p.setVoice(2, strings)); assertNull(p.overrides()[2].voice)
+        assertEquals(VoiceBind.NOT_FOUND, p.status(c.ns).voiceBind[2])
+        p.play(); run(p, c, listOf(i, x), untilNs = c.ns + 100_000_000L)
+        assertTrue("file voice plays", msgs(i, 2).any { it.k() == pc(2, 49).k() })
     }
 
     // ---------------- tiny SMF builder for edge cases (writes bytes only; parsing is under test) ----------------
