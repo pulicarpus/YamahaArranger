@@ -54,10 +54,13 @@ const Msg XG_ON = {0xF0, 0x43, 0x10, 0x4C, 0x00, 0x00, 0x7E, 0x00, 0xF7};
 const Msg XG_P0_MW_PMOD_0 = {0xF0, 0x43, 0x10, 0x4C, 0x08, 0x00, 0x20, 0x00, 0xF7};   // part 1: MW LFO PMOD DEPTH 0
 const Msg XG_P8_DRUM_S2 = {0xF0, 0x43, 0x10, 0x4C, 0x08, 0x08, 0x07, 0x03, 0xF7};     // part 9: PART MODE drum S2
 
+bool gPlainMap = false, gNoReset = false;   // isolation switches for the diagnostic scenarios only
 HSTREAM songStream(HSOUNDFONT font) {   // as BassMidiPlayer::ensureSongStreamLocked
     HSTREAM s = BASS_MIDI_StreamCreate(16, BASS_STREAM_DECODE | BASS_SAMPLE_FLOAT | BASS_MIDI_NOTEOFF1, 48000);
+    if (gPlainMap) { BASS_MIDI_FONT f{font, -1, 0}; BASS_MIDI_StreamSetFonts(s, &f, 1); BASS_ChannelSetAttribute(s, BASS_ATTRIB_MIDI_SRC, 2); return s; }
     BASS_MIDI_FONTEX2 m{}; m.font = font; m.spreset = -1; m.sbank = -1; m.dpreset = -1; m.dbank = -1; m.dbanklsb = 0; m.minchan = 0; m.numchan = 16;
-    BASS_MIDI_StreamSetFonts(s, &m, 1 | BASS_MIDI_FONT_EX2);
+    const BOOL set = BASS_MIDI_StreamSetFonts(s, &m, 1 | BASS_MIDI_FONT_EX2);
+    if (!set) std::printf("SXG diag StreamSetFonts(EX2) failed err=%d\n", BASS_ErrorGetCode());
     BASS_ChannelSetAttribute(s, BASS_ATTRIB_MIDI_SRC, 2);
     return s;
 }
@@ -68,11 +71,15 @@ void check(bool ok, const std::string& w) { if (!ok) { std::cout << "SXG FAIL " 
 
 pitch_analysis::Result piano(HSOUNDFONT font, const char* name, const std::vector<Msg>& setup) {
     HSTREAM s = songStream(font);
-    raw(s, GM_ON);                                  // the player resets the Song synth before a song
+    if (!gNoReset) raw(s, GM_ON);                   // the player resets the Song synth before a song
     for (const auto& m : setup) raw(s, m);
     raw(s, {0xB0, 0x00, 0x00}); raw(s, {0xB0, 0x20, 0x00}); raw(s, {0xC0, 0x00}); raw(s, {0xB0, 0x01, 82}); raw(s, {0x90, 60, 100});
     std::vector<float> pcm, buf(480 * 2);
     for (int b = 0; b < 200; ++b) { const int got = BASS_ChannelGetData(s, buf.data(), buf.size() * 4 | BASS_DATA_FLOAT); if (got <= 0) break; pcm.insert(pcm.end(), buf.begin(), buf.begin() + got / 4); }
+    BASS_MIDI_FONT live{}; const bool gp = BASS_MIDI_StreamGetPreset(s, 0, &live);
+    float pk = 0; for (float v : pcm) pk = std::max(pk, std::fabs(v));
+    std::printf("SXG diag %-31s ch1 preset=%d bank=%d font=%s samples=%zu peak=%.1fdBFS mod=%u\n", name, gp ? live.preset : -1, gp ? live.bank : -1,
+                gp && live.font ? "ok" : "none", pcm.size(), pk > 0 ? 20 * std::log10(pk) : -180.0, unsigned(BASS_MIDI_StreamGetEvent(s, 0, MIDI_EVENT_MODULATION)));
     BASS_StreamFree(s);
     const auto r = pitch_analysis::analyze(pcm, 48000, kExpectHz, 0.4, 1.9);
     std::printf("SXG %-36s CC1=82 | pitch p2p=%.2f c modHz=%.2f modPeak=%.2f c | %s\n", name, r.p2pCents, r.modHz, r.modCents,
@@ -98,6 +105,11 @@ int main(int argc, char** argv) {
     if (argc != 2 || !BASS_Init(0, 48000, 0, nullptr, nullptr)) return 1;
     HSOUNDFONT font = BASS_MIDI_FontInit(makeFont(argv[1]).c_str(), 0);
     if (!font) { std::cout << "SXG font_init_failed err=" << BASS_ErrorGetCode() << "\n"; return 2; }
+    BASS_MIDI_FONTINFO info{}; BASS_MIDI_FontGetInfo(font, &info);
+    std::printf("SXG diag font presets=%u samsize=%u version=%08x\n", unsigned(info.presets), unsigned(info.samsize), unsigned(BASS_MIDI_GetVersion()));
+    for (int bank : {0, 128}) for (int pc : {0, 58}) std::printf("SXG diag preset bank=%d pc=%d name=%s\n", bank, pc, BASS_MIDI_FontGetPreset(font, pc, bank) ? BASS_MIDI_FontGetPreset(font, pc, bank) : "(none)");
+    gPlainMap = true; piano(font, "diag_plain_font_map", {}); gPlainMap = false;
+    gNoReset = true; piano(font, "diag_no_gm_reset", {}); gNoReset = false;
     const auto v1a = piano(font, "V1A_no_sysex", {});
     const auto xgOnly = piano(font, "V1A1_xg_on_only", {XG_ON});
     const auto fixed = piano(font, "V1A1_xg_on_mw_pmod_depth_0", {XG_ON, XG_P0_MW_PMOD_0});
@@ -106,6 +118,7 @@ int main(int argc, char** argv) {
     const DWORD d2 = rhythm9(font, "V1A1_xg_on_part_mode_drum", {XG_ON, XG_P8_DRUM_S2});
     (void)xgOnly; (void)d1;
     // The V1A.1 claims: the report's symptom is reproduced without SysEx, and the file's own XG setup removes it.
+    check(v1a.valid && v1a.p2pCents > 0.0 && v1a.frames > 0, "the piano must actually sound (analysis on real audio)");
     check(v1a.valid && v1a.modCents > 10.0, "without SysEx CC1=82 should vibrate (reproduces the report)");
     check(fixed.valid && fixed.modCents < 3.0, "XG MW LFO PMOD DEPTH 0 should remove the CC1 vibrato");
     check(d0 == 0, "without SysEx channel 9 is melodic (reproduces the missing Rhythm)");
