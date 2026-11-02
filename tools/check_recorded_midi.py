@@ -28,6 +28,8 @@ def balanced(b):
             p += 1; st = d[p]; p += 1
             if st == 0xFF:
                 L = d[p + 1]; p += 2 + L; continue
+            if st in (0xF0, 0xF7):                                  # SysEx: length + data (lengths < 128 in recorder output)
+                L = d[p]; p += 1 + L; continue
             n = 1 if st & 0xF0 in (0xC0, 0xD0) else 2; a = d[p:p + n]; p += n
             if st & 0xF0 == 0x90 and a[1] > 0: open_[(st & 15, a[0])] += 1
             elif st & 0xF0 == 0x80 or (st & 0xF0 == 0x90 and a[1] == 0):
@@ -47,6 +49,12 @@ def main():
         assert r['format'] == 1 and all(eot) and len(eot) == r['tracks'], (f.name, r, eot)
         assert orphan == 0 and unclosed == 0, (f.name, 'orphan NOTE OFF' if orphan else 'unclosed NOTE ON', orphan, unclosed)
         for k, v in EXPECT.get(f.stem, {}).items(): assert r[k] == v, (f.name, k, r[k], v)
+        if f.stem.startswith('v1c'):                                # FULL ARRANGER: standard setup SysEx only, drums where the flavour says
+            ons = list(map(int, r['noteOns'].split(',')))
+            assert r['sysex'] == 1, (f.name, 'exactly one setup SysEx (XG System On or GM System On)', r['sysex'])
+            if f.stem.endswith('_gm'): assert ons[8] == 0 and ons[9] > 0, (f.name, 'GM: Rhythm on channel 10 only', ons)
+            else: assert ons[8] > 0 or ons[9] > 0, (f.name, 'NATIVE: Rhythm notes present', ons)
+            assert r['tracks'] >= 3, (f.name, r['tracks'])
         print(f'RECORDED MIDI OK {f.name}: Type {r["format"]}, {r["tracks"]} tracks, PPQ {r["ppq"]}, tempos {r["tempos"]}, '
               f'{r["durationUs"] / 1e6:.3f} s, NOTE ON per channel {r["noteOns"]}, every track ends with End of Track, notes paired')
     print(f'RECORDED MIDI CHECK PASS files={len(files)} (independent Python reader)')

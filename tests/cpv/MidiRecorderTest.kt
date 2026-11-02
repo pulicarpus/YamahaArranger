@@ -2,6 +2,8 @@ package com.yourapp.yamahaarranger.cpv
 
 import com.yourapp.yamahaarranger.song.MidiRecorder
 import com.yourapp.yamahaarranger.song.RecVoice
+import com.yourapp.yamahaarranger.song.RecordMode
+import com.yourapp.yamahaarranger.song.ExportFlavor
 import com.yourapp.yamahaarranger.song.Smf
 import com.yourapp.yamahaarranger.song.SmfWriter
 import com.yourapp.yamahaarranger.song.SongTimeline
@@ -126,5 +128,54 @@ class MidiRecorderTest {
         val f = Smf.parse(r.stop()!!.bytes)
         assertEquals("conductor only", 1, f.tracks.size); assertTrue(f.tracks[0].endOfTrack)
         assertTrue(r.status().hasTake); assertFalse(r.status().recording)
+    }
+
+    // ---------------- V1C FULL ARRANGER ----------------
+    private fun fullTake(): com.yourapp.yamahaarranger.song.RecordedTake {
+        val c = Clock(); val r = MidiRecorder({ c.ns }, 960)
+        val voices = mapOf(0 to piano, 8 to RecVoice(127 * 128, 0, "Std Kit", bank14 = true), 9 to RecVoice(127 * 128, 8, "Room Kit", bank14 = true),
+            10 to RecVoice(0 * 128 + 112, 33, "Finger Bass", bank14 = true), 11 to RecVoice(0 * 128 + 112, 27, "Clean Gtr", bank14 = true))
+        r.start(120.0, voices, false, "Full", (0..15).toSet(), RecordMode.FULL, mapOf(10 to intArrayOf(7, 100, 10, 64, 11, 127, 91, 40, 93, 0)))
+        c.at(0.0); r.noteOn(8, 36, 0.9f); r.noteOn(9, 42, 0.6f); r.noteOn(10, 36, 0.7f); r.noteOn(11, 60, 0.6f); r.noteOn(11, 64, 0.6f)
+        c.at(0.1); r.noteOff(8, 36); r.noteOff(9, 42)
+        c.at(0.25); r.sustain(true)                                                // keyboard pedal: keyboard parts only
+        c.at(0.5); r.noteOn(0, 72, 0.8f); r.controllers(10, intArrayOf(7, 100, 11, 90)); r.controllers(10, intArrayOf(11, 90))   // only changes
+        c.at(0.9); r.noteOff(10, 36); r.noteOff(11, 60)
+        c.at(1.0); r.allStopped()                                                  // Style STOP: global All Notes Off
+        c.at(1.1); r.noteOff(0, 72); r.noteOff(11, 64)                             // late offs after All Notes Off: dropped
+        c.at(1.5); r.sustain(false)
+        c.at(2.0); return r.stop()!!
+    }
+
+    @Test fun fullArrangerNativeTakeKeepsPartsYamahaBanksAndXgDrums() {
+        val take = fullTake(); save("v1c_full_native", take.bytes); save("v1c_full_gm", take.bytesFor(ExportFlavor.GM))
+        val f = Smf.parse(take.bytes); val t = SongTimeline.from(f)
+        assertEquals(listOf("Full", "RIGHT1", "Rhythm1", "Rhythm2", "Bass", "Chord1"), f.tracks.map { it.name })
+        assertTrue("XG System On forwarded to the synth", f.tracks[0].events.any { it.isSysEx && it.payload!!.toList().take(3) == listOf<Byte>(0x43, 0x10, 0x4C) })
+        assertEquals("both Rhythm channels play as drums", setOf(8, 9), t.drumChannels.intersect(setOf(8, 9)))
+        val bass = f.tracks[4].events.filter { it.isChannel }
+        assertEquals("Yamaha bank 0/112 PC 33", listOf(0 to 0, 32 to 112), bass.filter { it.command == 0xB0 && it.data1 in listOf(0, 32) }.take(2).map { it.data1 to it.data2 })
+        assertTrue(bass.any { it.command == 0xC0 && it.data1 == 33 })
+        assertEquals("mixer at start + only real changes", listOf(0L to 127, 960L to 90), bass.filter { it.command == 0xB0 && it.data1 == 11 }.map { it.tick to it.data2 })
+        assertEquals("CC7 not repeated", 1, bass.count { it.command == 0xB0 && it.data1 == 7 })
+        val r1 = f.tracks[2].events.filter { it.isChannel }
+        assertTrue("Rhythm1: bank MSB 127", r1.any { it.command == 0xB0 && it.data1 == 0 && it.data2 == 127 })
+        assertTrue("pedal only on keyboard tracks", f.tracks.drop(2).none { tr -> tr.events.any { it.isChannel && it.command == 0xB0 && it.data1 == 64 } })
+        assertEquals("All Notes Off closed RIGHT1, Bass, Chord1 at 1.0 s (1920)", listOf(1920L), f.tracks[1].events.filter { it.isNoteOff }.map { it.tick })
+        assertEquals(listOf(1728L, 1920L), f.tracks[5].events.filter { it.isNoteOff }.map { it.tick }.sorted())
+        assertEquals("balanced", t.events.count { it.isNoteOn }, t.events.count { it.isNoteOff })
+    }
+
+    @Test fun gmFlavourPutsBothRhythmPartsOnChannel10WithoutXg() {
+        val take = fullTake(); val f = Smf.parse(take.bytesFor(ExportFlavor.GM)); val t = SongTimeline.from(f)
+        assertTrue("GM System On, no XG", f.tracks[0].events.any { it.isSysEx && it.payload!![0] == 0x7E.toByte() } &&
+            f.tracks[0].events.none { it.isSysEx && it.payload!![0] == 0x43.toByte() })
+        assertTrue("no channel 9 events", t.events.none { !it.isSysEx && it.channel == 8 })
+        assertEquals("both drum notes on channel 10", setOf(36, 42), t.events.filter { it.isNoteOn && it.channel == 9 }.map { it.data1 }.toSet())
+        assertEquals("one kit on ch10 (Rhythm2's PC 8)", listOf(8), t.events.filter { !it.isSysEx && it.channel == 9 && it.command == 0xC0 }.map { it.data1 })
+        assertTrue("melodic banks reset to 0, program kept", t.events.filter { !it.isSysEx && it.command == 0xB0 && it.data1 in listOf(0, 32) }.all { it.data2 == 0 } &&
+            t.events.any { !it.isSysEx && it.channel == 10 && it.command == 0xC0 && it.data1 == 33 })
+        assertEquals(listOf("Full", "RIGHT1", "Rhythm1 (GM ch10)", "Rhythm2 (GM ch10)", "Bass", "Chord1"), f.tracks.map { it.name })
+        assertEquals("same notes as NATIVE", SongTimeline.from(Smf.parse(take.bytes)).events.count { it.isNoteOn }, t.events.count { it.isNoteOn })
     }
 }
