@@ -200,6 +200,28 @@ void lsbChecks(HSOUNDFONT font) {
     check(r[3].preset == 58 && r[3].peakDb > -60, "a per-channel route must make Yamaha 0/112/33 play the routed preset (XG On)");
 }
 
+// ---- SONG TRANSPOSE: the transposed message really sounds +N semitones, and only the NOTE OFF of the SENT pitch ends it ----
+void transposeChecks(HSOUNDFONT font) {
+    for (int semis : {2, -5, 7}) {
+        HSTREAM s = songStream(font); raw(s, GM_ON); raw(s, {0xC0, 0}); raw(s, {0x90, (uint8_t)(60 + semis), 100});
+        std::vector<float> pcm, buf(480 * 2);
+        for (int b = 0; b < 200; ++b) { const int got = BASS_ChannelGetData(s, buf.data(), buf.size() * 4 | BASS_DATA_FLOAT); if (got <= 0) break; pcm.insert(pcm.end(), buf.begin(), buf.begin() + got / 4); }
+        BASS_StreamFree(s);
+        const auto r = pitch_analysis::analyze(pcm, 48000, kExpectHz * std::pow(2.0, semis / 12.0), 0.4, 1.9);
+        std::printf("SXG transpose %+d: mean %.2f cents from the expected %+d-semitone pitch\n", semis, r.meanCents, semis);
+        check(r.valid && std::fabs(r.meanCents) < 5.0, "SONG TRANSPOSE: the sent pitch must sound exactly +N semitones");
+    }
+    auto tail = [&](int offPitch) {
+        HSTREAM s = songStream(font); raw(s, GM_ON); raw(s, {0xC0, 0});
+        std::vector<Timed> ev{{0, {0x90, 63, 100}}, {20, {0x80, (uint8_t)offPitch, 0}}};
+        const auto pcm = renderTimed(s, ev, 80); BASS_StreamFree(s); return rmsDb(pcm, 0.5, 0.75);
+    };
+    const double paired = tail(63), mismatched = tail(60);
+    std::printf("SXG transpose NOTE OFF pairing: off at the sent pitch -> tail %.1f dB, off at the file pitch -> tail %.1f dB (stuck)\n", paired, mismatched);
+    check(paired < -60.0, "NOTE OFF at the sent pitch ends the note");
+    check(mismatched > -40.0, "control: a NOTE OFF at the untransposed pitch would leave the note stuck");
+}
+
 // ---- V1C: real BASSMIDI plays a RECORDED file directly (as a MIDI player / MIDI Voyager would), with the file's own setup SysEx ----
 void recordedFileChecks(HSOUNDFONT font, const std::string& dir) {
     for (const char* name : {"v1c_rt_full_native.mid", "v1c_rt_full_gm.mid"}) {
@@ -246,6 +268,7 @@ int main(int argc, char** argv) {
     (void)xgOnly; (void)d1; (void)oldMap;
     mixerChecks(font);
     lsbChecks(font);
+    transposeChecks(font);
     if (argc >= 3) recordedFileChecks(font, argv[2]);
     // The V1A.1 claims: the report's symptom is reproduced without SysEx, and the file's own XG setup removes it.
     check(v1a.valid && v1a.p2pCents > 0.0 && v1a.frames > 0, "the piano must actually sound (analysis on real audio)");

@@ -72,7 +72,7 @@ jobs:
           prov = json.load(open('evidence/apk-provenance.json'))
           assert prov['source_sha'] == sha, ('provenance source', prov['source_sha'], sha)
           dex = b''.join(zipfile.ZipFile(apk).read(n) for n in zipfile.ZipFile(apk).namelist() if n.startswith('classes') and n.endswith('.dex'))
-          need = [b'SongPlayer', b'SongTimeline', b'SmfException', b'SongPanel', b'SongDialog', b'song.play', b'SongMixerSection', b'SongVoicePicker', b'SongMixerRules', b'song.mixer.sustain.', b'MidiRecorder', b'SmfWriter', b'RecorderBadge', b'song.rec.load', b'VirtualKeyRouter', b'YAMAP ch=', b'song.export.gm', b'GM COMPATIBLE', b'E343DrumNoteOffExperiment', b'RotaryDataKnob']
+          need = [b'SongPlayer', b'SongTimeline', b'SmfException', b'SongPanel', b'SongDialog', b'song.play', b'SongMixerSection', b'SongVoicePicker', b'SongMixerRules', b'song.mixer.sustain.', b'MidiRecorder', b'SmfWriter', b'RecorderBadge', b'song.rec.load', b'VirtualKeyRouter', b'YAMAP ch=', b'song.transpose.up', b'nudgeTempoBpm', b'song.export.gm', b'GM COMPATIBLE', b'E343DrumNoteOffExperiment', b'RotaryDataKnob']
           missing = [n.decode() for n in need if n not in dex]
           assert not missing, 'APK does not contain: ' + ', '.join(missing)
           z = zipfile.ZipFile(apk)
@@ -88,7 +88,7 @@ jobs:
             echo "apk: $(basename "$apk") sha256 $(sha256sum "$apk" | cut -d' ' -f1)"
             echo "QUICK device-test build. Not production-certified. Check the 'report' job for the quick tests and the UI test."
           } > evidence/BUILD-INFO.txt
-          cp diagnostics/MIDI_RECORDER_V1C_ROOT_CAUSE.md evidence/DEVICE-TEST.txt
+          cp diagnostics/SONG_TEMPO_TRANSPOSE_REPORT.md evidence/DEVICE-TEST.txt
           cat evidence/BUILD-INFO.txt
           # artifact names may not contain '/' (branch names do): replace it
           echo "artifact=SONG-QUICK-APK-${GITHUB_REF_NAME//\//-}-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"

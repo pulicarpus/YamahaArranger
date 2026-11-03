@@ -78,4 +78,8 @@ rd = cpp[cpp.index('std::string BassMidiPlayer::channelResolvedSource'):cpp.inde
 assert 'StreamEvent' not in rt and 'StreamSetFonts' not in rt and 'applyFonts' not in rt, 'routes: Song map only'
 assert 'StreamEvent' not in rd and 'StreamSetFonts' not in rd and 'BASS_MIDI_StreamGetPreset(stream_' in rd, 'readback: read-only on the main stream'
 assert 'songRoutes_' not in apply, 'the keyboard/Style font table never includes Song routes'
+# SONG TEMPO / TRANSPOSE: Song player only; never the Style tempo or Master Transpose; drums never transposed; NOTE OFF at the sent pitch
+assert 'arrangerBrain.setTempo' not in vm[vm.index('fun songNudgeTempo'):vm.index('fun songSetTranspose') + 300] and 'setKeyboardTranspose' not in vm[vm.index('fun songNudgeTempo'):vm.index('fun songSetTranspose') + 300], 'Song tempo / transpose independent of Style tempo and Master Transpose'
+assert 'if (transpose == 0 || ch in (timeline?.drumChannels ?: setOf(9))) return note' in pl, 'drum channels never transposed'
+assert 'val p = q.removeFirst()' in pl and 'sentFor[k].clear()' in pl, 'NOTE OFF pairs with the SENT pitch; panic clears the ledger'
 print('MIDI SONG GUARD PASS changed=' + ','.join(sorted(changed)))
