@@ -159,6 +159,8 @@ jobs:
           python3 tools/test_rtdiag.py --out evidence/recorder-rt --only com.yourapp.rtdiag.RecorderRtTest 2>&1 | tee evidence/recorder-rt.log
           python3 tools/test_rtdiag.py --out evidence/recorder-v1c --only com.yourapp.rtdiag.FullArrangerRecorderRtTest 2>&1 | tee evidence/recorder-v1c.log
           grep -h "RECV1C" evidence/recorder-v1c/rtdiag.log || true
+          python3 tools/test_rtdiag.py --out evidence/recorder-parity --rosita --only com.yourapp.rtdiag.RecorderParityRtTest 2>&1 | tee evidence/recorder-parity.log
+          grep -h "RECPAR" evidence/recorder-parity/rtdiag.log || true
       - name: MIDI RECORDER - every recorded file re-read by the independent Python reader
         run: python3 tools/check_recorded_midi.py build/recorder-evidence 2>&1 | tee evidence/recorded-midi.log
       - name: Native Song stream contract (separate stream, SysEx refused, isolated reset)

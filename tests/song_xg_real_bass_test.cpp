@@ -172,6 +172,34 @@ void mixerChecks(HSOUNDFONT font) {
     check(off.first > -60.0 && off.second < off.first - 30.0, "IGNORE / FORCE OFF: the note ends at its NOTE OFF");
 }
 
+// ---- V1C INVESTIGATION: a Yamaha Bank LSB (Style voices use MSB 0 / LSB 112..) on the Song stream's generic map vs a per-channel route ----
+struct LsbResult { int preset, bank; double peakDb; };
+LsbResult lsbScenario(HSOUNDFONT font, bool xg, bool route, int lsb, int pc) {
+    HSTREAM s = BASS_MIDI_StreamCreate(16, BASS_STREAM_DECODE | BASS_SAMPLE_FLOAT | BASS_MIDI_NOTEOFF1, 48000);
+    std::vector<BASS_MIDI_FONTEX2> maps;
+    if (route) { BASS_MIDI_FONTEX2 r{}; r.font = font; r.spreset = 58; r.sbank = 0; r.dpreset = pc; r.dbank = 0; r.dbanklsb = lsb; r.minchan = 10; r.numchan = 1; maps.push_back(r); }
+    BASS_MIDI_FONTEX2 g{}; g.font = font; g.spreset = -1; g.sbank = -1; g.dpreset = -1; g.dbank = 0; g.dbanklsb = 0; g.minchan = 0; g.numchan = 16; maps.push_back(g);   // = ensureSongStreamLocked
+    BASS_MIDI_StreamSetFonts(s, maps.data(), DWORD(maps.size()) | BASS_MIDI_FONT_EX2);
+    raw(s, GM_ON); if (xg) raw(s, XG_ON);
+    raw(s, {0xBA, 0, 0}); raw(s, {0xBA, 32, (uint8_t)lsb}); raw(s, {0xCA, (uint8_t)pc}); raw(s, {0x9A, 60, 100});
+    std::vector<float> buf(480 * 2); float pk = 0;
+    for (int b = 0; b < 40; ++b) { const int got = BASS_ChannelGetData(s, buf.data(), buf.size() * 4 | BASS_DATA_FLOAT); if (got <= 0) break; for (int i = 0; i < got / 4; ++i) pk = std::max(pk, std::fabs(buf[i])); }
+    BASS_MIDI_FONT live{}; const bool got = BASS_MIDI_StreamGetPreset(s, 10, &live);
+    BASS_StreamFree(s);
+    return {got ? live.preset : -1, got ? live.bank : -1, pk > 0 ? 20 * std::log10(pk) : -180.0};
+}
+void lsbChecks(HSOUNDFONT font) {
+    struct Sc { const char* name; bool xg, route; int lsb, pc; };
+    const Sc sc[] = {{"generic map, LSB 0, PC 0 (GM file)", false, false, 0, 0}, {"generic map, LSB 112, PC 0 (no XG)", false, false, 112, 0},
+                     {"generic map, LSB 112, PC 0 (XG On) = V1C LOAD TAKE", true, false, 112, 0}, {"route 0/112/33 -> preset 58 (XG On) = fix", true, true, 112, 33},
+                     {"route 0/112/33 -> preset 58 (no XG)", false, true, 112, 33}};
+    LsbResult r[5];
+    for (int i = 0; i < 5; ++i) { r[i] = lsbScenario(font, sc[i].xg, sc[i].route, sc[i].lsb, sc[i].pc);
+        std::printf("SXG lsb CH11 %-52s -> preset=%d bank=%d peak=%.1f dBFS%s\n", sc[i].name, r[i].preset, r[i].bank, r[i].peakDb, r[i].peakDb < -100 ? " SILENT" : ""); }
+    check(r[0].peakDb > -60, "GM file control must sound");
+    check(r[3].preset == 58 && r[3].peakDb > -60, "a per-channel route must make Yamaha 0/112/33 play the routed preset (XG On)");
+}
+
 // ---- V1C: real BASSMIDI plays a RECORDED file directly (as a MIDI player / MIDI Voyager would), with the file's own setup SysEx ----
 void recordedFileChecks(HSOUNDFONT font, const std::string& dir) {
     for (const char* name : {"v1c_rt_full_native.mid", "v1c_rt_full_gm.mid"}) {
@@ -217,6 +245,7 @@ int main(int argc, char** argv) {
     const DWORD d2 = rhythm9(font, "V1A1_xg_on_part_mode_drum", {XG_ON, XG_P8_DRUM_S2});
     (void)xgOnly; (void)d1; (void)oldMap;
     mixerChecks(font);
+    lsbChecks(font);
     if (argc >= 3) recordedFileChecks(font, argv[2]);
     // The V1A.1 claims: the report's symptom is reproduced without SysEx, and the file's own XG setup removes it.
     check(v1a.valid && v1a.p2pCents > 0.0 && v1a.frames > 0, "the piano must actually sound (analysis on real audio)");
