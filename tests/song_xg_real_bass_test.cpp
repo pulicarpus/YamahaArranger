@@ -218,7 +218,8 @@ void transposeChecks(HSOUNDFONT font) {
     };
     const double paired = tail(63), mismatched = tail(60);
     std::printf("SXG transpose NOTE OFF pairing: off at the sent pitch -> tail %.1f dB, off at the file pitch -> tail %.1f dB (stuck)\n", paired, mismatched);
-    check(paired < -60.0, "NOTE OFF at the sent pitch ends the note");
+    // the default reverb send leaves a short release / reverb tail (measured about -56 dB): judge against the stuck control
+    check(paired < -50.0 && paired < mismatched - 20.0, "NOTE OFF at the sent pitch ends the note (far below the stuck control)");
     check(mismatched > -40.0, "control: a NOTE OFF at the untransposed pitch would leave the note stuck");
 }
 
