@@ -3388,6 +3388,17 @@ bool BassMidiPlayer::ensureSongStreamLocked() {
             m.dbank = (p->bank == 127 || p->bank == 128) ? 128 : 0; m.dbanklsb = 0; m.minchan = ch; m.numchan = 1;
             maps.push_back(m);
         }
+        // V1C: recorded-take voice routes (after the user pins, before the generic map): the file's own Bank/Program select the
+        // same loaded preset the live engine resolved, exactly like the keyboard/Style stream's per-channel routes (applyFonts).
+        for (const auto& r : songRoutes_) {
+            const KeyboardPreset key{r.fontId, r.bank, r.sourceProgram, false};
+            const auto* p = keyboardPreset(key);
+            if (!p) continue;
+            const bool drum = p->bank == 127 || p->bank == 128;
+            BASS_MIDI_FONTEX2 m{}; m.font = p->font; m.spreset = p->program; m.sbank = p->nativeBank; m.dpreset = r.program;
+            m.dbank = drum ? 128 : r.msb; m.dbanklsb = drum ? 0 : r.lsb; m.minchan = r.channel; m.numchan = 1;
+            maps.push_back(m);
+        }
         for (HSOUNDFONT f : {drumFont_, melodyFont_}) {
             if (!f) continue;
             // all presets, all banks, unchanged numbers: with sbank = -1, dbank is a bank OFFSET (0 = same bank). -1 shifted every bank by
@@ -3428,6 +3439,30 @@ int BassMidiPlayer::songSetChannelVoice(int channel, uint64_t fontId, int bank, 
     LOGI("SONG VOICE ch=%d sf2='%s' bank=%d nativeBank=%d pc=%d '%s' verified=%d", channel, p->file.c_str(), p->bank, p->nativeBank,
          p->program, p->name.c_str(), verified ? 1 : 0);
     return verified ? 1 : 0;
+}
+
+bool BassMidiPlayer::songSetVoiceRoute(int channel, int msb, int lsb, int program, uint64_t fontId, int bank, int sourceProgram) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (channel < 0) { songRoutes_.clear(); songMapDirty_ = true; return true; }
+    if (channel > 15 || msb < 0 || msb > 127 || lsb < 0 || lsb > 127 || program < 0 || program > 127 || !fontId) return false;
+    const KeyboardPreset key{fontId, bank, sourceProgram, false};
+    const auto* p = keyboardPreset(key);
+    if (!p) return false;
+    for (auto& r : songRoutes_) if (r.channel == channel && r.msb == msb && r.lsb == lsb && r.program == program) { r.fontId = fontId; r.bank = bank; r.sourceProgram = sourceProgram; songMapDirty_ = true; return true; }
+    songRoutes_.push_back({channel, msb, lsb, program, fontId, bank, sourceProgram}); songMapDirty_ = true;
+    if (p) BASS_MIDI_FontLoadEx(p->font, p->program, p->nativeBank, 0, BASS_MIDI_FONTLOAD_NOWAIT);
+    return true;
+}
+
+std::string BassMidiPlayer::channelResolvedSource(int channel) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!stream_ || channel < 0 || channel > 15) return "";
+    BASS_MIDI_FONT live{};
+    if (!BASS_MIDI_StreamGetPreset(stream_, channel, &live)) return "";
+    for (const auto& b : browserPresets_)
+        if (b.font == live.font && b.nativeBank == live.bank && b.program == live.preset)
+            return std::to_string(b.fontId) + '\x1f' + b.file + '\x1f' + std::to_string(b.bank) + '\x1f' + std::to_string(b.program) + '\x1f' + b.name;
+    return "";
 }
 
 std::string BassMidiPlayer::songChannelReport() const {

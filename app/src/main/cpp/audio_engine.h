@@ -53,6 +53,8 @@ public:
     bool songSysEx(const uint8_t* data,size_t length);
     int songSetChannelVoice(int channel,uint64_t fontId,int bank,int program);
     std::string songChannelReport() const;
+    bool songSetVoiceRoute(int channel,int msb,int lsb,int program,uint64_t fontId,int bank,int sourceProgram);
+    std::string channelResolvedSource(int channel) const;
     void sfSetKeyboardSustain(bool enabled);
     bool sfSetKeyboardReleaseTime(int releaseTime);
     void sfSetMasterGain(float gain);

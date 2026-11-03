@@ -840,12 +840,13 @@ class MainViewModel @Inject constructor(
             try {
                 val bytes = withContext(Dispatchers.IO) { contentResolver.readBytes(uri) } ?: run { songNote = "Cannot read the file"; return@launch }
                 val name = contentResolver.fileName(uri) ?: uri.path?.substringAfterLast('/') ?: "song.mid"
-                val t = withContext(Dispatchers.Default) {
-                    com.yourapp.yamahaarranger.song.SongTimeline.from(com.yourapp.yamahaarranger.song.Smf.parse(bytes))
-                }
+                val smf = withContext(Dispatchers.Default) { com.yourapp.yamahaarranger.song.Smf.parse(bytes) }
+                val t = withContext(Dispatchers.Default) { com.yourapp.yamahaarranger.song.SongTimeline.from(smf) }
+                val routed = applySongVoiceRoutes(smf)
                 songPlayer.load(t, name)
                 songNote = "Loaded $name: SMF Type ${t.format}, PPQ ${t.ppq}, ${t.channelEventCount} events, ${t.bars} bars" +
-                    (if (t.sysExCount > 0) " (SysEx: ${t.sysExForwarded} XG/GS/GM setup to INTERNAL only, ${t.sysExCount - t.sysExForwarded} ignored)" else "")
+                    (if (t.sysExCount > 0) " (SysEx: ${t.sysExForwarded} XG/GS/GM setup to INTERNAL only, ${t.sysExCount - t.sysExForwarded} ignored)" else "") +
+                    (routed?.let { " · YA voices $it" } ?: "")
                 DebugLog.add("🎵 SONG $songNote")
             } catch (e: com.yourapp.yamahaarranger.song.SmfException) { songNote = "Not a playable MIDI file: ${e.message}"; DebugLog.add("🎵 SONG ${songNote}") }
             catch (e: Exception) { songNote = "Cannot open: ${e.javaClass.simpleName}"; DebugLog.add("🎵 SONG ${songNote}") }
@@ -901,10 +902,31 @@ class MainViewModel @Inject constructor(
         override fun allStopped() = recorder.allStopped()
         override fun sustain(on: Boolean) = recorder.sustain(on)
         override fun keyboardVoice(channel: Int, bank: Int, program: Int, name: String, sf2: String) =
-            recorder.voice(channel, com.yourapp.yamahaarranger.song.RecVoice(bank, program, name, sf2))
+            recorder.voice(channel, com.yourapp.yamahaarranger.song.RecVoice(bank, program, name, sf2, src = resolvedSource(channel)))
         override fun styleVoice(channel: Int, bank: Int, program: Int, name: String, sf2: String, bank14: Boolean) =
-            recorder.voice(channel, com.yourapp.yamahaarranger.song.RecVoice(bank, program, name, sf2, bank14))
+            recorder.voice(channel, com.yourapp.yamahaarranger.song.RecVoice(bank, program, name, sf2, bank14, resolvedSource(channel)))
         override fun controllers(channel: Int, pairs: IntArray) = recorder.controllers(channel, pairs)
+    }
+    /** V1C fix: the loaded SF2 preset the live engine really plays on [channel] (readback, right after its voice was resolved). */
+    private fun resolvedSource(channel: Int): com.yourapp.yamahaarranger.song.SrcPreset? =
+        audioEngine.channelResolvedSource(channel)?.let { a -> com.yourapp.yamahaarranger.song.SrcPreset(a[1], a[2].toIntOrNull() ?: return@let null, a[3].toIntOrNull() ?: return@let null) }
+    /**
+     * V1C fix: install the file's YAMAP routes on the Song stream, so a YA take's Bank/Program select the presets the live engine used.
+     * Files without YAMAP (any other MIDI file) keep the Song stream's plain lookup. Returns "routed/total" or null.
+     */
+    private fun applySongVoiceRoutes(f: com.yourapp.yamahaarranger.song.SmfFile): String? {
+        audioEngine.songSetVoiceRoute(-1, 0, 0, 0, 0L, 0, 0)
+        val routes = com.yourapp.yamahaarranger.song.YaVoiceMap.parse(f)
+        if (routes.isEmpty()) return null
+        val presets = audioEngine.loadedSoundFontPresets()
+        var ok = 0
+        for (r in routes) {
+            val p = presets.firstOrNull { it.soundFontName == r.src.sf2 && it.bank == r.src.bank && it.program == r.src.program }
+            if (p != null && audioEngine.songSetVoiceRoute(r.channel, r.msb, r.lsb, r.program, p.soundFontId, p.bank, p.program)) ok++
+            else DebugLog.add("🎵 SONG YAMAP not loaded: ch${r.channel + 1} ${r.msb}/${r.lsb}/${r.program} -> ${r.src}")
+        }
+        DebugLog.add("🎵 SONG YAMAP voice routes $ok/${routes.size}")
+        return "$ok/${routes.size}"
     }
     @Volatile var recorderMode = com.yourapp.yamahaarranger.song.RecordMode.KEYBOARD; private set
     @Volatile var recorderFlavor = com.yourapp.yamahaarranger.song.ExportFlavor.NATIVE; private set
@@ -918,9 +940,9 @@ class MainViewModel @Inject constructor(
     private fun recorderStart() {
         val full = recorderMode == com.yourapp.yamahaarranger.song.RecordMode.FULL
         val voices = (0..3).mapNotNull { ch ->
-            audioEngine.keyboardVoiceIdentity(ch)?.let { a -> ch to com.yourapp.yamahaarranger.song.RecVoice(a[0] as Int, a[1] as Int, a[2] as String, a[3] as String) }
+            audioEngine.keyboardVoiceIdentity(ch)?.let { a -> ch to com.yourapp.yamahaarranger.song.RecVoice(a[0] as Int, a[1] as Int, a[2] as String, a[3] as String, src = resolvedSource(ch)) }
         }.toMap() + (if (full) (4..15).mapNotNull { ch ->
-            audioEngine.styleVoiceIdentity(ch)?.let { a -> ch to com.yourapp.yamahaarranger.song.RecVoice(a[0] as Int, a[1] as Int, a[2] as String, a[3] as String, a[4] as Boolean) }
+            audioEngine.styleVoiceIdentity(ch)?.let { a -> ch to com.yourapp.yamahaarranger.song.RecVoice(a[0] as Int, a[1] as Int, a[2] as String, a[3] as String, a[4] as Boolean, resolvedSource(ch)) }
         }.toMap() else emptyMap())
         val controllers = if (full) (4..15).mapNotNull { ch -> audioEngine.channelControllerSnapshot(ch)?.let { ch to it } }.toMap() else emptyMap()
         val title = "YA take " + java.text.SimpleDateFormat("yyyy-MM-dd HH-mm-ss", java.util.Locale.US).format(java.util.Date())
@@ -968,9 +990,11 @@ class MainViewModel @Inject constructor(
         val take = recorder.lastTake() ?: run { recorderNote = "Nothing recorded yet"; return }
         if (recorder.isRecording) { recorderNote = "Stop the recording first"; return }
         try {
-            val t = com.yourapp.yamahaarranger.song.SongTimeline.from(com.yourapp.yamahaarranger.song.Smf.parse(take.bytesFor(recorderFlavor)))
+            val smf = com.yourapp.yamahaarranger.song.Smf.parse(take.bytesFor(recorderFlavor))
+            val t = com.yourapp.yamahaarranger.song.SongTimeline.from(smf)
+            val routed = applySongVoiceRoutes(smf)
             songPlayer.load(t, take.title + (if (take.mode == com.yourapp.yamahaarranger.song.RecordMode.FULL && recorderFlavor == com.yourapp.yamahaarranger.song.ExportFlavor.GM) " (GM)" else "") + ".mid")
-            recorderNote = "Take loaded into the player: ${t.channelEventCount} events, ${t.bars} bars"
+            recorderNote = "Take loaded into the player: ${t.channelEventCount} events, ${t.bars} bars" + (routed?.let { ", live voices routed $it" } ?: "")
         } catch (e: Exception) { recorderNote = "Take could not be re-read: ${e.message}" }
     }
 

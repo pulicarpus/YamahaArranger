@@ -622,6 +622,12 @@ class AudioEngineManager @Inject constructor(
     fun songSetChannelVoice(channel: Int, fontId: Long, bank: Int, program: Int): Int =
         try { bridge.nativeSongSetChannelVoice(channel, fontId, bank, program) } catch (e: Throwable) { -1 }
     fun songChannelReport(): String = try { bridge.nativeSongChannelReport() } catch (e: Throwable) { "" }
+    /** V1C fix: a recorded take's voice route on the Song stream (channel < 0 clears all). */
+    fun songSetVoiceRoute(channel: Int, msb: Int, lsb: Int, program: Int, fontId: Long, bank: Int, sourceProgram: Int): Boolean =
+        try { bridge.nativeSongSetVoiceRoute(channel, msb, lsb, program, fontId, bank, sourceProgram) } catch (e: Throwable) { false }
+    /** The loaded SF2 preset the keyboard/Style stream really plays on [channel]: [fontId, sf2, bank, program, name] or null. */
+    fun channelResolvedSource(channel: Int): List<String>? =
+        try { bridge.nativeChannelResolvedSource(channel).takeIf { it.isNotEmpty() }?.split('\u001f')?.takeIf { it.size == 5 } } catch (e: Throwable) { null }
     fun songReset() { try { bridge.nativeSongReset() } catch (_: Throwable) {} }
     fun songSetActive(active: Boolean) { try { bridge.nativeSongSetActive(active) } catch (_: Throwable) {} }
 

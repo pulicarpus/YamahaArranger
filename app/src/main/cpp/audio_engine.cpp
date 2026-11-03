@@ -322,6 +322,8 @@ void AudioEngine::songSetActive(bool active) { soundFont_.songSetActive(active);
 bool AudioEngine::songSysEx(const uint8_t* data,size_t length) { return soundFont_.songSysEx(data,length); }
 int AudioEngine::songSetChannelVoice(int channel,uint64_t fontId,int bank,int program) { return soundFont_.songSetChannelVoice(channel,fontId,bank,program); }
 std::string AudioEngine::songChannelReport() const { return soundFont_.songChannelReport(); }
+bool AudioEngine::songSetVoiceRoute(int channel,int msb,int lsb,int program,uint64_t fontId,int bank,int sourceProgram) { return soundFont_.songSetVoiceRoute(channel,msb,lsb,program,fontId,bank,sourceProgram); }
+std::string AudioEngine::channelResolvedSource(int channel) const { return soundFont_.channelResolvedSource(channel); }
 std::vector<unsigned char> AudioEngine::sfDiagnosticDrumWav(int bank,int pc,int key,int velocity) {
     return soundFont_.diagnosticDrumWav(bank,pc,key,velocity);
 }

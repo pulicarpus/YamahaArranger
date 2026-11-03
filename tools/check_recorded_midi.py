@@ -27,7 +27,11 @@ def balanced(b):
             while d[p] & 0x80: p += 1
             p += 1; st = d[p]; p += 1
             if st == 0xFF:
-                L = d[p + 1]; p += 2 + L; continue
+                p += 1; L = 0
+                while True:
+                    c = d[p]; p += 1; L = (L << 7) | (c & 0x7F)
+                    if not c & 0x80: break
+                p += L; continue
             if st in (0xF0, 0xF7):                                  # SysEx: length + data (lengths < 128 in recorder output)
                 L = d[p]; p += 1 + L; continue
             n = 1 if st & 0xF0 in (0xC0, 0xD0) else 2; a = d[p:p + n]; p += n

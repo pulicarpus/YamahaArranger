@@ -332,6 +332,14 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_Nativ
     const auto s=g_engine?g_engine->songChannelReport():std::string("SONGCH engine_absent\n");
     return env->NewStringUTF(sanitizeUtf8ForJni(s.c_str()).c_str());
 }
+// V1C fix: recorded-take voice routes for the Song stream, and the live engine's resolved preset per channel.
+extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSongSetVoiceRoute(JNIEnv*,jobject,jint channel,jint msb,jint lsb,jint program,jlong fontId,jint bank,jint sourceProgram){
+    return g_engine&&g_engine->songSetVoiceRoute(channel,msb,lsb,program,static_cast<uint64_t>(fontId),bank,sourceProgram)?JNI_TRUE:JNI_FALSE;
+}
+extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeChannelResolvedSource(JNIEnv* env,jobject,jint channel){
+    const auto s=g_engine?g_engine->channelResolvedSource(channel):std::string();
+    return env->NewStringUTF(sanitizeUtf8ForJni(s.c_str()).c_str());
+}
 // MIDI SONG: one complete setup SysEx (XG / GS / GM) for the Song stream only; validated again natively.
 extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSongSysEx(JNIEnv* env,jobject,jbyteArray data,jint length){
     if(!g_engine||!data||length<=0||length>256) return JNI_FALSE;

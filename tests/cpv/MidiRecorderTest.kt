@@ -4,6 +4,8 @@ import com.yourapp.yamahaarranger.song.MidiRecorder
 import com.yourapp.yamahaarranger.song.RecVoice
 import com.yourapp.yamahaarranger.song.RecordMode
 import com.yourapp.yamahaarranger.song.ExportFlavor
+import com.yourapp.yamahaarranger.song.SrcPreset
+import com.yourapp.yamahaarranger.song.YaVoiceMap
 import com.yourapp.yamahaarranger.song.Smf
 import com.yourapp.yamahaarranger.song.SmfWriter
 import com.yourapp.yamahaarranger.song.SongTimeline
@@ -177,5 +179,25 @@ class MidiRecorderTest {
             t.events.any { !it.isSysEx && it.channel == 10 && it.command == 0xC0 && it.data1 == 33 })
         assertEquals(listOf("Full", "RIGHT1", "Rhythm1 (GM ch10)", "Rhythm2 (GM ch10)", "Bass", "Chord1"), f.tracks.map { it.name })
         assertEquals("same notes as NATIVE", SongTimeline.from(Smf.parse(take.bytes)).events.count { it.isNoteOn }, t.events.count { it.isNoteOn })
+    }
+
+    // ---------------- V1C fix: YAMAP routes (the presets the live engine resolved) ----------------
+    @Test fun nativeTakeCarriesYamapRoutesForEveryVoiceChangeAndGmDropsThem() {
+        val c = Clock(); val r = MidiRecorder({ c.ns }, 960)
+        val bassSrc = SrcPreset("Yamaha SX700 SX900 Melody.sf2", 8, 33)
+        r.start(120.0, mapOf(10 to RecVoice(112, 33, "Finger Bass", bank14 = true, src = bassSrc), 9 to RecVoice(127 * 128, 8, "Room Kit", bank14 = true, src = SrcPreset("drums.sf2", 128, 8))),
+            false, "Routes", (0..15).toSet(), RecordMode.FULL)
+        c.at(0.5); r.noteOn(10, 36, 0.7f); r.noteOn(9, 38, 0.8f)
+        c.at(1.0); r.noteOff(10, 36); r.noteOff(9, 38)
+        r.voice(10, RecVoice(8 * 128 + 4, 35, "Fretless", bank14 = true, src = SrcPreset("tyros4.sf2", 0, 35)))   // section change: new bass voice
+        c.at(1.5); r.noteOn(10, 41, 0.7f); c.at(2.0); r.noteOff(10, 41)
+        val take = r.stop()!!; save("v1c_routes_native", take.bytes)
+        val routes = YaVoiceMap.parse(Smf.parse(take.bytes))
+        assertEquals("one route per voice: start bass, start kit, the section's new bass", setOf(
+            YaVoiceMap.Route(10, 0, 112, 33, bassSrc), YaVoiceMap.Route(9, 127, 0, 8, SrcPreset("drums.sf2", 128, 8)),
+            YaVoiceMap.Route(10, 8, 4, 35, SrcPreset("tyros4.sf2", 0, 35))), routes.toSet())
+        assertTrue("GM export has no YA-only routes", YaVoiceMap.parse(Smf.parse(take.bytesFor(ExportFlavor.GM))).isEmpty())
+        assertEquals("route text round trip", YaVoiceMap.Route(3, 1, 2, 3, SrcPreset("a b.sf2", 4, 5)), YaVoiceMap.parse(YaVoiceMap.text(3, 1, 2, 3, SrcPreset("a b.sf2", 4, 5))))
+        assertNull(YaVoiceMap.parse("YAMAP ch=99 dst=0/0/0 src=0/0 sf2=x"))
     }
 }

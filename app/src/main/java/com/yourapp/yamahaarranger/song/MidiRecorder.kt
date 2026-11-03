@@ -7,7 +7,35 @@ import kotlin.math.roundToLong
  * A part's voice as the app plays it. [bank] = SF2 bank of the loaded preset, or (when [bank14]) the Yamaha 14-bit bank
  * MSB*128+LSB that the Style / registration requested.
  */
-data class RecVoice(val bank: Int, val program: Int, val name: String, val sf2: String = "", val bank14: Boolean = false)
+data class RecVoice(val bank: Int, val program: Int, val name: String, val sf2: String = "", val bank14: Boolean = false,
+                    /** the loaded SF2 preset the live engine really played for this voice (readback), written as a YAMAP route */
+                    val src: SrcPreset? = null)
+
+/** A loaded SF2 preset identity that survives a restart: SF2 file name + its bank / program as the app lists them. */
+data class SrcPreset(val sf2: String, val bank: Int, val program: Int)
+
+/**
+ * YAMAP: in a YA NATIVE take, a text meta per voice change, "YAMAP ch=C dst=MSB/LSB/PC src=BANK/PROGRAM sf2=FILE", telling the SONG
+ * player which loaded preset the live engine used for that Bank/Program on that channel (the live engine resolves Yamaha voices
+ * across several SF2s; a plain Bank/Program lookup cannot reproduce it). Other players ignore text events.
+ */
+object YaVoiceMap {
+    data class Route(val channel: Int, val msb: Int, val lsb: Int, val program: Int, val src: SrcPreset)
+    fun text(ch: Int, msb: Int, lsb: Int, pc: Int, s: SrcPreset) = "YAMAP ch=$ch dst=$msb/$lsb/$pc src=${s.bank}/${s.program} sf2=${s.sf2}"
+    private val re = Regex("""^YAMAP ch=(\d+) dst=(\d+)/(\d+)/(\d+) src=(\d+)/(\d+) sf2=(.+)$""")
+    fun parse(text: String): Route? = re.matchEntire(text.trim())?.destructured?.let { (c, m, l, p, b, sp, f) ->
+        Route(c.toInt(), m.toInt(), l.toInt(), p.toInt(), SrcPreset(f, b.toInt(), sp.toInt())).takeIf { it.channel in 0..15 && it.msb in 0..127 && it.lsb in 0..127 && it.program in 0..127 }
+    }
+    /** Every YAMAP route of a file (the last one wins for the same channel / Bank / Program). */
+    fun parse(f: SmfFile): List<Route> {
+        val out = LinkedHashMap<List<Int>, Route>()
+        for (t in f.tracks) for (e in t.events) if (e.isMeta && e.metaType == 0x01) {
+            val r = parse(String(e.payload ?: continue, Charsets.UTF_8)) ?: continue
+            out[listOf(r.channel, r.msb, r.lsb, r.program)] = r
+        }
+        return out.values.toList()
+    }
+}
 
 /** V1B = keyboard parts only; V1C = keyboard + every Style part on one timeline. */
 enum class RecordMode(val label: String) { KEYBOARD("KEYBOARD ONLY"), FULL("FULL ARRANGER") }
@@ -172,9 +200,11 @@ class MidiRecorder(private val clock: () -> Long = System::nanoTime, val ppq: In
         val msb = when { drum -> 127; v.bank14 -> (v.bank / 128).coerceIn(0, 127); v.bank >= 127 -> 127; else -> v.bank.coerceIn(0, 126) }
         val lsb = if (v.bank14 && !drum) v.bank % 128 else 0
         val src = if (v.bank14) "${v.bank / 128}/${v.bank % 128}" else "${v.bank}"
-        return listOf(SmfWriter.text(0x01, "YA voice ${partName(ch)}: ${v.name} (${v.sf2.ifEmpty { "style" }} $src:${v.program})"),
+        val pc = v.program.coerceIn(0, 127)
+        return listOfNotNull(SmfWriter.text(0x01, "YA voice ${partName(ch)}: ${v.name} (${v.sf2.ifEmpty { "style" }} $src:${v.program})"),
+            v.src?.let { SmfWriter.meta(0x01, YaVoiceMap.text(ch, msb, lsb, pc, it).toByteArray(Charsets.UTF_8)) },
             byteArrayOf((0xB0 or ch).toByte(), 0, msb.toByte()), byteArrayOf((0xB0 or ch).toByte(), 32, lsb.toByte()),
-            byteArrayOf((0xC0 or ch).toByte(), v.program.coerceIn(0, 127).toByte()))
+            byteArrayOf((0xC0 or ch).toByte(), pc.toByte()))
     }
 
     private fun closeChannel(ch: Int, into: MutableList<SmfWriter.Ev>, act: IntArray, tick: Long) {
@@ -192,6 +222,7 @@ class MidiRecorder(private val clock: () -> Long = System::nanoTime, val ppq: In
     private fun flavor(m: ByteArray, ch: Int, f: ExportFlavor): ByteArray? {
         if (f == ExportFlavor.NATIVE || mode == RecordMode.KEYBOARD) return m
         val st = m[0].toInt() and 0xFF
+        if (st == 0xFF && m[1].toInt() == 0x01 && String(m, Charsets.ISO_8859_1).contains("YAMAP ch=")) return null   // YA-only route
         if (st >= 0xF0) return m
         val out = m.copyOf()
         if (isRhythm(ch)) out[0] = ((st and 0xF0) or 9).toByte()

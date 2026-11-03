@@ -93,6 +93,27 @@ int main(int argc, char** argv) {
         bool still = false; for (const auto& m : sm) still |= m.minchan == 2 && m.numchan == 1;
         check(!still, "cleared pin removed from the Song map");
         check(mock_bass::mappings.size() == mainMaps.size() && mock_bass::events == mainEv, "keyboard/Style stream mappings and state unchanged by Song pins");
+        // V1C fix: a recorded take's route (file 0/112/PC on ch11 -> the loaded preset) on the Song stream only
+        const uint8_t lsbVoice[] = {0xBA, 0, 0, 0xBA, 32, 112, 0xCA, uint8_t(mel->pc == 33 ? 34 : 33)};
+        const int filePc = lsbVoice[7];
+        p.songEvents(lsbVoice, sizeof lsbVoice);
+        // the mock does not parse RAW bytes into channel state: apply what BASSMIDI does with them
+        BASS_MIDI_StreamEvent(song, 10, MIDI_EVENT_BANK, 0); BASS_MIDI_StreamEvent(song, 10, MIDI_EVENT_BANK_LSB, 112); BASS_MIDI_StreamEvent(song, 10, MIDI_EVENT_PROGRAM, filePc);
+        BASS_MIDI_FONT none{};
+        const bool genericFound = BASS_MIDI_StreamGetPreset(song, 10, &none);
+        check(p.songSetVoiceRoute(10, 0, 112, filePc, mel->id, mel->bank, mel->pc), "route accepted");
+        check(!p.songSetVoiceRoute(10, 0, 112, filePc, mel->id, 99, 99), "route to a preset that is not loaded refused");
+        p.songEvents(lsbVoice, sizeof lsbVoice);
+        bool routeMap = false; for (const auto& m : sm) routeMap |= m.minchan == 10 && m.numchan == 1 && m.dbank == 0 && m.dbanklsb == 112 && m.dpreset == filePc && m.spreset == mel->pc;
+        check(routeMap, "route = one-channel FONTEX2 entry: source preset -> file Bank 0 / LSB 112 / Program");
+        BASS_MIDI_FONT live{};
+        check(BASS_MIDI_StreamGetPreset(song, 10, &live) && live.preset == mel->pc, "the file's own Bank/Program now select the routed preset");
+        check(p.songSetVoiceRoute(-1, 0, 0, 0, 0, 0, 0), "clear");
+        p.songEvents(lsbVoice, sizeof lsbVoice);
+        bool still2 = false; for (const auto& m : sm) still2 |= m.minchan == 10 && m.numchan == 1 && m.dbanklsb == 112;
+        check(!still2, "routes cleared");
+        check(mock_bass::mappings.size() == mainMaps.size(), "keyboard/Style stream mappings unchanged by routes");
+        std::cout << "SONG ROUTE NATIVE PASS generic_map_lsb112_found=" << (genericFound ? 1 : 0) << " routed_preset=" << live.preset << "\n";
         std::cout << "SONG MIXER NATIVE PASS melodic=" << mel->file << ":" << mel->bank << ":" << mel->pc << " kit=" << kit->file << ":" << kit->bank << ":" << kit->pc << " kitBind=" << k << "\n";
     }
     std::cout << "SONG NATIVE PASS song_stream=" << song << " reset_events=" << songResets << " main_stream_touched=" << mainTouched << " setup_sysex=song_stream_only\n";

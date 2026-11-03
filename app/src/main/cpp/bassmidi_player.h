@@ -57,6 +57,11 @@ public:
     // Returns -1 preset not found (nothing changed), 0 mapped (not yet confirmed by readback), 1 verified, 2 cleared.
     int songSetChannelVoice(int channel, uint64_t fontId, int bank, int program);
     std::string songChannelReport() const;  // live preset per Song channel (readback), for the mixer diagnostics
+    // V1C fix: a recorded take's voice routes (file Bank MSB/LSB/Program on one Song channel -> the loaded SF2 preset the live engine used).
+    // channel < 0 clears all. Returns false if the preset is not loaded now.
+    bool songSetVoiceRoute(int channel, int msb, int lsb, int program, uint64_t fontId, int bank, int sourceProgram);
+    // The loaded SF2 preset the keyboard/Style stream really plays on [channel] (readback): "fontId\x1fsf2\x1fbank\x1fprogram\x1fname" or "".
+    std::string channelResolvedSource(int channel) const;
     void noteOn(int channel, int key, float velocity, const AudioPathOrigin& origin = {});
     void noteOff(int channel, int key, const AudioPathOrigin& origin = {});
     void armChordDiagnostic();
@@ -331,6 +336,8 @@ private:
     std::vector<float> songScratch_;
     struct SongPin { uint64_t fontId = 0; int bank = 0, program = 0; };
     SongPin songPins_[16];
+    struct SongRoute { int channel, msb, lsb, program; uint64_t fontId; int bank, sourceProgram; };
+    std::vector<SongRoute> songRoutes_;
     bool songMapDirty_ = false;
     bool ensureSongStreamLocked();
     void renderSong(float* out, int numFrames);

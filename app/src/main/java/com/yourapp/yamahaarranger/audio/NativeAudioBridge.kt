@@ -62,6 +62,8 @@ class NativeAudioBridge @Inject constructor() {
     external fun nativeSongSysEx(data: ByteArray, length: Int): Boolean
     external fun nativeSongSetChannelVoice(channel: Int, fontId: Long, bank: Int, program: Int): Int
     external fun nativeSongChannelReport(): String
+    external fun nativeSongSetVoiceRoute(channel: Int, msb: Int, lsb: Int, program: Int, fontId: Long, bank: Int, sourceProgram: Int): Boolean
+    external fun nativeChannelResolvedSource(channel: Int): String
     external fun nativeSetKeyboardSustain(enabled: Boolean)
     external fun nativeSetKeyboardReleaseTime(releaseTime: Int): Boolean
     external fun nativeSetMasterGain(gain: Float)
