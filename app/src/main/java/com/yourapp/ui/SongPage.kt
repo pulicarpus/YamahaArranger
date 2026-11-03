@@ -58,6 +58,8 @@ fun SongDialog(viewModel: MainViewModel, onClose: () -> Unit) {
             onSeek = { viewModel.songSeekFraction(it); refresh() }, onTempoPercent = { viewModel.songSetTempoPercent(it); refresh() },
             onRouting = { viewModel.songSetRouting(it); refresh() }, onMute = { viewModel.songToggleMute(it); refresh() }, onClose = onClose,
             voices = voices, mixer = mixer, liveReport = live,
+            onTempoNudge = { viewModel.songNudgeTempo(it); refresh() }, onTempoReset = { viewModel.songResetTempo(); refresh() },
+            onTranspose = { viewModel.songSetTranspose(it); refresh() },
             recorder = RecorderUi(true, rec.recording, rec.elapsedUs, rec.events, rec.hasTake, rec.takeInfo, recNote, fullAvailable = true,
                 full = if (rec.recording) rec.mode == com.yourapp.yamahaarranger.song.RecordMode.FULL else recMode,
                 gm = recGm),

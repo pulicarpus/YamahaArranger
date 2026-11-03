@@ -867,6 +867,10 @@ class MainViewModel @Inject constructor(
     fun songSeekBars(delta: Int) { val bb = songPlayer.status().barBeat ?: return; songPlayer.seekBar((bb.bar + delta).coerceAtLeast(1)) }
     fun songToggleMute(channel: Int) { songPlayer.setMute(channel, !songPlayer.status().muted[channel]) }
     fun songSetTempoPercent(p: Int) { songPlayer.setTempoPercent(p) }
+    // SONG TEMPO / SONG TRANSPOSE: the Song player only (never the Style tempo or Master Transpose)
+    fun songNudgeTempo(deltaBpm: Int) { songPlayer.nudgeTempoBpm(deltaBpm) }
+    fun songResetTempo() { songPlayer.resetTempo() }
+    fun songSetTranspose(semitones: Int) { songPlayer.setTranspose(semitones); songNote = "SONG TRANSPOSE ${if (semitones > 0) "+" else ""}$semitones (drum channels unchanged)" }
     fun songSetRouting(r: com.yourapp.yamahaarranger.song.SongRouting) {
         _songRouting.value = r
         songPlayer.setOutputs(com.yourapp.yamahaarranger.song.songOutputsFor(r, songInternal, songExternal))

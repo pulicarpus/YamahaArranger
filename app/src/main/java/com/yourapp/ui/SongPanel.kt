@@ -56,7 +56,9 @@ object SongTags {
     const val PANEL = "song.panel"; const val CLOSE = "song.close"; const val OPEN = "song.open"; const val PLAY = "song.play"; const val STOP = "song.stop"
     const val PREV = "song.prev"; const val NEXT = "song.next"; const val RECORD = "song.record"; const val SAVE = "song.save"; const val SEEK = "song.seek"
     const val POSITION = "song.position"; const val TIME = "song.time"; const val TEMPO = "song.tempo"; const val TEMPO_DOWN = "song.tempo.down"
-    const val TEMPO_UP = "song.tempo.up"; const val TEMPO_RESET = "song.tempo.reset"; const val TIMESIG = "song.timesig"; const val NOTICE = "song.notice"
+    const val TEMPO_UP = "song.tempo.up"; const val TEMPO_RESET = "song.tempo.reset";
+    const val TRANSPOSE = "song.transpose"; const val TRANSPOSE_DOWN = "song.transpose.down"; const val TRANSPOSE_UP = "song.transpose.up"
+    const val TRANSPOSE_RESET = "song.transpose.reset"; const val TEMPO_ORIG = "song.tempo.orig"; const val TIMESIG = "song.timesig"; const val NOTICE = "song.notice"
     const val TITLE = "song.title"; const val MODE_KEYBOARD = "song.mode.keyboard"; const val MODE_FULL = "song.mode.full"
     const val REC_TIME = "song.rec.time"; const val REC_LOAD = "song.rec.load"; const val REC_INFO = "song.rec.info"
     const val EXPORT_NATIVE = "song.export.native"; const val EXPORT_GM = "song.export.gm"
@@ -111,6 +113,8 @@ fun SongPanel(
     startInMixer: Boolean = false, startChannel: Int = 0, startPicker: Boolean = false,
     recorder: RecorderUi = RecorderUi(), onRecord: () -> Unit = {}, onSaveTake: () -> Unit = {}, onLoadTake: () -> Unit = {},
     onRecordMode: (Boolean) -> Unit = {}, onExportGm: (Boolean) -> Unit = {},
+    /** SONG TEMPO +/- BPM, ORIGINAL; SONG TRANSPOSE (absolute semitones). Independent of the Style tempo and Master Transpose. */
+    onTempoNudge: (Int) -> Unit = {}, onTempoReset: () -> Unit = {}, onTranspose: (Int) -> Unit = {},
 ) {
     val loaded = status.state != SongState.EMPTY
     var mixerTab by remember { mutableStateOf(startInMixer) }
@@ -148,11 +152,8 @@ fun SongPanel(
                 InfoCard("BAR : BEAT", status.barBeat?.toString() ?: "---:--", SongTags.POSITION, big = true)
                 InfoCard("TIME", "${mmss(status.positionUs)} / ${mmss(status.durationUs)}", SongTags.TIME)
                 InfoCard("TEMPO", if (loaded) "%.1f BPM".format(status.effectiveBpm) else "—", SongTags.TEMPO) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        SmallSongKey("−5%", SongTags.TEMPO_DOWN, loaded) { onTempoPercent(status.tempoPercent - 5) }
-                        SmallSongKey("${status.tempoPercent}%", SongTags.TEMPO_RESET, loaded) { onTempoPercent(100) }
-                        SmallSongKey("+5%", SongTags.TEMPO_UP, loaded) { onTempoPercent(status.tempoPercent + 5) }
-                    }
+                    Text(if (loaded) "MIDI %.1f".format(status.fileBpm) + if (kotlin.math.abs(status.tempoFactor - 1.0) > 1e-9) " · ${"%.0f".format(status.tempoFactor * 100)}%" else "" else "",
+                        color = SDim, fontSize = 10.sp, maxLines = 1, modifier = Modifier.testTag(SongTags.TEMPO_ORIG))
                 }
                 InfoCard("TIME SIG", status.timeSig, SongTags.TIMESIG)
                 Column(Modifier.background(SPanel, RoundedCornerShape(6.dp)).padding(horizontal = 10.dp, vertical = 6.dp)) {
@@ -161,6 +162,21 @@ fun SongPanel(
                         SongRouting.values().forEach { r -> SmallSongKey(r.label, SongTags.routing(r), true, selected = r == routing) { onRouting(r) } }
                     }
                 }
+            }
+            // SONG TEMPO / SONG TRANSPOSE: big keys, one row (independent of the Style tempo and Master Transpose)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("SONG TEMPO", color = SDim, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                SongKey("−1", SongTags.TEMPO_DOWN, enabled = loaded, minWidth = 72, sub = "BPM") { onTempoNudge(-1) }
+                SongKey("+1", SongTags.TEMPO_UP, enabled = loaded, minWidth = 72, sub = "BPM") { onTempoNudge(1) }
+                SongKey("ORIGINAL", SongTags.TEMPO_RESET, enabled = loaded && kotlin.math.abs(status.tempoFactor - 1.0) > 1e-9, minWidth = 110,
+                    sub = "MIDI tempo map", onClick = onTempoReset)
+                Spacer(Modifier.width(16.dp))
+                Text("SONG TRANSPOSE", color = SDim, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                SongKey("♭ −", SongTags.TRANSPOSE_DOWN, enabled = loaded && status.transpose > -12, minWidth = 72) { onTranspose(status.transpose - 1) }
+                Text((if (status.transpose > 0) "+" else "") + status.transpose, color = if (status.transpose != 0) SAmber else Color.White, fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace, modifier = Modifier.widthIn(min = 52.dp).testTag(SongTags.TRANSPOSE))
+                SongKey("♯ +", SongTags.TRANSPOSE_UP, enabled = loaded && status.transpose < 12, minWidth = 72) { onTranspose(status.transpose + 1) }
+                SongKey("0", SongTags.TRANSPOSE_RESET, enabled = loaded && status.transpose != 0, minWidth = 60, sub = "drums never move") { onTranspose(0) }
             }
             // seek
             var dragging by remember { mutableStateOf<Float?>(null) }

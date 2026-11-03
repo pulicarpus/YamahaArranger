@@ -51,7 +51,7 @@ class SongPanelTest {
             setContent { SongPanel(p.status(0), SongRouting.INTERNAL, null, 0, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}) }
             onNodeWithTag(T.CLOSE).assertIsDisplayed()
             for (tag in listOf(T.OPEN, T.PREV, T.PLAY, T.STOP, T.NEXT, T.RECORD, T.SAVE)) onNodeWithTag(tag).performScrollTo().assertIsDisplayed().assertHeightIsAtLeast(48.dp)
-            for (tag in listOf(T.TEMPO_DOWN, T.TEMPO_RESET, T.TEMPO_UP) + SongRouting.values().map { T.routing(it) })
+            for (tag in listOf(T.TEMPO_DOWN, T.TEMPO_RESET, T.TEMPO_UP, T.TRANSPOSE_DOWN, T.TRANSPOSE_UP, T.TRANSPOSE_RESET) + SongRouting.values().map { T.routing(it) })
                 onNodeWithTag(tag).performScrollTo().assertIsDisplayed().assertHeightIsAtLeast(40.dp)
             onNodeWithTag(T.SEEK).performScrollTo().assertIsDisplayed()
             for (ch in 0 until 16) onNodeWithTag(T.channel(ch)).performScrollTo().assertIsDisplayed()
@@ -76,14 +76,15 @@ class SongPanelTest {
         var st by mutableStateOf(p.status(0)); var routing by mutableStateOf(SongRouting.INTERNAL)
         setContent {
             SongPanel(st, routing, null, 0, { calls += "open" }, { calls += "play" }, { calls += "stop" }, { calls += "prev" }, { calls += "next" },
-                { calls += "seek" }, { calls += "tempo:$it" }, { routing = it; calls += "routing:$it" }, { p.setMute(it, true); st = p.status(0); calls += "mute:$it" }, { calls += "close" })
+                { calls += "seek" }, { calls += "tempo:$it" }, { routing = it; calls += "routing:$it" }, { p.setMute(it, true); st = p.status(0); calls += "mute:$it" }, { calls += "close" },
+                onTempoNudge = { calls += "tempoNudge:$it" })
         }
         onNodeWithTag(T.PLAY).performClick(); onNodeWithTag(T.STOP).performClick(); onNodeWithTag(T.OPEN).performClick()
         onNodeWithTag(T.TEMPO_UP).performScrollTo().performClick(); onNodeWithTag(T.routing(SongRouting.BOTH)).performScrollTo().performClick()
         onNodeWithTag(T.RECORD).performScrollTo().performClick()                       // disabled: no callback
         onNodeWithTag(T.channel(9)).performScrollTo().performClick()
         onNodeWithTag(T.CLOSE).performClick()
-        assertEquals(listOf("play", "stop", "open", "tempo:105", "routing:BOTH", "mute:9", "close"), calls)
+        assertEquals(listOf("play", "stop", "open", "tempoNudge:1", "routing:BOTH", "mute:9", "close"), calls)
         assertTrue(p.status(0).muted[9])
         onNodeWithText("MUTE", useUnmergedTree = true).assertExists()
     }
@@ -93,6 +94,31 @@ class SongPanelTest {
         setContent { SongPanel(p.status(0), SongRouting.INTERNAL, null, 0, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}) }
         onNodeWithTag(T.TITLE).assertTextContains("No MIDI song loaded", substring = true)
         onNodeWithTag(T.OPEN).assertIsEnabled(); onNodeWithTag(T.PLAY).assertIsNotEnabled(); onNodeWithTag(T.STOP).assertIsNotEnabled()
+    }
+
+    // ---------------- SONG TEMPO / SONG TRANSPOSE ----------------
+    @Test fun songTempoAndTransposeKeysDriveTheRealPlayer() {
+        for ((name, w, h) in sizes) runDesktopComposeUiTest(w, h) {
+            val p = loadedPlayer(); var st by mutableStateOf(p.status(0))
+            setContent {
+                SongPanel(st, SongRouting.INTERNAL, null, 0, {}, {}, {}, {}, {}, {}, {}, {}, {}, {},
+                    onTempoNudge = { p.nudgeTempoBpm(it); st = p.status(0) }, onTempoReset = { p.resetTempo(); st = p.status(0) },
+                    onTranspose = { p.setTranspose(it); st = p.status(0) })
+            }
+            val file = st.fileBpm
+            onNodeWithTag(T.TEMPO_UP).performScrollTo().assertHeightIsAtLeast(48.dp).performClick(); onNodeWithTag(T.TEMPO_UP).performClick()
+            assertEquals("$name: +2 BPM", Math.round(file) + 2.0, p.status(0).effectiveBpm, 1e-6)
+            onNodeWithTag(T.TEMPO).assertTextContains("%.1f BPM".format(Math.round(file) + 2.0))
+            onNodeWithTag(T.TEMPO_DOWN).performScrollTo().performClick(); assertEquals(Math.round(file) + 1.0, p.status(0).effectiveBpm, 1e-6)
+            onNodeWithTag(T.TEMPO_RESET).performScrollTo().assertIsEnabled().performClick(); assertEquals(1.0, p.status(0).tempoFactor, 0.0)
+            onNodeWithTag(T.TEMPO_RESET).assertIsNotEnabled()
+            repeat(3) { onNodeWithTag(T.TRANSPOSE_UP).performScrollTo().performClick() }
+            assertEquals(3, p.status(0).transpose); onNodeWithTag(T.TRANSPOSE).assertTextEquals("+3")
+            repeat(5) { onNodeWithTag(T.TRANSPOSE_DOWN).performScrollTo().performClick() }
+            assertEquals(-2, p.status(0).transpose); onNodeWithTag(T.TRANSPOSE).assertTextEquals("-2")
+            onNodeWithTag(T.TRANSPOSE_RESET).performScrollTo().assertHeightIsAtLeast(48.dp).performClick(); assertEquals(0, p.status(0).transpose)
+            println("SONGUI $name song tempo -1/+1/ORIGINAL and transpose -/+/0 reachable (>= 48 dp) and drive the real player")
+        }
     }
 
     // ---------------- V1A.2 SONG MIXER ----------------
