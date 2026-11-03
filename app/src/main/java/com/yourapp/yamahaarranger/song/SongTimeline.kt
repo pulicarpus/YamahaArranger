@@ -58,7 +58,7 @@ class SongTimeline private constructor(
     val ppq: Int, val format: Int, val events: List<SongEvent>, val tempos: List<TempoPoint>, val timeSigs: List<TimeSigPoint>,
     val lastTick: Long, val durationUs: Long, val sysExCount: Int, val trackNames: List<String>, val channelNames: Map<Int, String>,
     val channelsUsed: Set<Int>, val warnings: List<String>, val sysExForwarded: Int = 0,
-    /** Channels the file plays as drums: channel 10, bank MSB 126/127 (XG), or an XG PART MODE drum message. */
+    /** Channels the file plays as drums: channel 10, bank MSB 126/127 (XG), an XG PART MODE drum or a GS "use for rhythm part" message. */
     val drumChannels: Set<Int> = setOf(9),
 ) {
     /** Channel messages only (no SysEx). */
@@ -134,6 +134,12 @@ class SongTimeline private constructor(
             for (m in sysEx) {   // F0 43 1n 4C 08 pp 07 dd F7: XG multi part, PART MODE (0 = normal, else drum)
                 if (m.size >= 9 && m[1].toInt() == 0x43 && m[3].toInt() == 0x4C && m[4].toInt() == 0x08 && m[6].toInt() == 0x07 && m[5] in 0..15) {
                     if (m[7].toInt() != 0) d += m[5].toInt()
+                }
+                // F0 41 dd 42 12 40 1x 15 vv ..: GS "use for rhythm part" (x: 0 = part 10, 1..9 = parts 1..9, A..F = parts 11..16)
+                if (m.size >= 10 && m[1].toInt() == 0x41 && m[3].toInt() == 0x42 && m[4].toInt() == 0x12 && m[5].toInt() == 0x40 &&
+                    (m[6].toInt() and 0xF0) == 0x10 && m[7].toInt() == 0x15 && m[8].toInt() != 0) {
+                    val x = m[6].toInt() and 0x0F
+                    d += when { x == 0 -> 9; x <= 9 -> x - 1; else -> x }
                 }
             }
             return d

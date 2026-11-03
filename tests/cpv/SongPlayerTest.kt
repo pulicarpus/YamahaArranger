@@ -463,6 +463,99 @@ class SongPlayerTest {
         assertTrue("file voice plays", msgs(i, 2).any { it.k() == pc(2, 49).k() })
     }
 
+    // ---------------- SONG TEMPO / SONG TRANSPOSE ----------------
+    private fun tempoMeta(us: Int) = byteArrayOf(0xFF.toByte(), 0x51, 3, (us ushr 16).toByte(), (us ushr 8).toByte(), us.toByte())
+    /** 120 BPM for 2 bars, then 60 BPM; ch1 melody, ch10 drums, ch9 XG drum (bank 127), ch4 GS rhythm part, ch3 melodic */
+    private fun keySong(): SongTimeline {
+        val ev = ArrayList<Pair<Long, ByteArray>>()
+        ev += 0L to tempoMeta(500_000); ev += 3840L to tempoMeta(1_000_000)
+        ev += 0L to sx(0x43, 0x10, 0x4C, 0x00, 0x00, 0x7E, 0x00, 0xF7); ev += 0L to cc(8, 0, 127); ev += 0L to pc(8, 0)
+        ev += 0L to sx(0x41, 0x10, 0x42, 0x12, 0x40, 0x14, 0x15, 0x01, 0x16, 0xF7)          // GS: part 4 (ch4) = rhythm
+        for (b in 0 until 8) { val t = b * 480L
+            ev += t to on(0, 60 + b % 3); ev += (t + 400) to off(0, 60 + b % 3)
+            ev += t to on(9, 36); ev += (t + 100) to off(9, 36); ev += t to on(8, 42); ev += (t + 100) to off(8, 42)
+            ev += t to on(3, 38); ev += (t + 100) to off(3, 38); ev += t to on(2, 48); ev += (t + 400) to off(2, 48) }
+        ev += 3840L to on(0, 72); ev += 4800L to off(0, 72)
+        return SongTimeline.from(Smf.parse(smfBytes(0, 480, listOf(track(ev)))))
+    }
+    private fun pairedBySentPitch(r: Rec) {
+        val open = HashMap<Pair<Int, Int>, Int>()
+        for ((_, m) in r.msgs) { val st = m[0].toInt() and 0xF0; val k = (m[0].toInt() and 15) to (m.getOrElse(1) { 0 }.toInt() and 127)
+            if (st == 0x90 && m[2] > 0) open.merge(k, 1, Int::plus)
+            else if (st == 0x80 || (st == 0x90 && m[2].toInt() == 0)) { val n = open[k] ?: 0; assertTrue("${r.id}: NOTE OFF $k without a NOTE ON at that pitch", n > 0); open[k] = n - 1 } }
+        assertTrue("${r.id}: every sent NOTE ON closed at its own pitch ${open.filterValues { it > 0 }}", open.values.all { it == 0 })
+    }
+
+    @Test fun drumChannelsComeFromTheFileNotOnlyChannel10() {
+        assertEquals("ch10 + XG bank 127 (ch9) + GS rhythm part (ch4)", setOf(9, 8, 3), keySong().drumChannels)
+    }
+
+    @Test fun transposeMovesMelodicChannelsOnlyOnEveryOutputAndPairsNoteOffs() {
+        val t = keySong(); val c = Clock(); val i = Rec("internal", acceptsSysEx = true); val x = Rec("external")
+        val p = SongPlayer { c.ns }; p.load(t, "k"); p.setOutputs(listOf(i, x)); p.setTranspose(3); p.play(); run(p, c, listOf(i, x))
+        for (r in listOf(i, x)) {
+            val ons = r.msgs.map { it.second }.filter { (it[0].toInt() and 0xF0) == 0x90 && it[2] > 0 }
+            assertEquals("${r.id}: melody +3", setOf(63, 64, 65, 75), ons.filter { (it[0].toInt() and 15) == 0 }.map { it[1].toInt() }.toSet())
+            assertEquals("${r.id}: ch3 melodic +3", setOf(51), ons.filter { (it[0].toInt() and 15) == 2 }.map { it[1].toInt() }.toSet())
+            assertEquals("${r.id}: drums unchanged (ch10, XG ch9, GS ch4)", setOf(36, 42, 38), ons.filter { (it[0].toInt() and 15) in setOf(9, 8, 3) }.map { it[1].toInt() }.toSet())
+            pairedBySentPitch(r)
+        }
+        assertEquals(0, p.activeNotes()); assertEquals(3, p.status(c.ns).transpose)
+        p.setTranspose(40); assertEquals("clamped", 12, p.status(c.ns).transpose)
+    }
+
+    @Test fun changingTransposeWhileANoteSoundsEndsItAtItsOwnPitch() {
+        val t = keySong(); val c = Clock(); val i = Rec("internal", acceptsSysEx = true); val p = SongPlayer { c.ns }
+        p.load(t, "k"); p.setOutputs(listOf(i)); p.play(); run(p, c, listOf(i), untilNs = c.ns + 100_000_000L)     // ch1 60 sounding
+        p.setTranspose(5); run(p, c, listOf(i), untilNs = c.ns + 500_000_000L)
+        val ch1 = i.msgs.map { it.second }.filter { (it[0].toInt() and 15) == 0 && (it[0].toInt() and 0xF0) in listOf(0x80, 0x90) }
+        assertEquals("first note ends at 60 (sent before the change), the next one starts at 61+5", listOf("on60", "off60", "on66"),
+            ch1.take(3).map { (if ((it[0].toInt() and 0xF0) == 0x90 && it[2] > 0) "on" else "off") + it[1] })
+        // seek / pause / resume / stop with a transpose: no stuck or mismatched note
+        p.seekTick(1500); run(p, c, listOf(i), untilNs = c.ns + 200_000_000L); p.pause(); p.setTranspose(-7); p.play()
+        run(p, c, listOf(i), untilNs = c.ns + 300_000_000L); p.seekTick(200); p.setTranspose(0); run(p, c, listOf(i), untilNs = c.ns + 300_000_000L); p.stop()
+        assertEquals(0, p.activeNotes()); pairedBySentPitch(i)
+        p.load(t, "k2"); assertEquals("a new song starts in its own key", 0, p.status(c.ns).transpose)
+    }
+
+    @Test fun aTransposedPitchOutside0to127IsNotSentAndNeitherIsItsNoteOff() {
+        val ev = listOf(0L to on(0, 125), 400L to off(0, 125), 0L to on(0, 60), 400L to off(0, 60))
+        val c = Clock(); val i = Rec("i", acceptsSysEx = true); val p = SongPlayer { c.ns }
+        p.load(SongTimeline.from(Smf.parse(smfBytes(0, 480, listOf(track(ev))))), "edge"); p.setOutputs(listOf(i)); p.setTranspose(5); p.play(); run(p, c, listOf(i))
+        assertEquals(listOf(65, 65), i.msgs.map { it.second }.filter { (it[0].toInt() and 0xF0) in listOf(0x80, 0x90) }.map { it[1].toInt() })
+        pairedBySentPitch(i)
+    }
+
+    @Test fun songTempoNudgesOneBpmScalesTheWholeTempoMapAndResets() {
+        val t = keySong(); val c = Clock(); val i = Rec("i", acceptsSysEx = true); val p = SongPlayer { c.ns }
+        p.load(t, "k"); p.setOutputs(listOf(i)); p.play(); run(p, c, listOf(i), untilNs = c.ns + 1_000_000_000L)
+        val pos = p.status(c.ns).positionUs
+        p.nudgeTempoBpm(1); p.nudgeTempoBpm(1)
+        assertEquals("no jump", pos, p.status(c.ns).positionUs)
+        assertEquals("120 -> 122 BPM", 122.0, p.status(c.ns).effectiveBpm, 1e-6); assertEquals(120.0, p.status(c.ns).fileBpm, 1e-6)
+        val anchor = c.ns; val songAt = p.status(c.ns).positionUs
+        run(p, c, listOf(i), untilNs = c.ns + 3_600_000_000L)                       // into the 60 BPM part (song time > 4 s)
+        assertEquals("the later 60 BPM part keeps its ratio (60 x 122/120)", 61.0, p.status(c.ns).effectiveBpm, 1e-6)
+        val expected = songAt + ((c.ns - anchor) / 1000.0 * 122.0 / 120.0).toLong()
+        assertEquals("song time runs 122/120 faster", expected.toDouble(), p.status(c.ns).positionUs.toDouble(), 2.0)
+        p.nudgeTempoBpm(-1); assertEquals("-1 on the tempo heard now: 61 -> 60", 60.0, p.status(c.ns).effectiveBpm, 1e-6)
+        p.resetTempo(); assertEquals(1.0, p.status(c.ns).tempoFactor, 0.0); assertEquals(60.0, p.status(c.ns).effectiveBpm, 1e-6)
+        p.nudgeTempoBpm(-1000); assertEquals("clamped at 25 %", 0.25, p.status(c.ns).tempoFactor, 1e-9)
+        p.load(t, "k3"); assertEquals("a new song starts at its own tempo", 1.0, p.status(c.ns).tempoFactor, 0.0)
+    }
+
+    @Test fun anyTempoFactorReachesEveryEventWithoutSpinning() {
+        // regression: wall times rounded down left an event 1 us "in the future" for ever with a factor != 1
+        for (pct in listOf(95, 97, 101, 103, 133)) {
+            val t = timeline("type1_16ch"); val c = Clock(); val i = Rec("i", acceptsSysEx = true); val p = SongPlayer { c.ns }
+            p.load(t, "x"); p.setOutputs(listOf(i)); p.setTempoPercent(pct); p.play()
+            var steps = 0; var last = -1L
+            while (steps++ < 100_000) { val n = p.step(c.ns); if (n < 0) break; assertTrue("$pct%: the next wake-up is in the future (no spin)", n > last || n > c.ns); last = n; c.ns = maxOf(n, c.ns) }
+            assertEquals("$pct%: song finished", SongState.STOPPED, p.status(c.ns).state); assertTrue("$pct%: few steps ($steps)", steps < 5_000)
+            assertEquals("$pct%: every channel event sent", t.channelEventCount, i.msgs.count { (it.second[0].toInt() and 0xFF) < 0xF0 })
+        }
+    }
+
     // ---------------- tiny SMF builder for edge cases (writes bytes only; parsing is under test) ----------------
     private fun on(ch: Int, n: Int) = byteArrayOf((0x90 or ch).toByte(), n.toByte(), 90)
     private fun off(ch: Int, n: Int) = byteArrayOf((0x80 or ch).toByte(), n.toByte(), 0)

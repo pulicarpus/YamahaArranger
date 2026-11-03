@@ -29,6 +29,11 @@ data class SongStatus(
     val filePedal: List<Int> = List(16) { -1 },
     val voiceBind: List<VoiceBind?> = List(16) { null },
     val drumChannels: Set<Int> = setOf(9),
+    // ---- SONG TEMPO / SONG TRANSPOSE (independent of the Style tempo and Master Transpose) ----
+    /** semitones applied to melodic channels (-12..12); drum channels never move */
+    val transpose: Int = 0,
+    /** effective / file tempo for the whole tempo map (1.0 = the file's own tempo) */
+    val tempoFactor: Double = 1.0,
 ) {
     val progress get() = if (durationUs <= 0) 0f else (positionUs.toFloat() / durationUs).coerceIn(0f, 1f)
 }
@@ -63,7 +68,10 @@ class SongPlayer(private val clock: () -> Long = System::nanoTime) {
     private var anchorWallNs = 0L                  // wall time of anchorSongUs while playing
     private var anchorSongUs = 0L
     private var pausedUs = 0L                      // position while stopped/paused
-    private var tempoPercent = 100
+    private var tempoFactor = 1.0
+    private var transpose = 0
+    /** per (channel, file note): FIFO of the pitches actually sent for its open NOTE ONs (-1 = not sent: out of range) */
+    private val sentFor = Array(16 * 128) { ArrayDeque<Int>(1) }
     private val muted = BooleanArray(16)
     private val active = IntArray(16 * 128)        // NOTE ON instances the song has sent and not yet ended
     private val sustain = BooleanArray(16)
@@ -98,6 +106,8 @@ class SongPlayer(private val clock: () -> Long = System::nanoTime) {
         }
         timeline = t; title = name; state = SongState.STOPPED; pausedUs = 0; next = 0
         muted.fill(false); solo.fill(false); programs.fill(-1); bankMsb.fill(-1); bankLsb.fill(-1); lastNoteOn.fill(0); message = null
+        tempoFactor = 1.0; transpose = 0                 // SONG TEMPO / TRANSPOSE: a newly opened song starts at its own tempo and key
+        for (q in sentFor) q.clear()
         for (a in fileCc) a.fill(-1)
         wake()
     }
@@ -209,11 +219,38 @@ class SongPlayer(private val clock: () -> Long = System::nanoTime) {
     fun overrides(): List<ChannelOverride> = synchronized(lock) { ov.toList() }
 
     /** Tempo override in percent of the file's tempo map (25..300). Re-anchored at the current position: no jump. */
-    fun setTempoPercent(p: Int) = synchronized(lock) {
-        val v = p.coerceIn(25, 300)
+    fun setTempoPercent(p: Int) = setTempoFactor(p.coerceIn(25, 300) / 100.0)
+
+    /**
+     * SONG TEMPO: one factor scales the WHOLE tempo map (mid-song tempo changes keep their ratios). Re-anchored at the current
+     * position, so the song never jumps; events before "now" are not touched.
+     */
+    fun setTempoFactor(f: Double) = synchronized(lock) {
+        val v = f.coerceIn(0.25, 3.0)
         if (state == SongState.PLAYING) { val now = clock(); anchorSongUs = currentUsLocked(now); anchorWallNs = now }
-        tempoPercent = v; wake()
+        tempoFactor = v; wake()
     }
+
+    /** +/- [deltaBpm] on the tempo heard now (the file's tempo at this position x factor), e.g. 120 -> 121. */
+    fun nudgeTempoBpm(deltaBpm: Int) {
+        val (file, eff) = synchronized(lock) {
+            val t = timeline ?: return
+            val bpm = t.tempoAt(t.tickAt(currentUsLocked(clock()).coerceIn(0, t.durationUs))).bpm
+            bpm to bpm * tempoFactor
+        }
+        val target = (Math.round(eff) + deltaBpm).toDouble().coerceAtLeast(10.0)
+        setTempoFactor(target / file)
+    }
+
+    /** ORIGINAL: the file's own tempo map. */
+    fun resetTempo() = setTempoFactor(1.0)
+
+    /**
+     * SONG TRANSPOSE (-12..12) for every melodic channel; channels the file plays as drums ([SongTimeline.drumChannels]) never move.
+     * A change applies to the next NOTE ONs; notes already sounding keep their pitch and end with the NOTE OFF of the pitch that
+     * was SENT (ledger per sent pitch), so a change, seek, pause or stop never strands a note. A pitch outside 0..127 is not sent.
+     */
+    fun setTranspose(semitones: Int) = synchronized(lock) { transpose = semitones.coerceIn(-12, 12) }
 
     /**
      * Send every event due at [nowNs]. Returns the wall time of the next event, or -1 when there is nothing to wait for.
@@ -223,7 +260,7 @@ class SongPlayer(private val clock: () -> Long = System::nanoTime) {
         val t = timeline ?: return -1
         if (state != SongState.PLAYING) return -1
         val songUs = currentUsLocked(nowNs)
-        while (next < t.events.size && t.events[next].us <= songUs) { dispatchLocked(t.events[next], nowNs); next++ }
+        while (next < t.events.size && t.events[next].us <= songUs + 1) { dispatchLocked(t.events[next], nowNs); next++ }   // 1 us: float rounding
         if (next >= t.events.size) {
             if (songUs >= t.durationUs) { stopLocked(); message = "End of song"; return -1 }
             return wallNsFor(t.durationUs)
@@ -238,10 +275,10 @@ class SongPlayer(private val clock: () -> Long = System::nanoTime) {
         val tempo = t?.tempoAt(tick)
         val ts = t?.timeSigAt(tick)
         SongStatus(state, title, us, t?.durationUs ?: 0, tick, t?.barBeat(tick), t?.bars ?: 0, tempo?.bpm ?: 0.0,
-            (tempo?.bpm ?: 0.0) * tempoPercent / 100.0, tempoPercent, ts?.let { "${it.numerator}/${it.denominator}" } ?: "-", muted.toList(),
+            (tempo?.bpm ?: 0.0) * tempoFactor, Math.round(tempoFactor * 100).toInt(), ts?.let { "${it.numerator}/${it.denominator}" } ?: "-", muted.toList(),
             t?.channelsUsed ?: emptySet(), programs.toList(), bankMsb.toList(), lastNoteOn.toList(), outputs.map { it.id }, message,
             ov.toList(), solo.toList(), List(16) { silentLocked(it) }, bankLsb.toList(), List(16) { fileCc[it][7] }, List(16) { fileCc[it][10] },
-            List(16) { fileCc[it][64] }, voiceBind.toList(), t?.drumChannels ?: setOf(9))
+            List(16) { fileCc[it][64] }, voiceBind.toList(), t?.drumChannels ?: setOf(9), transpose, tempoFactor)
     }
 
     /** Song-owned notes still sounding (for tests and diagnostics). */
@@ -263,10 +300,12 @@ class SongPlayer(private val clock: () -> Long = System::nanoTime) {
     private fun wake() { thread?.let { LockSupport.unpark(it) } }
 
     // ---- internals (lock held) ----
-    private fun factor() = tempoPercent / 100.0
+    private fun factor() = tempoFactor
     private fun currentUsLocked(nowNs: Long): Long =
         if (state == SongState.PLAYING) anchorSongUs + ((nowNs - anchorWallNs) / 1000.0 * factor()).toLong() else pausedUs
-    private fun wallNsFor(songUs: Long): Long = anchorWallNs + ((songUs - anchorSongUs) * 1000.0 / factor()).toLong()
+    // rounded UP: at the returned wall time the song position has reached [songUs] (a rounded-down time could leave the event
+    // 1 us in the future for ever with a tempo factor != 1, so the scheduler would spin on the same time)
+    private fun wallNsFor(songUs: Long): Long = anchorWallNs + kotlin.math.ceil((songUs - anchorSongUs) * 1000.0 / factor()).toLong()
     private fun firstIndexAtOrAfterUs(t: SongTimeline, us: Long): Int {
         var lo = 0; var hi = t.events.size
         while (lo < hi) { val m = (lo + hi) ushr 1; if (t.events[m].us < us) lo = m + 1 else hi = m }
@@ -283,14 +322,19 @@ class SongPlayer(private val clock: () -> Long = System::nanoTime) {
         when {
             e.isNoteOn -> {
                 if (silentLocked(ch)) return
-                active[ch * 128 + e.data1]++; lastNoteOn[ch] = nowNs
-                sendLocked(e.bytes, outputs)
+                val p = pitchLocked(ch, e.data1)
+                sentFor[ch * 128 + e.data1].addLast(p)
+                if (p < 0) return                           // transposed outside 0..127: not sent, its NOTE OFF is skipped too
+                active[ch * 128 + p]++; lastNoteOn[ch] = nowNs
+                sendLocked(if (p == e.data1) e.bytes else byteArrayOf(e.bytes[0], p.toByte(), e.bytes[2]), outputs)
             }
             e.isNoteOff -> {
-                val k = ch * 128 + e.data1
-                if (active[k] == 0) return                 // its NOTE ON was never sent (muted / ended by a panic)
-                active[k]--
-                sendLocked(e.bytes, outputs)
+                val q = sentFor[ch * 128 + e.data1]
+                if (q.isEmpty()) return                    // its NOTE ON was never sent (muted / ended by a panic)
+                val p = q.removeFirst()                    // BASS_MIDI_NOTEOFF1 order: the oldest instance first
+                if (p < 0 || active[ch * 128 + p] == 0) return
+                active[ch * 128 + p]--
+                sendLocked(if (p == e.data1) e.bytes else byteArrayOf(e.bytes[0], p.toByte(), e.bytes[2]), outputs)
             }
             else -> {
                 noteFileStateLocked(e.bytes)
@@ -348,13 +392,20 @@ class SongPlayer(private val clock: () -> Long = System::nanoTime) {
         for (ch in 0 until 16) if (!ov[ch].isDefault) SongMixerRules.state(ch, ov[ch], o.acceptsSysEx).forEach(o::send)
     }
 
-    /** NOTE OFF for every song-owned note on [channels] (one per instance) and CC64 0 where the song held the sustain. */
+    /** The pitch to send for file note [note] on [ch]: transposed on melodic channels, unchanged on drum channels; -1 = out of range. */
+    private fun pitchLocked(ch: Int, note: Int): Int {
+        if (transpose == 0 || ch in (timeline?.drumChannels ?: setOf(9))) return note
+        val p = note + transpose
+        return if (p in 0..127) p else -1
+    }
+
+    /** NOTE OFF for every song-owned note on [channels] (one per instance, at the pitch that was SENT) and CC64 0 where the song held the sustain. */
     private fun panicLocked(channels: IntRange, to: List<SongOutput>, clearState: Boolean, keepSustainFlag: Boolean = false) {
         for (ch in channels) {
             for (n in 0 until 128) {
                 val k = ch * 128 + n
                 repeat(active[k]) { sendLocked(byteArrayOf((0x80 or ch).toByte(), n.toByte(), 0), to) }
-                if (to === outputs) active[k] = 0
+                if (to === outputs) { active[k] = 0; sentFor[k].clear() }
             }
             if (sustain[ch]) { sendLocked(byteArrayOf((0xB0 or ch).toByte(), 64, 0), to); if (!keepSustainFlag && to === outputs) sustain[ch] = false }
             if (clearState && bent[ch]) { sendLocked(byteArrayOf((0xE0 or ch).toByte(), 0, 64), to); bent[ch] = false }
