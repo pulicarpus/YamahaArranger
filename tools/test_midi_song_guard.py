@@ -72,4 +72,10 @@ assert sty.index('bridge.nativeSfNoteOnStyleChannel(') < sty.index('if (soundFon
 assert 'bridge.nativeAllNotesOff(); noteTap?.allStopped()' in aem, 'V1C: All Notes Off closes the recorded notes'
 for f in [J + 'midi/MidiInputManager.kt', J + 'midi/MidiMixerOutput.kt', J + 'yamahaarranger/arranger/StyleSequencer.kt']:
     assert 'noteTap' not in (ROOT / f).read_text(), f + ' must not record (no double recording through MIDI OUT / Style)'
+# V1C.1 YAMAP: routes live on songStream_ only; the main-stream readback only reads
+rt = cpp[cpp.index('bool BassMidiPlayer::songSetVoiceRoute'):cpp.index('std::string BassMidiPlayer::channelResolvedSource')]
+rd = cpp[cpp.index('std::string BassMidiPlayer::channelResolvedSource'):cpp.index('std::string BassMidiPlayer::songChannelReport')]
+assert 'StreamEvent' not in rt and 'StreamSetFonts' not in rt and 'applyFonts' not in rt, 'routes: Song map only'
+assert 'StreamEvent' not in rd and 'StreamSetFonts' not in rd and 'BASS_MIDI_StreamGetPreset(stream_' in rd, 'readback: read-only on the main stream'
+assert 'songRoutes_' not in apply, 'the keyboard/Style font table never includes Song routes'
 print('MIDI SONG GUARD PASS changed=' + ','.join(sorted(changed)))
