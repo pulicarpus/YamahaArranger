@@ -13,7 +13,7 @@ changed = set(git('diff', '--name-only', BASE, 'HEAD').split()) | set(git('diff'
 ADDITIVE = [J + 'yamahaarranger/audio/AudioEngineManager.kt', J + 'yamahaarranger/audio/NativeAudioBridge.kt', J + 'midi/MidiInputManager.kt',
             C + 'bassmidi_player.h', C + 'bassmidi_player.cpp', C + 'audio_engine.h', C + 'audio_engine.cpp', C + 'native_lib.cpp', 'tests/mocks/bassmidi.h', J + 'ui/ContentResolverProvider.kt']
 ALLOWED = set(ADDITIVE) | {J + 'ui/MainViewModel.kt', J + 'ui/SxMainScreen.kt', J + 'ui/SongPanel.kt', J + 'ui/SongPage.kt', J + 'ui/SongMixerPanel.kt',
-           'tests/song_native_test.cpp', 'tests/song_xg_real_bass_test.cpp', 'tools/midi_fixture_gen.py', 'tests/rtdiag/RecorderRtTest.kt', 'tools/check_recorded_midi.py', 'tests/rtdiag/FullArrangerRecorderRtTest.kt', 'tests/rtdiag/RecorderParityRtTest.kt', J + 'yamahaarranger/audio/VirtualKeyRouter.kt'}
+           'tests/song_native_test.cpp', 'tests/song_xg_real_bass_test.cpp', 'tools/midi_fixture_gen.py', 'tests/rtdiag/RecorderRtTest.kt', 'tools/check_recorded_midi.py', 'tests/rtdiag/FullArrangerRecorderRtTest.kt', 'tests/rtdiag/RecorderParityRtTest.kt', 'tests/rtdiag/StyleBalanceAuditRtTest.kt', J + 'yamahaarranger/audio/VirtualKeyRouter.kt'}
 PREFIX = (J + 'yamahaarranger/song/', 'tests/cpv/', 'tests/fixtures/midi/', 'tools/test_', 'tools/ui_preview/', 'diagnostics/', '.github/workflows/', 'docs/')
 extra = {p for p in changed if p not in ALLOWED and not p.startswith(PREFIX)}
 assert not extra, 'Unapproved file changed: ' + ', '.join(sorted(extra))
