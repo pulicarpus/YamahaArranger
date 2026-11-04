@@ -1904,7 +1904,7 @@ class MainViewModel @Inject constructor(
     data class E343OutUi(val mode: com.yourapp.yamahaarranger.e343out.E343OutMode = com.yourapp.yamahaarranger.e343out.E343OutMode.ORIGINAL,
         val styleName: String = "", val parts: List<E343OutPartUi> = emptyList(), val catalogOk: Boolean = false, val dirty: Boolean = false, val message: String = "")
     private val _e343OutUi = MutableStateFlow(E343OutUi())
-    val e343OutUi: StateFlow<E343OutUi> = _e343OutUi.asStateFlow()
+    val e343OutUi: StateFlow<E343OutUi> = _e343OutUi
     private val e343OutStore by lazy { com.yourapp.yamahaarranger.e343out.E343OutProfileStore(contentResolver.styleOverrideDirectory()) }
     @Volatile private var e343Catalog: com.yourapp.yamahaarranger.e343out.E343Catalog? = null
     private var e343SavedTrims: Map<Int, Int> = emptyMap()

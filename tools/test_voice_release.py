@@ -77,6 +77,8 @@ def jvm(output, fetch):
              ROOT/'tests/readiness_jvm/ReadyToPlayEngineTest.kt',
              ROOT/'app/src/test/java/com/yourapp/yamahaarranger/lifecycle/ReadyToPlayBrainTest.kt']
     sources += [ROOT/'app/src/main/java/com/yourapp/yamahaarranger/audio/PcmSessionControls.kt']
+    # MidiInputManager routes Style Bank/Program and mixer CCs through the PSR-E343 MIDI OUT adapter (e343out, plans from StyleVoiceRequests)
+    sources += [ROOT/'app/src/main/java/com/yourapp/yamahaarranger/style/StyleVoiceRequests.kt'] + sorted((ROOT/'app/src/main/java/com/yourapp/yamahaarranger/e343out').glob('*.kt'))
     sources+=sorted((ROOT/'app/src/main/java/com/yourapp/chord').glob('*.kt'))
     arranger=ROOT/'app/src/main/java/com/yourapp/yamahaarranger/arranger'
     sources += [arranger/(name+'.kt') for name in ['StyleSequencer','CasmNoteTransformer','StyleAudioPathDiagnostic','StylePartPresence','ChordChangeDiagnostic']]

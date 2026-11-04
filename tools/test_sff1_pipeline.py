@@ -86,6 +86,8 @@ def main(argv=None):
         sources=[p for p in sources if not(p.parent.name=='sff1_jvm_stubs' and p.name in replaced)]
         sources+=sorted((ROOT/'tests/sff5_jvm_stubs').glob('*.kt'))
         sources += [ROOT/'app/src/main/java/com/yourapp/midi/MidiInputManager.kt',ROOT/'app/src/main/java/com/yourapp/arranger/ArrangerBrain.kt',test_root/'F03BoundaryLifecycleInvestigationTest.kt']
+        # MidiInputManager needs the PSR-E343 MIDI OUT adapter (e343out) and the read-only StyleVoiceRequests it plans from
+        sources += [q for q in [ROOT/'app/src/main/java/com/yourapp/yamahaarranger/style/StyleVoiceRequests.kt'] + sorted((ROOT/'app/src/main/java/com/yourapp/yamahaarranger/e343out').glob('*.kt')) if q not in sources]
         tests.append("com.yourapp.yamahaarranger.arranger.F03BoundaryLifecycleInvestigationTest")
     if args.existing_regressions:
         sources += [test_root/(name+".kt") for name in EXISTING]
