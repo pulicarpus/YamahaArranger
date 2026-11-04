@@ -58,7 +58,10 @@ def main():
            A / 'yamahaarranger/audio/PcmSessionControls.kt',
            # MIDI RECORDER V1B (pure Kotlin, used by RecorderRtTest only): writer, recorder, and the SONG parser to re-read the take
            A / 'yamahaarranger/song/SmfWriter.kt', A / 'yamahaarranger/song/MidiRecorder.kt', A / 'yamahaarranger/song/Smf.kt', A / 'yamahaarranger/song/SongTimeline.kt', A / 'yamahaarranger/song/SongPlayer.kt', A / 'yamahaarranger/song/SongMixer.kt',
-           A / 'yamahaarranger/audio/VirtualKeyRouter.kt']
+           A / 'yamahaarranger/audio/VirtualKeyRouter.kt',
+           # PSR-E343 AUTO VOICE / BALANCE (MIDI OUT only) + the read-only Style request extractor it plans from
+           A / 'yamahaarranger/style/StyleVoiceRequests.kt']
+    src += sorted((A / 'yamahaarranger/e343out').glob('*.kt'))
     src += sorted((A / 'chord').glob('*.kt'))
     src += [A / 'yamahaarranger/audio/MetronomeModel.kt', A / 'yamahaarranger/audio/MetronomeController.kt']
     arr = A / 'yamahaarranger/arranger'

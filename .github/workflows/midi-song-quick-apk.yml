@@ -180,6 +180,14 @@ jobs:
           python3 tools/test_rtdiag.py --out evidence/noteoff-ew2 --rosita --style tests/fixtures/englishwaltz2/EnglishWaltz2.S519.prs --style-name EnglishWaltz2.S519.prs --only com.yourapp.rtdiag.E343DrumNoteOffRtTest 2>&1 | tee evidence/noteoff-ew2.log
           python3 tools/test_rtdiag.py --out evidence/midi-in-split --only com.yourapp.rtdiag.MidiInSplitRtTest 2>&1 | tee evidence/midi-in-split.log
           python3 tools/test_rtdiag.py --out evidence/transpose-acmp-left --rosita --only com.yourapp.rtdiag.TransposeAcmpLeftTest 2>&1 | tee evidence/transpose-acmp-left.log
+      - name: PSR-E343 AUTO VOICE + AUTO BALANCE (MIDI OUT only) on the production chain - HardRock2, EnglishWaltz2, ROSITA
+        run: |
+          set -euo pipefail
+          python3 tools/test_rtdiag.py --out evidence/e343auto-hr2 --rosita --style tests/fixtures/hardrock2/HardRock2.S578.prs --style-name HardRock2.S578.prs --only com.yourapp.rtdiag.E343AutoMapRtTest,com.yourapp.rtdiag.E343MidiOutAuditTest,com.yourapp.rtdiag.MidiOutOctaveTest 2>&1 | tee evidence/e343auto-hr2.log
+          python3 tools/test_rtdiag.py --out evidence/e343auto-ew2 --rosita --style tests/fixtures/englishwaltz2/EnglishWaltz2.S519.prs --style-name EnglishWaltz2.S519.prs --only com.yourapp.rtdiag.E343AutoMapRtTest 2>&1 | tee evidence/e343auto-ew2.log
+          python3 tools/test_rtdiag.py --out evidence/e343auto-rosita --rosita --only com.yourapp.rtdiag.E343AutoMapRtTest 2>&1 | tee evidence/e343auto-rosita.log
+          grep -h "E343AUTO" evidence/e343auto-*/rtdiag.log || true
+          for f in evidence/e343auto-*/rtdiag.log; do grep -q "^OK (" "$f" || { echo "FAILED: $f"; exit 1; }; done
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -109,7 +109,11 @@ class StyleVoiceEditorActions(
     /** Named PSR-E343 voices from the user's own Yamaha Data List file (empty when none was supplied). */
     val deviceCatalog: List<ExternalVoice> = emptyList(),
     /** Keys of the kit now chosen for this Rhythm part that have a sample (read from the SF2 zone tables); null = not provable. */
-    val keyCoverage: suspend (StyleVoiceRow) -> Set<Int>? = { null }
+    val keyCoverage: suspend (StyleVoiceRow) -> Set<Int>? = { null },
+    /** PSR-E343 AUTO panel (MIDI OUT mode, mapping, balance); null hides the button. */
+    val onOpenE343: (() -> Unit)? = null,
+    /** What AUTO E343 sends to MIDI OUT for this part request, with the reason; null when not planned. */
+    val e343AutoText: (StyleVoiceRow) -> String? = { null }
 )
 
 private val SvBlack = Color(0xFF080A0D)
@@ -221,6 +225,7 @@ private fun Header(inv: StyleVoiceInventory?, loaded: Boolean, output: String, a
         }
         if (actions != null && inv != null) {
             HeaderButton("MIDI OUT OCTAVE", enabled = actions.writable) { showMidiOctave = true }
+            actions.onOpenE343?.let { open -> HeaderButton("E343 AUTO", onClick = open) }
             HeaderButton("SAVE PROFILE", enabled = actions.dirty && actions.writable) { actions.onSave(onToast) }
             HeaderButton("RESET ALL", enabled = inv.flat.any { it.override != null } || actions.hasExtras) { confirmReset = true }
         }
@@ -405,6 +410,7 @@ private fun DetailPanel(r: StyleVoiceRow?, inv: StyleVoiceInventory, actions: St
         Field("Request (display, 1-based)", r.displayRequest, "same bytes + 1 on Program")
         val e343 = E343Compat.classify(r.msb, r.lsb, r.program, r.casmVoiceName, actions?.deviceCatalog.orEmpty())
         Field("PSR-E343 (MIDI OUT)", E343Compat.describe(e343), "from your supplied Data List only; never applied automatically")
+        actions?.e343AutoText?.invoke(r)?.let { Field("E343 AUTO (MIDI OUT mode)", it, "used only in AUTO E343 modes; a manual EXTERNAL MIDI OUT voice wins") }
         Field("Channels", "source ${r.sourceChannel + 1} → destination ${r.destinationChannel + 1}" +
             if (r.hasCasm) "" else "  (no CASM entry; source used)", provenanceText(r.routingProvenance))
         Field("Style's own Voice name", r.casmVoiceName.ifBlank { "not carried by the file" }, "CASM table, as authored")

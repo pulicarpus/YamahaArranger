@@ -24,6 +24,7 @@ fun StyleVoiceEditorOverlay(vm: MainViewModel) {
     var catalog by remember { mutableStateOf<List<CatalogPreset>>(emptyList()) }
     var loaded by remember { mutableStateOf(false) }
     var refresh by remember { mutableStateOf(0) }
+    var showE343 by remember { mutableStateOf(false) }
     // Reload on style, section, MIDI OUT, profile edits and on START/STOP. The engine binds channels when a section
     // starts, so after START the reading is retried a bounded number of times (at most 4 reads, 400 ms apart, only
     // while nothing is bound yet); the SoundFont catalog is read once per trigger, never in the retry loop.
@@ -74,6 +75,8 @@ fun StyleVoiceEditorOverlay(vm: MainViewModel) {
         onDiscard = { done -> vm.editorDiscard(done) },
         keyCoverage = { row -> vm.editorKeyCoverage(row) },
         deviceCatalog = remember(library) { vm.editorDeviceCatalog() },
+        onOpenE343 = { showE343 = true },
+        e343AutoText = { row -> vm.e343AutoTextFor(row.destinationChannel, row.msb, row.lsb, row.program) },
         rememberedPick = memory?.voices?.get("STYLE_EDITOR")?.itemKey,
         onRememberPick = { key -> vm.rememberVoicePosition("STYLE_EDITOR", com.yourapp.yamahaarranger.browser.SavedPosition(key.substringBefore('|'), key)) }
     )
@@ -82,4 +85,5 @@ fun StyleVoiceEditorOverlay(vm: MainViewModel) {
         output = if (state.midiOutEnabled) "MIDI OUT + internal" else "Internal (BASSMIDI)",
         onRefresh = { refresh++ }, onClose = StyleVoiceEditorHost::close, actions = actions,
         backHandler = { onBack -> androidx.activity.compose.BackHandler(enabled = true, onBack = onBack) })
+    if (showE343) E343OutDialog(vm, state.midiOutEnabled) { showE343 = false }
 }

@@ -22,6 +22,10 @@ class ContentResolverProvider @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     fun r22CatalogInput(): java.io.InputStream = context.assets.open("r22/kits.tsv.bin")
+    /** PSR-E343 voice / drum-kit list (copies of docs/yamaha/*.tsv, bundled read-only). */
+    fun e343AssetText(name: String): String = context.assets.open("e343/$name").use { String(it.readBytes(), Charsets.UTF_8) }
+    /** MIDI OUT E343 mode (ORIGINAL / AUTO / AUTO_BALANCE), one word in app-private storage. */
+    fun e343OutModeFile(): java.nio.file.Path = java.io.File(context.filesDir, "e343out_mode.txt").toPath()
     /** CPV per-style voice overrides live in app-private storage. */
     fun styleOverrideDirectory(): java.nio.file.Path = java.io.File(context.filesDir, "style_overrides").toPath()
     /** Last Style / Voice browser positions (one small JSON file in app-private storage). */

@@ -1896,6 +1896,109 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    // ---- PSR-E343 AUTO VOICE MAPPING + AUTO BALANCE (MIDI OUT only; the internal sound, Style data and notes are never changed) ----
+    /** One part of the E343 panel: what the Style asks (all requests of the part), what AUTO sends and why, and the CC7 trims. */
+    data class E343OutPartUi(val channel: Int, val role: String, val decisions: List<com.yourapp.yamahaarranger.e343out.E343VoiceDecision>,
+        val live: com.yourapp.yamahaarranger.e343out.E343OutAdapter.PartState?, val balance: com.yourapp.yamahaarranger.e343out.E343BalanceRow?,
+        val slider: Int, val savedTrim: Int?)
+    data class E343OutUi(val mode: com.yourapp.yamahaarranger.e343out.E343OutMode = com.yourapp.yamahaarranger.e343out.E343OutMode.ORIGINAL,
+        val styleName: String = "", val parts: List<E343OutPartUi> = emptyList(), val catalogOk: Boolean = false, val dirty: Boolean = false, val message: String = "")
+    private val _e343OutUi = MutableStateFlow(E343OutUi())
+    val e343OutUi: StateFlow<E343OutUi> = _e343OutUi.asStateFlow()
+    private val e343OutStore by lazy { com.yourapp.yamahaarranger.e343out.E343OutProfileStore(contentResolver.styleOverrideDirectory()) }
+    @Volatile private var e343Catalog: com.yourapp.yamahaarranger.e343out.E343Catalog? = null
+    private var e343SavedTrims: Map<Int, Int> = emptyMap()
+    private fun e343Catalog(): com.yourapp.yamahaarranger.e343out.E343Catalog? = e343Catalog ?: try {
+        com.yourapp.yamahaarranger.e343out.E343Catalog.parse(contentResolver.e343AssetText("E343_VOICES.tsv"), contentResolver.e343AssetText("E343_DRUMKITS.tsv"))
+            .also { e343Catalog = it; midiInputManager.e343Out.setCatalog(it); DebugLog.add("E343 OUT catalog voices=${it.voices.size} kits=${it.kits.size}") }
+    } catch (e: Exception) { DebugLog.add("E343 OUT catalog unreadable: ${e.javaClass.simpleName}"); null }
+
+    private fun e343ManualVoices(channel: Int): Set<Triple<Int, Int, Int>> =
+        currentOverrides?.externalOverrides?.filter { it.channel == channel }?.map { Triple(it.voice.msb, it.voice.lsb, it.voice.program) }?.toSet().orEmpty()
+
+    init {
+        midiInputManager.e343Out.mixerSlider = { ch -> _voiceAssignments.value.firstOrNull { it.channel == ch }?.styleVolume ?: 127 }
+        midiInputManager.e343Out.manualVoiceLookup = ::e343ManualVoices
+        viewModelScope.launch(Dispatchers.IO) {
+            val saved = try { java.nio.file.Files.readAllLines(contentResolver.e343OutModeFile()).firstOrNull()?.trim() } catch (_: Exception) { null }
+            val mode = com.yourapp.yamahaarranger.e343out.E343OutMode.entries.firstOrNull { it.name == saved } ?: com.yourapp.yamahaarranger.e343out.E343OutMode.ORIGINAL
+            if (mode != com.yourapp.yamahaarranger.e343out.E343OutMode.ORIGINAL) e343Catalog()
+            midiInputManager.e343Out.setMode(mode)
+            DebugLog.add("E343 OUT mode=${mode.name} (saved)")
+            e343OutRefresh()
+        }
+    }
+
+    /** New Style: plan the E343 voices and balance from the Style data, restore this Style's saved manual MIDI OUT trims. */
+    private suspend fun e343OutLoadStyle(parsed: com.yourapp.yamahaarranger.style.ParsedStyle, sha: String) {
+        val catalog = withContext(Dispatchers.IO) { e343Catalog() }
+        val plan = if (catalog == null) com.yourapp.yamahaarranger.e343out.E343StylePlan.EMPTY else withContext(Dispatchers.Default) {
+            com.yourapp.yamahaarranger.e343out.E343StylePlanner.plan(parsed, com.yourapp.yamahaarranger.e343out.E343VoiceMapper(catalog)) }
+        e343SavedTrims = withContext(Dispatchers.IO) { e343OutStore.read(sha) }
+        midiInputManager.e343Out.setStyle(plan, emptyMap(), e343SavedTrims)
+        for (d in plan.decisions) DebugLog.add("E343 OUT plan ch${d.channel + 1} ${d.requestText} -> ${d.status.label} ${d.outText}")
+        for (ch in 8..15) plan.balance[ch]?.takeIf { it.autoTrim < 127 }?.let { DebugLog.add("E343 OUT balance ch${ch + 1} autoTrim=${it.autoTrim} ${it.reason}") }
+        e343OutRefresh("")
+    }
+
+    fun e343OutRefresh(message: String? = null) {
+        val out = midiInputManager.e343Out
+        val plan = out.currentPlan()
+        val live = out.state().associateBy { it.channel }
+        val manual = out.manualTrims()
+        val channels = (plan.decisions.map { it.channel } + _voiceAssignments.value.map { it.channel }.filter { it in 8..15 }).toSortedSet()
+        _e343OutUi.value = E343OutUi(out.mode, plan.styleName.ifBlank { currentStyleFileName }, channels.map { ch ->
+            E343OutPartUi(ch, com.yourapp.yamahaarranger.e343out.E343Roles.of(ch), plan.forChannel(ch), live[ch], plan.balance[ch],
+                _voiceAssignments.value.firstOrNull { it.channel == ch }?.styleVolume ?: 127, manual[ch]) },
+            e343Catalog != null, manual != e343SavedTrims, message ?: _e343OutUi.value.message)
+    }
+
+    fun e343OutSetMode(mode: com.yourapp.yamahaarranger.e343out.E343OutMode) {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (mode != com.yourapp.yamahaarranger.e343out.E343OutMode.ORIGINAL && e343Catalog() == null) { e343OutRefresh("E343 list not available: mode not changed"); return@launch }
+            midiInputManager.e343Out.setMode(mode)
+            try { java.nio.file.Files.write(contentResolver.e343OutModeFile(), listOf(mode.name)) } catch (e: Exception) { DebugLog.add("E343 OUT mode not saved: ${e.javaClass.simpleName}") }
+            DebugLog.add("E343 OUT mode=${mode.name}")
+            e343OutRefresh("MIDI OUT mode: ${mode.label}")
+        }
+    }
+
+    /** Manual MIDI OUT trim of one part (null = back to automatic). Takes effect at once; SAVE keeps it with this Style. */
+    fun e343OutSetManualTrim(channel: Int, value: Int?) {
+        midiInputManager.e343Out.setManualTrim(channel, value)
+        e343OutRefresh("")
+    }
+
+    fun e343OutSave() {
+        val sha = currentStyleSha ?: return e343OutRefresh("No Style is loaded.")
+        val trims = midiInputManager.e343Out.manualTrims()
+        viewModelScope.launch(Dispatchers.IO) {
+            val msg = try { e343OutStore.write(sha, trims); e343SavedTrims = trims
+                if (trims.isEmpty()) "Manual MIDI OUT trims removed for this Style." else "Saved with this Style: " + trims.entries.joinToString { "${com.yourapp.yamahaarranger.e343out.E343Roles.of(it.key)} ${it.value}" }
+            } catch (e: Exception) { "Not saved: ${e.javaClass.simpleName}" }
+            DebugLog.add("E343 OUT $msg")
+            e343OutRefresh(msg)
+        }
+    }
+
+    /** Style Voice Editor detail line: the AUTO E343 decision for this exact request (mode-independent preview). */
+    fun e343AutoTextFor(channel: Int, msb: Int?, lsb: Int?, program: Int?): String? {
+        if (program == null) return null
+        val d = midiInputManager.e343Out.currentPlan().decision(channel, msb ?: 0, lsb ?: 0, program) ?: return null
+        return "${d.status.label}: ${d.outText} — ${d.reason}" + d.warnings.joinToString("") { "\n⚠ $it" } +
+            "\nMode now: ${midiInputManager.e343Out.mode.label}"
+    }
+
+    /** Plain-text report of the E343 panel (also written to the debug log on request). */
+    fun e343OutReport(): String = buildString {
+        val ui = _e343OutUi.value
+        append("E343 OUT mode=${ui.mode.label} style='${ui.styleName}'\n")
+        for (p in ui.parts) {
+            for (d in p.decisions) append("${p.role} ch${p.channel + 1}: ${d.requestText} -> ${d.status.label} ${d.outText} | ${d.reason}${d.warnings.joinToString("") { " | WARN $it" }}\n")
+            append("${p.role} ch${p.channel + 1}: autoTrim=${p.balance?.autoTrim ?: 127} manual=${p.savedTrim ?: "-"} slider=${p.slider} effective=${p.live?.trim ?: 127} (${p.live?.trimSource ?: "-"}) styleCC7=${p.live?.rawCc7 ?: -1} sentCC7=${p.live?.sentCc7 ?: -1}\n")
+        }
+    }
+
     /** PSR-E343 voice names from the user's own Yamaha Data List file (/storage/emulated/0/YamahaArranger/E343_VOICES.tsv); empty when absent. */
     fun editorDeviceCatalog(): List<com.yourapp.yamahaarranger.style.ExternalVoice> = try {
         val file = java.io.File(android.os.Environment.getExternalStorageDirectory(), "YamahaArranger/E343_VOICES.tsv")
@@ -2138,6 +2241,8 @@ class MainViewModel @Inject constructor(
                     savedOverrides = saved.record
                     overridesWritable = saved.writable
                     DebugLog.add("CPV overrides style=$fileName status=${saved.status} entries=${saved.record?.overrides?.size ?: 0}")
+                    // PSR-E343 AUTO (MIDI OUT only): plan before the first Program Change of this Style reaches MIDI OUT.
+                    try { e343OutLoadStyle(parsed, currentStyleSha!!) } catch (e: Exception) { DebugLog.add("E343 OUT plan failed: ${e.javaClass.simpleName}") }
                     // Off the main thread: pinning presets is native work, and this block holds the engine operation lock.
                     val restoreStarted = System.nanoTime()
                     DebugLog.add("STYLE LOAD stage=restoreOverrides begin thread=${Thread.currentThread().name}")

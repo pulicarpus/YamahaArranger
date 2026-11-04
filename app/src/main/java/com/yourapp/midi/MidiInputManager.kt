@@ -44,7 +44,14 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
     @Volatile var midiOutEnabled = false
         set(value) { mixerOutput.setEnabled(value); field = value }
     var onOutputReady: (() -> Unit)? = null
-    fun setMixerControllers(channel: Int, pairs: IntArray) = mixerOutput.update(channel, pairs)
+    /**
+     * PSR-E343 AUTO VOICE / AUTO BALANCE (MIDI OUT only, Style channels 8..15). ORIGINAL (default) passes every request and controller unchanged.
+     * It sits between the Style engine and the router: the internal synthesizer, the Style data and every note are never touched.
+     */
+    val e343Out = com.yourapp.yamahaarranger.e343out.E343OutAdapter(
+        sendProgram = { ch, p, msb, lsb -> mixerOutput.program(ch, p, msb, lsb) },
+        sendControllers = { ch, pairs -> mixerOutput.update(ch, pairs) })
+    fun setMixerControllers(channel: Int, pairs: IntArray) = mixerOutput.update(channel, e343Out.controllers(channel, pairs))
     fun setMixerMasterVolume(value: Int) = mixerOutput.setMaster(value)
     fun setMixerStyleChannels(channels: Set<Int>) = mixerOutput.setChannels(channels)
     fun setMixerMutedChannels(channels: Set<Int>) = mixerOutput.setMutedChannels(channels)
@@ -257,7 +264,8 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
 
     fun sendProgramChange(channel: Int, program: Int, bankMsb: Int = 0, bankLsb: Int = 0) {
         if (channel !in 0..15) return
-        mixerOutput.program(channel, program, bankMsb, bankLsb)
+        val out = e343Out.voice(channel, program, bankMsb, bankLsb) // ORIGINAL mode: unchanged
+        mixerOutput.program(channel, out[0], out[1], out[2])
     }
 
     /** Explicit voice re-send: the next [sendProgramChange] on this channel goes out even if MIDI OUT already holds that voice. */

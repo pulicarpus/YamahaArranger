@@ -13,8 +13,10 @@ changed = set(git('diff', '--name-only', BASE, 'HEAD').split()) | set(git('diff'
 ADDITIVE = [J + 'yamahaarranger/audio/AudioEngineManager.kt', J + 'yamahaarranger/audio/NativeAudioBridge.kt', J + 'midi/MidiInputManager.kt',
             C + 'bassmidi_player.h', C + 'bassmidi_player.cpp', C + 'audio_engine.h', C + 'audio_engine.cpp', C + 'native_lib.cpp', 'tests/mocks/bassmidi.h', J + 'ui/ContentResolverProvider.kt']
 ALLOWED = set(ADDITIVE) | {J + 'ui/MainViewModel.kt', J + 'ui/SxMainScreen.kt', J + 'ui/SongPanel.kt', J + 'ui/SongPage.kt', J + 'ui/SongMixerPanel.kt',
-           'tests/song_native_test.cpp', 'tests/song_xg_real_bass_test.cpp', 'tools/midi_fixture_gen.py', 'tests/rtdiag/RecorderRtTest.kt', 'tools/check_recorded_midi.py', 'tests/rtdiag/FullArrangerRecorderRtTest.kt', 'tests/rtdiag/RecorderParityRtTest.kt', 'tests/rtdiag/StyleBalanceAuditRtTest.kt', J + 'yamahaarranger/audio/VirtualKeyRouter.kt'}
-PREFIX = (J + 'yamahaarranger/song/', 'tests/cpv/', 'tests/fixtures/midi/', 'tools/test_', 'tools/ui_preview/', 'diagnostics/', '.github/workflows/', 'docs/')
+           'tests/song_native_test.cpp', 'tests/song_xg_real_bass_test.cpp', 'tools/midi_fixture_gen.py', 'tests/rtdiag/RecorderRtTest.kt', 'tools/check_recorded_midi.py', 'tests/rtdiag/FullArrangerRecorderRtTest.kt', 'tests/rtdiag/RecorderParityRtTest.kt', 'tests/rtdiag/StyleBalanceAuditRtTest.kt', J + 'yamahaarranger/audio/VirtualKeyRouter.kt',
+           # E343 AUTO VOICE / BALANCE (MIDI OUT only): panel + Style Voice Editor button/detail line + tests
+           J + 'ui/E343OutPanel.kt', J + 'ui/StyleVoiceEditorScreen.kt', J + 'ui/StyleVoiceEditorOverlay.kt', 'tests/rtdiag/E343AutoMapRtTest.kt'}
+PREFIX = (J + 'yamahaarranger/song/', J + 'yamahaarranger/e343out/', 'app/src/main/assets/e343/', 'tests/cpv/', 'tests/fixtures/midi/', 'tools/test_', 'tools/ui_preview/', 'diagnostics/', '.github/workflows/', 'docs/')
 extra = {p for p in changed if p not in ALLOWED and not p.startswith(PREFIX)}
 assert not extra, 'Unapproved file changed: ' + ', '.join(sorted(extra))
 FROZEN = [J + 'yamahaarranger/arranger', J + 'arranger', J + 'style', J + 'yamahaarranger/style', J + 'chord', J + 'yamahaarranger/registration',
@@ -24,8 +26,10 @@ FROZEN = [J + 'yamahaarranger/arranger', J + 'arranger', J + 'style', J + 'yamah
 assert not git('diff', BASE, '--', *FROZEN).strip(), 'Style engine / CASM / style parser / router / E343 / DATA CONTROL changed'
 def removed(f): return [l[1:].strip() for l in git('diff', '-U0', BASE, '--', f).splitlines() if l.startswith('-') and not l.startswith('---')]
 AEM_ALLOWED = ['fun allNotesOff() { DebugLog.traceAudio("ALL_NOTES_OFF"); bridge.nativeAllNotesOff() }']   # V1C: + noteTap?.allStopped()
+# E343 AUTO: the two router calls now go through e343Out (ORIGINAL returns its input unchanged)
+MIM_ALLOWED = ['fun setMixerControllers(channel: Int, pairs: IntArray) = mixerOutput.update(channel, pairs)', 'mixerOutput.program(channel, program, bankMsb, bankLsb)']
 for f in ADDITIVE:
-    r = [x for x in removed(f) if not (f.endswith('AudioEngineManager.kt') and x in AEM_ALLOWED)]
+    r = [x for x in removed(f) if not (f.endswith('AudioEngineManager.kt') and x in AEM_ALLOWED) and not (f.endswith('MidiInputManager.kt') and x in MIM_ALLOWED)]
     assert not r, f + ': only additions allowed, removed ' + (r[0][:100] if r else '')
 VM_ALLOWED = {'fun onStartStop() = arrangerBrain.startStop()',
               # V1C: the on-screen keyboard sink calls the VirtualKeyRouter (lower area = USB ACMP/LEFT policy) instead of the RIGHT path directly
@@ -82,4 +86,13 @@ assert 'songRoutes_' not in apply, 'the keyboard/Style font table never includes
 assert 'arrangerBrain.setTempo' not in vm[vm.index('fun songNudgeTempo'):vm.index('fun songSetTranspose') + 300] and 'setKeyboardTranspose' not in vm[vm.index('fun songNudgeTempo'):vm.index('fun songSetTranspose') + 300], 'Song tempo / transpose independent of Style tempo and Master Transpose'
 assert 'if (transpose == 0 || ch in (timeline?.drumChannels ?: setOf(9))) return note' in pl, 'drum channels never transposed'
 assert 'val p = q.removeFirst()' in pl and 'sentFor[k].clear()' in pl, 'NOTE OFF pairs with the SENT pitch; panic clears the ledger'
+# E343 AUTO VOICE / BALANCE: MIDI OUT only, default ORIGINAL, bundled lists identical to docs, never the internal engine / Style / notes
+eo = ''.join((ROOT / J / 'yamahaarranger/e343out' / n).read_text() for n in ['E343OutAdapter.kt', 'E343VoiceMapper.kt', 'E343StylePlan.kt', 'E343Catalog.kt'])
+assert '@Volatile var mode: E343OutMode = E343OutMode.ORIGINAL' in eo, 'E343 OUT default mode ORIGINAL'
+assert 'if (channel !in 8..15) return raw' in eo and 'if (channel !in 8..15) return pairs' in eo, 'E343 OUT: Style channels 8..15 only'
+for bad in ['audioEngine', 'nativeS', 'noteOn(', 'setChannelProgram', 'SysEx', '0xF0.toByte']:
+    assert bad not in eo, 'E343 OUT must not touch the engine / notes / SysEx: ' + bad
+for n in ['E343_VOICES.tsv', 'E343_DRUMKITS.tsv']:
+    assert (ROOT / 'app/src/main/assets/e343' / n).read_bytes() == (ROOT / 'docs/yamaha' / n).read_bytes(), n + ' asset differs from docs/yamaha'
+assert 'val out = e343Out.voice(channel, program, bankMsb, bankLsb)' in mim and 'mixerOutput.update(channel, e343Out.controllers(channel, pairs))' in mim, 'E343 OUT wiring'
 print('MIDI SONG GUARD PASS changed=' + ','.join(sorted(changed)))
