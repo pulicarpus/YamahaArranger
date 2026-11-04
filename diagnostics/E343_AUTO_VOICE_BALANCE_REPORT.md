@@ -116,8 +116,25 @@ Catatan: Love Song bukan fixture repo (file milik Bos), jadi tes Love Song dijal
 5. Mengganti mode saat main menghasilkan satu lompatan CC7 (disengaja; pergantian section tidak menghasilkan lompatan baru).
 6. Pemilihan mode ada di panel **E343 AUTO** (Style Voice Editor). Bar MIDI OUT utama tidak diubah.
 
-## 8. Hasil regresi
-(diisi dari log; lihat chat)
+## 8. Hasil regresi (commit `ccf6a6f`)
+
+Commit pertama `848e1bb` gagal dikompilasi di CI karena tiga hal, semuanya diperbaiki di `ccf6a6f`:
+- `docs/yamaha/*.tsv` di dalam KDoc `ContentResolverProvider.kt` membuka komentar bersarang `/*` di Kotlin;
+- `asStateFlow` tidak di-import di `MainViewModel`;
+- daftar kompilasi JVM `tools/test_voice_release.py` dan `tools/test_sff1_pipeline.py` tidak memuat `e343out`.
+
+| Suite | Hasil |
+|---|---|
+| Love Song (lokal): E343AutoMapRtTest + RecorderParityRtTest + StyleBalanceAuditRtTest | OK (11 tes) |
+| HardRock2: E343AutoMap + E343MidiOutAudit + MidiOutOctave | OK (19) |
+| EnglishWaltz2: E343DrumNoteOff (SHORT_GATE) + E343AutoMap | OK (22) |
+| ROSITA: RecorderParity + TransposeAcmpLeft + E343AutoMap | OK (28) |
+| Recorder V1B / V1C (RecorderRtTest, FullArrangerRecorderRtTest) | OK (3) |
+| rtdiag default + MidiMixerOutputTest (router) | OK (52) |
+| MIDI IN split + RIGHT USB velocity | OK (17) |
+| CPV JVM (termasuk SongPlayer, Style Voice Editor, E343Catalog/Compat) | OK (385) |
+| Suite JVM workflow Full (lokal): R22 live, R23 ROSITA byte replay, RIGHT diag, latency A/B, metronome | PASS |
+| CI Quick `41755914275` | **SUCCESS** (APK, tes, UI) |
 
 ## 9. Langkah tes Redmi Pad + PSR-E343
 1. **Siapkan:** muat Love Song, MIDI OUT ON. Kembalikan **voice EXTERNAL manual** dan **slider Mixer** ke kondisi awal (RESET ALL di Style Voice Editor; slider 127). Kalau tidak, pengaturan manual yang lama tetap menang.
