@@ -18,7 +18,9 @@ ALLOWED = set(ADDITIVE) | {J + 'ui/MainViewModel.kt', J + 'ui/SxMainScreen.kt', 
            J + 'ui/E343OutPanel.kt', J + 'ui/StyleVoiceEditorScreen.kt', J + 'ui/StyleVoiceEditorOverlay.kt', 'tests/rtdiag/E343AutoMapRtTest.kt',
            # DEVICE ROUTING V1: SETTINGS -> MIDI & AUDIO panel and its host line, tests, mocks/stubs extended for device ids and the Oboe error callback
            J + 'ui/DeviceRoutingPanel.kt', J + 'ui/MainActivity.kt', 'tests/rtdiag/DeviceRoutingRtTest.kt', 'tests/device_routing_native_test.cpp',
-           'tests/mocks/oboe/Oboe.h', 'tests/sff5_jvm_stubs/MidiPlatform.kt'}
+           'tests/mocks/oboe/Oboe.h', 'tests/sff5_jvm_stubs/MidiPlatform.kt',
+           # P1 experiment (diagnostics/PSR_E343_FILL_P1_EXPERIMENT.md): the hash-pinned 11-line block below and its regression test
+           J + 'yamahaarranger/arranger/StyleSequencer.kt', 'tests/rtdiag/FillNoteReleaseP1RtTest.kt'}
 PREFIX = (J + 'yamahaarranger/song/', J + 'yamahaarranger/e343out/', J + 'yamahaarranger/routing/', 'app/src/main/assets/e343/', 'tests/cpv/', 'tests/fixtures/midi/', 'tools/test_', 'tools/ui_preview/', 'diagnostics/', '.github/workflows/', 'docs/')
 extra = {p for p in changed if p not in ALLOWED and not p.startswith(PREFIX)}
 assert not extra, 'Unapproved file changed: ' + ', '.join(sorted(extra))
@@ -26,7 +28,19 @@ FROZEN = [J + 'yamahaarranger/arranger', J + 'arranger', J + 'style', J + 'yamah
           J + 'midi/MidiMixerOutput.kt', C + 'style_parser.cpp', C + 'style_parser.h', C + 'smf_reader.cpp', C + 'smf_reader.h',
           J + 'ui/RotaryDataKnob.kt', J + 'ui/RotaryKnobMath.kt', J + 'ui/E343ExperimentPanel.kt', J + 'ui/RightVoiceDiagOverlay.kt',
           'tests/fixtures/englishwaltz2', 'tests/fixtures/r23', 'tests/fixtures/hardrock2', '.github/workflows/e343-quick-apk.yml']
-assert not git('diff', BASE, '--', *FROZEN).strip(), 'Style engine / CASM / style parser / router / E343 / DATA CONTROL changed'
+# P1 (experiment/e343-fill-note-release-p1): the ONLY change allowed inside FROZEN is the reviewed P1 block in StyleSequencer.kt
+# (release a naturally ended section's own notes at the boundary). Pinned twice: the exact added lines (no line removed) and the whole file.
+P1_FILE = J + 'yamahaarranger/arranger/StyleSequencer.kt'
+P1_FILE_SHA256 = '240c4145bfaf315f2b0f5875cd47f7d8cea9d0d640dd5163d0eb2be8358614a2'
+P1_BLOCK_SHA256 = '420be0459a22253116976a22dc6f040ad2e0b5bf09575aff043fdd8fb91d5f10'
+assert not git('diff', BASE, '--', *FROZEN, ':(exclude)' + P1_FILE).strip(), 'Style engine / CASM / style parser / router / E343 / DATA CONTROL changed'
+_p1 = [l for l in git('diff', '-U0', BASE, '--', P1_FILE).splitlines() if l[:1] in '+-' and not l.startswith(('+++', '---'))]
+if _p1:
+    import hashlib
+    assert not [l for l in _p1 if l.startswith('-')], 'P1: StyleSequencer.kt may only gain the P1 block (a line was removed)'
+    _added = '\n'.join(l[1:].strip() for l in _p1)
+    assert len(_p1) == 11 and hashlib.sha256(_added.encode()).hexdigest() == P1_BLOCK_SHA256, 'P1: StyleSequencer.kt delta is not the reviewed P1 block'
+    assert hashlib.sha256((ROOT / P1_FILE).read_bytes()).hexdigest() == P1_FILE_SHA256, 'P1: StyleSequencer.kt differs from the reviewed P1 file'
 def removed(f): return [l[1:].strip() for l in git('diff', '-U0', BASE, '--', f).splitlines() if l.startswith('-') and not l.startswith('---')]
 AEM_ALLOWED = ['fun allNotesOff() { DebugLog.traceAudio("ALL_NOTES_OFF"); bridge.nativeAllNotesOff() }']   # V1C: + noteTap?.allStopped()
 # E343 AUTO: the two router calls now go through e343Out (ORIGINAL returns its input unchanged)
