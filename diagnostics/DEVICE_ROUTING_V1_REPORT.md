@@ -102,8 +102,27 @@ Untuk perangkat lain, router menerima ORIGINAL (permintaan Style tanpa perubahan
 - latensi Bluetooth;
 - nama perangkat yang dilaporkan PSR-E343 lewat USB.
 
-## 6. Hasil
-(diisi dari log; lihat chat)
+## 6. Hasil (commit `b81cb76`)
+
+Commit `4ad2bce`: APK berhasil dikompilasi, tetapi CPV JVM gagal pada `InternalGainTest.nativeStageSitsAfterTheSynthAndNeverNearMidiOrVelocity`. Tes ini mensyaratkan gain internal tepat di antara render synth dan clamp, sedangkan baris mute disisipkan di antaranya. Diperbaiki di `b81cb76`: mute dipindah ke **setelah** clamp, dan hasil audionya identik.
+
+| Suite (lokal, berurutan) | Hasil |
+|---|---|
+| CPV JVM | OK (385) |
+| Native Device Routing (mock Oboe/BASS) | PASS: default tanpa device, device 5 diteruskan, flag disconnect, mute hening, unmute voice tetap |
+| DeviceRoutingRtTest | OK (10) |
+| Love Song: E343 AUTO + paritas Recorder + routing | OK (20) |
+| HardRock2: audit MIDI OUT + octave + E343 AUTO | OK (19) |
+| EnglishWaltz2: SHORT_GATE + E343 AUTO | OK (22) |
+| ROSITA: paritas Recorder + Transpose/ACMP/LEFT + E343 AUTO + routing | OK (28) |
+| Recorder V1B/V1C | OK (3) |
+| rtdiag default + router MIDI OUT | OK (52) |
+| MIDI IN split + RIGHT USB velocity + Mixer keys | OK (25) |
+| Song native, R22 LIVE/REG, R23 ROSITA byte replay, RIGHT diag, latency A/B, metronom, CPV native | PASS |
+| Guard isolasi | PASS |
+| CI Quick `42010987323` | **SUCCESS** (APK, tes, UI) |
+
+Catatan: di putaran pertama, satu tes SHORT_GATE EnglishWaltz2 gagal di `n >= 20`, yaitu jumlah NOTE ON dalam 1500 ms. Penyebabnya host dibebani tes lain secara paralel; jalur itu tidak memakai routing. Saat dijalankan sendiri dan dalam putaran berurutan, tes itu lulus (13/13, 22/22).
 
 ## 7. Risiko regresi
 
