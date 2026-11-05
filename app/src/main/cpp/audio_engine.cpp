@@ -240,11 +240,11 @@ oboe::DataCallbackResult AudioEngine::onAudioReady(
 // PCM_PATH_OBSERVER_END
         soundFont_.render(out, numFrames);
         internalGain_.process(out, sampleCount);
-        if (internalMuted_.load(std::memory_order_relaxed)) std::memset(out, 0, sizeof(float) * sampleCount); // OUTPUT MODE MIDI OUT (metronome still mixed below)
 
         for (int i = 0; i < sampleCount; ++i) {
             out[i] = std::max(-1.0f, std::min(1.0f, out[i]));
         }
+        if (internalMuted_.load(std::memory_order_relaxed)) std::memset(out, 0, sizeof(float) * sampleCount); // OUTPUT MODE MIDI OUT (metronome still mixed below)
         // METRONOME: after BASSMIDI and the clamp; one atomic load when off. Never reaches BASSMIDI, MIDI OUT or any note state.
         if (metronome_.active() && metronome_.render(out, numFrames, outputSampleRate_, latency_probe::now())) {
             for (int i = 0; i < sampleCount; ++i) out[i] = std::max(-1.0f, std::min(1.0f, out[i]));
