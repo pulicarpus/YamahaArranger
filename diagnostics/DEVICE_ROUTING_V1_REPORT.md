@@ -121,6 +121,9 @@ Commit `4ad2bce`: APK berhasil dikompilasi, tetapi CPV JVM gagal pada `InternalG
 | Song native, R22 LIVE/REG, R23 ROSITA byte replay, RIGHT diag, latency A/B, metronom, CPV native | PASS |
 | Guard isolasi | PASS |
 | CI Quick `42010987323` | **SUCCESS** (APK, tes, UI) |
+| CI Style Voice Inspector & Editor APK `42010987581` | **SUCCESS** (host + android) |
+
+APK: Quick https://github.com/pulicarpus/YamahaArranger/actions/runs/42010987323/artifacts/13406763664 · Full https://github.com/pulicarpus/YamahaArranger/actions/runs/42010987581/artifacts/13411691472
 
 Catatan: di putaran pertama, satu tes SHORT_GATE EnglishWaltz2 gagal di `n >= 20`, yaitu jumlah NOTE ON dalam 1500 ms. Penyebabnya host dibebani tes lain secara paralel; jalur itu tidak memakai routing. Saat dijalankan sendiri dan dalam putaran berurutan, tes itu lulus (13/13, 22/22).
 
