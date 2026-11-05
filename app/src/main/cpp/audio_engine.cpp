@@ -55,6 +55,12 @@ bool AudioEngine::start() {
         ->setDataCallback(this)
         ->setUsage(oboe::Usage::Media)
         ->setContentType(oboe::ContentType::Music);
+    // DEVICE ROUTING V1: an explicit output device (AAudio honours it; 0 = System Default) and a disconnect flag for the app.
+    const int wantDevice = preferredDeviceId_.load();
+    if (wantDevice > 0) builder.setDeviceId(wantDevice);
+    outputError_.flag = &disconnected_;
+    builder.setErrorCallback(&outputError_);
+    disconnected_.store(false);
 
     oboe::Result result = builder.openStream(stream_);
     streamInfo_ = {};
@@ -116,6 +122,7 @@ bool AudioEngine::start() {
     streamInfo_.bufferSize = stream_->getBufferSizeInFrames();
     streamInfo_.framesPerCallback = stream_->getFramesPerDataCallback();
     streamInfo_.deviceId = stream_->getDeviceId();
+    LOGI("Output device: wanted=%d actual=%d", wantDevice, streamInfo_.deviceId);
     latency_probe::probe.reset();
 
     result = stream_->requestStart();
@@ -233,6 +240,7 @@ oboe::DataCallbackResult AudioEngine::onAudioReady(
 // PCM_PATH_OBSERVER_END
         soundFont_.render(out, numFrames);
         internalGain_.process(out, sampleCount);
+        if (internalMuted_.load(std::memory_order_relaxed)) std::memset(out, 0, sizeof(float) * sampleCount); // OUTPUT MODE MIDI OUT (metronome still mixed below)
 
         for (int i = 0; i < sampleCount; ++i) {
             out[i] = std::max(-1.0f, std::min(1.0f, out[i]));
@@ -262,6 +270,7 @@ oboe::DataCallbackResult AudioEngine::onAudioReady(
             v.renderAdditive(out, numFrames, outputSampleRate_);
         }
     }
+    if (internalMuted_.load(std::memory_order_relaxed)) std::memset(out, 0, sizeof(float) * sampleCount); // OUTPUT MODE MIDI OUT
 
     for (int i = 0; i < sampleCount; ++i) {
         out[i] = std::max(-1.0f, std::min(1.0f, out[i]));

@@ -26,6 +26,9 @@ class ContentResolverProvider @Inject constructor(
     fun e343AssetText(name: String): String = context.assets.open("e343/$name").use { String(it.readBytes(), Charsets.UTF_8) }
     /** MIDI OUT E343 mode (ORIGINAL / AUTO / AUTO_BALANCE), one word in app-private storage. */
     fun e343OutModeFile(): java.nio.file.Path = java.io.File(context.filesDir, "e343out_mode.txt").toPath()
+    /** DEVICE ROUTING V1: application context for MidiManager / AudioManager, and the saved MIDI & AUDIO choices. */
+    fun appContext(): Context = context.applicationContext
+    fun deviceRoutingFile(): java.nio.file.Path = java.io.File(context.filesDir, "device_routing.txt").toPath()
     /** CPV per-style voice overrides live in app-private storage. */
     fun styleOverrideDirectory(): java.nio.file.Path = java.io.File(context.filesDir, "style_overrides").toPath()
     /** Last Style / Voice browser positions (one small JSON file in app-private storage). */

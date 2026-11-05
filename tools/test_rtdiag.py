@@ -62,6 +62,7 @@ def main():
            # PSR-E343 AUTO VOICE / BALANCE (MIDI OUT only) + the read-only Style request extractor it plans from
            A / 'yamahaarranger/style/StyleVoiceRequests.kt']
     src += sorted((A / 'yamahaarranger/e343out').glob('*.kt'))
+    src += [A / 'yamahaarranger/routing/DeviceRouting.kt']   # DEVICE ROUTING V1 pure rules (the Android controller is not host code)
     src += sorted((A / 'chord').glob('*.kt'))
     src += [A / 'yamahaarranger/audio/MetronomeModel.kt', A / 'yamahaarranger/audio/MetronomeController.kt']
     arr = A / 'yamahaarranger/arranger'

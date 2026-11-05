@@ -26,6 +26,11 @@ class NativeAudioBridge @Inject constructor() {
     external fun nativeInitLogger()
     external fun nativeStart(): Boolean
     external fun nativeStop()
+    /** DEVICE ROUTING V1: Oboe output device (0 = System Default, applied at the next nativeStart), disconnect flag, internal mute (OUTPUT MODE MIDI OUT). */
+    external fun nativeSetPreferredOutputDevice(id: Int)
+    external fun nativeActualOutputDevice(): Int
+    external fun nativeOutputDisconnected(): Boolean
+    external fun nativeSetInternalMuted(muted: Boolean)
     external fun nativeNoteOn(midiNote: Int, rootNote: Int, velocity: Float, sampleBuffer: ByteBuffer, sampleFrames: Int, sampleRateHz: Int)
     external fun nativeNoteOff(midiNote: Int)
     external fun nativeAllNotesOff()

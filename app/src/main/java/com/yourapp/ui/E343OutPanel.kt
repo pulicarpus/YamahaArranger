@@ -63,6 +63,7 @@ fun E343OutDialog(vm: MainViewModel, midiOut: Boolean, onClose: () -> Unit) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 for (m in E343OutMode.entries) EoButton(m.label, selected = ui.mode == m) { vm.e343OutSetMode(m) }
             }
+            if (ui.deviceNote.isNotBlank()) Text(ui.deviceNote, color = if (ui.deviceNote.startsWith("Applied")) EoGreen else EoOrange, fontSize = 12.sp)
             if (ui.message.isNotBlank()) Text(ui.message, color = EoBlue, fontSize = 12.sp)
             Text("Style: ${ui.styleName.ifBlank { "none" }}", color = EoText, fontSize = 12.sp)
             for (p in ui.parts) PartCard(vm, ui.mode, p)

@@ -1,17 +1,21 @@
 #pragma once
 #include <memory>
 namespace oboe {
-enum class Result { OK=0,ErrorInternal=-1 };
+enum class Result { OK=0,ErrorInternal=-1,ErrorDisconnected=-899 };
 enum class Direction { Output };enum class PerformanceMode { None,LowLatency };
 enum class SharingMode { Shared,Exclusive };enum class AudioFormat { Float };
 enum class ChannelCount { Stereo };enum class Usage { Media };enum class ContentType { Music };
 enum class DataCallbackResult { Continue };enum class AudioApi { AAudio };
 inline bool failOpen=false,failStart=false;
+inline int lastRequestedDeviceId=0; // DEVICE ROUTING V1: what the engine asked the builder for
+class AudioStreamErrorCallback;
+inline AudioStreamErrorCallback* lastErrorCallback=nullptr;
 inline const char* convertToText(Result r) {return r==Result::OK?"OK":"ErrorInternal";}
 template<typename T> struct ResultWithValue {Result r;T v;explicit operator bool()const{return r==Result::OK;}T value()const{return v;}Result error()const{return r;}};
 class AudioStream;
+class AudioStreamErrorCallback {public: virtual ~AudioStreamErrorCallback()=default;virtual void onErrorAfterClose(AudioStream*,Result){}};
 class AudioStreamDataCallback {public: virtual ~AudioStreamDataCallback()=default;virtual DataCallbackResult onAudioReady(AudioStream*,void*,int32_t)=0;};
-struct BufferResult {Result r;bool operator==(Result q)const{return r==q;}Result error()const{return r;}};
+struct BufferResult {Result r;bool operator==(Result q)const{return r==q;}explicit operator bool()const{return r==Result::OK;}Result error()const{return r;}};
 class AudioStream {
 public:
  int getSampleRate()const{return 48000;}int getChannelCount()const{return 2;}
@@ -29,6 +33,7 @@ public:
  AudioStreamBuilder* setChannelCount(ChannelCount){return this;}AudioStreamBuilder* setSampleRate(int){return this;}
  AudioStreamBuilder* setDataCallback(AudioStreamDataCallback*){return this;}AudioStreamBuilder* setUsage(Usage){return this;}
  AudioStreamBuilder* setContentType(ContentType){return this;}
+ AudioStreamBuilder* setDeviceId(int id){lastRequestedDeviceId=id;return this;}AudioStreamBuilder* setErrorCallback(AudioStreamErrorCallback* c){lastErrorCallback=c;return this;}
  Result openStream(std::shared_ptr<AudioStream>& s){if(failOpen)return Result::ErrorInternal;s=std::make_shared<AudioStream>();return Result::OK;}
 };
 }

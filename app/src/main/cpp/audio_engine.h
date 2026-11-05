@@ -99,6 +99,16 @@ public:
     metronome::Engine& metronomeEngine(){return metronome_;}
     std::string metronomeReport() const {return metronome_.report();}
     void latencySetEnabled(bool e){latency_probe::probe.enabled.store(e?1:0);}
+    // DEVICE ROUTING V1: output device of the Oboe stream (0 = System Default). Takes effect at the next start(); the app restarts the stream.
+    void setPreferredDeviceId(int id){preferredDeviceId_.store(id>0?id:0);}
+    int preferredDeviceId() const {return preferredDeviceId_.load();}
+    int actualDeviceId() const {return stream_ ? streamInfo_.deviceId : 0;}
+    // Set by the Oboe error callback (device unplugged, route lost); cleared by the next successful open.
+    bool outputDisconnected() const {return disconnected_.load();}
+    int lastStreamError() const {return outputError_.lastError.load();}
+    // OUTPUT MODE "MIDI OUT": BASSMIDI keeps rendering (every note state stays exact) but its signal is replaced by silence.
+    void setInternalMuted(bool m){internalMuted_.store(m);}
+    bool internalMuted() const {return internalMuted_.load();}
 private:
     internal_gain::Stage internalGain_; // after BASSMIDI, before the clamp; 0 dB = legacy path (measure only)
     metronome::Engine metronome_; // click generator mixed after BASSMIDI; see metronome_engine.h
@@ -118,6 +128,16 @@ private:
 // PCM_PATH_OBSERVER_END
 
     float dcLastInL_=0,dcLastOutL_=0,dcLastInR_=0,dcLastOutR_=0;
+    // DEVICE ROUTING V1
+    struct OutputErrorCallback : public oboe::AudioStreamErrorCallback {
+        std::atomic<bool>* flag=nullptr;
+        std::atomic<int> lastError{0};
+        void onErrorAfterClose(oboe::AudioStream*, oboe::Result r) override { lastError.store(static_cast<int>(r)); if (flag) flag->store(true); }
+    };
+    std::atomic<int> preferredDeviceId_{0};
+    std::atomic<bool> disconnected_{false};
+    std::atomic<bool> internalMuted_{false};
+    OutputErrorCallback outputError_;
 };
 
 

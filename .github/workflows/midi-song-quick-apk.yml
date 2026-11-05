@@ -188,6 +188,13 @@ jobs:
           python3 tools/test_rtdiag.py --out evidence/e343auto-rosita --rosita --only com.yourapp.rtdiag.E343AutoMapRtTest 2>&1 | tee evidence/e343auto-rosita.log
           grep -h "E343AUTO" evidence/e343auto-*/rtdiag.log || true
           for f in evidence/e343auto-*/rtdiag.log; do grep -q "^OK (" "$f" || { echo "FAILED: $f"; exit 1; }; done
+      - name: DEVICE ROUTING V1 - MIDI IN / MIDI OUT routing on the production MidiInputManager + rules, native Oboe device id / disconnect flag / internal mute (host, mocks)
+        run: |
+          set -euo pipefail
+          python3 tools/test_device_routing_native.py --out evidence/device-routing-native 2>&1 | tee evidence/device-routing-native.log
+          python3 tools/test_rtdiag.py --out evidence/device-routing --rosita --only com.yourapp.rtdiag.DeviceRoutingRtTest 2>&1 | tee evidence/device-routing.log
+          grep -h "ROUTING " evidence/device-routing/rtdiag.log || true
+          grep -q "^OK (" evidence/device-routing/rtdiag.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:

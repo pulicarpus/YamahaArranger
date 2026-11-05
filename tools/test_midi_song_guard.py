@@ -15,8 +15,11 @@ ADDITIVE = [J + 'yamahaarranger/audio/AudioEngineManager.kt', J + 'yamahaarrange
 ALLOWED = set(ADDITIVE) | {J + 'ui/MainViewModel.kt', J + 'ui/SxMainScreen.kt', J + 'ui/SongPanel.kt', J + 'ui/SongPage.kt', J + 'ui/SongMixerPanel.kt',
            'tests/song_native_test.cpp', 'tests/song_xg_real_bass_test.cpp', 'tools/midi_fixture_gen.py', 'tests/rtdiag/RecorderRtTest.kt', 'tools/check_recorded_midi.py', 'tests/rtdiag/FullArrangerRecorderRtTest.kt', 'tests/rtdiag/RecorderParityRtTest.kt', 'tests/rtdiag/StyleBalanceAuditRtTest.kt', J + 'yamahaarranger/audio/VirtualKeyRouter.kt',
            # E343 AUTO VOICE / BALANCE (MIDI OUT only): panel + Style Voice Editor button/detail line + tests
-           J + 'ui/E343OutPanel.kt', J + 'ui/StyleVoiceEditorScreen.kt', J + 'ui/StyleVoiceEditorOverlay.kt', 'tests/rtdiag/E343AutoMapRtTest.kt'}
-PREFIX = (J + 'yamahaarranger/song/', J + 'yamahaarranger/e343out/', 'app/src/main/assets/e343/', 'tests/cpv/', 'tests/fixtures/midi/', 'tools/test_', 'tools/ui_preview/', 'diagnostics/', '.github/workflows/', 'docs/')
+           J + 'ui/E343OutPanel.kt', J + 'ui/StyleVoiceEditorScreen.kt', J + 'ui/StyleVoiceEditorOverlay.kt', 'tests/rtdiag/E343AutoMapRtTest.kt',
+           # DEVICE ROUTING V1: SETTINGS -> MIDI & AUDIO panel and its host line, tests, mocks/stubs extended for device ids and the Oboe error callback
+           J + 'ui/DeviceRoutingPanel.kt', J + 'ui/MainActivity.kt', 'tests/rtdiag/DeviceRoutingRtTest.kt', 'tests/device_routing_native_test.cpp',
+           'tests/mocks/oboe/Oboe.h', 'tests/sff5_jvm_stubs/MidiPlatform.kt'}
+PREFIX = (J + 'yamahaarranger/song/', J + 'yamahaarranger/e343out/', J + 'yamahaarranger/routing/', 'app/src/main/assets/e343/', 'tests/cpv/', 'tests/fixtures/midi/', 'tools/test_', 'tools/ui_preview/', 'diagnostics/', '.github/workflows/', 'docs/')
 extra = {p for p in changed if p not in ALLOWED and not p.startswith(PREFIX)}
 assert not extra, 'Unapproved file changed: ' + ', '.join(sorted(extra))
 FROZEN = [J + 'yamahaarranger/arranger', J + 'arranger', J + 'style', J + 'yamahaarranger/style', J + 'chord', J + 'yamahaarranger/registration',
@@ -36,8 +39,22 @@ VM_ALLOWED = {'fun onStartStop() = arrangerBrain.startStop()',
               'if (picked != null) applySplit(picked) else base.noteOn(pitch, velocity127)',
               'override fun noteOff(pitch: Int) { if (!splitByKey.onRelease(com.yourapp.yamahaarranger.audio.KeySource.TOUCH, pitch)) base.noteOff(pitch) }',
               'override fun releaseAll() = base.releaseAll()'}
-assert set(removed(J + 'ui/MainViewModel.kt')) <= VM_ALLOWED, removed(J + 'ui/MainViewModel.kt')
-assert sorted(removed(J + 'ui/SxMainScreen.kt')) in ([], sorted(['onInspector: () -> Unit', 'onInspector = onOpenInspector'])), removed(J + 'ui/SxMainScreen.kt')
+# DEVICE ROUTING V1: exactly the old "first device for IN and OUT" auto-connect body may go (AUTO keeps that rule in RoutingResolver)
+VM_ROUTING_BODY = ['viewModelScope.launch {', 'repeat(5) { attempt ->', 'val ok = midiInputManager.connectFirstAvailableDevice()', 'if (ok) {',
+                   '_midiStatus.value = midiInputManager.connectedDeviceName ?: "MIDI connected"', 'DebugLog.add("✅ MIDI: ${_midiStatus.value}")',
+                   'return@launch', '}', 'delay(1500L)', '}', '_midiStatus.value = "No MIDI device"', '}']
+vm_removed = list(removed(J + 'ui/MainViewModel.kt'))
+if 'val ok = midiInputManager.connectFirstAvailableDevice()' in vm_removed:
+    for x in VM_ROUTING_BODY:
+        assert x in vm_removed, 'VM routing body: ' + x
+        vm_removed.remove(x)
+assert set(vm_removed) <= VM_ALLOWED, vm_removed
+SX_BAR = [x for x in removed(J + 'ui/SxMainScreen.kt') if x.startswith('@Composable private fun SxMidiBar(')]
+SX_SETTINGS = 'Spacer(Modifier.width(4.dp)); SxToolButton("SETTINGS", DeviceRoutingHost.visible, height, compact, DeviceRoutingHost::toggle); Spacer(Modifier.width(8.dp));'
+if SX_BAR:   # DEVICE ROUTING V1: the bar line may only gain the SETTINGS button
+    sx = (ROOT / J / 'ui/SxMainScreen.kt').read_text()
+    assert SX_BAR[0].replace('Spacer(Modifier.width(8.dp));', SX_SETTINGS, 1) in sx, 'SxMidiBar changed beyond the SETTINGS button'
+assert sorted(x for x in removed(J + 'ui/SxMainScreen.kt') if x not in SX_BAR) in ([], sorted(['onInspector: () -> Unit', 'onInspector = onOpenInspector'])), removed(J + 'ui/SxMainScreen.kt')
 # Song invariants
 song = ''.join((ROOT / J / 'yamahaarranger/song' / n).read_text() for n in ['Smf.kt', 'SongTimeline.kt', 'SongPlayer.kt', 'SongOutputs.kt'])
 assert 'allNotesOff' not in song and 'allNotesOff' not in (ROOT / J / 'ui/SongPage.kt').read_text(), 'the Song never sends All Notes Off'
@@ -95,4 +112,15 @@ for bad in ['audioEngine', 'nativeS', 'noteOn(', 'setChannelProgram', 'SysEx', '
 for n in ['E343_VOICES.tsv', 'E343_DRUMKITS.tsv']:
     assert (ROOT / 'app/src/main/assets/e343' / n).read_bytes() == (ROOT / 'docs/yamaha' / n).read_bytes(), n + ' asset differs from docs/yamaha'
 assert 'val out = e343Out.voice(channel, program, bankMsb, bankLsb)' in mim and 'mixerOutput.update(channel, e343Out.controllers(channel, pairs))' in mim, 'E343 OUT wiring'
+# DEVICE ROUTING V1: decisions are pure; MIDI OUT never redirected; Oboe error callback only flags (reopen happens off the audio thread)
+rt = (ROOT / J / 'yamahaarranger/routing/DeviceRouting.kt').read_text()
+assert 'import android' not in rt, 'routing rules must stay pure (JVM-tested)'
+assert 'not connected: nothing is sent' in rt, 'a missing saved MIDI OUT device is never replaced'
+eh = (ROOT / C / 'audio_engine.h').read_text()
+cb = eh[eh.index('struct OutputErrorCallback'):eh.index('std::atomic<int> preferredDeviceId_')]
+assert 'start(' not in cb and 'openStream' not in cb, 'the Oboe error callback must not reopen the stream itself'
+ae = (ROOT / C / 'audio_engine.cpp').read_text()
+assert 'if (wantDevice > 0) builder.setDeviceId(wantDevice);' in ae and 'builder.setErrorCallback(&outputError_);' in ae, 'Oboe device selection on the real stream'
+assert 'midiInputManager.e343Out.setMode(mode)' not in vm and 'e343ApplyEffective()' in vm, 'E343 profile only on a confirmed PSR-E343 MIDI OUT device'
+assert 'fun connectRouting(' in mim and 'port.send(byteArrayOf((0xB0 or ch).toByte(), 123, 0), 0, 3)' in mim, 'old MIDI OUT device released before switching'
 print('MIDI SONG GUARD PASS changed=' + ','.join(sorted(changed)))

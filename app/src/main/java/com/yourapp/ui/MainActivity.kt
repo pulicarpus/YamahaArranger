@@ -133,6 +133,7 @@ class MainActivity : ComponentActivity() {
                     )
                 }
                 StyleVoiceEditorOverlay(viewModel)
+                DeviceRoutingOverlay(viewModel) // SETTINGS -> MIDI & AUDIO (DEVICE ROUTING V1)
                 SplitDialogHost(viewModel)
                 if (showInspector.value) {
                     Sf2StyleInspectorDialog(

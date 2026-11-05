@@ -194,6 +194,7 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
                 0x80 -> if (!com.yourapp.yamahaarranger.audio.NoteLogTuning.skip()) DebugLog.traceMidi("RAW NOTE_OFF status=0x" + status.toString(16).uppercase().padStart(2, '0') + " ch=" + channel + " note=" + d1 + " vel=" + d2)
                 0xB0 -> if (d1 == 64 && channel == chordInputChannel) {
                     val enabled = d2 >= 64
+                    sustainIn = enabled
                     onSustainChange?.invoke(enabled)
                     DebugLog.add("🎹 IN ch$channel Sustain " + if (enabled) "ON" else "OFF")
                 }
@@ -208,11 +209,13 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
                         if (d2 > 0) {
                             com.yourapp.yamahaarranger.audio.LatencyProbe.noteOnParsed()
                             liveKeys.noteOn(d1, d2)
+                            heldIn.noteOn(d1, d2) // DEVICE ROUTING V1: what this keyboard still holds, released if it is unplugged
                             onNoteOn?.invoke(d1, d2)
                             if (!com.yourapp.yamahaarranger.audio.NoteLogTuning.skip()) DebugLog.add("🎹 IN ch$channel NoteOn $d1 vel$d2")
                         } else {
                             inputStats.noteOff(channel)
                             liveKeys.noteOff(d1)
+                            heldIn.noteOff(d1)
                             onNoteOff?.invoke(d1)
                             if (!com.yourapp.yamahaarranger.audio.NoteLogTuning.skip()) DebugLog.add("🎹 IN ch$channel NoteOff $d1")
                         }
@@ -222,6 +225,7 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
                     inputStats.noteOff(channel)
                     if (keyChannel) {
                         liveKeys.noteOff(d1)
+                        heldIn.noteOff(d1)
                         onNoteOff?.invoke(d1)
                         if (!com.yourapp.yamahaarranger.audio.NoteLogTuning.skip()) DebugLog.add("🎹 IN ch$channel NoteOff $d1")
                     } else if (channel < 8) liveKeys.ignoredNoteOff(d1)
@@ -296,6 +300,120 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
         for (ch in 0 until 16) try {
             port.send(byteArrayOf((0xB0 or ch).toByte(), 123.toByte(), 0), 0, 3)
         } catch (_: Exception) {}
+    }
+
+    // ---- DEVICE ROUTING V1: MIDI IN and MIDI OUT may be different devices. Same parser (MidiNoteReceiver), same router (mixerOutput). ----
+    private val heldIn = LiveKeyState()
+    @Volatile private var sustainIn = false
+    /** MIDI OUT device when it is not the MIDI IN device (otherwise the shared device is [openedDevice]). */
+    private var openedOutDevice: MidiDevice? = null
+    @Volatile var connectedInId: Int = -1; private set
+    @Volatile var connectedOutId: Int = -1; private set
+    @Volatile var connectedInName: String? = null; private set
+    @Volatile var connectedOutName: String? = null; private set
+    private var routeGeneration = 0
+    /** Called on the main thread when a routed connection finished opening (status refresh). */
+    var onRoutingOpened: (() -> Unit)? = null
+
+    /** Keys and sustain the disconnected keyboard can no longer release: the missing NOTE OFFs go through the same callbacks as the parser. */
+    fun releaseHeldInput() {
+        val notes = heldIn.downNotes()
+        heldIn.clear()
+        for (n in notes) onNoteOff?.invoke(n)
+        if (sustainIn) { sustainIn = false; onSustainChange?.invoke(false) }
+        if (notes.isNotEmpty()) DebugLog.add("🔌 MIDI IN released ${notes.size} held key(s): $notes")
+    }
+
+    /** Old MIDI OUT device: every routed note is released by the router, then sustain up and All Notes Off on 16 channels (Song / RIGHT notes too). */
+    private fun releaseOutputDevice() {
+        mixerOutput.setConnected(false)
+        val port = inputPort ?: return
+        for (ch in 0..15) try {
+            port.send(byteArrayOf((0xB0 or ch).toByte(), 64, 0), 0, 3)
+            port.send(byteArrayOf((0xB0 or ch).toByte(), 123, 0), 0, 3)
+        } catch (_: Exception) { }
+    }
+
+    /** Close both routed devices safely (held keys released, MIDI OUT notes released on the old device first). */
+    fun closeRouting() {
+        routeGeneration++
+        releaseHeldInput()
+        releaseOutputDevice()
+        close()
+        try { openedOutDevice?.close() } catch (e: Exception) { Timber.w(e, "close out device") }
+        openedOutDevice = null
+        connectedInId = -1; connectedOutId = -1; connectedInName = null; connectedOutName = null
+    }
+
+    /** The routed MIDI IN device was removed: release what it held and close its port; MIDI OUT stays if it is another device. */
+    fun inputDeviceRemoved() {
+        if (connectedInId < 0) return
+        releaseHeldInput()
+        val sharedOut = connectedOutId == connectedInId
+        if (sharedOut) { closeRouting(); return }
+        try { outputPort?.close() } catch (e: Exception) { Timber.w(e, "close outputPort") }
+        try { openedDevice?.close() } catch (e: Exception) { Timber.w(e, "close device") }
+        outputPort = null; openedDevice = null; liveKeys.clear(); inputStats.reset()
+        connectedInId = -1; connectedInName = null; connectedDeviceName = null
+    }
+
+    /** The routed MIDI OUT device was removed: the router forgets it (no writes to a dead port); MIDI IN stays if it is another device. */
+    fun outputDeviceRemoved() {
+        if (connectedOutId < 0) return
+        if (connectedOutId == connectedInId) { closeRouting(); return }
+        mixerOutput.setConnected(false)
+        try { inputPort?.close() } catch (e: Exception) { Timber.w(e, "close inputPort") }
+        try { openedOutDevice?.close() } catch (e: Exception) { Timber.w(e, "close out device") }
+        inputPort = null; openedOutDevice = null
+        connectedOutId = -1; connectedOutName = null
+    }
+
+    /**
+     * Open [inInfo] for MIDI IN (its output port 0 -> the existing parser) and [outInfo] for MIDI OUT (its input port 0 -> the existing router).
+     * Either may be null (OFF / not available). The same device is opened once when both are equal. A newer call cancels an older one still opening.
+     */
+    fun connectRouting(inInfo: MidiDeviceInfo?, outInfo: MidiDeviceInfo?) {
+        val mgr = midiManager ?: return
+        closeRouting()
+        val gen = ++routeGeneration
+        if (inInfo == null && outInfo == null) return
+        val handler = Handler(Looper.getMainLooper())
+        fun nameOf(i: MidiDeviceInfo) = i.properties.getString(MidiDeviceInfo.PROPERTY_NAME) ?: "MIDI Device"
+        fun attachOut(device: MidiDevice, info: MidiDeviceInfo) {
+            val port = device.openInputPort(0)
+            if (port == null) { DebugLog.add("⚠ MIDI OUT port failed: ${nameOf(info)}"); return }
+            inputPort = port
+            connectedOutId = info.id; connectedOutName = nameOf(info)
+            mixerOutput.setConnected(true)
+            onOutputReady?.invoke()
+            DebugLog.add("✅ MIDI OUT ready: ${nameOf(info)} (port 0)")
+        }
+        fun openOut(shared: MidiDevice?) {
+            if (outInfo == null) { onRoutingOpened?.invoke(); return }
+            if (shared != null && inInfo != null && inInfo.id == outInfo.id) { attachOut(shared, outInfo); onRoutingOpened?.invoke(); return }
+            mgr.openDevice(outInfo, { device ->
+                if (gen != routeGeneration) { try { device?.close() } catch (_: Exception) { }; return@openDevice }
+                if (device == null) DebugLog.add("❌ MIDI OUT open failed: ${nameOf(outInfo)}")
+                else { openedOutDevice = device; attachOut(device, outInfo) }
+                onRoutingOpened?.invoke()
+            }, handler)
+        }
+        if (inInfo == null) { openOut(null); return }
+        DebugLog.add("🔌 Opening MIDI IN: ${nameOf(inInfo)}")
+        mgr.openDevice(inInfo, { device ->
+            if (gen != routeGeneration) { try { device?.close() } catch (_: Exception) { }; return@openDevice }
+            if (device == null) { DebugLog.add("❌ MIDI IN open failed: ${nameOf(inInfo)}"); openOut(null); return@openDevice }
+            openedDevice = device
+            runningStatus = -1; pendingData1 = -1
+            val port = device.openOutputPort(0)
+            if (port != null) {
+                outputPort = port
+                port.connect(MidiNoteReceiver())
+                connectedInId = inInfo.id; connectedInName = nameOf(inInfo); connectedDeviceName = nameOf(inInfo)
+                DebugLog.add("✅ MIDI IN ready: ${nameOf(inInfo)} (port 0)")
+            } else DebugLog.add("⚠ MIDI IN port failed: ${nameOf(inInfo)}")
+            openOut(device)
+        }, handler)
     }
 
     fun close() {

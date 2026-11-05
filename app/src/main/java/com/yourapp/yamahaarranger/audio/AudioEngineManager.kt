@@ -518,6 +518,49 @@ class AudioEngineManager @Inject constructor(
         private set
     fun setInternalGainDb(db: Float) { internalGainDb = db.coerceIn(0f, 12f); bridge.nativeSetInternalGainDb(internalGainDb) }
     fun internalGainReport(): String = bridge.nativeInternalGainReport()
+
+    // ---- DEVICE ROUTING V1 (where BASSMIDI's stream plays; never the synth, SoundFonts, resolver or balance) ----
+    /** Wanted Oboe output device (Android AudioDeviceInfo id, 0 = System Default) and the device the stream really opened on. */
+    @Volatile var wantedOutputDevice: Int = 0
+        private set
+    @Volatile var lastOutputFallback: Boolean = false
+        private set
+    fun actualOutputDevice(): Int = bridge.nativeActualOutputDevice()
+    fun outputDisconnected(): Boolean = bridge.nativeOutputDisconnected()
+
+    /**
+     * Choose the output device and (if the stream runs) reopen it there: same lock order and stop/start as an SF2 load
+     * (readiness.operations, then the SF2 mutex), so a font load and a device switch never overlap. BASSMIDI keeps every note;
+     * only the Oboe stream is recreated. If the device cannot be opened, the stream falls back to System Default (reported).
+     */
+    fun setOutputDevice(deviceId: Int, force: Boolean = false): Boolean = runBlocking { readiness.operations.withLock { soundFontOperationMutex.withLock {
+        val id = deviceId.coerceAtLeast(0)
+        if (!force && id == wantedOutputDevice && !(started && bridge.nativeOutputDisconnected())) return@withLock started
+        wantedOutputDevice = id
+        bridge.nativeSetPreferredOutputDevice(id)
+        lastOutputFallback = false
+        if (!started) { DebugLog.add("🔈 AUDIO OUTPUT device=$id (applied when the engine starts)"); return@withLock false }
+        val epoch = readiness.outputToken()
+        readiness.paused(epoch)
+        if (started) { bridge.nativeStop(); started = false }
+        bridge.nativeInitLogger()
+        started = bridge.nativeStart()
+        if (!started && id != 0) {
+            DebugLog.add("⚠ AUDIO OUTPUT device=$id failed to open: falling back to System Default")
+            bridge.nativeSetPreferredOutputDevice(0)
+            started = bridge.nativeStart()
+            lastOutputFallback = started
+        }
+        if (started) bridge.nativeSetKeyboardReleaseTime(keyboardReleaseTime)
+        readiness.outputResult(epoch, started)
+        DebugLog.add("🔈 AUDIO OUTPUT wanted=$id actual=${bridge.nativeActualOutputDevice()} started=$started fallback=$lastOutputFallback")
+        started
+    } } }
+
+    /** OUTPUT MODE: true = BASSMIDI renders but its signal is silenced (mode MIDI OUT). Notes and controllers keep running. */
+    @Volatile var internalMuted: Boolean = false
+        private set
+    fun setInternalMuted(muted: Boolean) { internalMuted = muted; bridge.nativeSetInternalMuted(muted); DebugLog.add(if (muted) "🔇 INTERNAL (BASSMIDI) OFF" else "🔊 INTERNAL (BASSMIDI) ON") }
     fun resetInternalGainStats() = bridge.nativeInternalGainReset()
     /** Real output level for the Mixer's master meter: peak of the last audio block, 0..1 (linear). Per-part audio levels do not exist (one mixed BASSMIDI stream). */
     fun masterLevel(): Float = bridge.nativeMasterLevel()

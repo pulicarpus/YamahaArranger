@@ -759,19 +759,11 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    /** Auto-connect at start and the CONNECT button: DEVICE ROUTING V1 opens the saved MIDI IN / MIDI OUT choices (AUTO = the previous rule). */
     fun connectFirstAvailableMidiDevice() {
-        viewModelScope.launch {
-            repeat(5) { attempt ->
-                val ok = midiInputManager.connectFirstAvailableDevice()
-                if (ok) {
-                    _midiStatus.value = midiInputManager.connectedDeviceName ?: "MIDI connected"
-                    DebugLog.add("✅ MIDI: ${_midiStatus.value}")
-                    return@launch
-                }
-                delay(1500L)
-            }
-            _midiStatus.value = "No MIDI device"
-        }
+        routingStarted = true
+        deviceRouting.start()
+        deviceRouting.reconnect()
     }
     fun refreshMidiConnection() { _midiStatus.value = "Connecting…"; connectFirstAvailableMidiDevice() }
     fun toggleMidiOut() {
@@ -784,6 +776,33 @@ class MainViewModel @Inject constructor(
         _midiOutEnabled.value = newVal; midiInputManager.midiOutEnabled = newVal
         if (newVal) for (channel in 0..2) midiInputManager.sendReleaseTime(channel, _releaseControl.value.effectiveValue)
         DebugLog.add(if (newVal) "📤 MIDI OUT: ON" else "📤 MIDI OUT: OFF")
+        if (!routingNotifySuppressed) deviceRouting.onMidiOutToggled(newVal)
+    }
+
+    // ---- DEVICE ROUTING V1: SETTINGS -> MIDI & AUDIO ----
+    @Volatile private var routingNotifySuppressed = false
+    @Volatile private var routingStarted = false
+    val deviceRouting by lazy {
+        com.yourapp.yamahaarranger.routing.DeviceRoutingController(contentResolver.appContext(), midiInputManager, audioEngine,
+            contentResolver.deviceRoutingFile(), viewModelScope)
+    }
+    init {
+        // OUTPUT MODE: MIDI OUT through the existing MIDI OUT switch (same setup as the bar button), internal through the engine's output gate.
+        deviceRouting.onOutputMode = { midiOut, internal ->
+            if (_midiOutEnabled.value != midiOut) { routingNotifySuppressed = true; try { toggleMidiOut() } finally { routingNotifySuppressed = false } }
+            if (audioEngine.internalMuted == internal) audioEngine.setInternalMuted(!internal)
+        }
+        deviceRouting.onE343Device = { ok ->
+            if (ok != e343DeviceOk) { e343DeviceOk = ok; e343ApplyEffective(); DebugLog.add("E343 OUT profile ${if (ok) "ACTIVE (confirmed PSR-E343)" else "inactive (MIDI OUT device not confirmed as PSR-E343)"}"); e343OutRefresh() }
+        }
+        viewModelScope.launch {
+            deviceRouting.ui.collect { u ->
+                if (!routingStarted) return@collect
+                val inText = if (u.inOpen) u.midiIn.endpoint?.label ?: "-" else u.midiIn.text
+                val outText = if (u.settings.midiOut == com.yourapp.yamahaarranger.routing.RoutingSettings.OFF) "OFF" else if (u.outOpen) u.midiOut.endpoint?.label ?: "-" else u.midiOut.text
+                _midiStatus.value = "IN $inText · OUT $outText · ${u.settings.mode.label}"
+            }
+        }
     }
     override fun onCleared() {
         audioEngine.onMixerControllers = null; audioEngine.onMixerMasterVolume = null
@@ -1902,8 +1921,14 @@ class MainViewModel @Inject constructor(
         val live: com.yourapp.yamahaarranger.e343out.E343OutAdapter.PartState?, val balance: com.yourapp.yamahaarranger.e343out.E343BalanceRow?,
         val slider: Int, val savedTrim: Int?)
     data class E343OutUi(val mode: com.yourapp.yamahaarranger.e343out.E343OutMode = com.yourapp.yamahaarranger.e343out.E343OutMode.ORIGINAL,
-        val styleName: String = "", val parts: List<E343OutPartUi> = emptyList(), val catalogOk: Boolean = false, val dirty: Boolean = false, val message: String = "")
+        val styleName: String = "", val parts: List<E343OutPartUi> = emptyList(), val catalogOk: Boolean = false, val dirty: Boolean = false, val message: String = "",
+        /** Whether the profile is applied on the MIDI OUT device now in use (DEVICE ROUTING V1). */
+        val deviceNote: String = "")
     private val _e343OutUi = MutableStateFlow(E343OutUi())
+    /** E343 mode chosen in the panel; it only becomes effective on a MIDI OUT device confirmed as a PSR-E343 (DEVICE ROUTING V1). */
+    @Volatile private var e343UserMode = com.yourapp.yamahaarranger.e343out.E343OutMode.ORIGINAL
+    @Volatile private var e343DeviceOk = false
+    private fun e343ApplyEffective() = midiInputManager.e343Out.setMode(if (e343DeviceOk) e343UserMode else com.yourapp.yamahaarranger.e343out.E343OutMode.ORIGINAL)
     val e343OutUi: StateFlow<E343OutUi> = _e343OutUi
     private val e343OutStore by lazy { com.yourapp.yamahaarranger.e343out.E343OutProfileStore(contentResolver.styleOverrideDirectory()) }
     @Volatile private var e343Catalog: com.yourapp.yamahaarranger.e343out.E343Catalog? = null
@@ -1923,7 +1948,7 @@ class MainViewModel @Inject constructor(
             val saved = try { java.nio.file.Files.readAllLines(contentResolver.e343OutModeFile()).firstOrNull()?.trim() } catch (_: Exception) { null }
             val mode = com.yourapp.yamahaarranger.e343out.E343OutMode.entries.firstOrNull { it.name == saved } ?: com.yourapp.yamahaarranger.e343out.E343OutMode.ORIGINAL
             if (mode != com.yourapp.yamahaarranger.e343out.E343OutMode.ORIGINAL) e343Catalog()
-            midiInputManager.e343Out.setMode(mode)
+            e343UserMode = mode; e343ApplyEffective()
             DebugLog.add("E343 OUT mode=${mode.name} (saved)")
             e343OutRefresh()
         }
@@ -1947,16 +1972,18 @@ class MainViewModel @Inject constructor(
         val live = out.state().associateBy { it.channel }
         val manual = out.manualTrims()
         val channels = (plan.decisions.map { it.channel } + _voiceAssignments.value.map { it.channel }.filter { it in 8..15 }).toSortedSet()
-        _e343OutUi.value = E343OutUi(out.mode, plan.styleName.ifBlank { currentStyleFileName }, channels.map { ch ->
+        _e343OutUi.value = E343OutUi(e343UserMode, plan.styleName.ifBlank { currentStyleFileName }, channels.map { ch ->
             E343OutPartUi(ch, com.yourapp.yamahaarranger.e343out.E343Roles.of(ch), plan.forChannel(ch), live[ch], plan.balance[ch],
                 _voiceAssignments.value.firstOrNull { it.channel == ch }?.styleVolume ?: 127, manual[ch]) },
-            e343Catalog != null, manual != e343SavedTrims, message ?: _e343OutUi.value.message)
+            e343Catalog != null, manual != e343SavedTrims, message ?: _e343OutUi.value.message,
+            if (e343DeviceOk) "Applied on this MIDI OUT device (confirmed PSR-E343)."
+            else "NOT applied now: the MIDI OUT device is not confirmed as a PSR-E343 (SETTINGS → MIDI & AUDIO → MIDI OUTPUT). The Style requests are sent unchanged.")
     }
 
     fun e343OutSetMode(mode: com.yourapp.yamahaarranger.e343out.E343OutMode) {
         viewModelScope.launch(Dispatchers.IO) {
             if (mode != com.yourapp.yamahaarranger.e343out.E343OutMode.ORIGINAL && e343Catalog() == null) { e343OutRefresh("E343 list not available: mode not changed"); return@launch }
-            midiInputManager.e343Out.setMode(mode)
+            e343UserMode = mode; e343ApplyEffective()
             try { java.nio.file.Files.write(contentResolver.e343OutModeFile(), listOf(mode.name)) } catch (e: Exception) { DebugLog.add("E343 OUT mode not saved: ${e.javaClass.simpleName}") }
             DebugLog.add("E343 OUT mode=${mode.name}")
             e343OutRefresh("MIDI OUT mode: ${mode.label}")
