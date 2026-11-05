@@ -761,6 +761,7 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
 
                 val queued = if (pendingSectionQueue.isEmpty()) null else pendingSectionQueue.removeFirst()
                 if (queued != null) {
+                    val previousSection = active.section.name // P1: owner of the notes still held at this natural boundary
                     active = queued
                     active.onStart?.invoke()
                     remainingLoops = queued.loopLimit
@@ -772,6 +773,16 @@ class StyleSequencer(private val audioEngine: AudioEngineManager, private val mi
                     com.yourapp.yamahaarranger.ui.DebugLog.add(
                         "🎼 MASTER CLOCK → " + active.section.name + " at tick=" + masterTimelineTick
                     )
+                    // P1 (diagnostics/PSR_E343_MIDI_OUT_FILL_AUDIT.md F1/F2): a queued section starts after the previous one ended
+                    // naturally. Notes of that section whose NOTE OFF lay at/after its end (dropped by the parser) are still in the
+                    // ledger: release exactly those, at the boundary tick, as the transition path does. Same-section loops are untouched.
+                    if (previousSection != active.section.name) {
+                        awaitMusicalTick(masterTimelineTick, active.ppq, clockTempoRevision())
+                        val outgoing = activeNoteSnapshot().filter { it.sourceSection == previousSection }
+                        outgoing.forEach { releaseActive(it) }
+                        if (outgoing.isNotEmpty()) com.yourapp.yamahaarranger.ui.DebugLog.add(
+                            "🎼 SECTION END: released " + outgoing.size + " notes of " + previousSection + " (no global allNotesOff)")
+                    }
                     continue
                 }
 
