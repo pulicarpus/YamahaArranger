@@ -113,7 +113,9 @@ class FillNoteReleaseP1RtTest {
     /** R3: one Main looped three times: no note is released at a loop boundary unless the same key is struck again at once (re-strike, not a cut). */
     @Test fun r3_sameMainLoops() {
         val st = style()
-        val run = play(st, ArrangerSection.MainC) { r, _, bar -> r.settle(bar * 3 * 2 + bar / 2); C.forEach { r.noteOff(it) } }   // MainC is 2 bars in the fixtures
+        val mainC = st.sections["MainC"]; assumeTrue("no MainC", mainC != null)
+        val loopMs = mainC!!.lengthTicks.toLong() * 60_000L / ((st.defaultTempoBpm.takeIf { it > 0 } ?: 120).toLong() * st.ppq)
+        val run = play(st, ArrangerSection.MainC) { r, _, bar -> r.settle(loopMs * 3 + bar / 2); C.forEach { r.noteOff(it) } }   // three full loops of this Style's MainC
         val loopStarts = run.loops.drop(1)
         var cut = 0; var restrike = 0
         for (n in notes(run)) { if (n.off == Long.MAX_VALUE || n.off > run.stopAt) continue
