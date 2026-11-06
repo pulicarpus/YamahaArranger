@@ -1,0 +1,41 @@
+run	N	matched	p50	p95	p99	max(ms)	bar0	bar1	Fill	MainD	peakEng/2ms
+both0-accNoDrum no drum events (muted)
+both0-all	253	253	-0.01	0.46	2.12	2.15	0.17	-0.18	-0.02	-0.05	15
+both0-bass no drum events (muted)
+both0-chord no drum events (muted)
+both0-drum+bass	253	253	0.14	1.46	2.62	2.72	0.27	0.11	0.16	0.27	7
+both0-drum+chord1	253	253	0.07	2.43	22.64	22.67	0.55	-0.05	0.33	1.89	9
+both0-drum+padphrase	253	253	-0.07	0.58	2.02	2.06	0.04	0.05	-0.03	-0.10	9
+both0-drum	253	253	-0.01	0.84	2.81	2.89	0.31	-0.07	0.07	-0.01	7
+both2000-accNoDrum no drum events (muted)
+both2000-all	253	253	5.95	19.33	25.83	42.17	7.30	5.52	6.63	7.98	1
+both2000-bass no drum events (muted)
+both2000-chord no drum events (muted)
+both2000-drum+bass	253	253	2.06	10.03	12.50	14.45	3.11	1.99	3.30	3.46	1
+both2000-drum+chord1	253	253	3.12	11.98	14.95	17.66	3.85	3.04	4.13	4.63	1
+both2000-drum+padphrase	253	253	2.19	10.72	15.05	19.59	3.45	2.24	3.45	3.89	1
+both2000-drum	253	253	1.97	10.21	14.57	16.83	2.82	1.84	3.79	3.26	1
+both300-accNoDrum no drum events (muted)
+both300-all	253	253	0.69	3.47	15.35	16.29	2.11	0.72	1.01	1.09	5
+both300-bass no drum events (muted)
+both300-chord no drum events (muted)
+both300-drum+bass	253	253	0.29	2.27	6.78	7.71	1.02	0.10	0.72	0.56	5
+both300-drum+chord1	253	253	0.33	2.42	6.97	7.91	1.00	0.33	0.61	0.62	5
+both300-drum+padphrase	253	253	0.29	2.46	8.57	9.51	1.28	0.17	0.68	0.56	5
+both300-drum	253	253	0.30	2.37	5.68	6.65	0.89	0.35	0.64	0.38	5
+int300-accNoDrum no drum events (muted)
+int300-all	253	253	0.43	2.37	3.40	3.70	0.75	0.24	0.76	0.65	7
+int300-bass no drum events (muted)
+int300-chord no drum events (muted)
+int300-drum+bass	253	253	0.18	1.45	2.35	3.99	0.31	0.12	0.36	0.32	7
+int300-drum+chord1	253	253	0.21	1.53	2.49	2.80	0.18	0.14	0.42	0.34	7
+int300-drum+padphrase	253	253	0.17	1.81	2.92	3.44	0.27	0.01	0.53	0.31	7
+int300-drum	253	253	0.24	1.61	3.94	4.56	0.47	0.06	0.54	0.31	7
+sink-accNoDrum no drum events (muted)
+sink-all	253	253	-0.04	1.23	2.89	2.94	0.20	-0.00	0.10	0.06	15
+sink-bass no drum events (muted)
+sink-chord no drum events (muted)
+sink-drum+bass	253	253	0.02	2.09	3.57	3.66	0.27	-0.10	0.08	0.41	7
+sink-drum+chord1	253	253	-0.13	0.74	3.30	3.40	0.32	-0.04	0.08	-0.16	8
+sink-drum+padphrase	253	253	0.13	1.46	2.26	2.30	0.31	0.10	0.16	0.12	9
+sink-drum	253	253	0.70	4.92	60.86	62.04	7.02	0.69	1.18	0.87	7
