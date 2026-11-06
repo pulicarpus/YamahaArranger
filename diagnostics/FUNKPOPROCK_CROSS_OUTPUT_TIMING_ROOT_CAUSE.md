@@ -1,5 +1,8 @@
 # FunkPopRock S542: audit akar masalah timing lintas output (BASSMIDI dan MIDI OUT)
 
+> **Pembaruan 2026-11-06 (data perangkat):** lihat `diagnostics/FUNKPOPROCK_DEVICE_LATENCY_EVIDENCE.md`. H1 terukur besar di perangkat, H2 gugur, dan ditemukan H6: log diagnostik di dalam mutex synth.
+
+
 **Status: ROOT CAUSE NOT YET PROVEN.**
 - Simulasi host menyingkirkan beberapa penyebab: scheduler, CASM, parser, dan transisi Fill.
 - Mekanisme kopling antar-output terbukti di kode, tetapi besarnya efek di perangkat belum terukur.
