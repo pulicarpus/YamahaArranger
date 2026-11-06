@@ -47,6 +47,9 @@ object LatencyProbe {
         fun reset() { count.set(0); sumUs.set(0); maxUs.set(0); for (i in 0 until buckets.length()) buckets.set(i, 0) }
         fun count(): Long = count.get()
         fun maxUs(): Long = maxUs.get()
+        fun meanUs(): Long { val n = count.get(); return if (n > 0) sumUs.get() / n else 0 }
+        /** Samples at or above BOUNDS[index] (e.g. index 7 = 32 ms, 8 = 64 ms). Read-only. */
+        fun atLeast(index: Int): Long { var n = 0L; for (b in (index + 1)..BOUNDS.size) n += buckets.get(b); return n }
         /** Smallest bucket upper bound (µs) covering `fraction` of the samples; 0 when empty. */
         fun percentileUpperUs(fraction: Double): Long {
             val total = count.get()
@@ -248,6 +251,9 @@ object LatencyProbe {
     fun report(): String = buildString {
         appendLine("LATENCY_KOTLIN clock=System.nanoTime(=CLOCK_MONOTONIC) enabled=$enabled dispatch_is_not_audible_time=1")
         all.forEach { appendLine(it.line()) }
+        // P-A EXPERIMENT: late-event counts for the two Style scheduler stats (bucket sums, nothing new is recorded).
+        for (st in listOf(schedulerWakeLateness, schedulerDispatchLateness))
+            appendLine("LATENCY_KOTLIN_LATE stat=${st.name} count=${st.count()} meanUs=${if (st.count() > 0) st.meanUs() else 0} over32ms=${st.atLeast(7)} over64ms=${st.atLeast(8)} maxUs=${st.maxUs()}")
         val elapsedS = if (counterStartNs != 0L) (System.nanoTime() - counterStartNs) / 1e9 else 0.0
         val chords = chordChanges.get(); val notes = retargetNotes.get()
         appendLine("LATENCY_KOTLIN_COUNTERS sinceResetS=${"%.1f".format(java.util.Locale.US, elapsedS)} midiEventsIn=${midiEventsIn.get()} " +

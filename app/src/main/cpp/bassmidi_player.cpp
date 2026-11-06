@@ -3,6 +3,7 @@
 #include "release_envelope_evidence.h"
 #include "voice_resolver.h"
 #include "latency_probe.h"
+#include "pa_diag_mode.h" // P-A experiment
 #include "sf2_fingerprint.h"
 #include "onset_probe.h"
 #ifndef YAMAHA_COMPATIBLE_PERCUSSION
@@ -40,6 +41,7 @@ extern jclass g_debugLogClass;
 extern jmethodID g_debugLogAddMethod;
 
 static void uiLog(const char* fmt, ...) {
+    pa_mode::onLog(); // P-A: counts a log made while a NOTE ON/OFF holds the synth mutex (observer only)
     char buf[1024];
     va_list args;
     va_start(args, fmt);
@@ -1136,6 +1138,13 @@ void BassMidiPlayer::logAudioPath(int channel, int key, int velocity, bool sent,
             else ++presence.sendFailed;
         }
     }
+    // P-A OPTIMIZED: the cheap counters above stay; the drum-zone signature, NOTE ZONE audit and every sampled LOGI
+    // (logcat + JNI DebugLog.add) below are not executed while the synth mutex is held. No event depends on them.
+    if (pa_mode::optimized()) {
+        if (d.summaryDue(now)) d.resetSummary();
+        pa_mode::skipped();
+        return;
+    }
     const auto& state = channels_[channel];
     const bool drum = channel == 8 || channel == 9;
     if (drum) {
@@ -1223,6 +1232,7 @@ void BassMidiPlayer::noteOn(int channel, int key, float velocity, const AudioPat
     const uint64_t probeEnter = latency_probe::probe.on() ? latency_probe::now() : 0; // LATENCY_PROBE
     f12::SynthLock lock(mutex_,f12::NoteOn);
     latency_probe::Hold latencyHold_(channel >= 0 && channel < 4 ? latency_probe::HoldNoteKey : latency_probe::HoldNoteStyle);
+    pa_mode::NoteLockScope paScope_; // P-A: after the lock, released before it
     const uint64_t probeLocked = probeEnter ? latency_probe::now() : 0; // LATENCY_PROBE
     ++pcmSessionNotes_.attempts[std::clamp(channel,0,15)];
     if (!ensureEngine()) {
@@ -1294,6 +1304,7 @@ void BassMidiPlayer::noteOn(int channel, int key, float velocity, const AudioPat
 void BassMidiPlayer::noteOff(int channel, int key, const AudioPathOrigin& origin) {
     f12::SynthLock lock(mutex_,f12::NoteOff);
     latency_probe::Hold latencyHold_(latency_probe::HoldNoteOff);
+    pa_mode::NoteLockScope paScope_; // P-A: after the lock, released before it
     if (!stream_) return;
 
     channel = std::max(0, std::min(15, channel));
@@ -1309,6 +1320,8 @@ void BassMidiPlayer::noteOff(int channel, int key, const AudioPathOrigin& origin
             std::chrono::steady_clock::now().time_since_epoch()).count());
         auto& d = audioDiagnostics_[channel];
         const auto held = d.off(key, sent, now);
+        if (pa_mode::optimized()) pa_mode::skipped(); // P-A OPTIMIZED: no sampled AUDIO OFF line under the mutex
+        else // P-A: LEGACY keeps the original sampled line below unchanged
         if (d.sample(now, (channel == 8 || channel == 9) && audio_path::snare(key)))
             LOGI("AUDIO OFF ch=%d note=%d NOTE_OFF_SENT=%d held_ms=%lld pendingSentOns=%u interpretation=diagnostic_ledger_not_synth_voices",
                  channel, key, sent ? 1 : 0, static_cast<long long>(held), static_cast<unsigned>(d.pending()));

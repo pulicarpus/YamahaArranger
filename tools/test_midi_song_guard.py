@@ -20,7 +20,10 @@ ALLOWED = set(ADDITIVE) | {J + 'ui/MainViewModel.kt', J + 'ui/SxMainScreen.kt', 
            J + 'ui/DeviceRoutingPanel.kt', J + 'ui/MainActivity.kt', 'tests/rtdiag/DeviceRoutingRtTest.kt', 'tests/device_routing_native_test.cpp',
            'tests/mocks/oboe/Oboe.h', 'tests/sff5_jvm_stubs/MidiPlatform.kt',
            # P1 experiment (diagnostics/PSR_E343_FILL_P1_EXPERIMENT.md): the hash-pinned 11-line block below and its regression test
-           J + 'yamahaarranger/arranger/StyleSequencer.kt', 'tests/rtdiag/FillNoteReleaseP1RtTest.kt'}
+           J + 'yamahaarranger/arranger/StyleSequencer.kt', 'tests/rtdiag/FillNoteReleaseP1RtTest.kt',
+           # P-A experiment (diagnostics/BASSMIDI_PA_MUTEX_AB_EXPERIMENT.md): mode header, Inspector toggle, late-count report line, host A/B test.
+           # The native note-path edits stay additive (ADDITIVE rule) and are pinned below.
+           C + 'pa_diag_mode.h', J + 'ui/Sf2StyleInspectorScreen.kt', J + 'yamahaarranger/audio/PcmSessionControls.kt', 'tests/pa_mutex_ab_test.cpp'}
 PREFIX = (J + 'yamahaarranger/song/', J + 'yamahaarranger/e343out/', J + 'yamahaarranger/routing/', 'app/src/main/assets/e343/', 'tests/cpv/', 'tests/fixtures/midi/', 'tools/test_', 'tools/ui_preview/', 'diagnostics/', '.github/workflows/', 'docs/')
 extra = {p for p in changed if p not in ALLOWED and not p.startswith(PREFIX)}
 assert not extra, 'Unapproved file changed: ' + ', '.join(sorted(extra))
@@ -138,3 +141,14 @@ assert 'if (wantDevice > 0) builder.setDeviceId(wantDevice);' in ae and 'builder
 assert 'midiInputManager.e343Out.setMode(mode)' not in vm and 'e343ApplyEffective()' in vm, 'E343 profile only on a confirmed PSR-E343 MIDI OUT device'
 assert 'fun connectRouting(' in mim and 'port.send(byteArrayOf((0xB0 or ch).toByte(), 123, 0), 0, 3)' in mim, 'old MIDI OUT device released before switching'
 print('MIDI SONG GUARD PASS changed=' + ','.join(sorted(changed)))
+# P-A experiment pins: the mode gates diagnostics only (two call sites, after the BASSMIDI event), never the scheduler / router / CASM.
+_pa = (ROOT / C / 'bassmidi_player.cpp').read_text()
+assert _pa.count('pa_mode::optimized()') == 2, 'P-A: OPTIMIZED may gate only logAudioPath and the AUDIO OFF line'
+_lap = _pa[_pa.index('void BassMidiPlayer::logAudioPath'):_pa.index('void BassMidiPlayer::noteOn(')]
+assert _lap.index('pa_mode::optimized()') > _lap.index('++presence.attempts'), 'P-A: counters stay before the OPTIMIZED return'
+_on = _pa[_pa.index('void BassMidiPlayer::noteOn('):_pa.index('void BassMidiPlayer::noteOff(')]
+assert 'pa_mode::optimized' not in _on and 'const bool sent = send(channel, MIDI_EVENT_NOTE,' in _on, 'P-A: NOTE ON dispatch is mode-independent'
+for _d in (J + 'yamahaarranger/arranger', J + 'arranger', J + 'midi'):
+    for _f in (ROOT / _d).rglob('*.kt'):
+        assert 'PaDiagnostic' not in _f.read_text() and 'pa_mode' not in _f.read_text(), 'P-A must not reach ' + str(_f)
+print('P-A GUARD PASS')

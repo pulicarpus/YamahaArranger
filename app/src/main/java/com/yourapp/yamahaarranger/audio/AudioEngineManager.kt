@@ -446,6 +446,11 @@ class AudioEngineManager @Inject constructor(
 
     fun latencyReport(): String = LatencyProbe.report() + bridge.nativeLatencyReport() + bridge.nativeMetronomeReport()
     fun latencyReset() { LatencyProbe.reset(); bridge.nativeLatencyReset() }
+    /** P-A EXPERIMENT (diagnostic A/B): 0 = LEGACY (default), 1 = OPTIMIZED. Gates native per-note diagnostics only; never an event. */
+    fun setPaDiagnosticMode(mode: Int) { bridge.nativeSetPaDiagnosticMode(if (mode == 1) 1 else 0); DebugLog.add("P-A AUDIO DIAGNOSTIC MODE " + paDiagnosticModeLabel()) }
+    fun paDiagnosticMode(): Int = bridge.nativePaDiagnosticMode()
+    fun paReset() = bridge.nativePaReset()
+    fun paDiagnosticModeLabel(): String = if (paDiagnosticMode() == 1) "OPTIMIZED" else "LEGACY"
     fun channelBinding(channel: Int): ChannelBinding? = ChannelBinding.parse(bridge.nativeChannelBinding(channel))
     /** SF2 preset-data fingerprint of a loaded font ("" when unavailable); identifies content, not just the file name. */
     fun soundFontPdta(soundFontId: Long): String = if (soundFontId > 0) bridge.nativeFontPdta(soundFontId) else ""

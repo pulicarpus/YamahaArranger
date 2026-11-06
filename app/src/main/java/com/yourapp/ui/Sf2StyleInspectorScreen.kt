@@ -137,8 +137,17 @@ fun Sf2StyleInspectorDialog(
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(enabled = !exportBusy, onClick = viewModel::armChordDiagnostic) { Text("CAPTURE CHORD (60s)") }
-                    OutlinedButton(enabled = !exportBusy, onClick = viewModel::latencyReset) { Text("RESET LATENCY") }
+                    OutlinedButton(enabled = !exportBusy, onClick = viewModel::latencyResetAll) { Text("RESET LATENCY") }
                     OutlinedButton(enabled = !exportBusy, onClick = viewModel::stopChordDiagnostic) { Text("END CAPTURE") }
+                }
+                // P-A EXPERIMENT (diagnostic A/B): switch only while the Style is stopped; the active mode is printed in SAVE REPORT (PA_MODE line).
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val ctx = LocalContext.current
+                    var paLabel by remember { mutableStateOf(viewModel.paDiagnosticModeLabel()) }
+                    OutlinedButton(enabled = !exportBusy && !state.isPlaying, onClick = {
+                        val ok = viewModel.togglePaDiagnosticMode(); paLabel = viewModel.paDiagnosticModeLabel()
+                        Toast.makeText(ctx, if (ok) "P-A Audio Diagnostic Mode: $paLabel" else "STOP the Style first", Toast.LENGTH_SHORT).show()
+                    }) { Text("P-A AUDIO DIAG: $paLabel") }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(enabled = !state.isPlaying, onClick = { r22Enabled=!r22Enabled;viewModel.setR22ShadowEnabled(r22Enabled) }) { Text("R2-2 SHADOW ${if(r22Enabled) "ON" else "OFF"}") }

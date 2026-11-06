@@ -2189,6 +2189,15 @@ class MainViewModel @Inject constructor(
     // LATENCY_PROBE: statistics only; both calls are safe during playback but belong off the realtime path.
     fun latencyReport(): String = audioEngine.latencyReport()
     fun latencyReset() = audioEngine.latencyReset()
+    // P-A EXPERIMENT: Inspector-only toggle; refused while the Style plays (switch only when stopped).
+    fun paDiagnosticModeLabel(): String = audioEngine.paDiagnosticModeLabel()
+    /** Inspector RESET LATENCY: the existing probe reset plus the P-A counters and the xrun baseline. */
+    fun latencyResetAll() { audioEngine.latencyReset(); audioEngine.paReset() }
+    fun togglePaDiagnosticMode(): Boolean {
+        if (arrangerBrain.state.value.isPlaying) return false
+        audioEngine.setPaDiagnosticMode(if (audioEngine.paDiagnosticMode() == 1) 0 else 1)
+        return true
+    }
     fun drumABResolved():Boolean = audioEngine.drumABResolved
     fun setDrumABMode(resolved:Boolean):Boolean = !uiState.value.isPlaying && arrangerBrain.setDrumABMode(resolved)
     fun markPcmSession(): Long {

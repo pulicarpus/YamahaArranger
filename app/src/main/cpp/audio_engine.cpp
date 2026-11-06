@@ -1,3 +1,4 @@
+#include "pa_diag_mode.h" // P-A experiment
 #include "audio_engine.h"
 #include <android/log.h>
 #include <cstring>
@@ -483,11 +484,25 @@ std::string AudioEngine::latencyReport() {
             << (1000.0 * stream->getBufferSizeInFrames() / rate) << "ms) xruns=";
         const auto xruns = stream->getXRunCount();
         if (xruns) out << xruns.value(); else out << "unavailable";
+        const long base = latencyXrunBase_.load();
+        out << " xrunsSinceReset=";
+        if (xruns && base >= 0) out << (long(xruns.value()) - base); else out << "unavailable";
         const auto latency = stream->calculateLatencyMillis();
         if (latency) out << " estimatedOutputLatencyMs=" << latency.value() << " (Oboe estimate from the stream clock, not an acoustic measurement)";
         else out << " estimatedOutputLatencyMs=unavailable(" << oboe::convertToText(latency.error()) << ")";
         out << "\n";
     }
     out << latency_probe::probe.report();
+    out << pa_mode::report();
     return out.str();
 }
+
+void AudioEngine::paResetCounters() {
+    pa_mode::resetCounters();
+    long base = -1;
+    if (auto stream = stream_) { const auto xr = stream->getXRunCount(); if (xr) base = long(xr.value()); }
+    latencyXrunBase_.store(base);
+}
+
+void AudioEngine::setPaDiagnosticMode(int m) { pa_mode::set(m); }
+int AudioEngine::paDiagnosticMode() const { return pa_mode::mode.load(); }

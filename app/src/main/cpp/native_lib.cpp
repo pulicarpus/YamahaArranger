@@ -1,3 +1,4 @@
+#include "pa_diag_mode.h" // P-A experiment
 #include <jni.h>
 #include <memory>
 #include <vector>
@@ -291,6 +292,10 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_Nati
 }
 extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeLatencyReport(JNIEnv* env,jobject){const auto s=g_engine?g_engine->latencyReport():std::string("LATENCY_NATIVE engine_absent\n");return env->NewStringUTF(sanitizeUtf8ForJni(s.c_str()).c_str());}
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeLatencyReset(JNIEnv*,jobject){if(g_engine)g_engine->latencyReset();}
+// P-A EXPERIMENT: per-note diagnostic mode (0 LEGACY default, 1 OPTIMIZED). Global atomic; valid with or without an engine.
+extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetPaDiagnosticMode(JNIEnv*,jobject,jint m){pa_mode::set(m);}
+extern "C" JNIEXPORT jint JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativePaDiagnosticMode(JNIEnv*,jobject){return pa_mode::mode.load();}
+extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativePaReset(JNIEnv*,jobject){if(g_engine)g_engine->paResetCounters();else pa_mode::resetCounters();}
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetSourceTiered(JNIEnv*,jobject,jboolean tiered){if(g_engine)g_engine->setSourceTiered(tiered);}
 extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativePinChannelPreset(JNIEnv*,jobject,jint ch,jlong id,jint bank,jint pc){return g_engine && g_engine->pinChannelPreset(ch,static_cast<uint64_t>(id),bank,pc);}
 extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeFontPdta(JNIEnv* env,jobject,jlong id){const auto s=g_engine?g_engine->fontPdta(static_cast<uint64_t>(id)):std::string();return env->NewStringUTF(s.c_str());}

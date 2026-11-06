@@ -96,6 +96,10 @@ public:
     std::string bufferStatus();
     void bufferTick(); // ADAPTIVE only; called from the app (never from the audio callback)
     void latencyReset(){latency_probe::probe.reset();}
+    void paResetCounters(); // P-A: counters + xrun baseline (report shows xrunsSinceReset); called with RESET LATENCY from the Inspector
+    // P-A EXPERIMENT (see pa_diag_mode.h): 0 = LEGACY (default), 1 = OPTIMIZED. Gates per-note diagnostics only.
+    void setPaDiagnosticMode(int m);
+    int paDiagnosticMode() const;
     metronome::Engine& metronomeEngine(){return metronome_;}
     std::string metronomeReport() const {return metronome_.report();}
     void latencySetEnabled(bool e){latency_probe::probe.enabled.store(e?1:0);}
@@ -115,6 +119,7 @@ private:
     std::shared_ptr<oboe::AudioStream> stream_;
     std::atomic<int> bufferMode_{buffer_policy::BASELINE_2X};
     std::atomic<long> xrunBase_{0}, xrunLastTick_{0};
+    std::atomic<long> latencyXrunBase_{-1}; // P-A: xrun count at the last RESET LATENCY (-1 = none yet)
     std::array<Voice,kMaxPolyphony> voices_;
     std::mutex voiceMutex_;
     int outputSampleRate_=48000;
