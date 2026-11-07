@@ -1,6 +1,6 @@
 # P-B0.1: INSTRUMENTASI TERARAH (observer-only, dapat dimatikan)
 
-- **Status:** diimplementasikan di working tree. **Belum di-commit, belum di-push, belum ada APK** (menunggu persetujuan).
+- **Status:** di-commit (`57025d13f10bb68d35c996fde74747bbe0a58d74`) dan di-push dengan persetujuan pengguna. CI run `42383396531` **success**, APK tersedia (§6). **Belum diuji di Redmi Pad.**
 - **Branch lokal:** `experiment/pb01-targeted-probes`, dibuat dari baseline playable `experiment/bassmidi-pa-mutex-ab` @ `910644153ca068cd8903c5257081ef65b96e3c00` (P-A + dokumen).
 - **Dua file audit lama yang untracked tidak disentuh.**
 
@@ -94,7 +94,8 @@ Dasar: `PB0_TRANSITION_CHORD_FORENSIC_AUDIT.md` (INFERRED #6, #8, #10).
 | Device Routing native, Song native, CPV JVM | **PASS** |
 | R1–R5 `FillNoteReleaseP1RtTest` (ROSITA, EnglishWaltz2) | **PASS** (5 + 5) |
 | R6: Recorder V1B (1), V1C (2), parity (1), E343 SHORT_GATE (13), E343 AUTO (9), Device Routing (10), Transpose/ACMP/LEFT (18), MIDI IN split (7) | **PASS** |
-| APK / CI | **NOT RUN** (menunggu persetujuan) |
+| CI `Quick Experimental APK (MIDI Song V1A)`, run `42383396531` | **success** untuk semua job: guard, compile APK kedua ABI + verifikasi, Quick tests, UI tests. https://github.com/pulicarpus/YamahaArranger/actions/runs/42383396531 |
+| APK artifact | `SONG-QUICK-APK-experiment-pb01-targeted-probes-57025d13f10bb68d35c996fde74747bbe0a58d74` (id `13578811954`, 14,8 MB, digest zip `sha256:b8902847f6cb93f7f5d0d8578d228461f0e3d6db78f166ace2c9f02f2b5ea55e`, berlaku sampai 2027-02-05): https://github.com/pulicarpus/YamahaArranger/actions/runs/42383396531/artifacts/13578811954 |
 | Perangkat | **NOT TESTED** |
 
 `tests/pb01_probe_test.cpp` membuktikan (18 cek):
