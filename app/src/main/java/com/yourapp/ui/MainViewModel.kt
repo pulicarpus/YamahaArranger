@@ -2193,6 +2193,13 @@ class MainViewModel @Inject constructor(
     fun paDiagnosticModeLabel(): String = audioEngine.paDiagnosticModeLabel()
     /** Inspector RESET LATENCY: the existing probe reset plus the P-A counters and the xrun baseline. */
     fun latencyResetAll() { audioEngine.latencyReset(); audioEngine.paReset() }
+    // P-B0.1 TARGETED PROBES: Inspector-only on/off (observer only; safe at any time, switched only while stopped for clean runs).
+    fun pbProbesLabel(): String = if (audioEngine.pbProbesEnabled()) "ON" else "OFF"
+    fun togglePbProbes(): Boolean {
+        if (arrangerBrain.state.value.isPlaying) return false
+        audioEngine.setPbProbesEnabled(!audioEngine.pbProbesEnabled())
+        return true
+    }
     fun togglePaDiagnosticMode(): Boolean {
         if (arrangerBrain.state.value.isPlaying) return false
         audioEngine.setPaDiagnosticMode(if (audioEngine.paDiagnosticMode() == 1) 0 else 1)

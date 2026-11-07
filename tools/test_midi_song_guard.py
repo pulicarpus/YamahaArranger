@@ -23,7 +23,9 @@ ALLOWED = set(ADDITIVE) | {J + 'ui/MainViewModel.kt', J + 'ui/SxMainScreen.kt', 
            J + 'yamahaarranger/arranger/StyleSequencer.kt', 'tests/rtdiag/FillNoteReleaseP1RtTest.kt',
            # P-A experiment (diagnostics/BASSMIDI_PA_MUTEX_AB_EXPERIMENT.md): mode header, Inspector toggle, late-count report line, host A/B test.
            # The native note-path edits stay additive (ADDITIVE rule) and are pinned below.
-           C + 'pa_diag_mode.h', J + 'ui/Sf2StyleInspectorScreen.kt', J + 'yamahaarranger/audio/PcmSessionControls.kt', 'tests/pa_mutex_ab_test.cpp'}
+           C + 'pa_diag_mode.h', J + 'ui/Sf2StyleInspectorScreen.kt', J + 'yamahaarranger/audio/PcmSessionControls.kt', 'tests/pa_mutex_ab_test.cpp',
+           # P-B0.1 targeted probes (diagnostics/PB01_TARGETED_INSTRUMENTATION.md): observer-only header and its host test
+           C + 'pb01_probe.h', 'tests/pb01_probe_test.cpp'}
 PREFIX = (J + 'yamahaarranger/song/', J + 'yamahaarranger/e343out/', J + 'yamahaarranger/routing/', 'app/src/main/assets/e343/', 'tests/cpv/', 'tests/fixtures/midi/', 'tools/test_', 'tools/ui_preview/', 'diagnostics/', '.github/workflows/', 'docs/')
 extra = {p for p in changed if p not in ALLOWED and not p.startswith(PREFIX)}
 assert not extra, 'Unapproved file changed: ' + ', '.join(sorted(extra))
@@ -152,3 +154,11 @@ for _d in (J + 'yamahaarranger/arranger', J + 'arranger', J + 'midi'):
     for _f in (ROOT / _d).rglob('*.kt'):
         assert 'PaDiagnostic' not in _f.read_text() and 'pa_mode' not in _f.read_text(), 'P-A must not reach ' + str(_f)
 print('P-A GUARD PASS')
+# P-B0.1 pins: probes are observer-only. Every Scope is declared before its lock and closed after it; no probe in the Kotlin engine dirs.
+_pb = (ROOT / C / 'bassmidi_player.cpp').read_text()
+assert _pb.count('pb01::Scope pbScope_(') == 6 and _pb.count('pbScope_.locked();') == 6, 'P-B0.1: exactly the six reviewed lock sites'
+assert _pb.count('pb01::FontsTimer pbFonts_;') == 1 and _pb.count('pb01::setFontsDone(') == 1, 'P-B0.1: one applyFonts timer, one SetFonts stamp'
+for _d in (J + 'yamahaarranger/arranger', J + 'arranger', J + 'midi'):
+    for _f in (ROOT / _d).rglob('*.kt'):
+        assert 'pb01' not in _f.read_text() and 'pbRole' not in _f.read_text(), 'P-B0.1 must not reach ' + str(_f)
+print('P-B0.1 GUARD PASS')

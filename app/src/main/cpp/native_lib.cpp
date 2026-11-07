@@ -1,4 +1,5 @@
 #include "pa_diag_mode.h" // P-A experiment
+#include "pb01_probe.h" // P-B0.1 targeted probes
 #include <jni.h>
 #include <memory>
 #include <vector>
@@ -296,6 +297,12 @@ extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAu
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetPaDiagnosticMode(JNIEnv*,jobject,jint m){pa_mode::set(m);}
 extern "C" JNIEXPORT jint JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativePaDiagnosticMode(JNIEnv*,jobject){return pa_mode::mode.load();}
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativePaReset(JNIEnv*,jobject){if(g_engine)g_engine->paResetCounters();else pa_mode::resetCounters();}
+// P-B0.1 TARGETED PROBES (observer only). Role: 1 scheduler, 2 main/UI, 3 other (audio is set by render itself).
+extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativePbSetEnabled(JNIEnv*,jobject,jboolean e){pb01::enabled.store(e==JNI_TRUE?1:0);}
+extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativePbEnabled(JNIEnv*,jobject){return pb01::on()?JNI_TRUE:JNI_FALSE;}
+extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativePbSetThreadRole(JNIEnv*,jobject,jint r){pb01::role=(r>=1&&r<=3)?r:3;}
+extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativePbVoiceWindow(JNIEnv*,jobject,jboolean start,jlong kotlinNs){pb01::windowEdge(pb01::voiceWin,pb01::RoleSched,start==JNI_TRUE,uint64_t(kotlinNs<0?0:kotlinNs),0);}
+extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativePbChordWindow(JNIEnv*,jobject,jboolean start,jlong kotlinNs,jlong replacements){pb01::windowEdge(pb01::chordWin,pb01::RoleMain,start==JNI_TRUE,uint64_t(kotlinNs<0?0:kotlinNs),uint64_t(replacements<0?0:replacements));}
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetSourceTiered(JNIEnv*,jobject,jboolean tiered){if(g_engine)g_engine->setSourceTiered(tiered);}
 extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativePinChannelPreset(JNIEnv*,jobject,jint ch,jlong id,jint bank,jint pc){return g_engine && g_engine->pinChannelPreset(ch,static_cast<uint64_t>(id),bank,pc);}
 extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeFontPdta(JNIEnv* env,jobject,jlong id){const auto s=g_engine?g_engine->fontPdta(static_cast<uint64_t>(id)):std::string();return env->NewStringUTF(s.c_str());}

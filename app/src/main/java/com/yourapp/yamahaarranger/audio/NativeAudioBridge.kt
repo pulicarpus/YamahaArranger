@@ -23,6 +23,11 @@ class NativeAudioBridge @Inject constructor() {
     external fun nativeSetPaDiagnosticMode(mode: Int)
     external fun nativePaDiagnosticMode(): Int
     external fun nativePaReset()
+    external fun nativePbSetEnabled(enabled: Boolean)
+    external fun nativePbEnabled(): Boolean
+    external fun nativePbSetThreadRole(role: Int)
+    external fun nativePbVoiceWindow(start: Boolean, kotlinNs: Long)
+    external fun nativePbChordWindow(start: Boolean, kotlinNs: Long, replacements: Long)
     external fun nativePinChannelPreset(channel: Int, fontId: Long, bank: Int, program: Int): Boolean
     external fun nativeFontPdta(fontId: Long): String
     external fun nativeShadowDrumSnapshot(): String

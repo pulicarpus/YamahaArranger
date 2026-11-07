@@ -325,6 +325,7 @@ class AudioEngineManager @Inject constructor(
     }
 
     fun noteOnChannel(channel: Int, midiNote: Int, velocity01: Float) {
+        pbRole() // P-B0.1
         val probeEntry = System.nanoTime() // LATENCY_PROBE
         if (!NoteLogTuning.skip()) DebugLog.traceAudio("NOTE_ON ch=$channel note=$midiNote vel=${"%.3f".format(java.util.Locale.US, velocity01)} sf2=$soundFontLoaded")
         if (soundFontLoaded) {
@@ -338,6 +339,7 @@ class AudioEngineManager @Inject constructor(
 
     fun noteOnStyleChannel(channel: Int, note: Int, velocity: Float, sourceChannel: Int,
         sourceNote: Int, styleBank: Int, tick: Long, id: Long, sampled: Boolean, chordId: Long = 0L, operation: Int = 0) {
+        pbRole() // P-B0.1
         if (soundFontLoaded) bridge.nativeSfNoteOnStyleChannel(channel, note, velocity,
             sourceChannel, sourceNote, styleBank, tick, id, sampled, chordId, operation)
         else {
@@ -354,6 +356,7 @@ class AudioEngineManager @Inject constructor(
     fun chordDiagnosticReport(): String = bridge.nativeChordDiagnosticReport()
     fun noteOffStyleChannel(channel: Int, note: Int, sourceChannel: Int, sourceNote: Int,
         bank: Int, tick: Long, id: Long, chordId: Long, operation: Int) {
+        pbRole() // P-B0.1
         if (soundFontLoaded) bridge.nativeSfNoteOffStyleChannel(channel, note,
             sourceChannel, sourceNote, bank, tick, id, chordId, operation)
         else noteOffChannel(channel, note)
@@ -361,6 +364,7 @@ class AudioEngineManager @Inject constructor(
     }
 
     fun noteOffChannel(channel: Int, midiNote: Int) {
+        pbRole() // P-B0.1
         if (!NoteLogTuning.skip()) DebugLog.traceAudio("NOTE_OFF ch=$channel note=$midiNote sf2=$soundFontLoaded")
         if (soundFontLoaded) bridge.nativeSfNoteOffChannel(channel, midiNote)
         else noteOff(midiNote)
@@ -401,6 +405,7 @@ class AudioEngineManager @Inject constructor(
     }
     fun setChannelMixer(channel: Int, volume: Int = 127, pan: Int = 64, expression: Int = 127, reverbSend: Int = 40, chorusSend: Int = 0) = synchronized(mixerRoutingLock) {
         require(channel in 0..15)
+        pbRole() // P-B0.1
         val v = volume.coerceIn(0, 127); val p = pan.coerceIn(0, 127)
         val e = effectiveMixerExpression(channel, expression)
         val r = reverbSend.coerceIn(0, 127); val c = chorusSend.coerceIn(0, 127)
@@ -450,6 +455,21 @@ class AudioEngineManager @Inject constructor(
     fun setPaDiagnosticMode(mode: Int) { bridge.nativeSetPaDiagnosticMode(if (mode == 1) 1 else 0); DebugLog.add("P-A AUDIO DIAGNOSTIC MODE " + paDiagnosticModeLabel()) }
     fun paDiagnosticMode(): Int = bridge.nativePaDiagnosticMode()
     fun paReset() = bridge.nativePaReset()
+    // ---- P-B0.1 TARGETED PROBES (observer only; native pb01_probe.h). Never changes an event, its order, a preset or a lock. ----
+    private val pbRoleSet = ThreadLocal<Boolean>()
+    /** Tells the native probe, once per OS thread, which role this thread plays: 1 scheduler (coroutine Default pool), 2 main/UI, 3 other. */
+    private fun pbRole() {
+        if (pbRoleSet.get() == true) return
+        pbRoleSet.set(true)
+        val n = Thread.currentThread().name
+        bridge.nativePbSetThreadRole(if (n == "main") 2 else if (n.startsWith("DefaultDispatcher-worker")) 1 else 3)
+    }
+    init {
+        LatencyProbe.pbVoiceWindow = { start, ns -> pbRole(); bridge.nativePbVoiceWindow(start, ns) }
+        LatencyProbe.pbChordWindow = { start, ns, replacements -> pbRole(); bridge.nativePbChordWindow(start, ns, replacements) }
+    }
+    fun setPbProbesEnabled(enabled: Boolean) { bridge.nativePbSetEnabled(enabled); DebugLog.add("P-B0.1 PROBES " + if (enabled) "ON" else "OFF") }
+    fun pbProbesEnabled(): Boolean = bridge.nativePbEnabled()
     fun paDiagnosticModeLabel(): String = if (paDiagnosticMode() == 1) "OPTIMIZED" else "LEGACY"
     fun channelBinding(channel: Int): ChannelBinding? = ChannelBinding.parse(bridge.nativeChannelBinding(channel))
     /** SF2 preset-data fingerprint of a loaded font ("" when unavailable); identifies content, not just the file name. */
@@ -645,6 +665,7 @@ class AudioEngineManager @Inject constructor(
 
     // Named overload carries the Yamaha/CASM voice identity into BASSMIDI resolution.
     fun setChannelProgram(channel: Int, program: Int, bank: Int = 0, voiceName: String? = null) {
+        pbRole() // P-B0.1
         DebugLog.traceAudio("PROGRAM ch=$channel bank=$bank program=$program voice=${voiceName ?: ""}")
         if (voiceName.isNullOrBlank()) {
             bridge.nativeSetChannelPreset(channel, bank, program)

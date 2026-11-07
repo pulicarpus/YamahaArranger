@@ -203,6 +203,7 @@ object LatencyProbe {
         applySlot = ringN % RING
         rFirst[applySlot] = f; rRecognized[applySlot] = r; rApply[applySlot] = now; rEnd[applySlot] = 0L
         applyNotesBase = retargetNotes.get()
+        pbChordWindow?.invoke(true, 0L, 0L) // P-B0.1 (UI thread, before handleChordChange)
         return now
     }
     fun chordApplyEnd(startNs: Long) {
@@ -211,6 +212,7 @@ object LatencyProbe {
         val t = chordArrivalNs; if (t != 0L) chordMidiToRetargetEnd.record(now - t)
         val f = firstKeyNs; if (f != 0L && now >= f) chordFirstKeyToRetargetEnd.record(now - f)
         rEnd[applySlot] = now; rNotes[applySlot] = (retargetNotes.get() - applyNotesBase).toInt()
+        pbChordWindow?.invoke(false, now - startNs, retargetNotes.get() - applyNotesBase) // P-B0.1
         chordChanges.incrementAndGet(); ringN = ringN + 1
     }
 
@@ -222,8 +224,12 @@ object LatencyProbe {
         val now = System.nanoTime(); sectionBoundaryNs = now
         val r = sectionRequestNs; if (r != 0L) sectionRequestToBoundary.record(now - r)
     }
+    /** P-B0.1: window hooks installed by AudioEngineManager (native per-window deltas). Null = not installed. */
+    @Volatile var pbVoiceWindow: ((Boolean, Long) -> Unit)? = null
+    @Volatile var pbChordWindow: ((Boolean, Long, Long) -> Unit)? = null
     fun voiceApplyStart() {
         if (!enabled) return
+        pbVoiceWindow?.invoke(true, 0L) // P-B0.1 (same thread as the voice apply, before it starts)
         val now = System.nanoTime(); voiceApplyStartNs = now
         val b = sectionBoundaryNs; if (b != 0L && now >= b) sectionBoundaryToApplyStart.record(now - b)
     }
@@ -231,6 +237,7 @@ object LatencyProbe {
         if (!enabled) return
         val now = System.nanoTime(); voiceApplyEndNs = now
         val s = voiceApplyStartNs; if (s != 0L) sectionApply.record(now - s)
+        if (s != 0L) pbVoiceWindow?.invoke(false, now - s) // P-B0.1
         awaitingFirstNote = sectionBoundaryNs != 0L
     }
     fun schedulerWake(nowNs: Long, targetNs: Long) { if (enabled && nowNs >= targetNs) schedulerWakeLateness.record(nowNs - targetNs) }

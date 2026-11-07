@@ -148,6 +148,12 @@ fun Sf2StyleInspectorDialog(
                         val ok = viewModel.togglePaDiagnosticMode(); paLabel = viewModel.paDiagnosticModeLabel()
                         Toast.makeText(ctx, if (ok) "P-A Audio Diagnostic Mode: $paLabel" else "STOP the Style first", Toast.LENGTH_SHORT).show()
                     }) { Text("P-A AUDIO DIAG: $paLabel") }
+                    // P-B0.1 targeted probes (PB01_* lines in SAVE REPORT)
+                    var pbLabel by remember { mutableStateOf(viewModel.pbProbesLabel()) }
+                    OutlinedButton(enabled = !exportBusy && !state.isPlaying, onClick = {
+                        val ok = viewModel.togglePbProbes(); pbLabel = viewModel.pbProbesLabel()
+                        Toast.makeText(ctx, if (ok) "P-B0.1 probes: $pbLabel" else "STOP the Style first", Toast.LENGTH_SHORT).show()
+                    }) { Text("P-B0.1 PROBES: $pbLabel") }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(enabled = !state.isPlaying, onClick = { r22Enabled=!r22Enabled;viewModel.setR22ShadowEnabled(r22Enabled) }) { Text("R2-2 SHADOW ${if(r22Enabled) "ON" else "OFF"}") }

@@ -4,6 +4,7 @@
 #include "voice_resolver.h"
 #include "latency_probe.h"
 #include "pa_diag_mode.h" // P-A experiment
+#include "pb01_probe.h" // P-B0.1 targeted probes (observer only)
 #include "sf2_fingerprint.h"
 #include "onset_probe.h"
 #ifndef YAMAHA_COMPATIBLE_PERCUSSION
@@ -148,6 +149,7 @@ bool BassMidiPlayer::ensureEngine() {
 }
 
 bool BassMidiPlayer::applyFonts() {
+    pb01::FontsTimer pbFonts_; // P-B0.1: duration attributed to the calling operation (runs inside the caller's lock)
     if (!stream_) return false;
 
     // MIDI Voyager supports multiple soundfonts and bank-aware preset
@@ -344,11 +346,13 @@ bool BassMidiPlayer::applyFonts() {
     // (1026), etc. fall back to the virtual source bank number instead of
     // the intended Yamaha destination bank.
     const DWORD flags = count | BASS_MIDI_FONT_EX2;
+    const uint64_t pbSetFonts0_ = pb01::stamp(); // P-B0.1
     if (!BASS_MIDI_StreamSetFonts(stream_, cfg.data(), flags)) {
         LOGE("StreamSetFonts(FONTEX2) failed flags=%u error=%d",
              static_cast<unsigned>(flags), BASS_ErrorGetCode());
         return false;
     }
+    pb01::setFontsDone(pbSetFonts0_, static_cast<uint32_t>(count)); // P-B0.1 (successful SetFonts only)
     publishedFontMaps_ = cfg;
     ++fontMappingGeneration_;
     LOGI("BASSMIDI FONTEX2 applied: entries=%u flags=%u",
@@ -1230,7 +1234,9 @@ void BassMidiPlayer::logAudioPath(int channel, int key, int velocity, bool sent,
 
 void BassMidiPlayer::noteOn(int channel, int key, float velocity, const AudioPathOrigin& origin) {
     const uint64_t probeEnter = latency_probe::probe.on() ? latency_probe::now() : 0; // LATENCY_PROBE
+    pb01::Scope pbScope_(pb01::OpNoteOn); // P-B0.1: before the lock (destroyed after it is released)
     f12::SynthLock lock(mutex_,f12::NoteOn);
+    pbScope_.locked();
     latency_probe::Hold latencyHold_(channel >= 0 && channel < 4 ? latency_probe::HoldNoteKey : latency_probe::HoldNoteStyle);
     pa_mode::NoteLockScope paScope_; // P-A: after the lock, released before it
     const uint64_t probeLocked = probeEnter ? latency_probe::now() : 0; // LATENCY_PROBE
@@ -1302,7 +1308,9 @@ void BassMidiPlayer::noteOn(int channel, int key, float velocity, const AudioPat
 }
 
 void BassMidiPlayer::noteOff(int channel, int key, const AudioPathOrigin& origin) {
+    pb01::Scope pbScope_(pb01::OpNoteOff); // P-B0.1
     f12::SynthLock lock(mutex_,f12::NoteOff);
+    pbScope_.locked();
     latency_probe::Hold latencyHold_(latency_probe::HoldNoteOff);
     pa_mode::NoteLockScope paScope_; // P-A: after the lock, released before it
     if (!stream_) return;
@@ -1351,7 +1359,9 @@ void BassMidiPlayer::allNotesOff() {
 }
 
 void BassMidiPlayer::setChannelPreset(int channel, int bank, int program, const std::string& voiceName) {
+    pb01::Scope pbScope_(pb01::OpPreset); // P-B0.1
     f12::SynthLock lock(mutex_,f12::Preset);
+    pbScope_.locked();
     latency_probe::Hold latencyHold_(latency_probe::HoldPreset);
     if (!ensureEngine()) return;
 
@@ -1511,7 +1521,9 @@ void BassMidiPlayer::setChannelPreset(int channel, int bank, int program, const 
 void BassMidiPlayer::setChannelMixer(int channel, int volume, int pan,
                                      int expression, int reverbSend,
                                      int chorusSend) {
+    pb01::Scope pbScope_(pb01::OpMixer); // P-B0.1
     f12::SynthLock lock(mutex_,f12::Mixer);
+    pbScope_.locked();
     latency_probe::Hold latencyHold_(latency_probe::HoldMixer);
     if (!ensureEngine()) return;
 
@@ -2368,7 +2380,9 @@ std::string BassMidiPlayer::keyboardReleaseProbeReport() const {
 
 void BassMidiPlayer::render(float* out, int numFrames) {
     const uint64_t probeEnter = latency_probe::probe.on() ? latency_probe::now() : 0; // LATENCY_PROBE
+    pb01::Scope pbScope_(pb01::OpRender, pb01::RoleAudio); // P-B0.1
     f12::SynthLock lock(mutex_,f12::Render);
+    pbScope_.locked();
     latency_probe::Hold latencyHold_(latency_probe::HoldRender);
     const uint64_t probeLocked = probeEnter ? latency_probe::now() : 0; // LATENCY_PROBE
 // PCM_PATH_OBSERVER_BEGIN
@@ -3168,7 +3182,9 @@ bool BassMidiPlayer::setDrumABMode(bool resolved) {
     return ok;
 }
 bool BassMidiPlayer::bindDrumAB(int ch,const std::string& pdta,int bank,int pc,const std::string& section) {
+    pb01::Scope pbScope_(pb01::OpBindDrumAB); // P-B0.1: this lock is a plain lock_guard (not in the SynthLock/hold stats)
     std::lock_guard<std::mutex> lock(mutex_);
+    pbScope_.locked();
     if(!drumABResolved_ || !stream_ || ch<8 || ch>9)return false;
     auto& b=drumABBindings_[ch-8];b={};b.section=section;
     // Reviewed automatic namespaces only. A program-only UI override is not a custom identity.
