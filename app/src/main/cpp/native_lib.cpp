@@ -1,5 +1,6 @@
 #include "pa_diag_mode.h" // P-A experiment
 #include "pb01_probe.h" // P-B0.1 targeted probes
+#include "pb1a_drum_bind_cache.h" // P-B1a experiment
 #include <jni.h>
 #include <memory>
 #include <vector>
@@ -303,6 +304,9 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_Nati
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativePbSetThreadRole(JNIEnv*,jobject,jint r){pb01::role=(r>=1&&r<=3)?r:3;}
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativePbVoiceWindow(JNIEnv*,jobject,jboolean start,jlong kotlinNs){pb01::windowEdge(pb01::voiceWin,pb01::RoleSched,start==JNI_TRUE,uint64_t(kotlinNs<0?0:kotlinNs),0);}
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativePbChordWindow(JNIEnv*,jobject,jboolean start,jlong kotlinNs,jlong replacements){pb01::windowEdge(pb01::chordWin,pb01::RoleMain,start==JNI_TRUE,uint64_t(kotlinNs<0?0:kotlinNs),uint64_t(replacements<0?0:replacements));}
+// P-B1a EXPERIMENT: skip identical, still-verified Drum AB rebinds (default OFF = legacy).
+extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativePb1aSetDrumBindCache(JNIEnv*,jobject,jboolean e){pb1a::set(e==JNI_TRUE);}
+extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativePb1aDrumBindCache(JNIEnv*,jobject){return pb1a::on()?JNI_TRUE:JNI_FALSE;}
 extern "C" JNIEXPORT void JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeSetSourceTiered(JNIEnv*,jobject,jboolean tiered){if(g_engine)g_engine->setSourceTiered(tiered);}
 extern "C" JNIEXPORT jboolean JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativePinChannelPreset(JNIEnv*,jobject,jint ch,jlong id,jint bank,jint pc){return g_engine && g_engine->pinChannelPreset(ch,static_cast<uint64_t>(id),bank,pc);}
 extern "C" JNIEXPORT jstring JNICALL Java_com_yourapp_yamahaarranger_audio_NativeAudioBridge_nativeFontPdta(JNIEnv* env,jobject,jlong id){const auto s=g_engine?g_engine->fontPdta(static_cast<uint64_t>(id)):std::string();return env->NewStringUTF(s.c_str());}

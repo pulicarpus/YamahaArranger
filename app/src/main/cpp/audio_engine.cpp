@@ -1,5 +1,6 @@
 #include "pa_diag_mode.h" // P-A experiment
 #include "pb01_probe.h" // P-B0.1 targeted probes
+#include "pb1a_drum_bind_cache.h" // P-B1a experiment
 #include "audio_engine.h"
 #include <android/log.h>
 #include <cstring>
@@ -496,12 +497,14 @@ std::string AudioEngine::latencyReport() {
     out << latency_probe::probe.report();
     out << pa_mode::report();
     out << pb01::report();
+    out << pb1a::report();
     return out.str();
 }
 
 void AudioEngine::paResetCounters() {
     pa_mode::resetCounters();
     pb01::reset(); // P-B0.1: RESET LATENCY clears the targeted probes too
+    pb1a::resetCounters(); // P-B1a
     long base = -1;
     if (auto stream = stream_) { const auto xr = stream->getXRunCount(); if (xr) base = long(xr.value()); }
     latencyXrunBase_.store(base);

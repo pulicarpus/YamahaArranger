@@ -28,6 +28,8 @@ class NativeAudioBridge @Inject constructor() {
     external fun nativePbSetThreadRole(role: Int)
     external fun nativePbVoiceWindow(start: Boolean, kotlinNs: Long)
     external fun nativePbChordWindow(start: Boolean, kotlinNs: Long, replacements: Long)
+    external fun nativePb1aSetDrumBindCache(enabled: Boolean)
+    external fun nativePb1aDrumBindCache(): Boolean
     external fun nativePinChannelPreset(channel: Int, fontId: Long, bank: Int, program: Int): Boolean
     external fun nativeFontPdta(fontId: Long): String
     external fun nativeShadowDrumSnapshot(): String

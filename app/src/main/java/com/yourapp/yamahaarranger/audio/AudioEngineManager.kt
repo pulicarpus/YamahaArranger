@@ -470,6 +470,9 @@ class AudioEngineManager @Inject constructor(
     }
     fun setPbProbesEnabled(enabled: Boolean) { bridge.nativePbSetEnabled(enabled); DebugLog.add("P-B0.1 PROBES " + if (enabled) "ON" else "OFF") }
     fun pbProbesEnabled(): Boolean = bridge.nativePbEnabled()
+    /** P-B1a EXPERIMENT: skip identical, still-verified Drum AB rebinds at section voice apply (default OFF = legacy). */
+    fun setPb1aDrumBindCache(enabled: Boolean) { bridge.nativePb1aSetDrumBindCache(enabled); DebugLog.add("P-B1a DRUM BIND CACHE " + if (enabled) "ON" else "OFF") }
+    fun pb1aDrumBindCache(): Boolean = bridge.nativePb1aDrumBindCache()
     fun paDiagnosticModeLabel(): String = if (paDiagnosticMode() == 1) "OPTIMIZED" else "LEGACY"
     fun channelBinding(channel: Int): ChannelBinding? = ChannelBinding.parse(bridge.nativeChannelBinding(channel))
     /** SF2 preset-data fingerprint of a loaded font ("" when unavailable); identifies content, not just the file name. */

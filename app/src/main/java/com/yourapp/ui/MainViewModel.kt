@@ -2195,6 +2195,13 @@ class MainViewModel @Inject constructor(
     fun latencyResetAll() { audioEngine.latencyReset(); audioEngine.paReset() }
     // P-B0.1 TARGETED PROBES: Inspector-only on/off (observer only; safe at any time, switched only while stopped for clean runs).
     fun pbProbesLabel(): String = if (audioEngine.pbProbesEnabled()) "ON" else "OFF"
+    // P-B1a EXPERIMENT: Inspector-only, switched only while the Style is stopped.
+    fun pb1aLabel(): String = if (audioEngine.pb1aDrumBindCache()) "ON" else "OFF"
+    fun togglePb1a(): Boolean {
+        if (arrangerBrain.state.value.isPlaying) return false
+        audioEngine.setPb1aDrumBindCache(!audioEngine.pb1aDrumBindCache())
+        return true
+    }
     fun togglePbProbes(): Boolean {
         if (arrangerBrain.state.value.isPlaying) return false
         audioEngine.setPbProbesEnabled(!audioEngine.pbProbesEnabled())

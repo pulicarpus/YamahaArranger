@@ -5,6 +5,7 @@
 #include "latency_probe.h"
 #include "pa_diag_mode.h" // P-A experiment
 #include "pb01_probe.h" // P-B0.1 targeted probes (observer only)
+#include "pb1a_drum_bind_cache.h" // P-B1a experiment (default OFF)
 #include "sf2_fingerprint.h"
 #include "onset_probe.h"
 #ifndef YAMAHA_COMPATIBLE_PERCUSSION
@@ -353,6 +354,7 @@ bool BassMidiPlayer::applyFonts() {
         return false;
     }
     pb01::setFontsDone(pbSetFonts0_, static_cast<uint32_t>(count)); // P-B0.1 (successful SetFonts only)
+    pb1a::tableStale.store(false,std::memory_order_relaxed); // P-B1a: the published table now mirrors drumABBindings_
     publishedFontMaps_ = cfg;
     ++fontMappingGeneration_;
     LOGI("BASSMIDI FONTEX2 applied: entries=%u flags=%u",
@@ -3186,6 +3188,18 @@ bool BassMidiPlayer::bindDrumAB(int ch,const std::string& pdta,int bank,int pc,c
     std::lock_guard<std::mutex> lock(mutex_);
     pbScope_.locked();
     if(!drumABResolved_ || !stream_ || ch<8 || ch>9)return false;
+    pb1a::calls.fetch_add(1,std::memory_order_relaxed);
+    if(pb1a::on()) { // P-B1a: identical, still-verified binding with an exact live readback -> nothing to rebuild or re-send
+        auto& prev=drumABBindings_[ch-8]; BASS_MIDI_FONT live{};
+        if(!pb1a::tableStale.load(std::memory_order_relaxed) && prev.verified && prev.font && !pdta.empty() && prev.pdta==pdta && prev.rawBank==bank && prev.pc==pc &&
+           channels_[ch].drum && channels_[ch].program==pc &&
+           BASS_MIDI_StreamGetPreset(stream_,ch,&live) && live.font==prev.font && live.bank==prev.nativeBank && live.preset==pc) {
+            prev.section=section; pb1a::skipped.fetch_add(1,std::memory_order_relaxed);
+            return true;
+        }
+    }
+    pb1a::rebound.fetch_add(1,std::memory_order_relaxed);
+    pb1a::tableStale.store(true,std::memory_order_relaxed); // the binding below is reset; the table is in sync again only after applyFonts
     auto& b=drumABBindings_[ch-8];b={};b.section=section;
     // Reviewed automatic namespaces only. A program-only UI override is not a custom identity.
     const bool col=pdta=="ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506";
@@ -3224,6 +3238,7 @@ bool BassMidiPlayer::bindDrumManual(int ch, uint64_t fontId, int bank, int pc, c
     std::lock_guard<std::mutex> lock(mutex_);
     if(!drumABResolved_ || !stream_ || ch<8 || ch>9)return false;
     auto& b=drumABBindings_[ch-8];b={};b.section=section;
+    pb1a::tableStale.store(true,std::memory_order_relaxed); // P-B1a: manual binding reset
     if(!fontId || pc<0 || pc>127 || (bank!=127 && bank!=128))return false;
     HSOUNDFONT font=0;std::string path;
     if(melodyFont_ && fontId==melodyFontId_){font=melodyFont_;path=melodyPath_;}

@@ -154,6 +154,12 @@ fun Sf2StyleInspectorDialog(
                         val ok = viewModel.togglePbProbes(); pbLabel = viewModel.pbProbesLabel()
                         Toast.makeText(ctx, if (ok) "P-B0.1 probes: $pbLabel" else "STOP the Style first", Toast.LENGTH_SHORT).show()
                     }) { Text("P-B0.1 PROBES: $pbLabel") }
+                    // P-B1a experiment (PB1A line in SAVE REPORT)
+                    var pb1aLabel by remember { mutableStateOf(viewModel.pb1aLabel()) }
+                    OutlinedButton(enabled = !exportBusy && !state.isPlaying, onClick = {
+                        val ok = viewModel.togglePb1a(); pb1aLabel = viewModel.pb1aLabel()
+                        Toast.makeText(ctx, if (ok) "P-B1a drum bind cache: $pb1aLabel" else "STOP the Style first", Toast.LENGTH_SHORT).show()
+                    }) { Text("P-B1a DRUM BIND CACHE: $pb1aLabel") }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(enabled = !state.isPlaying, onClick = { r22Enabled=!r22Enabled;viewModel.setR22ShadowEnabled(r22Enabled) }) { Text("R2-2 SHADOW ${if(r22Enabled) "ON" else "OFF"}") }
