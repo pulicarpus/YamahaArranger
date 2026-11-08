@@ -1,6 +1,6 @@
 # P-B1a: EKSPERIMEN CACHE BIND DRUM (A/B toggle, default OFF)
 
-- **Status:** diimplementasikan dan diuji di host. **Belum di-commit, belum ada APK** (menunggu persetujuan). **Belum diuji di Redmi Pad.**
+- **Status:** di-commit (`373b69239797b01648e1975bc0c201fc35faace6`) dan di-push dengan persetujuan pengguna. CI run `42481608654` **success**, APK tersedia. **Belum diuji di Redmi Pad.**
 - **Branch lokal:** `experiment/pb1a-drum-bind-cache`, dari `experiment/pb01-targeted-probes` @ `930cba6`.
   - Branch dasar itu = P-A + probe P-B0.1, sehingga efek P-B1a langsung terukur dengan baris `PB01_*`.
 - **Dasar:** `diagnostics/PB01_DEVICE_RESULTS.md`. Dengan shadow OFF, `bindDrumAB` ×2 = ±17 ms (63 %) dari voice apply ±27 ms, karena:
@@ -88,7 +88,8 @@ Suite lain: lihat §6.
 | `test_voice_resolver.py` | tes native **PASS** (9 baris). Langkah terakhir `test_drum_shadow_guards.py` FAIL, sama seperti di baseline `b66ad9f` (guard hash F12 vs StyleSequencer P1) |
 | Device Routing native, Song native, CPV JVM | **PASS** |
 | R1–R5 (ROSITA, EnglishWaltz2), Recorder V1B/V1C/parity, E343 SHORT_GATE/AUTO, Device Routing, Transpose/ACMP/LEFT, MIDI IN split | **PASS** |
-| APK / CI | NOT RUN (menunggu persetujuan) |
+| CI `Quick Experimental APK (MIDI Song V1A)`, run `42481608654` | **success** (guard, compile APK kedua ABI + verifikasi, Quick tests, UI tests): https://github.com/pulicarpus/YamahaArranger/actions/runs/42481608654 |
+| APK artifact | `SONG-QUICK-APK-experiment-pb1a-drum-bind-cache-373b69239797b01648e1975bc0c201fc35faace6` (id `13617453750`, 14,8 MB, digest zip `sha256:12369a7cc50a4bb87af38345f54fb140cb9e5e9f0fc6d9d53f1746e645ca351c`, berlaku sampai 2027-02-06): https://github.com/pulicarpus/YamahaArranger/actions/runs/42481608654/artifacts/13617453750 |
 | Perangkat | NOT TESTED |
 
 ## 7. Uji Redmi Pad (setelah APK)
