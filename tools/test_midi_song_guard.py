@@ -27,7 +27,7 @@ ALLOWED = set(ADDITIVE) | {J + 'ui/MainViewModel.kt', J + 'ui/SxMainScreen.kt', 
            # P-B0.1 targeted probes (diagnostics/PB01_TARGETED_INSTRUMENTATION.md): observer-only header and its host test
            C + 'pb01_probe.h', 'tests/pb01_probe_test.cpp',
            # P-B1a experiment (diagnostics/PB1A_DRUM_BIND_CACHE_EXPERIMENT.md): flag header and its host test
-           C + 'pb1a_drum_bind_cache.h', 'tests/pb1a_drum_bind_cache_test.cpp'}
+           C + 'pb1a_drum_bind_cache.h', 'tests/pb1a_drum_bind_cache_test.cpp', 'tests/pb1a_kit_change_test.cpp'}
 PREFIX = (J + 'yamahaarranger/song/', J + 'yamahaarranger/e343out/', J + 'yamahaarranger/routing/', 'app/src/main/assets/e343/', 'tests/cpv/', 'tests/fixtures/midi/', 'tools/test_', 'tools/ui_preview/', 'diagnostics/', '.github/workflows/', 'docs/')
 extra = {p for p in changed if p not in ALLOWED and not p.startswith(PREFIX)}
 assert not extra, 'Unapproved file changed: ' + ', '.join(sorted(extra))
