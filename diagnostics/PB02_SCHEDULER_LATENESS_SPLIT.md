@@ -1,6 +1,6 @@
 # P-B0.2: PEMISAHAN LATENESS SCHEDULER (observer-only, toggle default OFF)
 
-- **Status:** diimplementasikan dan diuji di host. **Belum di-commit, belum di-push, belum ada APK** (menunggu persetujuan). Belum diuji di perangkat.
+- **Status:** di-commit (`bd5e7ebd351dce4be506d9d9a29c113f0126d904`) dan di-push dengan persetujuan pengguna. CI run `42579186444` **success**, APK tersedia. **Belum diuji di perangkat.**
 - **Branch lokal:** `experiment/pb02-sched-split`, dari `experiment/pb1a-drum-bind-cache` @ `bbbb4e7` (P-A + P-B0.1 + P-B1a).
 - **Tidak diubah:**
   - StyleSequencer (hash P1 tetap), ArrangerBrain;
@@ -100,7 +100,8 @@ Kontrol overhead di perangkat: run OFF vs ON dengan `styleEventWakeLatenessBefor
 | `test_voice_resolver.py` | tes native **PASS** (9). Langkah terakhir `test_drum_shadow_guards.py` FAIL, sama seperti di baseline |
 | `test_realtime_guard.py` | **FAIL juga di baseline `bbbb4e7`** (guard file lama: "Unapproved file changed", workflow/E343/dst. dari fitur sebelumnya). Tidak terkait P-B0.2 |
 | `test_r20_jvm.py` | **FAIL juga di baseline `bbbb4e7`** (daftar sumber lama tanpa `DrumKitShadowRuntime`). Tidak terkait P-B0.2 |
-| APK / CI | NOT RUN (menunggu persetujuan) |
+| CI `Quick Experimental APK (MIDI Song V1A)`, run `42579186444` (#23) | **success**: guard, compile APK kedua ABI + verifikasi, Quick tests, UI tests. https://github.com/pulicarpus/YamahaArranger/actions/runs/42579186444 |
+| APK artifact | `SONG-QUICK-APK-experiment-pb02-sched-split-bd5e7ebd351dce4be506d9d9a29c113f0126d904` (id `13657170279`, 14,8 MB, digest zip `sha256:6734b72e0201a7001d7e2ec46cf2119440118de3884b784470b8927bc2a1f118`, berlaku sampai 2027-02-07): https://github.com/pulicarpus/YamahaArranger/actions/runs/42579186444/artifacts/13657170279 |
 | Perangkat | NOT TESTED |
 
 ## 6. Rencana A/B perangkat (3 run × 60 s)
