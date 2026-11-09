@@ -1,0 +1,106 @@
+YAMAHA ARRANGER — SF2 / STYLE INSPECTOR
+Generated: 20261109_181907
+
+=== LATENCY PROBE (counters since app start or last RESET LATENCY) ===
+PB02 enabled=true (P-B0.2 scheduler lateness split; counters since RESET LATENCY or since enabled)
+PB02 events=9832 onTimeOrEarly=263 idleCase=1845 backlogCase=7724 boundaryCase=0 late32=758 late64=252 mismatches=0 (mismatches must be 0)
+PB02_SHARE_all wake=6.2% jni=42.3% midiOut=0.3% voice=0.0% kotlin=37.4% unknown=13.9% totalLateMs=123716
+PB02_SHARE_late32ms wake=0.0% jni=27.8% midiOut=0.1% voice=0.0% kotlin=42.3% unknown=29.8%
+PB02_SHARE_late64ms wake=0.0% jni=17.3% midiOut=0.1% voice=0.0% kotlin=25.6% unknown=57.0%
+PB02_TIMELINE_ms span=59890 idleOnTimeInclTail=43833 wakeOverrun=2876 jni=8047 midiOut=63 voice=0 kotlinBusy=5069 boundaryUntyped=0 (buckets sum to span)
+LATENCY_KOTLIN stat=PB02_lateness count=9569 meanUs=12928 p50UpperUs=8000 p95UpperUs=64000 p99UpperUs=162246 maxUs=162246 buckets=121,155,369,1704,1714,1645,1833,1270,506,252
+LATENCY_KOTLIN stat=PB02_part_wake count=4715 meanUs=1617 p50UpperUs=2000 p95UpperUs=4000 p99UpperUs=8000 maxUs=7211 buckets=208,236,539,2822,772,138,0,0,0,0
+LATENCY_KOTLIN stat=PB02_part_jni count=7371 meanUs=7100 p50UpperUs=8000 p95UpperUs=32000 p99UpperUs=64000 maxUs=41086 buckets=1001,111,417,494,1548,1434,1484,762,120,0
+LATENCY_KOTLIN stat=PB02_part_midiOut count=7383 meanUs=42 p50UpperUs=250 p95UpperUs=250 p99UpperUs=250 maxUs=1792 buckets=7381,0,0,2,0,0,0,0,0,0
+LATENCY_KOTLIN stat=PB02_part_voice count=0
+LATENCY_KOTLIN stat=PB02_part_kotlin count=7724 meanUs=5990 p50UpperUs=4000 p95UpperUs=64000 p99UpperUs=64000 maxUs=42845 buckets=300,380,1089,1381,1584,1845,485,149,511,0
+LATENCY_KOTLIN stat=PB02_part_unknown count=135 meanUs=127005 p50UpperUs=129734 p95UpperUs=129734 p99UpperUs=129734 maxUs=129734 buckets=0,0,0,0,0,0,0,0,2,133
+LATENCY_KOTLIN stat=PB02_tail_afterLastObservedActivity_backlogOnly count=7724 meanUs=160 p50UpperUs=250 p95UpperUs=1000 p99UpperUs=2000 maxUs=29547 buckets=6662,674,240,142,1,1,0,4,0,0
+LATENCY_KOTLIN stat=PB02_boundaryEvents_lateness_notSplit count=0
+LATENCY_KOTLIN clock=System.nanoTime(=CLOCK_MONOTONIC) enabled=true dispatch_is_not_audible_time=1
+LATENCY_KOTLIN stat=midiUsbTimestampToOnSend count=0
+LATENCY_KOTLIN stat=midiOnSendTotal count=0
+LATENCY_KOTLIN stat=midiOnSendThreadCpuTime_wallMinusCpu=blockedOrPreempted count=0
+LATENCY_KOTLIN stat=keyboardLockWait count=3 meanUs=1 p50UpperUs=250 p95UpperUs=250 p99UpperUs=250 maxUs=3 buckets=3,0,0,0,0,0,0,0,0,0
+LATENCY_KOTLIN stat=rightKeyboardLockToStartRightNote_includesRIGHT_IN_log count=0
+LATENCY_KOTLIN stat=rightEngineNoteOnEntryToJniCall_includesTraceAudioFormat count=0
+LATENCY_KOTLIN stat=rightNoteOnSendToAllLayersHandedToNative count=0
+LATENCY_KOTLIN stat=jniKeyboardNoteOn_includesNativeLockWait count=0
+LATENCY_KOTLIN stat=sectionRequestToBoundaryWake count=0
+LATENCY_KOTLIN stat=sectionBoundaryToVoiceApplyStart count=0
+LATENCY_KOTLIN stat=sectionVoiceApplyDuration count=0
+LATENCY_KOTLIN stat=sectionVoiceApplyEndToFirstNoteDispatch count=0
+LATENCY_KOTLIN stat=sectionBoundaryToFirstNoteDispatch count=0
+LATENCY_KOTLIN stat=sectionFirstNoteLatenessVsSchedule count=0
+LATENCY_KOTLIN stat=styleEventWakeLatenessBeforeLifecycle count=9570 meanUs=12940 p50UpperUs=8000 p95UpperUs=64000 p99UpperUs=162246 maxUs=162246 buckets=121,155,369,1704,1714,1645,1833,1270,506,253
+LATENCY_KOTLIN stat=styleEventDispatchLatenessAfterLifecycle count=8958 meanUs=8820 p50UpperUs=8000 p95UpperUs=32000 p99UpperUs=64000 maxUs=161145 buckets=98,149,343,1471,1954,1694,1731,1287,190,41
+LATENCY_KOTLIN stat=chordLastNoteToApplyChordNow count=0
+LATENCY_KOTLIN stat=chordApplyDuration_handleChordChange count=1 meanUs=712 p50UpperUs=1000 p95UpperUs=1000 p99UpperUs=1000 maxUs=712 buckets=0,0,1,0,0,0,0,0,0,0
+LATENCY_KOTLIN stat=chordLastNoteToRetargetDone count=0
+LATENCY_KOTLIN stat=chordFirstKeyToRecognized_includesFingerSpread count=1 meanUs=2912 p50UpperUs=4000 p95UpperUs=4000 p99UpperUs=4000 maxUs=2912 buckets=0,0,0,0,1,0,0,0,0,0
+LATENCY_KOTLIN stat=chordRecognizedToApplyStart_settleAndMainQueue count=1 meanUs=15354 p50UpperUs=16000 p95UpperUs=16000 p99UpperUs=16000 maxUs=15354 buckets=0,0,0,0,0,0,1,0,0,0
+LATENCY_KOTLIN stat=chordFirstKeyToApplyStart_includesSettle count=1 meanUs=18267 p50UpperUs=32000 p95UpperUs=32000 p99UpperUs=32000 maxUs=18267 buckets=0,0,0,0,0,0,0,1,0,0
+LATENCY_KOTLIN stat=chordFirstKeyToRetargetDone_synchronousJniAndUsb count=1 meanUs=18980 p50UpperUs=32000 p95UpperUs=32000 p99UpperUs=32000 maxUs=18980 buckets=0,0,0,0,0,0,0,1,0,0
+LATENCY_KOTLIN_LATE stat=styleEventWakeLatenessBeforeLifecycle count=9570 meanUs=12940 over32ms=759 over64ms=253 maxUs=162246
+LATENCY_KOTLIN_LATE stat=styleEventDispatchLatenessAfterLifecycle count=8958 meanUs=8820 over32ms=231 over64ms=41 maxUs=161145
+LATENCY_KOTLIN_COUNTERS sinceResetS=74.7 midiEventsIn=0 midiEventsPerSec=0.00 chordChanges=1 chordChangesPerSec=0.013 retargetNoteReplacements=0 retargetUnchangedDecisions=0 replacementsPerChordChange=0.0 midiQueueDepth=NOT_MEASURED(no_app_queue;android_midi_service_socket_is_not_observable;see_midiUsbTimestampToOnSend)
+CHORD_TRANSITION back=0 firstKeyToRecognizedUs=2912 recognizedToApplyUs=15354 applyToRetargetDoneUs=712 firstKeyToDoneUs=18980 noteReplacements=0 applyAtNs=122560356588072 doneAtNs=122560357300764
+LATENCY_OUTPUT streamOpen=1 sampleRate=48000 channels=2 sharing=1(0=Exclusive,1=Shared) perf=12(10=None,11=PowerSaving,12=LowLatency) api=2(1=OpenSLES,2=AAudio) fallbackToShared=0 framesPerBurst=256 framesPerCallback=0 bufferCapacity=2048 bufferSizeAtStart=512
+LATENCY_OUTPUT_LIVE bufferSizeNow=512 (=10.6667ms) xruns=0 xrunsSinceReset=0 estimatedOutputLatencyMs=23.0701 (Oboe estimate from the stream clock, not an acoustic measurement)
+LATENCY_NATIVE clock=steady_monotonic_same_as_System.nanoTime enabled=1 callbacks=14000 callbackBudgetUs=5333 overBudget=3 over80pct=169 keyNotesOverwrittenBeforeRender=0 keyNoteOnsQueuedToBass=0 (overwritten = timing samples merged because >1 keyboard NOTE_ON shared one render period; NO event is dropped)
+LATENCY_NATIVE stat=keyboardNoteLockWait count=0
+LATENCY_NATIVE stat=keyboardNoteDispatch count=0
+LATENCY_NATIVE stat=styleNoteLockWait count=4376 meanUs=1178 p50UpperUs=250 p95UpperUs=4000 p99UpperUs=8000 maxUs=8424 buckets=2634,44,78,187,1277,154,2,0,0,0
+LATENCY_NATIVE stat=styleNoteDispatch count=4376 meanUs=28 p50UpperUs=250 p95UpperUs=250 p99UpperUs=250 maxUs=470 buckets=4375,1,0,0,0,0,0,0,0,0
+LATENCY_NATIVE stat=keyboardNoteQueuedToRenderStart count=0
+LATENCY_NATIVE stat=keyboardNoteQueuedToBufferReady count=0
+LATENCY_NATIVE stat=styleNoteQueuedToRenderStart_includesChordRetarget count=2371 meanUs=1472 p50UpperUs=2000 p95UpperUs=4000 p99UpperUs=8000 maxUs=4748 buckets=88,125,391,1286,455,26,0,0,0,0
+LATENCY_NATIVE stat=styleNoteQueuedToBufferReady_includesChordRetarget count=2371 meanUs=4872 p50UpperUs=8000 p95UpperUs=8000 p99UpperUs=8000 maxUs=7996 buckets=0,0,2,11,235,2123,0,0,0,0
+LATENCY_NATIVE stat=callbackStartToStartInterval count=13999 meanUs=5332 p50UpperUs=8000 p95UpperUs=8000 p99UpperUs=8000 maxUs=9306 buckets=0,0,0,1,7,13989,2,0,0,0
+LATENCY_NATIVE stat=callbackIntervalOver150pctOfBudget count=2 (late-callback proxy; Oboe xruns are in LATENCY_OUTPUT_LIVE)
+LATENCY_NATIVE stat=activeBassVoices samples=14000 mean=101 max=167 buckets(<50,<100,<200,<400,<600,<800,>=800)=2712,724,10564,0,0,0,0
+LATENCY_NATIVE stat=renderLockWait count=14000 meanUs=6 p50UpperUs=250 p95UpperUs=250 p99UpperUs=250 maxUs=9224 buckets=13992,0,1,1,1,4,1,0,0,0
+LATENCY_NATIVE stat=renderDecode count=14000 meanUs=2645 p50UpperUs=4000 p95UpperUs=4000 p99UpperUs=8000 maxUs=5125 buckets=2102,155,620,340,10154,629,0,0,0,0
+LATENCY_NATIVE stat=callbackTotal count=14000 meanUs=2704 p50UpperUs=4000 p95UpperUs=8000 p99UpperUs=8000 maxUs=9268 buckets=2082,132,616,373,9843,953,1,0,0,0
+LATENCY_NATIVE stat=synthMutexHold_keyboardNoteOn count=0
+LATENCY_NATIVE stat=synthMutexHold_styleNoteOn count=4376 meanUs=38 p50UpperUs=250 p95UpperUs=250 p99UpperUs=250 maxUs=485 buckets=4374,2,0,0,0,0,0,0,0,0
+LATENCY_NATIVE stat=synthMutexHold_noteOff count=2721 meanUs=21 p50UpperUs=250 p95UpperUs=250 p99UpperUs=250 maxUs=118 buckets=2721,0,0,0,0,0,0,0,0,0
+LATENCY_NATIVE stat=synthMutexHold_render count=14000 meanUs=2674 p50UpperUs=4000 p95UpperUs=8000 p99UpperUs=8000 maxUs=5155 buckets=2091,145,614,362,10029,759,0,0,0,0
+LATENCY_NATIVE stat=synthMutexHold_presetChange count=5 meanUs=9535 p50UpperUs=16000 p95UpperUs=16000 p99UpperUs=16000 maxUs=11488 buckets=0,0,0,0,0,0,5,0,0,0
+LATENCY_NATIVE stat=synthMutexHold_mixerController count=7 meanUs=715 p50UpperUs=1000 p95UpperUs=2000 p99UpperUs=2000 maxUs=1636 buckets=0,1,5,1,0,0,0,0,0,0
+LATENCY_NATIVE stat=synthMutexHold_fontLoad count=0
+LATENCY_NATIVE stat=synthMutexHold_diagnostics count=0
+PA_MODE mode=OPTIMIZED noteCallsUnderLock=7097 logsUnderNoteLock=0 skippedDiagnostics=7097 switchesSinceStart=1 (P-A experiment; counters since RESET LATENCY; OPTIMIZED expects logsUnderNoteLock=0)
+PB01 enabled=0 (P-B0.1 targeted probes; counters since RESET LATENCY; LATENCY_NATIVE lines below use the same units)
+LATENCY_NATIVE stat=PB01_streamSetFonts count=0
+PB01_fontTable entriesLast=0 entriesMax=0
+PB01_WINDOW voiceApply windows=0 applyFontsCallsPerWindowMean=0 applyFontsCallsMax=0 mutexAcquisitionsPerWindowMean=0 mutexAcquisitionsMax=0 replacements=0
+LATENCY_NATIVE stat=PB01_voiceApply_totalAsSeenByKotlin count=0
+LATENCY_NATIVE stat=PB01_voiceApply_nativeWaitPlusHold count=0
+LATENCY_NATIVE stat=PB01_voiceApply_nonNativeRemainder count=0
+LATENCY_NATIVE stat=PB01_voiceApply_mutexWaitSum count=0
+LATENCY_NATIVE stat=PB01_voiceApply_applyFontsSum count=0
+LATENCY_NATIVE stat=PB01_voiceApply_streamSetFontsSum count=0
+LATENCY_NATIVE stat=PB01_voiceApply_bindDrumAB count=0
+LATENCY_NATIVE stat=PB01_voiceApply_setChannelPreset count=0
+LATENCY_NATIVE stat=PB01_voiceApply_setChannelMixer count=0
+LATENCY_NATIVE stat=PB01_voiceApply_noteOn count=0
+LATENCY_NATIVE stat=PB01_voiceApply_noteOff count=0
+LATENCY_NATIVE stat=PB01_voiceApply_perReplacement count=0
+PB01_WINDOW chordRetarget windows=0 applyFontsCallsPerWindowMean=0 applyFontsCallsMax=0 mutexAcquisitionsPerWindowMean=0 mutexAcquisitionsMax=0 replacements=0
+LATENCY_NATIVE stat=PB01_chordRetarget_totalAsSeenByKotlin count=0
+LATENCY_NATIVE stat=PB01_chordRetarget_nativeWaitPlusHold count=0
+LATENCY_NATIVE stat=PB01_chordRetarget_nonNativeRemainder count=0
+LATENCY_NATIVE stat=PB01_chordRetarget_mutexWaitSum count=0
+LATENCY_NATIVE stat=PB01_chordRetarget_applyFontsSum count=0
+LATENCY_NATIVE stat=PB01_chordRetarget_streamSetFontsSum count=0
+LATENCY_NATIVE stat=PB01_chordRetarget_bindDrumAB count=0
+LATENCY_NATIVE stat=PB01_chordRetarget_setChannelPreset count=0
+LATENCY_NATIVE stat=PB01_chordRetarget_setChannelMixer count=0
+LATENCY_NATIVE stat=PB01_chordRetarget_noteOn count=0
+LATENCY_NATIVE stat=PB01_chordRetarget_noteOff count=0
+LATENCY_NATIVE stat=PB01_chordRetarget_perReplacement count=0
+PB1A drumBindCache=OFF bindDrumABCalls=2 skippedIdentical=0 rebound=2 switchesSinceStart=0 (P-B1a experiment; counters since RESET LATENCY; OFF = legacy rebind every voice apply)
+METRONOME enabled=0 mode=STANDALONE running=1 bpmX100=9400 meter=4/4 volumePermille=600 beatSeq=0 followFired=0 followMeanLateUs=0 followMaxLateUs=0 droppedStale=0 droppedRingFull=0 duplicatesDropped=0 (late = callback start minus click target; same quantisation as Style notes)
+
+
