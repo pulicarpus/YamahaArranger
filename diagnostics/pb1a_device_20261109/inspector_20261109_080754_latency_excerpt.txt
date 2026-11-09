@@ -1,0 +1,109 @@
+YAMAHA ARRANGER — SF2 / STYLE INSPECTOR
+Generated: 20261109_080754
+
+=== LATENCY PROBE (counters since app start or last RESET LATENCY) ===
+LATENCY_KOTLIN clock=System.nanoTime(=CLOCK_MONOTONIC) enabled=true dispatch_is_not_audible_time=1
+LATENCY_KOTLIN stat=midiUsbTimestampToOnSend count=6 meanUs=529 p50UpperUs=500 p95UpperUs=2000 p99UpperUs=2000 maxUs=1073 buckets=0,5,0,1,0,0,0,0,0,0
+LATENCY_KOTLIN stat=midiOnSendTotal count=3962 meanUs=23 p50UpperUs=250 p95UpperUs=250 p99UpperUs=250 maxUs=15681 buckets=3941,9,0,10,0,0,2,0,0,0
+LATENCY_KOTLIN stat=midiOnSendThreadCpuTime_wallMinusCpu=blockedOrPreempted count=3962 meanUs=48 p50UpperUs=250 p95UpperUs=250 p99UpperUs=250 maxUs=15417 buckets=3950,0,0,10,0,0,2,0,0,0
+LATENCY_KOTLIN stat=keyboardLockWait count=6 meanUs=5 p50UpperUs=250 p95UpperUs=250 p99UpperUs=250 maxUs=7 buckets=6,0,0,0,0,0,0,0,0,0
+LATENCY_KOTLIN stat=rightKeyboardLockToStartRightNote_includesRIGHT_IN_log count=0
+LATENCY_KOTLIN stat=rightEngineNoteOnEntryToJniCall_includesTraceAudioFormat count=0
+LATENCY_KOTLIN stat=rightNoteOnSendToAllLayersHandedToNative count=0
+LATENCY_KOTLIN stat=jniKeyboardNoteOn_includesNativeLockWait count=0
+LATENCY_KOTLIN stat=sectionRequestToBoundaryWake count=11 meanUs=1775363 p50UpperUs=2545985 p95UpperUs=2545985 p99UpperUs=2545985 maxUs=2545985 buckets=0,0,0,0,0,0,0,0,0,11
+LATENCY_KOTLIN stat=sectionBoundaryToVoiceApplyStart count=22 meanUs=68 p50UpperUs=250 p95UpperUs=250 p99UpperUs=500 maxUs=279 buckets=21,1,0,0,0,0,0,0,0,0
+LATENCY_KOTLIN stat=sectionVoiceApplyDuration count=22 meanUs=21706 p50UpperUs=32000 p95UpperUs=32000 p99UpperUs=64000 maxUs=33628 buckets=0,0,0,0,0,0,2,19,1,0
+LATENCY_KOTLIN stat=sectionVoiceApplyEndToFirstNoteDispatch count=22 meanUs=7170 p50UpperUs=8000 p95UpperUs=16000 p99UpperUs=32000 maxUs=20447 buckets=0,0,0,0,7,8,6,1,0,0
+LATENCY_KOTLIN stat=sectionBoundaryToFirstNoteDispatch count=22 meanUs=28946 p50UpperUs=32000 p95UpperUs=64000 p99UpperUs=64000 maxUs=51524 buckets=0,0,0,0,0,0,0,15,7,0
+LATENCY_KOTLIN stat=sectionFirstNoteLatenessVsSchedule count=22 meanUs=39590 p50UpperUs=32000 p95UpperUs=82176 p99UpperUs=82176 maxUs=82176 buckets=0,0,0,0,0,0,1,11,7,3
+LATENCY_KOTLIN stat=styleEventWakeLatenessBeforeLifecycle count=11696 meanUs=21073 p50UpperUs=16000 p95UpperUs=131536 p99UpperUs=131536 maxUs=131536 buckets=108,151,526,1649,1618,1540,1517,1873,1795,919
+LATENCY_KOTLIN stat=styleEventDispatchLatenessAfterLifecycle count=9283 meanUs=11149 p50UpperUs=8000 p95UpperUs=64000 p99UpperUs=131244 maxUs=131244 buckets=97,127,485,1574,1730,1580,1521,1569,423,177
+LATENCY_KOTLIN stat=chordLastNoteToApplyChordNow count=1 meanUs=31931 p50UpperUs=32000 p95UpperUs=32000 p99UpperUs=32000 maxUs=31931 buckets=0,0,0,0,0,0,0,1,0,0
+LATENCY_KOTLIN stat=chordApplyDuration_handleChordChange count=1 meanUs=2379 p50UpperUs=4000 p95UpperUs=4000 p99UpperUs=4000 maxUs=2379 buckets=0,0,0,0,1,0,0,0,0,0
+LATENCY_KOTLIN stat=chordLastNoteToRetargetDone count=1 meanUs=34311 p50UpperUs=64000 p95UpperUs=64000 p99UpperUs=64000 maxUs=34311 buckets=0,0,0,0,0,0,0,0,1,0
+LATENCY_KOTLIN stat=chordFirstKeyToRecognized_includesFingerSpread count=1 meanUs=27011 p50UpperUs=32000 p95UpperUs=32000 p99UpperUs=32000 maxUs=27011 buckets=0,0,0,0,0,0,0,1,0,0
+LATENCY_KOTLIN stat=chordRecognizedToApplyStart_settleAndMainQueue count=1 meanUs=18571 p50UpperUs=32000 p95UpperUs=32000 p99UpperUs=32000 maxUs=18571 buckets=0,0,0,0,0,0,0,1,0,0
+LATENCY_KOTLIN stat=chordFirstKeyToApplyStart_includesSettle count=1 meanUs=45582 p50UpperUs=64000 p95UpperUs=64000 p99UpperUs=64000 maxUs=45582 buckets=0,0,0,0,0,0,0,0,1,0
+LATENCY_KOTLIN stat=chordFirstKeyToRetargetDone_synchronousJniAndUsb count=1 meanUs=47961 p50UpperUs=64000 p95UpperUs=64000 p99UpperUs=64000 maxUs=47961 buckets=0,0,0,0,0,0,0,0,1,0
+LATENCY_KOTLIN_LATE stat=styleEventWakeLatenessBeforeLifecycle count=11696 meanUs=21073 over32ms=2714 over64ms=919 maxUs=131536
+LATENCY_KOTLIN_LATE stat=styleEventDispatchLatenessAfterLifecycle count=9283 meanUs=11149 over32ms=600 over64ms=177 maxUs=131244
+LATENCY_KOTLIN_COUNTERS sinceResetS=76.2 midiEventsIn=12 midiEventsPerSec=0.16 chordChanges=1 chordChangesPerSec=0.013 retargetNoteReplacements=0 retargetUnchangedDecisions=0 replacementsPerChordChange=0.0 midiQueueDepth=NOT_MEASURED(no_app_queue;android_midi_service_socket_is_not_observable;see_midiUsbTimestampToOnSend)
+CHORD_TRANSITION back=0 firstKeyToRecognizedUs=27011 recognizedToApplyUs=18571 applyToRetargetDoneUs=2379 firstKeyToDoneUs=47961 noteReplacements=0 applyAtNs=100089570247271 doneAtNs=100089572626963
+LATENCY_OUTPUT streamOpen=1 sampleRate=48000 channels=2 sharing=1(0=Exclusive,1=Shared) perf=12(10=None,11=PowerSaving,12=LowLatency) api=2(1=OpenSLES,2=AAudio) fallbackToShared=0 framesPerBurst=256 framesPerCallback=0 bufferCapacity=2048 bufferSizeAtStart=512
+LATENCY_OUTPUT_LIVE bufferSizeNow=512 (=10.6667ms) xruns=0 xrunsSinceReset=0 estimatedOutputLatencyMs=24.8104 (Oboe estimate from the stream clock, not an acoustic measurement)
+LATENCY_NATIVE clock=steady_monotonic_same_as_System.nanoTime enabled=1 callbacks=14291 callbackBudgetUs=5333 overBudget=35 over80pct=111 keyNotesOverwrittenBeforeRender=0 keyNoteOnsQueuedToBass=0 (overwritten = timing samples merged because >1 keyboard NOTE_ON shared one render period; NO event is dropped)
+LATENCY_NATIVE stat=keyboardNoteLockWait count=0
+LATENCY_NATIVE stat=keyboardNoteDispatch count=0
+LATENCY_NATIVE stat=styleNoteLockWait count=4557 meanUs=887 p50UpperUs=250 p95UpperUs=4000 p99UpperUs=4000 maxUs=8175 buckets=2856,51,119,370,1136,24,1,0,0,0
+LATENCY_NATIVE stat=styleNoteDispatch count=4557 meanUs=30 p50UpperUs=250 p95UpperUs=250 p99UpperUs=250 maxUs=1133 buckets=4548,4,4,1,0,0,0,0,0,0
+LATENCY_NATIVE stat=keyboardNoteQueuedToRenderStart count=0
+LATENCY_NATIVE stat=keyboardNoteQueuedToBufferReady count=0
+LATENCY_NATIVE stat=styleNoteQueuedToRenderStart_includesChordRetarget count=2491 meanUs=1987 p50UpperUs=2000 p95UpperUs=4000 p99UpperUs=8000 maxUs=5412 buckets=88,79,255,904,1090,75,0,0,0,0
+LATENCY_NATIVE stat=styleNoteQueuedToBufferReady_includesChordRetarget count=2491 meanUs=4758 p50UpperUs=8000 p95UpperUs=8000 p99UpperUs=8000 maxUs=9340 buckets=0,0,4,25,440,2021,1,0,0,0
+LATENCY_NATIVE stat=callbackStartToStartInterval count=14290 meanUs=5332 p50UpperUs=8000 p95UpperUs=8000 p99UpperUs=8000 maxUs=8944 buckets=0,0,0,0,21,14265,4,0,0,0
+LATENCY_NATIVE stat=callbackIntervalOver150pctOfBudget count=4 (late-callback proxy; Oboe xruns are in LATENCY_OUTPUT_LIVE)
+LATENCY_NATIVE stat=activeBassVoices samples=14291 mean=83 max=168 buckets(<50,<100,<200,<400,<600,<800,>=800)=2934,4903,6454,0,0,0,0
+LATENCY_NATIVE stat=renderLockWait count=14291 meanUs=15 p50UpperUs=250 p95UpperUs=250 p99UpperUs=250 maxUs=8537 buckets=14240,6,4,8,23,9,1,0,0,0
+LATENCY_NATIVE stat=renderDecode count=14291 meanUs=2215 p50UpperUs=4000 p95UpperUs=4000 p99UpperUs=8000 maxUs=6466 buckets=1601,560,663,2011,9251,205,0,0,0,0
+LATENCY_NATIVE stat=callbackTotal count=14291 meanUs=2283 p50UpperUs=4000 p95UpperUs=4000 p99UpperUs=8000 maxUs=8837 buckets=1565,483,745,1768,9361,365,4,0,0,0
+LATENCY_NATIVE stat=synthMutexHold_keyboardNoteOn count=0
+LATENCY_NATIVE stat=synthMutexHold_styleNoteOn count=4557 meanUs=40 p50UpperUs=250 p95UpperUs=250 p99UpperUs=250 maxUs=2421 buckets=4543,7,5,1,1,0,0,0,0,0
+LATENCY_NATIVE stat=synthMutexHold_noteOff count=2979 meanUs=21 p50UpperUs=250 p95UpperUs=250 p99UpperUs=250 maxUs=608 buckets=2978,0,1,0,0,0,0,0,0,0
+LATENCY_NATIVE stat=synthMutexHold_render count=14291 meanUs=2242 p50UpperUs=4000 p95UpperUs=4000 p99UpperUs=8000 maxUs=6494 buckets=1581,516,712,1893,9344,245,0,0,0,0
+LATENCY_NATIVE stat=synthMutexHold_presetChange count=5 meanUs=8724 p50UpperUs=16000 p95UpperUs=16000 p99UpperUs=16000 maxUs=9810 buckets=0,0,0,0,0,2,3,0,0,0
+LATENCY_NATIVE stat=synthMutexHold_mixerController count=7 meanUs=397 p50UpperUs=500 p95UpperUs=500 p99UpperUs=500 maxUs=478 buckets=0,7,0,0,0,0,0,0,0,0
+LATENCY_NATIVE stat=synthMutexHold_fontLoad count=0
+LATENCY_NATIVE stat=synthMutexHold_diagnostics count=0
+PA_MODE mode=OPTIMIZED noteCallsUnderLock=7536 logsUnderNoteLock=0 skippedDiagnostics=7536 switchesSinceStart=1 (P-A experiment; counters since RESET LATENCY; OPTIMIZED expects logsUnderNoteLock=0)
+PB01 enabled=1 (P-B0.1 targeted probes; counters since RESET LATENCY; LATENCY_NATIVE lines below use the same units)
+LATENCY_NATIVE stat=PB01_mutex_audio_render_wait count=14291 meanUs=11 p50UpperUs=250 p95UpperUs=250 p99UpperUs=250 maxUs=8535 buckets=14240,6,5,7,23,9,1,0,0,0
+LATENCY_NATIVE stat=PB01_mutex_audio_render_hold count=14291 meanUs=2258 p50UpperUs=4000 p95UpperUs=4000 p99UpperUs=8000 maxUs=6499 buckets=1577,514,715,1838,9344,303,0,0,0,0
+LATENCY_NATIVE stat=PB01_mutex_scheduler_noteOn_wait count=4557 meanUs=883 p50UpperUs=250 p95UpperUs=4000 p99UpperUs=4000 maxUs=8171 buckets=2858,51,118,370,1136,23,1,0,0,0
+LATENCY_NATIVE stat=PB01_mutex_scheduler_noteOn_hold count=4557 meanUs=44 p50UpperUs=250 p95UpperUs=250 p99UpperUs=250 maxUs=2448 buckets=4542,8,5,1,1,0,0,0,0,0
+LATENCY_NATIVE stat=PB01_mutex_scheduler_noteOff_wait count=2979 meanUs=761 p50UpperUs=250 p95UpperUs=4000 p99UpperUs=4000 maxUs=6803 buckets=1961,57,95,255,591,20,0,0,0,0
+LATENCY_NATIVE stat=PB01_mutex_scheduler_noteOff_hold count=2979 meanUs=25 p50UpperUs=250 p95UpperUs=250 p99UpperUs=250 maxUs=611 buckets=2978,0,1,0,0,0,0,0,0,0
+LATENCY_NATIVE stat=PB01_mutex_scheduler_bindDrumAB_wait count=44 meanUs=1898 p50UpperUs=1000 p95UpperUs=16000 p99UpperUs=16000 maxUs=10257 buckets=19,0,4,9,4,5,3,0,0,0
+LATENCY_NATIVE stat=PB01_mutex_scheduler_bindDrumAB_hold count=44 meanUs=3954 p50UpperUs=8000 p95UpperUs=8000 p99UpperUs=8000 maxUs=5439 buckets=0,0,0,3,15,26,0,0,0,0
+LATENCY_NATIVE stat=PB01_mutex_main_setChannelPreset_wait count=5 meanUs=1 p50UpperUs=250 p95UpperUs=250 p99UpperUs=250 maxUs=1 buckets=5,0,0,0,0,0,0,0,0,0
+LATENCY_NATIVE stat=PB01_mutex_main_setChannelPreset_hold count=5 meanUs=8758 p50UpperUs=16000 p95UpperUs=16000 p99UpperUs=16000 maxUs=9824 buckets=0,0,0,0,0,1,4,0,0,0
+LATENCY_NATIVE stat=PB01_mutex_main_setChannelMixer_wait count=7 meanUs=0 p50UpperUs=250 p95UpperUs=250 p99UpperUs=250 maxUs=1 buckets=7,0,0,0,0,0,0,0,0,0
+LATENCY_NATIVE stat=PB01_mutex_main_setChannelMixer_hold count=7 meanUs=399 p50UpperUs=500 p95UpperUs=500 p99UpperUs=500 maxUs=480 buckets=0,7,0,0,0,0,0,0,0,0
+LATENCY_NATIVE stat=PB01_mutex_main_bindDrumAB_wait count=2 meanUs=0 p50UpperUs=250 p95UpperUs=250 p99UpperUs=250 maxUs=0 buckets=2,0,0,0,0,0,0,0,0,0
+LATENCY_NATIVE stat=PB01_mutex_main_bindDrumAB_hold count=2 meanUs=2548 p50UpperUs=2000 p95UpperUs=4000 p99UpperUs=4000 maxUs=3175 buckets=0,0,0,1,1,0,0,0,0,0
+LATENCY_NATIVE stat=PB01_applyFonts_by_setChannelPreset count=5 meanUs=1337 p50UpperUs=2000 p95UpperUs=2000 p99UpperUs=2000 maxUs=1598 buckets=0,0,1,4,0,0,0,0,0,0
+LATENCY_NATIVE stat=PB01_applyFonts_by_bindDrumAB count=46 meanUs=3781 p50UpperUs=8000 p95UpperUs=8000 p99UpperUs=8000 maxUs=5317 buckets=0,0,0,4,18,24,0,0,0,0
+LATENCY_NATIVE stat=PB01_streamSetFonts count=51 meanUs=444 p50UpperUs=500 p95UpperUs=1000 p99UpperUs=1000 maxUs=787 buckets=8,25,18,0,0,0,0,0,0,0
+PB01_fontTable entriesLast=111 entriesMax=111
+PB01_WINDOW voiceApply windows=22 applyFontsCallsPerWindowMean=2 applyFontsCallsMax=2 mutexAcquisitionsPerWindowMean=2 mutexAcquisitionsMax=2 replacements=0
+LATENCY_NATIVE stat=PB01_voiceApply_totalAsSeenByKotlin count=22 meanUs=21706 p50UpperUs=32000 p95UpperUs=32000 p99UpperUs=64000 maxUs=33628 buckets=0,0,0,0,0,0,2,19,1,0
+LATENCY_NATIVE stat=PB01_voiceApply_nativeWaitPlusHold count=22 meanUs=11707 p50UpperUs=16000 p95UpperUs=32000 p99UpperUs=32000 maxUs=20014 buckets=0,0,0,0,0,5,13,4,0,0
+LATENCY_NATIVE stat=PB01_voiceApply_nonNativeRemainder count=22 meanUs=9999 p50UpperUs=16000 p95UpperUs=32000 p99UpperUs=32000 maxUs=25314 buckets=0,0,0,0,0,10,9,3,0,0
+LATENCY_NATIVE stat=PB01_voiceApply_mutexWaitSum count=22 meanUs=3797 p50UpperUs=2000 p95UpperUs=16000 p99UpperUs=16000 maxUs=11172 buckets=1,0,3,7,1,6,4,0,0,0
+LATENCY_NATIVE stat=PB01_voiceApply_applyFontsSum count=22 meanUs=7700 p50UpperUs=8000 p95UpperUs=16000 p99UpperUs=16000 maxUs=9612 buckets=0,0,0,0,1,11,10,0,0,0
+LATENCY_NATIVE stat=PB01_voiceApply_streamSetFontsSum count=22 meanUs=961 p50UpperUs=1000 p95UpperUs=2000 p99UpperUs=2000 maxUs=1336 buckets=0,1,12,9,0,0,0,0,0,0
+LATENCY_NATIVE stat=PB01_voiceApply_bindDrumAB count=22 meanUs=11707 p50UpperUs=16000 p95UpperUs=32000 p99UpperUs=32000 maxUs=20014 buckets=0,0,0,0,0,5,13,4,0,0
+LATENCY_NATIVE stat=PB01_voiceApply_setChannelPreset count=22 meanUs=0 p50UpperUs=250 p95UpperUs=250 p99UpperUs=250 maxUs=0 buckets=22,0,0,0,0,0,0,0,0,0
+LATENCY_NATIVE stat=PB01_voiceApply_setChannelMixer count=22 meanUs=0 p50UpperUs=250 p95UpperUs=250 p99UpperUs=250 maxUs=0 buckets=22,0,0,0,0,0,0,0,0,0
+LATENCY_NATIVE stat=PB01_voiceApply_noteOn count=22 meanUs=0 p50UpperUs=250 p95UpperUs=250 p99UpperUs=250 maxUs=0 buckets=22,0,0,0,0,0,0,0,0,0
+LATENCY_NATIVE stat=PB01_voiceApply_noteOff count=22 meanUs=0 p50UpperUs=250 p95UpperUs=250 p99UpperUs=250 maxUs=0 buckets=22,0,0,0,0,0,0,0,0,0
+LATENCY_NATIVE stat=PB01_voiceApply_perReplacement count=0
+PB01_WINDOW chordRetarget windows=1 applyFontsCallsPerWindowMean=0 applyFontsCallsMax=0 mutexAcquisitionsPerWindowMean=0 mutexAcquisitionsMax=0 replacements=0
+LATENCY_NATIVE stat=PB01_chordRetarget_totalAsSeenByKotlin count=1 meanUs=2379 p50UpperUs=4000 p95UpperUs=4000 p99UpperUs=4000 maxUs=2379 buckets=0,0,0,0,1,0,0,0,0,0
+LATENCY_NATIVE stat=PB01_chordRetarget_nativeWaitPlusHold count=1 meanUs=0 p50UpperUs=250 p95UpperUs=250 p99UpperUs=250 maxUs=0 buckets=1,0,0,0,0,0,0,0,0,0
+LATENCY_NATIVE stat=PB01_chordRetarget_nonNativeRemainder count=1 meanUs=2379 p50UpperUs=4000 p95UpperUs=4000 p99UpperUs=4000 maxUs=2379 buckets=0,0,0,0,1,0,0,0,0,0
+LATENCY_NATIVE stat=PB01_chordRetarget_mutexWaitSum count=1 meanUs=0 p50UpperUs=250 p95UpperUs=250 p99UpperUs=250 maxUs=0 buckets=1,0,0,0,0,0,0,0,0,0
+LATENCY_NATIVE stat=PB01_chordRetarget_applyFontsSum count=1 meanUs=0 p50UpperUs=250 p95UpperUs=250 p99UpperUs=250 maxUs=0 buckets=1,0,0,0,0,0,0,0,0,0
+LATENCY_NATIVE stat=PB01_chordRetarget_streamSetFontsSum count=1 meanUs=0 p50UpperUs=250 p95UpperUs=250 p99UpperUs=250 maxUs=0 buckets=1,0,0,0,0,0,0,0,0,0
+LATENCY_NATIVE stat=PB01_chordRetarget_bindDrumAB count=1 meanUs=0 p50UpperUs=250 p95UpperUs=250 p99UpperUs=250 maxUs=0 buckets=1,0,0,0,0,0,0,0,0,0
+LATENCY_NATIVE stat=PB01_chordRetarget_setChannelPreset count=1 meanUs=0 p50UpperUs=250 p95UpperUs=250 p99UpperUs=250 maxUs=0 buckets=1,0,0,0,0,0,0,0,0,0
+LATENCY_NATIVE stat=PB01_chordRetarget_setChannelMixer count=1 meanUs=0 p50UpperUs=250 p95UpperUs=250 p99UpperUs=250 maxUs=0 buckets=1,0,0,0,0,0,0,0,0,0
+LATENCY_NATIVE stat=PB01_chordRetarget_noteOn count=1 meanUs=0 p50UpperUs=250 p95UpperUs=250 p99UpperUs=250 maxUs=0 buckets=1,0,0,0,0,0,0,0,0,0
+LATENCY_NATIVE stat=PB01_chordRetarget_noteOff count=1 meanUs=0 p50UpperUs=250 p95UpperUs=250 p99UpperUs=250 maxUs=0 buckets=1,0,0,0,0,0,0,0,0,0
+LATENCY_NATIVE stat=PB01_chordRetarget_perReplacement count=0
+PB1A drumBindCache=OFF bindDrumABCalls=46 skippedIdentical=0 rebound=46 switchesSinceStart=2 (P-B1a experiment; counters since RESET LATENCY; OFF = legacy rebind every voice apply)
+METRONOME enabled=0 mode=STANDALONE running=1 bpmX100=9400 meter=4/4 volumePermille=600 beatSeq=0 followFired=0 followMeanLateUs=0 followMaxLateUs=0 droppedStale=0 droppedRingFull=0 duplicatesDropped=0 (late = callback start minus click target; same quantisation as Style notes)
+
+
+DRUM_AB_BOUND ch=8 section='MainD' pdta=ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506 rawBank=127 expectedNativeBank=127 expectedPC=27 actualFont=1 actualBank=127 actualPC=27 readback=1 bindingVerified=1 NOTE_ON=420
+DRUM_AB_BOUND ch=9 section='MainD' pdta=ca157455dc307fd988d1edef1e2a0cfca245ab7d2bb5970f4c415c29444ba506 rawBank=127 expectedNativeBank=127 expectedPC=0 actualFont=1 actualBank=127 actualPC=0 readback=1 bindingVerified=1 NOTE_ON=1152
