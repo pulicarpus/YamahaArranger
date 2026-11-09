@@ -2202,6 +2202,13 @@ class MainViewModel @Inject constructor(
         audioEngine.setPb1aDrumBindCache(!audioEngine.pb1aDrumBindCache())
         return true
     }
+    // P-B0.2 EXPERIMENT: Inspector-only, switched only while the Style is stopped.
+    fun pb02Label(): String = if (audioEngine.pb02Enabled()) "ON" else "OFF"
+    fun togglePb02(): Boolean {
+        if (arrangerBrain.state.value.isPlaying) return false
+        audioEngine.setPb02Enabled(!audioEngine.pb02Enabled())
+        return true
+    }
     fun togglePbProbes(): Boolean {
         if (arrangerBrain.state.value.isPlaying) return false
         audioEngine.setPbProbesEnabled(!audioEngine.pbProbesEnabled())

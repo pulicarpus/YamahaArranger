@@ -331,7 +331,9 @@ class AudioEngineManager @Inject constructor(
         if (soundFontLoaded) {
             val probeStart = System.nanoTime() // LATENCY_PROBE
             if (channel < 4) LatencyProbe.preJniLogging(probeEntry, probeStart)
+            val pb2 = Pb02.t0() // P-B0.2
             bridge.nativeSfNoteOnChannel(channel, midiNote, velocity01)
+            Pb02.jni(pb2) // P-B0.2
             if (channel < 4) LatencyProbe.jniKeyboardNote(probeStart)
             noteTap?.noteOn(channel, midiNote, velocity01)
         } else noteOn(midiNote, velocity01)
@@ -340,12 +342,14 @@ class AudioEngineManager @Inject constructor(
     fun noteOnStyleChannel(channel: Int, note: Int, velocity: Float, sourceChannel: Int,
         sourceNote: Int, styleBank: Int, tick: Long, id: Long, sampled: Boolean, chordId: Long = 0L, operation: Int = 0) {
         pbRole() // P-B0.1
+        val pb2 = Pb02.t0() // P-B0.2
         if (soundFontLoaded) bridge.nativeSfNoteOnStyleChannel(channel, note, velocity,
             sourceChannel, sourceNote, styleBank, tick, id, sampled, chordId, operation)
         else {
             if (sampled || chordId != 0L) DebugLog.add("AUDIO BRIDGE id=$id ch=$channel NOTE_ON_NATIVE=0 reason=sf2_not_loaded existing_sample_fallback=1")
             noteOnChannel(channel, note, velocity)
         }
+        Pb02.jni(pb2) // P-B0.2
         if (soundFontLoaded) noteTap?.noteOn(channel, note, velocity)
     }
 
@@ -357,17 +361,21 @@ class AudioEngineManager @Inject constructor(
     fun noteOffStyleChannel(channel: Int, note: Int, sourceChannel: Int, sourceNote: Int,
         bank: Int, tick: Long, id: Long, chordId: Long, operation: Int) {
         pbRole() // P-B0.1
+        val pb2 = Pb02.t0() // P-B0.2
         if (soundFontLoaded) bridge.nativeSfNoteOffStyleChannel(channel, note,
             sourceChannel, sourceNote, bank, tick, id, chordId, operation)
         else noteOffChannel(channel, note)
+        Pb02.jni(pb2) // P-B0.2
         if (soundFontLoaded) noteTap?.noteOff(channel, note)
     }
 
     fun noteOffChannel(channel: Int, midiNote: Int) {
         pbRole() // P-B0.1
         if (!NoteLogTuning.skip()) DebugLog.traceAudio("NOTE_OFF ch=$channel note=$midiNote sf2=$soundFontLoaded")
+        val pb2 = Pb02.t0() // P-B0.2 (after the NOTE log line: logging is Kotlin work, not JNI)
         if (soundFontLoaded) bridge.nativeSfNoteOffChannel(channel, midiNote)
         else noteOff(midiNote)
+        Pb02.jni(pb2) // P-B0.2
         if (soundFontLoaded) noteTap?.noteOff(channel, midiNote)
     }
 
@@ -473,6 +481,9 @@ class AudioEngineManager @Inject constructor(
     /** P-B1a EXPERIMENT: skip identical, still-verified Drum AB rebinds at section voice apply (default OFF = legacy). */
     fun setPb1aDrumBindCache(enabled: Boolean) { bridge.nativePb1aSetDrumBindCache(enabled); DebugLog.add("P-B1a DRUM BIND CACHE " + if (enabled) "ON" else "OFF") }
     fun pb1aDrumBindCache(): Boolean = bridge.nativePb1aDrumBindCache()
+    /** P-B0.2 EXPERIMENT: scheduler lateness split (Kotlin observer, default OFF). */
+    fun setPb02Enabled(enabled: Boolean) { Pb02.setEnabled(enabled); DebugLog.add("P-B0.2 SCHED SPLIT " + if (enabled) "ON" else "OFF") }
+    fun pb02Enabled(): Boolean = Pb02.enabled
     fun paDiagnosticModeLabel(): String = if (paDiagnosticMode() == 1) "OPTIMIZED" else "LEGACY"
     fun channelBinding(channel: Int): ChannelBinding? = ChannelBinding.parse(bridge.nativeChannelBinding(channel))
     /** SF2 preset-data fingerprint of a loaded font ("" when unavailable); identifies content, not just the file name. */

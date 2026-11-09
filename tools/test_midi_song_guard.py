@@ -27,7 +27,9 @@ ALLOWED = set(ADDITIVE) | {J + 'ui/MainViewModel.kt', J + 'ui/SxMainScreen.kt', 
            # P-B0.1 targeted probes (diagnostics/PB01_TARGETED_INSTRUMENTATION.md): observer-only header and its host test
            C + 'pb01_probe.h', 'tests/pb01_probe_test.cpp',
            # P-B1a experiment (diagnostics/PB1A_DRUM_BIND_CACHE_EXPERIMENT.md): flag header and its host test
-           C + 'pb1a_drum_bind_cache.h', 'tests/pb1a_drum_bind_cache_test.cpp', 'tests/pb1a_kit_change_test.cpp'}
+           C + 'pb1a_drum_bind_cache.h', 'tests/pb1a_drum_bind_cache_test.cpp', 'tests/pb1a_kit_change_test.cpp',
+           # P-B0.2 scheduler lateness split (diagnostics/PB02_SCHEDULER_LATENESS_SPLIT.md): host tests (classifier lives in PcmSessionControls.kt)
+           'tests/rtdiag/Pb02ClassifierTest.kt', 'tests/rtdiag/Pb02EventIdentityRtTest.kt'}
 PREFIX = (J + 'yamahaarranger/song/', J + 'yamahaarranger/e343out/', J + 'yamahaarranger/routing/', 'app/src/main/assets/e343/', 'tests/cpv/', 'tests/fixtures/midi/', 'tools/test_', 'tools/ui_preview/', 'diagnostics/', '.github/workflows/', 'docs/')
 extra = {p for p in changed if p not in ALLOWED and not p.startswith(PREFIX)}
 assert not extra, 'Unapproved file changed: ' + ', '.join(sorted(extra))
@@ -171,3 +173,10 @@ assert _b.count('pb1a::on()') == 1 and 'pb1a::on()' in _bind, 'P-B1a: the flag i
 assert '!pb1a::tableStale.load(std::memory_order_relaxed) && prev.verified && prev.font && !pdta.empty() && prev.pdta==pdta && prev.rawBank==bank && prev.pc==pc' in _bind and 'live.preset==pc' in _bind, 'P-B1a: skip guard unchanged'
 assert 'inline std::atomic<int> mode{0};' in (ROOT / C / 'pb1a_drum_bind_cache.h').read_text(), 'P-B1a: default OFF'
 print('P-B1a GUARD PASS')
+# P-B0.2 pins: observer-only, default OFF, never reaches the Style engine / CASM / P1 file.
+_p2 = (ROOT / J / 'yamahaarranger/audio/PcmSessionControls.kt').read_text()
+assert 'object Pb02 {\n    @Volatile var enabled = false; private set' in _p2, 'P-B0.2: default OFF'
+for _d in (J + 'yamahaarranger/arranger', J + 'arranger', J + 'style', J + 'yamahaarranger/style'):
+    for _f in (ROOT / _d).rglob('*.kt'):
+        assert 'Pb02' not in _f.read_text(), 'P-B0.2 must not reach ' + str(_f)
+print('P-B0.2 GUARD PASS')

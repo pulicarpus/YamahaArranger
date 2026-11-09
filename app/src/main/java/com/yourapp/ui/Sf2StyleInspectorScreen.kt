@@ -160,6 +160,12 @@ fun Sf2StyleInspectorDialog(
                         val ok = viewModel.togglePb1a(); pb1aLabel = viewModel.pb1aLabel()
                         Toast.makeText(ctx, if (ok) "P-B1a drum bind cache: $pb1aLabel" else "STOP the Style first", Toast.LENGTH_SHORT).show()
                     }) { Text("P-B1a DRUM BIND CACHE: $pb1aLabel") }
+                    // P-B0.2 scheduler lateness split (PB02_* lines in SAVE REPORT)
+                    var pb02Label by remember { mutableStateOf(viewModel.pb02Label()) }
+                    OutlinedButton(enabled = !exportBusy && !state.isPlaying, onClick = {
+                        val ok = viewModel.togglePb02(); pb02Label = viewModel.pb02Label()
+                        Toast.makeText(ctx, if (ok) "P-B0.2 sched split: $pb02Label" else "STOP the Style first", Toast.LENGTH_SHORT).show()
+                    }) { Text("P-B0.2 SCHED SPLIT: $pb02Label") }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(enabled = !state.isPlaying, onClick = { r22Enabled=!r22Enabled;viewModel.setR22ShadowEnabled(r22Enabled) }) { Text("R2-2 SHADOW ${if(r22Enabled) "ON" else "OFF"}") }

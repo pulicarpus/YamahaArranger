@@ -130,6 +130,7 @@ object LatencyProbe {
 
     fun reset() {
         all.forEach { it.reset() }
+        Pb02.reset() // P-B0.2
         midiEventsIn.set(0); chordChanges.set(0); retargetNotes.set(0); retargetUnchanged.set(0); counterStartNs = System.nanoTime()
         ringN = 0; firstKeyNs = 0L; lastChordKeyNs = 0L; recognizedNs = 0L
     }
@@ -230,6 +231,7 @@ object LatencyProbe {
     fun voiceApplyStart() {
         if (!enabled) return
         pbVoiceWindow?.invoke(true, 0L) // P-B0.1 (same thread as the voice apply, before it starts)
+        Pb02.voiceBegin() // P-B0.2
         val now = System.nanoTime(); voiceApplyStartNs = now
         val b = sectionBoundaryNs; if (b != 0L && now >= b) sectionBoundaryToApplyStart.record(now - b)
     }
@@ -238,9 +240,10 @@ object LatencyProbe {
         val now = System.nanoTime(); voiceApplyEndNs = now
         val s = voiceApplyStartNs; if (s != 0L) sectionApply.record(now - s)
         if (s != 0L) pbVoiceWindow?.invoke(false, now - s) // P-B0.1
+        Pb02.voiceEnd() // P-B0.2
         awaitingFirstNote = sectionBoundaryNs != 0L
     }
-    fun schedulerWake(nowNs: Long, targetNs: Long) { if (enabled && nowNs >= targetNs) schedulerWakeLateness.record(nowNs - targetNs) }
+    fun schedulerWake(nowNs: Long, targetNs: Long) { Pb02.wake(nowNs, targetNs) /* P-B0.2, default OFF */; if (enabled && nowNs >= targetNs) schedulerWakeLateness.record(nowNs - targetNs) }
     /** A style event is being dispatched under the lifecycle monitor. */
     fun styleEventDispatched(nowNs: Long, targetNs: Long, isNoteOn: Boolean) {
         if (!enabled) return
@@ -256,6 +259,7 @@ object LatencyProbe {
     }
 
     fun report(): String = buildString {
+        append(Pb02.report()) // P-B0.2 (one line "PB02 enabled=false" when OFF)
         appendLine("LATENCY_KOTLIN clock=System.nanoTime(=CLOCK_MONOTONIC) enabled=$enabled dispatch_is_not_audible_time=1")
         all.forEach { appendLine(it.line()) }
         // P-A EXPERIMENT: late-event counts for the two Style scheduler stats (bucket sums, nothing new is recorded).
@@ -292,4 +296,158 @@ object NoteLogTuning {
     /** true = skip this log line. */
     fun skip(): Boolean { if (!lean) return false; suppressedCount.incrementAndGet(); return true }
     fun resetCounter() = suppressedCount.set(0)
+}
+
+// ======================= P-B0.2 EXPERIMENT (observer only, default OFF) =======================
+/**
+ * P-B0.2 EXPERIMENT (observer only, default OFF): splits Style scheduler lateness (wake time - due time of each event) into
+ *   WAKE   - the scheduler had no observed work left at the due time and woke up late (timer / thread scheduling). UPPER BOUND:
+ *            it also contains the unobserved tail of the previous event (Kotlin after its last JNI/MIDI OUT call); the tail's own
+ *            distribution is measured in backlog cases and reported (`tail`) so the bound can be judged.
+ *   JNI    - the scheduler was inside a BASSMIDI JNI call (lock wait + native work), measured around the bridge call.
+ *   MIDIOUT- the scheduler was inside a MIDI OUT send (router + USB write).
+ *   VOICE  - the scheduler was inside a section voice apply (its own JNI calls are part of it, not counted twice).
+ *   KOTLIN - the scheduler was busy but not in any of the above (CASM, ledger, Kotlin locks, GC, preemption while running).
+ *   UNKNOWN- the part of a lateness interval older than the interval ring's coverage (never guessed).
+ * BOUNDARY events: a section change contains waits this probe cannot see (the bar-boundary wait and P1's awaitMusicalTick live in
+ * StyleSequencer, which is not instrumented). The first event after a voice apply and every event whose lateness interval reaches
+ * back into that change are counted as BOUNDARY: their lateness is reported as a total, never split (no estimate).
+ * Exactness: typed intervals are disjoint by construction (JNI/MIDI OUT calls are sequential on the scheduler; JNI inside a voice
+ * apply is not recorded separately; WAKE is time asleep), so for every event wake+jni+midiOut+voice+kotlin+unknown == lateness.
+ * Thread-time accounting assigns every nanosecond between two scheduler wakes to exactly one bucket (idle-on-time incl. tail,
+ * wake overrun, jni, midiOut, voice, kotlin), so no time is counted twice across events either.
+ * Single logical writer: the scheduler coroutine (sequential even when it changes worker thread; coroutine resumption is a
+ * happens-before edge). Report readers only read atomics.
+ */
+class Pb02Core(private val ringSize: Int = 512) {
+    companion object { const val JNI = 0; const val MIDIOUT = 1; const val VOICE = 2; const val WAKE = 3; const val TYPES = 4 }
+    private val rs = LongArray(ringSize); private val re = LongArray(ringSize); private val rt = IntArray(ringSize)
+    private var rn = 0L
+    private var coverageStart = Long.MAX_VALUE   // complete interval coverage exists only from here on
+    private var started = false; private var lastWake = 0L; private var lastActivity = 0L
+    private val typedSinceWake = LongArray(TYPES)
+    private var voiceStart = 0L
+    private var boundaryPending = false; private var boundaryUntil = 0L
+    @Volatile var inVoice = false; private set
+
+    // ---- results (atomics: read by the report thread) ----
+    val events = java.util.concurrent.atomic.AtomicLong(); val early = java.util.concurrent.atomic.AtomicLong(); val idleCase = java.util.concurrent.atomic.AtomicLong(); val backlogCase = java.util.concurrent.atomic.AtomicLong(); val mismatches = java.util.concurrent.atomic.AtomicLong()
+    val boundaryCase = java.util.concurrent.atomic.AtomicLong(); val boundaryLateness = LatencyProbe.Stat("PB02_boundaryEvents_lateness_notSplit")
+    val partSum = Array(6) { java.util.concurrent.atomic.AtomicLong() }           // ns per part over all events: wake, jni, midiOut, voice, kotlin, unknown
+    val partSumLate32 = Array(6) { java.util.concurrent.atomic.AtomicLong() }     // same, events with lateness >= 32 ms
+    val partSumLate64 = Array(6) { java.util.concurrent.atomic.AtomicLong() }     // same, events with lateness >= 64 ms
+    val latenessSum = java.util.concurrent.atomic.AtomicLong(); val late32Sum = java.util.concurrent.atomic.AtomicLong(); val late64Sum = java.util.concurrent.atomic.AtomicLong(); val late32 = java.util.concurrent.atomic.AtomicLong(); val late64 = java.util.concurrent.atomic.AtomicLong()
+    val timeline = Array(7) { java.util.concurrent.atomic.AtomicLong() }          // idleOnTime(incl tail), wakeOverrun, jni, midiOut, voice, kotlin, boundary(untyped incl. unhooked waits)
+    val span = java.util.concurrent.atomic.AtomicLong()
+    /** Per-part histograms of event lateness parts (Stat buckets, µs). */
+    val lateness = LatencyProbe.Stat("PB02_lateness"); val parts = arrayOf(LatencyProbe.Stat("PB02_part_wake"), LatencyProbe.Stat("PB02_part_jni"),
+        LatencyProbe.Stat("PB02_part_midiOut"), LatencyProbe.Stat("PB02_part_voice"), LatencyProbe.Stat("PB02_part_kotlin"), LatencyProbe.Stat("PB02_part_unknown"))
+    val tail = LatencyProbe.Stat("PB02_tail_afterLastObservedActivity_backlogOnly")
+
+    private fun add(s0: Long, e: Long, type: Int) {
+        val s = if (type == WAKE) s0 else maxOf(s0, lastActivity)   // a nested/overlapping call keeps only its new part: disjoint by construction
+        if (!started || e <= s) return
+        val i = (rn % ringSize).toInt()
+        if (rn >= ringSize) coverageStart = maxOf(coverageStart, re[i])   // evicting: time up to its end is no longer fully covered
+        rs[i] = s; re[i] = e; rt[i] = type; rn++
+        if (e > lastActivity) lastActivity = e
+        if (type != WAKE) typedSinceWake[type] += e - s
+    }
+    fun jni(s: Long, e: Long) { if (!inVoice) add(s, e, JNI) }
+    fun midiOut(s: Long, e: Long) { if (!inVoice) add(s, e, MIDIOUT) }
+    fun voiceBegin(t: Long) { voiceStart = t; inVoice = true }
+    fun voiceEnd(t: Long) { inVoice = false; if (voiceStart != 0L) add(voiceStart, t, VOICE); voiceStart = 0L; boundaryPending = true }
+
+    /** One scheduler wake: [w] = time the event's wait returned, [d] = its due time. */
+    fun wake(w: Long, d: Long) {
+        if (!started) { started = true; lastWake = w; lastActivity = w; coverageStart = w; java.util.Arrays.fill(typedSinceWake, 0L); return }
+        events.incrementAndGet()
+        val gap = w - lastWake
+        val typed = typedSinceWake.sum()
+        if (boundaryPending || d < boundaryUntil) {        // section change in or overlapping this interval: total only
+            boundaryCase.incrementAndGet()
+            if (boundaryPending) { boundaryUntil = w; boundaryPending = false }
+            if (w > d) boundaryLateness.record(w - d)
+            accountGap(gap, typed, idleOnTime = 0L, overrun = 0L, boundary = true)
+        } else if (w <= d) {                                      // on time (or dispatched early): nothing late
+            early.incrementAndGet()
+            accountGap(gap, typed, idleOnTime = maxOf(0L, w - lastActivity), overrun = 0L)
+        } else if (d > lastActivity) {                     // IDLE at due: [d, w] is wake overrun (upper bound, see class doc)
+            idleCase.incrementAndGet()
+            val l = w - d
+            record(l, longArrayOf(l, 0, 0, 0, 0, 0))
+            accountGap(gap, typed, idleOnTime = d - lastActivity, overrun = l)
+            add(d, w, WAKE)
+        } else {                                           // BACKLOG: busy at due; [d, w] split by the typed intervals in the ring
+            backlogCase.incrementAndGet()
+            val l = w - d
+            val p = LongArray(6)
+            val unk = if (coverageStart > d) minOf(coverageStart, w) - d else 0L
+            p[5] = unk
+            var n = minOf(rn, ringSize.toLong())
+            var k = rn - 1
+            while (n-- > 0) {
+                val i = (k % ringSize).toInt(); k--
+                if (re[i] <= d) break                      // ring is in time order; older intervals end before d
+                val s = maxOf(rs[i], maxOf(d, coverageStart)); val e = minOf(re[i], w)
+                if (e > s) p[when (rt[i]) { WAKE -> 0; JNI -> 1; MIDIOUT -> 2; else -> 3 }] += e - s
+            }
+            p[4] = l - p[0] - p[1] - p[2] - p[3] - p[5]
+            if (p[4] < 0) { mismatches.incrementAndGet(); p[4] = 0 }
+            record(l, p)
+            tail.record(w - lastActivity)
+            accountGap(gap, typed, idleOnTime = 0L, overrun = 0L)
+        }
+        lastWake = w; lastActivity = w; java.util.Arrays.fill(typedSinceWake, 0L)
+    }
+    private fun record(l: Long, p: LongArray) {
+        if (p.sum() != l) mismatches.incrementAndGet()
+        lateness.record(l); latenessSum.addAndGet(l)
+        for (i in 0 until 6) { partSum[i].addAndGet(p[i]); if (p[i] > 0) parts[i].record(p[i]) }
+        if (l >= 32_000_000L) { late32.incrementAndGet(); late32Sum.addAndGet(l); for (i in 0 until 6) partSumLate32[i].addAndGet(p[i]) }
+        if (l >= 64_000_000L) { late64.incrementAndGet(); late64Sum.addAndGet(l); for (i in 0 until 6) partSumLate64[i].addAndGet(p[i]) }
+    }
+    /** Thread-time accounting of one wake-to-wake gap; buckets sum to the gap exactly. */
+    private fun accountGap(gap: Long, typed: Long, idleOnTime: Long, overrun: Long, boundary: Boolean = false) {
+        span.addAndGet(gap)
+        timeline[0].addAndGet(idleOnTime); timeline[1].addAndGet(overrun)
+        for (t in 0 until 3) timeline[2 + t].addAndGet(typedSinceWake[t])
+        val kotlin = gap - idleOnTime - overrun - typed
+        if (kotlin < 0) mismatches.incrementAndGet()
+        timeline[if (boundary) 6 else 5].addAndGet(maxOf(0L, kotlin))
+    }
+
+    fun report(): String = buildString {
+        val names = listOf("wake", "jni", "midiOut", "voice", "kotlin", "unknown")
+        fun share(a: Array<java.util.concurrent.atomic.AtomicLong>, total: Long) = names.indices.joinToString(" ") { "${names[it]}=${if (total > 0) "%.1f".format(java.util.Locale.US, 100.0 * a[it].get() / total) else "-"}%" }
+        appendLine("PB02 events=${events.get()} onTimeOrEarly=${early.get()} idleCase=${idleCase.get()} backlogCase=${backlogCase.get()} boundaryCase=${boundaryCase.get()} late32=${late32.get()} late64=${late64.get()} mismatches=${mismatches.get()} (mismatches must be 0)")
+        appendLine("PB02_SHARE_all ${share(partSum, latenessSum.get())} totalLateMs=${latenessSum.get() / 1_000_000}")
+        appendLine("PB02_SHARE_late32ms ${share(partSumLate32, late32Sum.get())}")
+        appendLine("PB02_SHARE_late64ms ${share(partSumLate64, late64Sum.get())}")
+        val t = timeline.map { it.get() / 1_000_000 }
+        appendLine("PB02_TIMELINE_ms span=${span.get() / 1_000_000} idleOnTimeInclTail=${t[0]} wakeOverrun=${t[1]} jni=${t[2]} midiOut=${t[3]} voice=${t[4]} kotlinBusy=${t[5]} boundaryUntyped=${t[6]} (buckets sum to span)")
+        appendLine(lateness.line()); parts.forEach { appendLine(it.line()) }; appendLine(tail.line()); appendLine(boundaryLateness.line())
+    }
+}
+
+/** Runtime switch + scheduler-thread filter around [Pb02Core]. Default OFF; every hook is one volatile read when OFF. */
+object Pb02 {
+    @Volatile var enabled = false; private set
+    @Volatile private var core = Pb02Core()
+    private val sched = ThreadLocal<Boolean>()
+    private fun isSched(): Boolean {
+        val c = sched.get(); if (c != null) return c
+        val v = Thread.currentThread().name.startsWith("DefaultDispatcher-worker"); sched.set(v); return v
+    }
+    fun setEnabled(on: Boolean) { if (on && !enabled) core = Pb02Core(); enabled = on }
+    fun reset() { if (enabled) core = Pb02Core() }
+    /** Start stamp for a JNI / MIDI OUT call made by the scheduler; 0 = not recorded. */
+    fun t0(): Long = if (enabled && isSched()) System.nanoTime() else 0L
+    fun jni(t0: Long) { if (t0 != 0L) core.jni(t0, System.nanoTime()) }
+    fun midiOut(t0: Long) { if (t0 != 0L) core.midiOut(t0, System.nanoTime()) }
+    fun voiceBegin() { if (enabled && isSched()) core.voiceBegin(System.nanoTime()) }
+    fun voiceEnd() { if (enabled && isSched() && core.inVoice) core.voiceEnd(System.nanoTime()) }
+    fun wake(nowNs: Long, targetNs: Long) { if (enabled) core.wake(nowNs, targetNs) }
+    internal fun coreForTest(): Pb02Core = core
+    fun report(): String = "PB02 enabled=$enabled (P-B0.2 scheduler lateness split; counters since RESET LATENCY or since enabled)\n" + (if (enabled) core.report() else "")
 }

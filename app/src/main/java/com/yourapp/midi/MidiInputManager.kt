@@ -237,7 +237,9 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
     fun sendNoteOn(channel: Int, note: Int, velocity: Int) {
         if (channel !in 0..15) return
         ChannelActivity.noteOn(ChannelActivity.Source.NOTES, channel, velocity) // Mixer indicator only; nothing is sent or changed
+        val pb2 = com.yourapp.yamahaarranger.audio.Pb02.t0() // P-B0.2 (observer)
         mixerOutput.noteOn(channel, note, velocity)
+        com.yourapp.yamahaarranger.audio.Pb02.midiOut(pb2) // P-B0.2
     }
 
     /** CC72 Release Time for an external keyboard; BASSMIDI receives the knob separately. */
@@ -255,7 +257,9 @@ class MidiInputManager @Inject constructor(@ApplicationContext private val conte
 
     fun sendNoteOff(channel: Int, note: Int) {
         if (channel !in 0..15) return
+        val pb2 = com.yourapp.yamahaarranger.audio.Pb02.t0() // P-B0.2 (observer)
         mixerOutput.noteOff(channel, note)
+        com.yourapp.yamahaarranger.audio.Pb02.midiOut(pb2) // P-B0.2
     }
 
     /** Explicit RIGHT OFF affects only the selected external MIDI part. */
